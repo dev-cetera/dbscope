@@ -1,0 +1,113 @@
+PODS:
+  - desktop_multi_window (0.0.1):
+    - FlutterMacOS
+  - file_selector_macos (0.0.1):
+    - FlutterMacOS
+  - Firebase/CoreOnly (12.17.0):
+    - FirebaseCore (~> 12.17.0)
+  - firebase_core (4.13.0):
+    - Firebase/CoreOnly (~> 12.17.0)
+    - FlutterMacOS
+  - FirebaseCore (12.17.0):
+    - FirebaseCoreInternal (~> 12.17.0)
+    - GoogleUtilities/Environment (~> 8.1)
+    - GoogleUtilities/Logger (~> 8.1)
+  - FirebaseCoreInternal (12.17.0):
+    - "GoogleUtilities/NSData+zlib (~> 8.1)"
+  - flutter_secure_storage_darwin (10.0.0):
+    - Flutter
+    - FlutterMacOS
+  - FlutterMacOS (1.0.0)
+  - GoogleUtilities/Environment (8.1.2):
+    - GoogleUtilities/Privacy
+  - GoogleUtilities/Logger (8.1.2):
+    - GoogleUtilities/Environment
+    - GoogleUtilities/Privacy
+  - "GoogleUtilities/NSData+zlib (8.1.2)":
+    - GoogleUtilities/Privacy
+  - GoogleUtilities/Privacy (8.1.2)
+  - shared_preferences_foundation (0.0.1):
+    - Flutter
+    - FlutterMacOS
+  - sqlite3 (3.52.0):
+    - sqlite3/common (= 3.52.0)
+  - sqlite3/common (3.52.0)
+  - sqlite3/dbstatvtab (3.52.0):
+    - sqlite3/common
+  - sqlite3/fts5 (3.52.0):
+    - sqlite3/common
+  - sqlite3/math (3.52.0):
+    - sqlite3/common
+  - sqlite3/perf-threadsafe (3.52.0):
+    - sqlite3/common
+  - sqlite3/rtree (3.52.0):
+    - sqlite3/common
+  - sqlite3/session (3.52.0):
+    - sqlite3/common
+  - sqlite3_flutter_libs (0.0.1):
+    - Flutter
+    - FlutterMacOS
+    - sqlite3 (~> 3.52.0)
+    - sqlite3/dbstatvtab
+    - sqlite3/fts5
+    - sqlite3/math
+    - sqlite3/perf-threadsafe
+    - sqlite3/rtree
+    - sqlite3/session
+  - url_launcher_macos (0.0.1):
+    - FlutterMacOS
+
+DEPENDENCIES:
+  - desktop_multi_window (from `Flutter/ephemeral/.symlinks/plugins/desktop_multi_window/macos`)
+  - file_selector_macos (from `Flutter/ephemeral/.symlinks/plugins/file_selector_macos/macos`)
+  - firebase_core (from `Flutter/ephemeral/.symlinks/plugins/firebase_core/macos`)
+  - flutter_secure_storage_darwin (from `Flutter/ephemeral/.symlinks/plugins/flutter_secure_storage_darwin/darwin`)
+  - FlutterMacOS (from `Flutter/ephemeral`)
+  - shared_preferences_foundation (from `Flutter/ephemeral/.symlinks/plugins/shared_preferences_foundation/darwin`)
+  - sqlite3_flutter_libs (from `Flutter/ephemeral/.symlinks/plugins/sqlite3_flutter_libs/darwin`)
+  - url_launcher_macos (from `Flutter/ephemeral/.symlinks/plugins/url_launcher_macos/macos`)
+
+SPEC REPOS:
+  trunk:
+    - Firebase
+    - FirebaseCore
+    - FirebaseCoreInternal
+    - GoogleUtilities
+    - sqlite3
+
+EXTERNAL SOURCES:
+  desktop_multi_window:
+    :path: Flutter/ephemeral/.symlinks/plugins/desktop_multi_window/macos
+  file_selector_macos:
+    :path: Flutter/ephemeral/.symlinks/plugins/file_selector_macos/macos
+  firebase_core:
+    :path: Flutter/ephemeral/.symlinks/plugins/firebase_core/macos
+  flutter_secure_storage_darwin:
+    :path: Flutter/ephemeral/.symlinks/plugins/flutter_secure_storage_darwin/darwin
+  FlutterMacOS:
+    :path: Flutter/ephemeral
+  shared_preferences_foundation:
+    :path: Flutter/ephemeral/.symlinks/plugins/shared_preferences_foundation/darwin
+  sqlite3_flutter_libs:
+    :path: Flutter/ephemeral/.symlinks/plugins/sqlite3_flutter_libs/darwin
+  url_launcher_macos:
+    :path: Flutter/ephemeral/.symlinks/plugins/url_launcher_macos/macos
+
+SPEC CHECKSUMS:
+  desktop_multi_window: 566489c048b501134f9d7fb6a2354c60a9126486
+  file_selector_macos: 3e56eaea051180007b900eacb006686fd54da150
+  Firebase: e8400c058702940d53f31fc0653e4e7a06332326
+  firebase_core: 0e7f6bce042ff613c2b497e6af4a5f901d855675
+  FirebaseCore: 52d4512296984a44a8c8870c6494870fc7aeee2f
+  FirebaseCoreInternal: 3b310521b34a51ce3a6c605e4618b9aef8f6c112
+  flutter_secure_storage_darwin: 557817588b80e60213cbecb573c45c76b788018d
+  FlutterMacOS: d0db08ddef1a9af05a5ec4b724367152bb0500b1
+  GoogleUtilities: 766ace00c6b10d8148408f329d10c4f051931850
+  shared_preferences_foundation: 5086985c1d43c5ba4d5e69a4e8083a389e2909e6
+  sqlite3: a51c07cf16e023d6c48abd5e5791a61a47354921
+  sqlite3_flutter_libs: f9114e4bbe1f2e03dd543373c53d23245982ca13
+  url_launcher_macos: 175a54c831f4375a6cf895875f716ee5af3888ce
+
+PODFILE CHECKSUM: 54d867c82ac51cbd61b565781b9fada492027009
+
+COCOAPODS: 1.16.2

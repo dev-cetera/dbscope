@@ -1,0 +1,25 @@
+name: schema_viewer
+description: >-
+  Backend-agnostic ER-diagram widget. Renders a set of tables as
+  draggable cards on a pan-zoom canvas, with FK-derived bezier edges
+  that carry an animated chevron. Layout is Sugiyama-style LR/TB with
+  cascade-separation on drag. Cards expose a typed action surface
+  (tap = select-and-isolate, header buttons = configurable, open-table
+  + compact toggle by default) so the host wires the diagram to
+  whatever explorer / inspector / drilldown it owns. Used by dbscope
+  for both the full Schema viewer tab and the Linked-view row cards.
+publish_to: none
+version: 0.1.0
+
+environment:
+  sdk: ^3.4.0
+  flutter: ">=3.10.0"
+
+dependencies:
+  flutter:
+    sdk: flutter
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^6.0.0

@@ -1,0 +1,20 @@
+name: dbscope_pg_proxy_plugin
+description: ConnectionKindPlugin for DBScope that talks to a Postgres database through a dbscope_pg_proxy WebSocket bridge. Works on web (where raw TCP to Postgres is impossible) and on native (where running the proxy can still be useful for centralised access).
+publish_to: none
+version: 0.1.0
+
+environment:
+  sdk: ^3.11.5
+
+dependencies:
+  flutter:
+    sdk: flutter
+  dbscope:
+    path: ../..
+  web_socket_channel: ^3.0.1
+  uuid: ^4.5.3
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^6.0.0

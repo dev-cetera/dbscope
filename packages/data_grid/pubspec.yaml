@@ -1,0 +1,24 @@
+name: data_grid
+description: >-
+  Hand-rolled high-performance data grid widget for Flutter. Renders
+  tabular data with drag-range selection, column reorder/resize,
+  pluggable cell renderers + editors, TSV / RFC-4180 CSV copy, and an
+  imperative controller for incremental updates so it scales past the
+  10k-row mark without rebuilding the world. Backend-agnostic — column
+  types are opaque tags, so it works for Postgres / SQLite / CSV / any
+  tabular data source.
+publish_to: none
+version: 0.1.0
+
+environment:
+  sdk: ^3.4.0
+  flutter: ">=3.10.0"
+
+dependencies:
+  flutter:
+    sdk: flutter
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^6.0.0

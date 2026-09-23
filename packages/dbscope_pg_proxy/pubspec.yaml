@@ -1,0 +1,16 @@
+name: dbscope_pg_proxy
+description: WebSocket→Postgres proxy for DBScope's web build. Run this anywhere reachable from your browser; it forwards SQL to any Postgres (local, Cloud SQL, RDS, Neon, Supabase, etc.).
+publish_to: none
+version: 0.1.0
+
+environment:
+  sdk: ^3.11.5
+
+dependencies:
+  postgres: ^3.5.11
+
+dev_dependencies:
+  flutter_lints: ^6.0.0
+
+executables:
+  dbscope_pg_proxy:

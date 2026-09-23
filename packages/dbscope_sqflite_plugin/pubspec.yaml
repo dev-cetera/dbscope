@@ -1,0 +1,25 @@
+name: dbscope_sqflite_plugin
+description: >-
+  Connect DBScope to a SQLite database living inside a Flutter (or any
+  other) app on a USB-connected Android / iOS device. The database file is
+  pulled via `adb`/`xcrun devicectl`, edited locally, and pushed back. No
+  in-app agent required.
+publish_to: none
+version: 0.2.0
+
+environment:
+  sdk: ^3.4.0
+
+dependencies:
+  flutter:
+    sdk: flutter
+  dbscope:
+    path: ../..
+  app_data_explorer:
+    path: ../app_data_explorer
+  sqlite3: ^2.4.6
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^6.0.0

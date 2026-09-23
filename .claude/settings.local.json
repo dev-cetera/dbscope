@@ -1,0 +1,50 @@
+{
+  "attribution": {
+    "commit": "",
+    "pr": ""
+  },
+  "skipDangerousModePermissionPrompt": true,
+  "permissions": {
+    "defaultMode": "bypassPermissions",
+    "allow": [
+      "Bash(*)",
+      "Edit",
+      "Write",
+      "Read",
+      "Glob",
+      "Grep",
+      "WebFetch",
+      "WebSearch",
+      "mcp__ide__getDiagnostics",
+      "Bash(grep *)",
+      "Bash(curl *)",
+      "Bash(git mv *)",
+      "Bash(rm .opencode)",
+      "Bash(ln -s .agents .claude)",
+      "Bash(fvm flutter *)",
+      "Bash(git submodule *)",
+      "Bash(git ls-tree *)",
+      "Bash(gh repo *)",
+      "Bash(gh search *)",
+      "Bash(gh api *)",
+      "Bash(echo \"exit: $?\")",
+      "Bash(git ls-remote *)",
+      "Bash(git clone *)",
+      "Bash(git -C packages/code_field cat-file -t 3bd6eeca3dbe07f993fa906ff635f7b2edee39c1)",
+      "Bash(git -C packages/code_field rev-parse HEAD)",
+      "Bash(git grep *)",
+      "Bash(ICON_OUT=assets/icon/dbscope_icon.png python3 __TRACKED_VAR__/make_icon.py)",
+      "Bash(sips -g pixelWidth -g pixelHeight -g format assets/icon/dbscope_icon.png)"
+    ],
+    "deny": [
+      "Read(**/.env)",
+      "Read(**/.env.*)",
+      "Edit(**/.env)",
+      "Edit(**/.env.*)",
+      "Write(**/.env)",
+      "Write(**/.env.*)",
+      "Bash(rm **/.env)",
+      "Bash(rm **/.env.*)"
+    ]
+  }
+}

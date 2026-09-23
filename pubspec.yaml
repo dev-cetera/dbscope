@@ -1,0 +1,62 @@
+name: dbscope
+description: "Flutter desktop database viewer and editor."
+publish_to: 'none'
+version: 1.0.0+1
+
+environment:
+  sdk: ^3.11.5
+
+dependencies:
+  flutter:
+    sdk: flutter
+  cupertino_icons: ^1.0.8
+  postgres: ^3.5.11
+  flutter_secure_storage: ^10.2.0
+  path_provider: ^2.1.5
+  uuid: ^4.5.3
+  flutter_code_editor: ^0.3.5
+  highlight: ^0.7.0
+  file_selector: ^1.1.0
+  desktop_multi_window: ^0.2.1
+  url_launcher: ^6.3.1
+  sqlite3: ^2.4.6
+  sqlite3_flutter_libs: ^0.5.27
+  http: ^1.2.2
+  cryptography: ^2.7.0
+  shared_preferences: ^2.3.0
+  ai_broker: ^0.2.2
+  dbscope_sqflite_plugin:
+    path: packages/dbscope_sqflite_plugin
+  dbscope_pg_proxy_plugin:
+    path: packages/dbscope_pg_proxy_plugin
+  # Doom theme wired out — package kept under packages/dbscope_doom_plugin.
+  # dbscope_doom_plugin:
+  #   path: packages/dbscope_doom_plugin
+  dbscope_win95_plugin:
+    path: packages/dbscope_win95_plugin
+  dbscope_vscode_dark_plugin:
+    path: packages/dbscope_vscode_dark_plugin
+  # Warcraft theme wired out — package kept under packages/dbscope_warcraft_plugin.
+  # dbscope_warcraft_plugin:
+  #   path: packages/dbscope_warcraft_plugin
+  dbscope_portal_plugin:
+    path: packages/dbscope_portal_plugin
+  widgets:
+    path: packages/widgets
+  data_grid:
+    path: packages/data_grid
+  code_field:
+    git:
+      url: https://github.com/dev-cetera/code_field.git
+      ref: f280438c4709a874e73fb5825580389dc4a9e63e
+  schema_viewer:
+    path: packages/schema_viewer
+  firebase_core: ^4.13.0
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^6.0.0
+
+flutter:
+  uses-material-design: true

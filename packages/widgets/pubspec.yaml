@@ -1,0 +1,39 @@
+name: widgets
+description: >-
+  Reusable Flutter UI primitives, themed for Windows 95 and VS Code Dark.
+  AppPalette + ChromeKind drive the role-based look; AppBevel adapts to bevel
+  vs flat chrome. Ships the named Win95 chrome (Border / Button / Frame /
+  MenuBar / StatusBar / TabBar / MetricChip) for apps that want the
+  unmistakable Windows 95 surface regardless of palette.
+publish_to: none
+version: 0.2.0
+
+environment:
+  sdk: ^3.7.0
+  flutter: ">=3.24.0"
+
+dependencies:
+  flutter:
+    sdk: flutter
+  code_field:
+    git:
+      url: https://github.com/dev-cetera/code_field.git
+      ref: f280438c4709a874e73fb5825580389dc4a9e63e
+
+dev_dependencies:
+  flutter_lints: ^6.0.0
+
+flutter:
+  uses-material-design: true
+  fonts:
+    - family: MS Sans Serif
+      fonts:
+        - asset: lib/assets/fonts/MS_Sans_Serif.ttf
+        - asset: lib/assets/fonts/MS_Sans_Serif_Bold.ttf
+          weight: 700
+    - family: VT323
+      fonts:
+        - asset: lib/assets/fonts/VT323_Regular.ttf
+    - family: Cinzel
+      fonts:
+        - asset: lib/assets/fonts/Cinzel.ttf
