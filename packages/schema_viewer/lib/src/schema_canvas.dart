@@ -185,6 +185,10 @@ class _SchemaCanvasState extends State<SchemaCanvas>
   /// initialisation? We only fire it once per canvas instance.
   bool _autoFitDone = false;
 
+  /// Where this canvas's top-left sat inside the window on the previous
+  /// frame. See [_anchorViewport].
+  Offset? _lastViewportOrigin;
+
   @override
   void initState() {
     super.initState();
@@ -216,6 +220,7 @@ class _SchemaCanvasState extends State<SchemaCanvas>
   }
 
   void _onTick(Duration elapsed) {
+    _anchorViewport();
     final dt = elapsed - _lastTick;
     _lastTick = elapsed;
     final ms = dt.inMicroseconds / Duration.microsecondsPerMillisecond;
@@ -223,6 +228,35 @@ class _SchemaCanvasState extends State<SchemaCanvas>
     setState(() {
       _tickerValue = (_tickerValue + delta) % 1.0;
     });
+  }
+
+  /// Keep the diagram pinned to the screen when the viewport's own
+  /// origin moves.
+  ///
+  /// [pan] is canvas-local, so a card sits at `pan + position * scale`
+  /// measured from this widget's top-left. When a pane to the LEFT of
+  /// the canvas opens or closes, that top-left slides sideways and the
+  /// whole diagram slides with it. Shifting [pan] by the inverse holds
+  /// every card at the same screen position instead.
+  ///
+  /// Only the canvas's offset INSIDE the window is consulted, which is
+  /// what makes this precise: a pane on the right leaves it untouched
+  /// (and needs no correction), and moving the OS window doesn't change
+  /// it either, since Flutter's global coordinates are view-relative.
+  ///
+  /// Driven from the chevron ticker, which runs every frame for the
+  /// life of the canvas — so this tracks a pane being *dragged* as
+  /// smoothly as one being toggled, without depending on whether a
+  /// rebuild or a re-layout happened to fire.
+  void _anchorViewport() {
+    final box = context.findRenderObject() as RenderBox?;
+    if (box == null || !box.hasSize) return;
+    final origin = box.localToGlobal(Offset.zero);
+    final previous = _lastViewportOrigin;
+    _lastViewportOrigin = origin;
+    // First frame: record the baseline, never correct against it.
+    if (previous == null || origin == previous) return;
+    widget.onPanChanged?.call(widget.pan - (origin - previous));
   }
 
   Offset get _effectivePan => widget.pan + _panDelta;

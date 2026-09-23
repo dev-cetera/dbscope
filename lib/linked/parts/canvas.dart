@@ -57,6 +57,10 @@ class _CanvasState extends State<_Canvas> with SingleTickerProviderStateMixin {
   Duration _lastTick = Duration.zero;
   static const Duration _kChevronCycle = Duration(milliseconds: 3500);
 
+  /// Where this canvas's top-left sat inside the window on the previous
+  /// frame. See [_anchorViewport].
+  Offset? _lastViewportOrigin;
+
   @override
   void initState() {
     super.initState();
@@ -70,6 +74,7 @@ class _CanvasState extends State<_Canvas> with SingleTickerProviderStateMixin {
   }
 
   void _onTick(Duration elapsed) {
+    _anchorViewport();
     final dt = elapsed - _lastTick;
     _lastTick = elapsed;
     final ms = dt.inMicroseconds / Duration.microsecondsPerMillisecond;
@@ -77,6 +82,27 @@ class _CanvasState extends State<_Canvas> with SingleTickerProviderStateMixin {
     setState(() {
       _tickerValue = (_tickerValue + delta) % 1.0;
     });
+  }
+
+  /// Keep the nodes pinned to the screen when the viewport's own origin
+  /// moves. `tab.pan` is canvas-local, so a node sits at `pan +
+  /// position * scale` measured from this widget's top-left; when the
+  /// left row-picker panel opens, closes, or is dragged, that top-left
+  /// slides and the whole graph slides with it. Shifting the pan by the
+  /// inverse holds every node where it is on screen.
+  ///
+  /// Twin of `_SchemaCanvasState._anchorViewport` in
+  /// package:schema_viewer — same reasoning, same ticker-driven hook.
+  void _anchorViewport() {
+    final box = context.findRenderObject() as RenderBox?;
+    if (box == null || !box.hasSize) return;
+    final origin = box.localToGlobal(Offset.zero);
+    final previous = _lastViewportOrigin;
+    _lastViewportOrigin = origin;
+    // First frame: record the baseline, never correct against it.
+    if (previous == null || origin == previous) return;
+    widget.tab.pan -= origin - previous;
+    AppState.instance.notifyChange();
   }
 
   Offset get _effectivePan => widget.tab.pan + _panDelta;

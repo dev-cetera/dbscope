@@ -1129,7 +1129,56 @@ class _CanvasWithMiddle extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final selected = tab.selectedRowNode;
-    if (selected == null) return canvas;
+    // The Row and the Expanded are unconditional: returning `canvas`
+    // bare when nothing is selected would swap this slot's widget type
+    // as the panel comes and goes, unmounting the canvas and discarding
+    // its State — see the note on `_mainAreaKey` in app.dart.
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Expanded(child: canvas),
+        if (selected != null)
+          _MiddlePane(
+            tab: tab,
+            selected: selected,
+            onTapPreviewRow: onTapPreviewRow,
+          ),
+      ],
+    );
+  }
+}
+
+/// The middle row-list panel: every row of [selected]'s table, tapping
+/// one pushes it to the inspector preview. Collapses to a thin
+/// [_PanelExpander] strip.
+class _MiddlePane extends StatelessWidget {
+  final LinkedTab tab;
+  final LinkedRowNode selected;
+  final void Function({
+    required String schema,
+    required String table,
+    required List<String> pkCols,
+    required List<Object?> pkValues,
+  })
+  onTapPreviewRow;
+  const _MiddlePane({
+    required this.tab,
+    required this.selected,
+    required this.onTapPreviewRow,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    if (tab.middlePanelCollapsed) {
+      return _PanelExpander(
+        tooltip: 'Show preview picker',
+        icon: Icons.chevron_left,
+        onTap: () {
+          tab.middlePanelCollapsed = false;
+          AppState.instance.notifyChange();
+        },
+      );
+    }
     final preview = tab.previewRow;
     final selectedPk =
         preview != null &&
@@ -1137,54 +1186,38 @@ class _CanvasWithMiddle extends StatelessWidget {
             preview.table == selected.table
         ? preview.pkValues
         : selected.pkValues;
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        Expanded(child: canvas),
-        if (tab.middlePanelCollapsed)
-          _PanelExpander(
-            tooltip: 'Show preview picker',
-            icon: Icons.chevron_left,
-            onTap: () {
-              tab.middlePanelCollapsed = false;
-              AppState.instance.notifyChange();
-            },
-          )
-        else
-          Resizable(
-            width: tab.middlePanelWidth,
-            minWidth: 220,
-            maxWidth: 600,
-            side: ResizeSide.left,
-            onResized: (w) {
-              tab.middlePanelWidth = w;
-              AppState.instance.notifyChange();
-            },
-            child: DecoratedBox(
-              decoration: BoxDecoration(
-                border: Border(
-                  left: BorderSide(color: Theme.of(context).dividerColor),
-                ),
-              ),
-              child: _RowPickerPanel(
-                connectionId: tab.connectionId,
-                schema: selected.schema,
-                table: selected.table,
-                onTapRow: onTapPreviewRow,
-                trailingIcon: Icons.visibility_outlined,
-                selectedPkValues: selectedPk,
-                restrictPkCols: selected.pkColumns,
-                restrictPkValues: selected.pkValues,
-                emptyHint: 'No rows.',
-                tableHint: 'No table selected.',
-                onCollapse: () {
-                  tab.middlePanelCollapsed = true;
-                  AppState.instance.notifyChange();
-                },
-              ),
-            ),
+    return Resizable(
+      width: tab.middlePanelWidth,
+      minWidth: 220,
+      maxWidth: 600,
+      side: ResizeSide.left,
+      onResized: (w) {
+        tab.middlePanelWidth = w;
+        AppState.instance.notifyChange();
+      },
+      child: DecoratedBox(
+        decoration: BoxDecoration(
+          border: Border(
+            left: BorderSide(color: Theme.of(context).dividerColor),
           ),
-      ],
+        ),
+        child: _RowPickerPanel(
+          connectionId: tab.connectionId,
+          schema: selected.schema,
+          table: selected.table,
+          onTapRow: onTapPreviewRow,
+          trailingIcon: Icons.visibility_outlined,
+          selectedPkValues: selectedPk,
+          restrictPkCols: selected.pkColumns,
+          restrictPkValues: selected.pkValues,
+          emptyHint: 'No rows.',
+          tableHint: 'No table selected.',
+          onCollapse: () {
+            tab.middlePanelCollapsed = true;
+            AppState.instance.notifyChange();
+          },
+        ),
+      ),
     );
   }
 }

@@ -20,19 +20,24 @@ class GridWithInspector extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final appState = AppState.instance;
-    if (appState.propertyInspectorCollapsed) return grid;
+    // The Row and the Expanded stay in the tree whether or not the
+    // inspector is showing. Returning `grid` bare when collapsed would
+    // swap this slot's widget type on every toggle, which unmounts the
+    // grid / canvas subtree and throws away its State — see the note on
+    // `_mainAreaKey` in app.dart.
     return Row(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         Expanded(child: grid),
-        Resizable(
-          width: appState.propertyInspectorWidth,
-          minWidth: 220,
-          maxWidth: 700,
-          side: ResizeSide.left,
-          onResized: appState.setPropertyInspectorWidth,
-          child: inspector,
-        ),
+        if (!appState.propertyInspectorCollapsed)
+          Resizable(
+            width: appState.propertyInspectorWidth,
+            minWidth: 220,
+            maxWidth: 700,
+            side: ResizeSide.left,
+            onResized: appState.setPropertyInspectorWidth,
+            child: inspector,
+          ),
       ],
     );
   }

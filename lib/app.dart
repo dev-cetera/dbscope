@@ -153,12 +153,26 @@ class _Shell extends StatelessWidget {
   }
 }
 
+/// Stable identity for the main area, so showing / hiding / moving the
+/// sidebar RE-PARENTS the active tab's subtree instead of rebuilding it.
+///
+/// The obvious shape — `if (!visible) return mainArea;` plus a `Row` in
+/// the other branch — changes the widget type sitting in this slot, and
+/// `Widget.canUpdate` then returns false, so Flutter unmounts the whole
+/// tab subtree and inflates a fresh one. Every `State` below dies with
+/// it, which is how a sidebar toggle silently reset the Schema canvas's
+/// one-shot auto-fit latch and re-centred the whole diagram, and how the
+/// Linked canvas lost its per-node auto-width bookkeeping.
+final _mainAreaKey = GlobalKey();
+
 class _Body extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final state = AppState.instance;
-    final mainArea = _MainArea(active: state.active);
-    if (!state.sidebarVisible) return mainArea;
+    // Built fresh on every rebuild rather than hoisted into a const
+    // widget: it reads sidebarWidth / sidebarOnRight off the singleton,
+    // and Flutter skips updating a child whose widget is identical to
+    // the previous one — a const sidebar would stop tracking drags.
     final sidebar = Resizable(
       width: state.sidebarWidth,
       minWidth: 180,
@@ -167,18 +181,16 @@ class _Body extends StatelessWidget {
       onResized: state.setSidebarWidth,
       child: const Sidebar(),
     );
-    if (state.sidebarOnRight) {
-      return Row(
-        children: [
-          Expanded(child: mainArea),
-          sidebar,
-        ],
-      );
-    }
     return Row(
       children: [
-        sidebar,
-        Expanded(child: mainArea),
+        if (state.sidebarVisible && !state.sidebarOnRight) sidebar,
+        Expanded(
+          child: KeyedSubtree(
+            key: _mainAreaKey,
+            child: _MainArea(active: state.active),
+          ),
+        ),
+        if (state.sidebarVisible && state.sidebarOnRight) sidebar,
       ],
     );
   }
