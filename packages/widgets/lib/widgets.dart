@@ -2,9 +2,10 @@
 ///
 /// The shared [AppPalette] [ThemeExtension] holds role-based colors;
 /// every chrome widget reads from `AppPalette.of(context)` and shape-
-/// adapts via [ChromeKind] (bevel vs flat). Concrete palettes ship in
-/// per-theme plugin packages (`packages/dbscope_*_plugin`) and register
-/// themselves with the host's `ThemeRegistry`.
+/// adapts via [ChromeKind] (bevel vs flat). Two concrete themes ship here
+/// ([buildVsCodeDarkTheme], [buildWin95Theme]) so apps outside dbscope can
+/// use them; dbscope's theme plugins re-export them and register them with
+/// the host's `ThemeRegistry`.
 ///
 /// Adaptive chrome widgets: [AppBevel], [AppButton], [AppToggleButton],
 /// [AppFrame], [AppInset], [AppMenuBar] / [AppMenu] / [AppMenuItem],
@@ -31,4 +32,6 @@ export 'src/panel.dart';
 export 'src/resizable.dart';
 export 'src/searchable_menu.dart';
 export 'src/states.dart';
+export 'src/themes/vscode_dark_theme.dart';
+export 'src/themes/win95_theme.dart';
 export 'src/v_resizable.dart';
