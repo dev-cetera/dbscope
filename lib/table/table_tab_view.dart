@@ -9,10 +9,19 @@ import '../connection/registry.dart';
 import '../db/dml.dart';
 import '../db/edit_policy.dart';
 import '../db/executor.dart';
+import '../db/write_rules.dart';
 import '../grid/data_grid.dart';
 import '../grid/row_dialog.dart';
 import '../inspector/grid_with_inspector.dart';
 import '../inspector/result_inspector_panel.dart';
+import '../meta/charts/chart_view.dart';
+import '../meta/masked_value.dart';
+import '../meta/meta_cache.dart';
+import '../meta/meta_models.dart';
+import '../meta/named_query/named_query_tab.dart';
+import '../meta/ui/action_trust.dart';
+import '../meta/ui/meta_dialogs.dart';
+import '../meta/ui/meta_menu.dart';
 import '../navigator/navigator_tab.dart';
 import '../query/cancel_token.dart';
 import '../query/pager.dart';
@@ -52,9 +61,41 @@ class _TableTabViewState extends State<TableTabView> {
   static const int _maxBufferedRows = 50000;
   static const int _trimChunk = 5000;
 
+  /// The metadata snapshot this table was last loaded under. When the
+  /// metadata reloads (or "View as…" switches roles) the access decisions
+  /// may change, so the table reloads.
+  Object? _loadedUnder;
+
+  void _onMetadataChanged() {
+    if (!mounted) return;
+    final current = MetadataCache.instance.snapshotFor(
+      widget.tab.connectionId,
+    );
+    if (current == null || identical(current, _loadedUnder)) return;
+    if (current.status != MetaLoadStatus.ready) return;
+    _loadedUnder = current;
+    _load();
+  }
+
+  /// Bumped by every [_load]; a load that finishes after a newer one
+  /// started discards its result (older policy, older sort/filter).
+  int _loadGeneration = 0;
+
   @override
   void initState() {
     super.initState();
+    MetadataCache.instance.addListener(_onMetadataChanged);
+    _loadedUnder = widget.tab.loadedUnder;
+    final current = MetadataCache.instance.snapshotFor(widget.tab.connectionId);
+    if (widget.tab.data != null &&
+        current != null &&
+        current.status == MetaLoadStatus.ready &&
+        !identical(current, widget.tab.loadedUnder)) {
+      // Revisited after the policy changed: reload under the current one.
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) _onMetadataChanged();
+      });
+    }
     if (widget.tab.data == null && widget.tab.error == null) {
       // Defer: _load() calls AppState.notifyChange() synchronously, which
       // would fire setState on ancestor listeners while their build is in
@@ -76,6 +117,7 @@ class _TableTabViewState extends State<TableTabView> {
 
   @override
   void dispose() {
+    MetadataCache.instance.removeListener(_onMetadataChanged);
     _autoRefreshTimer?.cancel();
     super.dispose();
   }
@@ -109,6 +151,10 @@ class _TableTabViewState extends State<TableTabView> {
       setState(() => widget.tab.error = 'No connection.');
       return;
     }
+    final generation = ++_loadGeneration;
+    final loadedUnder = MetadataCache.instance.snapshotFor(
+      widget.tab.connectionId,
+    );
     final token = CancelToken();
     setState(() {
       widget.tab.isLoading = true;
@@ -133,9 +179,20 @@ class _TableTabViewState extends State<TableTabView> {
         sortColumn: widget.tab.sort?.column,
         descending: widget.tab.sort?.descending ?? false,
         cancelToken: token,
+        baseWhere: widget.tab.metaFilter?.where,
+        baseWhereParams: widget.tab.metaFilter?.params ?? const [],
+        defaultFilterTrusted: _metadataSqlTrusted(),
       );
+      if (!mounted || generation != _loadGeneration) return;
       _pager = result.pager;
-      if (!mounted) return;
+      widget.tab.loadedUnder = loadedUnder;
+      _loadedUnder = loadedUnder;
+      // First load seeds the collapsed columns from access-control
+      // `default_hidden`; after that the user's choice sticks.
+      widget.tab.hiddenColumns ??= {
+        for (final c in result.columns)
+          if (c.defaultHidden) c.name,
+      };
       final newData = _gridDataFor(
         result.columns,
         result.firstRows,
@@ -154,6 +211,18 @@ class _TableTabViewState extends State<TableTabView> {
         widget.tab.hasNextPage = !result.pager.isDone;
         widget.tab.effectiveSoftDeleteColumn = result.effectiveSoftDeleteColumn;
         widget.tab.tenantFilterApplied = result.tenantFilterApplied;
+        widget.tab.tableAccess = result.tableAccess;
+        widget.tab.defaultFilterApplied = result.defaultFilterApplied;
+        widget.tab.defaultFilterPending = result.defaultFilterPending;
+        widget.tab.hardDeleteRefusal = result.hardDeleteRefusal;
+        widget.tab.deleteRefusal = result.deleteRefusal;
+        widget.tab.returningList = result.returningList;
+        if (widget.tab.sort == null && result.effectiveSort != null) {
+          widget.tab.sort = TableSortState(
+            result.effectiveSort!.column,
+            result.effectiveSort!.descending,
+          );
+        }
       });
       // FKs are a one-time per-database query — load them lazily.
       if (widget.tab.foreignKeys.isEmpty) {
@@ -169,7 +238,7 @@ class _TableTabViewState extends State<TableTabView> {
       // no network wait.
       _kickPrefetch();
     } catch (e) {
-      if (!mounted) return;
+      if (!mounted || generation != _loadGeneration) return;
       setState(() {
         widget.tab.error = classify(e).message;
         widget.tab.isLoading = false;
@@ -186,6 +255,10 @@ class _TableTabViewState extends State<TableTabView> {
     required List<String> pk,
     required Set<String> indexed,
   }) {
+    final snapshot = MetadataCache.instance.snapshotFor(
+      widget.tab.connectionId,
+    );
+    final hidden = widget.tab.hiddenColumns ?? const <String>{};
     return GridData(
       columns: [
         for (final c in columns)
@@ -195,6 +268,11 @@ class _TableTabViewState extends State<TableTabView> {
             typeName: c.typeName,
             primaryKey: pk.contains(c.name),
             indexed: indexed.contains(c.name),
+            hidden: hidden.contains(c.name),
+            tooltip: snapshot?.index
+                .describeColumn(widget.tab.schema, widget.tab.table, c.name)
+                .toTooltip(),
+            marker: c.isMasked ? '••' : null,
           ),
       ],
       rows: rows,
@@ -269,6 +347,16 @@ class _TableTabViewState extends State<TableTabView> {
   }
 
   Future<void> _onSort(GridSortEvent event) async {
+    final masked = widget.tab.catalogColumns.any(
+      (c) => c.name == event.column && c.isMasked,
+    );
+    if (masked) {
+      showToast(
+        context,
+        '"${event.column}" is masked for you, so it cannot be sorted.',
+      );
+      return;
+    }
     final indexed = widget.tab.indexedColumns;
     final isFast =
         indexed.contains(event.column) ||
@@ -317,7 +405,17 @@ class _TableTabViewState extends State<TableTabView> {
         nullIfBlank: true,
       ),
     );
-    if (policy.readOnly) return;
+    if (policy.readOnly) {
+      if (policy.readOnlyReason != null) {
+        showToast(context, policy.readOnlyReason!);
+      }
+      return;
+    }
+    final invalid = policy.validate(event.newValueRaw);
+    if (invalid != null) {
+      showToast(context, invalid);
+      return;
+    }
 
     final conn = _conn();
     if (conn == null) return;
@@ -416,6 +514,19 @@ class _TableTabViewState extends State<TableTabView> {
       pkValues[pk] = rowValues[idx];
       pkSummary.add('$pk = ${rowValues[idx]}');
     }
+    // Shared with the Navigator: access, metadata `danger`, masked keys.
+    final refusal = writeRulesFor(
+      conn,
+      schema: tab.schema,
+      table: tab.table,
+      columns: tab.catalogColumns,
+      pkColumns: tab.pkColumns,
+      profile: ConnectionRegistry.instance.profileById(tab.connectionId),
+    ).whyNoDelete(pkColumns: tab.pkColumns, pkValues: pkValues);
+    if (refusal != null) {
+      showToast(context, refusal);
+      return;
+    }
     final softCol = tab.effectiveSoftDeleteColumn;
     final ok = await confirmDialog(
       context,
@@ -477,6 +588,19 @@ class _TableTabViewState extends State<TableTabView> {
       return;
     }
     if (tab.editPolicies.isEmpty) return;
+    final insertConn = _conn();
+    if (insertConn == null) return;
+    final insertRefusal = writeRulesFor(
+      insertConn,
+      schema: tab.schema,
+      table: tab.table,
+      columns: tab.catalogColumns,
+      pkColumns: tab.pkColumns,
+    ).whyNoInsert(pkColumns: tab.pkColumns);
+    if (insertRefusal != null) {
+      showToast(context, insertRefusal);
+      return;
+    }
     final values = await showDialog<Map<String, Object?>>(
       context: context,
       builder: (_) => InsertRowDialog(policies: tab.editPolicies),
@@ -486,12 +610,17 @@ class _TableTabViewState extends State<TableTabView> {
     if (conn == null) return;
     try {
       final editor = CellEditor(conn);
-      final inserted = await editor.insertRow(
+      final returned = await editor.insertRow(
         schema: tab.schema,
         table: tab.table,
         editable: tab.editPolicies.where((p) => !p.readOnly).toList(),
         values: values,
+        returning: tab.returningList,
       );
+      final inserted = maskInsertedRow(returned, {
+        for (var i = 0; i < tab.catalogColumns.length; i++)
+          if (tab.catalogColumns[i].isMasked) i,
+      });
       if (!mounted) return;
       final data = tab.data;
       if (data != null) {
@@ -548,15 +677,42 @@ class _TableTabViewState extends State<TableTabView> {
       final pkIdx = data.columns.indexWhere((c) => c.name == fk.toColumn);
       if (pkIdx < 0) return;
       final pkValue = row[pkIdx];
+      if (pkValue is MaskedValue) {
+        showToast(
+          context,
+          'That value is masked for you, so it can\'t be followed.',
+        );
+        return;
+      }
+      final conn = _conn();
+      if (conn == null) return;
+      final title =
+          '${fk.fromTable} where ${fk.fromColumn} = ${_shortValue(pkValue)}';
+      final policy = MetadataCache.instance.policyForExecutor(conn);
+      if (!policy.can(Capability.query)) {
+        // No free SQL for this role: show the referencing rows read-only,
+        // with the same column access as the referencing table.
+        AppState.instance.openTab(
+          NamedQueryTab.adHoc(
+            connectionId: widget.tab.connectionId,
+            label: title,
+            sql:
+                'SELECT * FROM ${quoteQualified(fk.fromSchema, fk.fromTable)} '
+                'WHERE ${quoteIdent(fk.fromColumn)} = @ref',
+            boundParams: {'ref': pkValue},
+            accessTable: (schema: fk.fromSchema, table: fk.fromTable),
+            fromMetadata: false,
+          ),
+        );
+        return;
+      }
       final sql =
           'SELECT * FROM ${quoteQualified(fk.fromSchema, fk.fromTable)}\n'
           'WHERE ${quoteIdent(fk.fromColumn)} = ${quoteLiteral(pkValue)};';
       AppState.instance.newQueryTab(
         widget.tab.connectionId,
         initialSql: sql,
-        title:
-            '${fk.fromTable} where ${fk.fromColumn} = '
-            '${_shortValue(pkValue)}',
+        title: title,
         autoRun: true,
       );
     } else {
@@ -564,6 +720,13 @@ class _TableTabViewState extends State<TableTabView> {
       // detail step (one row, FK chips ready to follow further).
       final fromIdx = data.columns.indexWhere((c) => c.name == fk.fromColumn);
       if (fromIdx < 0) return;
+      if (row[fromIdx] is MaskedValue) {
+        showToast(
+          context,
+          'That value is masked for you, so it can\'t be followed.',
+        );
+        return;
+      }
       final tab = NavigatorTab(connectionId: widget.tab.connectionId);
       tab.steps.add(
         RowDetailStep(
@@ -594,10 +757,175 @@ class _TableTabViewState extends State<TableTabView> {
     await _onCellEdit(GridEditEvent(idx, policy.column, oldValue, newRaw));
   }
 
+  bool _metadataSqlTrusted() {
+    final snapshot = MetadataCache.instance.snapshotFor(
+      widget.tab.connectionId,
+    );
+    if (snapshot == null) return false;
+    return MetaTrust.isTrusted(
+      widget.tab.connectionId,
+      snapshot.index,
+      TrustScope.read,
+    );
+  }
+
+  Future<void> _trustDefaultFilter() async {
+    final ok = await ensureTrusted(
+      context,
+      widget.tab.connectionId,
+      TrustScope.read,
+    );
+    if (ok && mounted) await _load();
+  }
+
+  Map<String, DisplaySpec> _displayByColumn() {
+    final snapshot = MetadataCache.instance.snapshotFor(
+      widget.tab.connectionId,
+    );
+    if (snapshot == null) return const {};
+    return {
+      for (final c in widget.tab.catalogColumns)
+        c.name: snapshot.index.displayColumn(
+          widget.tab.schema,
+          widget.tab.table,
+          c.name,
+        ),
+    };
+  }
+
+  Map<String, Object?> _rowMap(int rowIdx) {
+    final data = widget.tab.data;
+    if (data == null || rowIdx < 0 || rowIdx >= data.rows.length) {
+      return const {};
+    }
+    final row = data.rows[rowIdx];
+    return {
+      for (var i = 0; i < data.columns.length; i++)
+        data.columns[i].name: row[i],
+    };
+  }
+
+  List<GridMenuEntry> _menuExtras(
+    int rowIdx,
+    int columnIdx,
+    List<int> selectedRows,
+  ) {
+    final tab = widget.tab;
+    final data = tab.data;
+    if (data == null) return const [];
+    final column = data.columns[columnIdx];
+    final row = _rowMap(rowIdx);
+    final click = MetaClickContext(
+      connectionId: tab.connectionId,
+      schema: tab.schema,
+      table: tab.table,
+      row: row,
+      pkColumns: tab.pkColumns,
+      column: column.name,
+      columnType: column.pgType,
+      cell: row[column.name],
+      selection: [for (final r in selectedRows) _rowMap(r)],
+    );
+    return [
+      for (final item in buildMetaMenuItems(context, click))
+        GridMenuEntry(
+          label: item.label,
+          icon: item.icon,
+          enabled: item.enabled,
+          disabledReason: item.disabledReason,
+          onSelected: item.onSelected,
+          startsGroup: item.startsGroup,
+        ),
+      GridMenuEntry(
+        label: 'Hide column "${column.name}"',
+        icon: Icons.visibility_off_outlined,
+        startsGroup: true,
+        onSelected: () => _setHidden({
+          ...?tab.hiddenColumns,
+          column.name,
+        }),
+      ),
+    ];
+  }
+
+  void _setHidden(Set<String> hidden) {
+    final tab = widget.tab;
+    setState(() {
+      tab.hiddenColumns = hidden;
+      // Keep the column specs in step: a remounted grid (switching tabs and
+      // back) reads its hidden columns from them, not from the controller.
+      final data = tab.data;
+      if (data != null) {
+        tab.data = GridData(
+          columns: [
+            for (final c in data.columns)
+              gridColumn(
+                name: c.name,
+                type: c.pgType,
+                typeName: c.typeName,
+                primaryKey: c.primaryKey,
+                indexed: c.indexed,
+                defaultWidth: c.defaultWidth,
+                hidden: hidden.contains(c.name),
+                tooltip: c.tooltip,
+                marker: c.marker,
+              ),
+          ],
+          rows: data.rows,
+        );
+      }
+    });
+    _gridController.setHiddenColumns(hidden);
+  }
+
+  Future<void> _pickColumns() async {
+    final tab = widget.tab;
+    final hidden = {...?tab.hiddenColumns};
+    final result = await showDialog<Set<String>>(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setDialogState) => AppFormDialog(
+          title: 'Columns of ${tab.table}',
+          width: 380,
+          height: 480,
+          submitLabel: 'Apply',
+          onSubmit: () => Navigator.of(ctx).pop(hidden),
+          content: Column(
+            children: [
+              for (final c in tab.catalogColumns)
+                CheckboxListTile(
+                  dense: true,
+                  contentPadding: EdgeInsets.zero,
+                  value: !hidden.contains(c.name),
+                  title: Text(c.name),
+                  subtitle: c.defaultHidden
+                      ? const Text('hidden by default')
+                      : null,
+                  onChanged: (v) => setDialogState(() {
+                    if (v ?? false) {
+                      hidden.remove(c.name);
+                    } else {
+                      hidden.add(c.name);
+                    }
+                  }),
+                ),
+            ],
+          ),
+        ),
+      ),
+    );
+    if (result != null) _setHidden(result);
+  }
+
   @override
   Widget build(BuildContext context) {
     final tab = widget.tab;
     final readOnly = _readOnly();
+    final snapshot = MetadataCache.instance.snapshotFor(tab.connectionId);
+    final charts =
+        snapshot?.index.chartsForTable(tab.schema, tab.table) ??
+        const <ChartSpec>[];
+    final executor = _conn();
     final noPk = tab.pkColumns.isEmpty && tab.data != null;
     final appState = AppState.instance;
     final showInspector = !appState.propertyInspectorCollapsed;
@@ -626,7 +954,39 @@ class _TableTabViewState extends State<TableTabView> {
           },
           inspectorCollapsed: !showInspector,
           readOnly: readOnly,
+          hasCharts: charts.isNotEmpty,
+          onToggleCharts: () {
+            setState(() => tab.chartsOpen = !tab.chartsOpen);
+            AppState.instance.notifyChange();
+          },
+          onPickColumns: _pickColumns,
+          onTrustDefaultFilter: _trustDefaultFilter,
+          tableDescription: snapshot?.index
+              .describeTable(tab.schema, tab.table)
+              .toTooltip(),
         ),
+        if (tab.chartsOpen && charts.isNotEmpty && executor != null)
+          SizedBox(
+            height: 236,
+            child: ListView(
+              scrollDirection: Axis.horizontal,
+              padding: const EdgeInsets.all(8),
+              children: [
+                for (final c in charts)
+                  Padding(
+                    padding: const EdgeInsets.only(right: 8),
+                    child: SizedBox(
+                      width: 420,
+                      child: MetaChartCard(
+                        chart: c,
+                        executor: executor,
+                        autoRun: tab.estimatedRows < kAutoRunChartRowLimit,
+                      ),
+                    ),
+                  ),
+              ],
+            ),
+          ),
         if (noPk)
           const AppBanner(
             message:
@@ -665,6 +1025,8 @@ class _TableTabViewState extends State<TableTabView> {
             schema: tab.schema,
             table: tab.table,
             onFollowLink: _followLink,
+            displayByColumn: _displayByColumn(),
+            contextMenuExtras: _menuExtras,
           ),
         ),
       ],
@@ -700,6 +1062,13 @@ class TableTabHeader extends StatelessWidget {
   final VoidCallback onToggleShowDeleted;
   final bool inspectorCollapsed;
   final bool readOnly;
+  final bool hasCharts;
+  final VoidCallback onToggleCharts;
+  final VoidCallback onPickColumns;
+  final VoidCallback onTrustDefaultFilter;
+
+  /// Metadata description of the table, shown as the title's tooltip.
+  final String? tableDescription;
 
   const TableTabHeader({
     super.key,
@@ -713,6 +1082,11 @@ class TableTabHeader extends StatelessWidget {
     required this.onToggleShowDeleted,
     required this.inspectorCollapsed,
     required this.readOnly,
+    required this.hasCharts,
+    required this.onToggleCharts,
+    required this.onPickColumns,
+    required this.onTrustDefaultFilter,
+    this.tableDescription,
   });
 
   @override
@@ -721,10 +1095,59 @@ class TableTabHeader extends StatelessWidget {
     return PanelHeader(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       titleIcon: Icons.table_chart_outlined,
-      title: '${tab.schema}.${tab.table}',
+      title: tab.title,
       trailing: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
+          if ((tableDescription ?? '').isNotEmpty) ...[
+            Tooltip(
+              message: tableDescription!,
+              child: Icon(Icons.info_outline, size: 14, color: theme.hintColor),
+            ),
+            const SizedBox(width: 8),
+          ],
+          if (tab.tableAccess.level != AccessLevel.full) ...[
+            _Badge(
+              icon: Icons.shield_outlined,
+              label: tab.tableAccess.level.name,
+              tooltip: tab.tableAccess.reason,
+              color: theme.colorScheme.secondaryContainer,
+            ),
+            const SizedBox(width: 8),
+          ],
+          if (tab.metaFilter != null) ...[
+            _Badge(
+              icon: Icons.filter_alt,
+              label: tab.metaFilter!.label,
+              tooltip: tab.metaFilter!.where,
+              color: theme.colorScheme.tertiaryContainer,
+            ),
+            const SizedBox(width: 8),
+          ],
+          if (tab.defaultFilterPending) ...[
+            InkWell(
+              onTap: onTrustDefaultFilter,
+              child: _Badge(
+                icon: Icons.filter_list_off,
+                label: 'default filter off',
+                tooltip:
+                    'The metadata defines a default filter for this table. '
+                    'It applies once you trust this connection\'s metadata '
+                    'SQL — click to review it.',
+                color: theme.colorScheme.errorContainer,
+              ),
+            ),
+            const SizedBox(width: 8),
+          ],
+          if (tab.defaultFilterApplied != null) ...[
+            _Badge(
+              icon: Icons.filter_list,
+              label: 'default filter',
+              tooltip: 'Metadata filter: ${tab.defaultFilterApplied}',
+              color: theme.colorScheme.tertiaryContainer,
+            ),
+            const SizedBox(width: 8),
+          ],
           if (tab.tenantFilterApplied) ...[
             Tooltip(
               message:
@@ -842,9 +1265,30 @@ class TableTabHeader extends StatelessWidget {
             },
           ),
           IconButton(
+            tooltip: 'Columns…',
+            icon: const Icon(Icons.view_column_outlined, size: 18),
+            onPressed: onPickColumns,
+          ),
+          if (hasCharts)
+            IconButton(
+              tooltip: tab.chartsOpen ? 'Hide charts' : 'Show charts',
+              icon: Icon(
+                tab.chartsOpen
+                    ? Icons.insert_chart
+                    : Icons.insert_chart_outlined,
+                size: 18,
+              ),
+              onPressed: onToggleCharts,
+            ),
+          IconButton(
             tooltip: 'Insert row',
             icon: const Icon(Icons.add_circle_outline, size: 18),
-            onPressed: (readOnly || tab.isLoading) ? null : onInsert,
+            onPressed:
+                (readOnly ||
+                    tab.isLoading ||
+                    !tab.tableAccess.level.atLeast(AccessLevel.full))
+                ? null
+                : onInsert,
           ),
           IconButton(
             tooltip: 'Refresh',
@@ -864,6 +1308,42 @@ class TableTabHeader extends StatelessWidget {
             onPressed: onToggleInspector,
           ),
         ],
+      ),
+    );
+  }
+}
+
+class _Badge extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final String tooltip;
+  final Color color;
+  const _Badge({
+    required this.icon,
+    required this.label,
+    required this.tooltip,
+    required this.color,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Tooltip(
+      message: tooltip,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
+        decoration: BoxDecoration(
+          color: color,
+          borderRadius: BorderRadius.circular(3),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(icon, size: 12),
+            const SizedBox(width: 3),
+            Text(label, style: theme.textTheme.labelSmall),
+          ],
+        ),
       ),
     );
   }

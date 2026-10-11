@@ -54,22 +54,60 @@ class GridModel extends ChangeNotifier {
 
   double widthAt(int viewIdx) => _widths[_order[viewIdx]];
 
+  /// Width of the VISIBLE columns (hidden ones take no space).
   double get totalWidth {
     var sum = 0.0;
-    for (final w in _widths) {
-      sum += w;
+    for (final i in _order) {
+      sum += _widths[i];
     }
     return sum;
   }
 
   /// Initialise / reset the model when the underlying columns change.
   /// Preserves selection only if it still fits.
-  void resetColumns(int columnCount, List<double> defaultWidths) {
+  void resetColumns(
+    int columnCount,
+    List<double> defaultWidths, {
+    Set<int> hidden = const {},
+  }) {
     assert(defaultWidths.length == columnCount);
     _columnCount = columnCount;
-    _order = List<int>.generate(columnCount, (i) => i);
+    _order = [
+      for (var i = 0; i < columnCount; i++)
+        if (!hidden.contains(i)) i,
+    ];
     _widths = List<double>.of(defaultWidths);
     _clampSelection();
+    _editingRow = null;
+    _editingCol = null;
+    notifyListeners();
+  }
+
+  /// Show/hide columns (by original index) without touching widths. Kept
+  /// columns stay in their current view order; re-shown columns return at
+  /// their original position relative to the others.
+  void setHidden(Set<int> hidden) {
+    final kept = [
+      for (final i in _order)
+        if (!hidden.contains(i)) i,
+    ];
+    final shown = [
+      for (var i = 0; i < _columnCount; i++)
+        if (!hidden.contains(i) && !kept.contains(i)) i,
+    ];
+    for (final i in shown) {
+      final insertAt = kept.indexWhere((k) => k > i);
+      if (insertAt < 0) {
+        kept.add(i);
+      } else {
+        kept.insert(insertAt, i);
+      }
+    }
+    _order = kept;
+    // Selection and edit positions are VIEW indices; after the columns move
+    // they'd point at different columns (an in-progress edit could commit
+    // into the wrong one), so drop them.
+    _selection = null;
     _editingRow = null;
     _editingCol = null;
     notifyListeners();

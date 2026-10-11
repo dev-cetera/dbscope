@@ -19,6 +19,7 @@ import 'code/code_editor_subwindow.dart';
 import 'connection/registry.dart';
 import 'firebase_options.dart';
 import 'plugins/builtin_plugin.dart';
+import 'meta/meta_plugin.dart';
 import 'plugins/dbscope_plugin.dart';
 import 'plugins/platform_plugins.dart';
 import 'rpc/backend_client.dart';
@@ -183,6 +184,9 @@ void _registerPlugins() {
 
   // Host built-ins (tab kinds, sidebar actions, AI brokers).
   registry.register(BuiltinPlugin());
+
+  // Schema metadata: named queries, dashboards, the Metadata menu.
+  registry.register(MetaPlugin());
 
   // Theme plugins.
   // Doom theme wired out — re-enable by restoring the import + pubspec dep.

@@ -7,6 +7,10 @@ import '../catalog/schema_catalog.dart';
 import '../grid/cell_value_display.dart';
 import '../db/edit_policy.dart';
 import '../grid/inputs/column_input.dart';
+import '../meta/masked_value.dart';
+import '../meta/meta_cache.dart';
+import '../meta/meta_models.dart';
+import '../meta/ui/meta_menu.dart';
 import 'ai_info_block.dart';
 
 /// Renders one row as a vertical list of field rows, plus an optional
@@ -144,6 +148,8 @@ class PropertyInspector extends StatelessWidget {
               schema: schema,
               table: table,
               connectionId: connectionId,
+              row: row,
+              pkColumns: pkColumns,
             ),
           if (inboundByConstraint.isNotEmpty && onOpenInbound != null) ...[
             const Divider(),
@@ -190,6 +196,10 @@ class PropertyFieldRow extends StatefulWidget {
   final String? table;
   final String? connectionId;
 
+  /// The whole row and its primary key, for metadata actions and links.
+  final Map<String, Object?> row;
+  final List<String> pkColumns;
+
   const PropertyFieldRow({
     super.key,
     required this.column,
@@ -204,6 +214,8 @@ class PropertyFieldRow extends StatefulWidget {
     this.schema,
     this.table,
     this.connectionId,
+    this.row = const {},
+    this.pkColumns = const [],
   });
 
   @override
@@ -238,8 +250,19 @@ class _PropertyFieldRowState extends State<PropertyFieldRow> {
     }
   }
 
+  /// The metadata snapshot for this row's connection, when it came from a
+  /// real table.
+  MetaSnapshot? get _snapshot {
+    final id = widget.connectionId;
+    return id == null ? null : MetadataCache.instance.snapshotFor(id);
+  }
+
   void _startEdit() {
-    if (widget.policy.readOnly) return;
+    if (widget.policy.readOnly) {
+      final reason = widget.policy.readOnlyReason;
+      if (reason != null) showToast(context, reason);
+      return;
+    }
     final t = widget.column.type;
     if (t == PgType.json || t == PgType.jsonb) {
       _startJsonDialogEdit();
@@ -314,14 +337,37 @@ class _PropertyFieldRowState extends State<PropertyFieldRow> {
                   ),
                 ),
               Expanded(
-                child: Text(
-                  widget.column.name,
-                  style: theme.textTheme.labelSmall?.copyWith(
-                    fontWeight: FontWeight.w600,
-                    color: theme.hintColor,
+                child: Tooltip(
+                  message: _description(),
+                  waitDuration: const Duration(milliseconds: 400),
+                  child: Text(
+                    widget.column.name,
+                    style: theme.textTheme.labelSmall?.copyWith(
+                      fontWeight: FontWeight.w600,
+                      color: theme.hintColor,
+                    ),
                   ),
                 ),
               ),
+              if (widget.column.isMasked)
+                Tooltip(
+                  message: 'Masked for you. Right-click for why.',
+                  child: Icon(
+                    Icons.visibility_off_outlined,
+                    size: 11,
+                    color: theme.hintColor,
+                  ),
+                )
+              else if (widget.policy.readOnlyReason != null)
+                Tooltip(
+                  message: widget.policy.readOnlyReason!,
+                  child: Icon(
+                    Icons.lock_outline,
+                    size: 11,
+                    color: theme.hintColor,
+                  ),
+                ),
+              const SizedBox(width: 4),
               Text(
                 widget.column.typeName,
                 style: theme.textTheme.labelSmall?.copyWith(
@@ -383,6 +429,24 @@ class _PropertyFieldRowState extends State<PropertyFieldRow> {
     );
   }
 
+  String _description() {
+    final schema = widget.schema;
+    final table = widget.table;
+    final snapshot = _snapshot;
+    if (schema == null || table == null || snapshot == null) return '';
+    return snapshot.index
+        .describeColumn(schema, table, widget.column.name)
+        .toTooltip();
+  }
+
+  DisplaySpec? _displaySpec() {
+    final schema = widget.schema;
+    final table = widget.table;
+    final snapshot = _snapshot;
+    if (schema == null || table == null || snapshot == null) return null;
+    return snapshot.index.displayColumn(schema, table, widget.column.name);
+  }
+
   Widget _display(ThemeData theme) {
     final canEdit = !widget.policy.readOnly;
     final display = CellValueDisplay(
@@ -392,6 +456,7 @@ class _PropertyFieldRowState extends State<PropertyFieldRow> {
       outboundFk: widget.outboundFk,
       inboundRefs: widget.inboundRefs,
       onFollowLink: widget.onFollowLink,
+      display: _displaySpec(),
     );
 
     return Column(
@@ -418,19 +483,45 @@ class _PropertyFieldRowState extends State<PropertyFieldRow> {
   }
 
   Future<void> _showContextMenu(Offset position) async {
+    final connectionId = widget.connectionId;
+    final policy = _snapshot?.policy;
+    final aiAllowed = policy == null || policy.can(Capability.ai);
+    final meta = connectionId == null
+        ? null
+        : toAppMenu(
+            buildMetaMenuItems(
+              context,
+              MetaClickContext(
+                connectionId: connectionId,
+                schema: widget.schema,
+                table: widget.table,
+                row: widget.row,
+                pkColumns: widget.pkColumns,
+                column: widget.column.name,
+                columnType: widget.column.type,
+                cell: widget.value,
+              ),
+            ),
+          );
     final picked = await showAppContextMenu<String>(
       context: context,
       globalPosition: position,
-      items: const [
+      items: [
         AppMenuEntry(
           value: 'aiInfo',
-          label: 'AI Info',
+          label: aiAllowed
+              ? 'AI Info'
+              : 'AI Info — your role cannot use AI here',
           icon: Icons.auto_awesome,
+          enabled: aiAllowed,
         ),
+        ...?meta?.entries,
       ],
     );
     if (picked == 'aiInfo') {
       await _runAiInfo();
+    } else if (picked != null) {
+      meta?.handlers[picked]?.call();
     }
   }
 
@@ -439,13 +530,23 @@ class _PropertyFieldRowState extends State<PropertyFieldRow> {
     final schema = widget.schema;
     final table = widget.table;
     if (connId == null || schema == null || table == null) return;
+    // Never send a masked value, or one the metadata marks as staying on
+    // this machine, to the AI provider: the model explains the column from
+    // the schema alone instead.
+    final sensitive = _snapshot?.index.sensitiveColumn(
+      schema,
+      table,
+      widget.column.name,
+    );
+    final withhold =
+        widget.value is MaskedValue || (sensitive?.excludeFromAi ?? false);
     await _aiInfo.request(
       connectionId: connId,
       schema: schema,
       table: table,
       column: widget.column.name,
       typeName: widget.column.typeName,
-      currentValue: widget.value,
+      currentValue: withhold ? null : widget.value,
     );
   }
 }

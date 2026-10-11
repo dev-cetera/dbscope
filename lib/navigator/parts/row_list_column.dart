@@ -84,7 +84,14 @@ class _RowListColumnState extends State<RowListColumn> {
     // but the actual SQL uses whatever the inferrer most recently picked.
     final col = step.filterColumn ?? step.inferredColumn;
     final pat = step.filterPattern;
-    if (col != null && pat.isNotEmpty) {
+    // Only a readable column may filter: a regex on a masked one is an
+    // oracle for its value. (Covers the AI-inferred pick too.)
+    final readable =
+        col != null &&
+        step.columns.any(
+          (c) => c.name == col && c.accessLevel.index >= AccessLevel.read.index,
+        );
+    if (col != null && pat.isNotEmpty && readable) {
       params.add(pat);
       wheres.add('(${quoteIdent(col)})::text ~* \$${params.length}');
     }
@@ -139,7 +146,28 @@ class _RowListColumnState extends State<RowListColumn> {
       } catch (_) {
         indexed = <String>{};
       }
-      final pkInfos = allCols.where((c) => pkCols.contains(c.name)).toList();
+      // Metadata `display.rowLabel` ("{name} ({status})") turns opaque
+      // keys into readable rows; fetch the label's columns alongside the
+      // PK (still cheap — a handful of columns, never the whole row).
+      final labelTemplate = MetadataCache.instance
+          .snapshotForExecutor(conn)
+          ?.index
+          .displayTable(step.schema, step.table)
+          .rowLabel;
+      final labelColumns = labelTemplate == null
+          ? const <String>{}
+          : {
+              for (final m in RegExp(
+                r'\{([A-Za-z0-9_]+)\}',
+              ).allMatches(labelTemplate))
+                m.group(1)!,
+            };
+      final pkInfos = allCols
+          .where(
+            (c) => pkCols.contains(c.name) || labelColumns.contains(c.name),
+          )
+          .toList();
+      step.rowLabelTemplate = labelTemplate;
 
       final base = _buildBaseWhere();
       final pager = KeysetPager(
@@ -151,6 +179,7 @@ class _RowListColumnState extends State<RowListColumn> {
         pageSize: _kPageSize,
         baseWhere: base.where,
         baseWhereParams: base.params,
+        explicitColumns: MetadataCache.instance.policyForExecutor(conn).active,
       );
       final firstPage = await pager.fetchNext();
 
@@ -158,27 +187,13 @@ class _RowListColumnState extends State<RowListColumn> {
       step.columns = allCols;
       step.pkColumns = pkCols;
       step.indexedColumns = indexed;
-      step.editPolicies = [
-        for (final c in allCols)
-          EditPolicy(
-            schema: step.schema,
-            table: step.table,
-            pkColumns: pkCols,
-            column: c.name,
-            type: c.type,
-            typeName: c.typeName,
-            nullable: c.nullable,
-            isGenerated: c.isGenerated,
-            isIdentity: c.isIdentity,
-            readOnly: pkCols.isEmpty || c.isGenerated || c.isIdentity,
-            multiLine:
-                c.type == PgType.json ||
-                c.type == PgType.jsonb ||
-                c.type == PgType.text,
-            nullIfBlank: c.nullable,
-            enumValues: c.enumValues,
-          ),
-      ];
+      step.editPolicies = buildEditPolicies(
+        conn: conn,
+        schema: step.schema,
+        table: step.table,
+        columns: allCols,
+        pkColumns: pkCols,
+      );
       step.catalogLoaded = true;
       step.pager = pager;
       step.data = GridData(
@@ -276,11 +291,33 @@ class _RowListColumnState extends State<RowListColumn> {
       showToast(context, 'No connection.');
       return;
     }
+    final snapshot = MetadataCache.instance.snapshotForExecutor(conn);
+    if (snapshot != null && !snapshot.policy.can(Capability.ai)) {
+      showToast(context, 'Your role on this connection cannot use AI.');
+      return;
+    }
     try {
-      // Fresh SELECT * with a LIMIT — the inferrer needs values across
-      // every column to discriminate, not just PK values.
+      // A small sample with values across the columns — the inferrer needs
+      // them to discriminate, not just PK values. Only columns the viewer
+      // can read and the metadata lets leave the machine are sampled; the
+      // rest are sent as NULL.
+      final sampled = [
+        for (final c in cols)
+          if (c.accessLevel.atLeast(AccessLevel.read) &&
+              !(snapshot?.index
+                      .sensitiveColumn(step.schema, step.table, c.name)
+                      .excludeFromAi ??
+                  false))
+            c.name,
+      ];
+      if (sampled.isEmpty) {
+        showToast(context, 'AI: no columns may be sampled here.');
+        return;
+      }
       final qualified = quoteQualified(step.schema, step.table);
-      final sampleRes = await conn.execute('SELECT * FROM $qualified LIMIT 5');
+      final sampleRes = await conn.execute(
+        'SELECT ${sampled.map(quoteIdent).join(', ')} FROM $qualified LIMIT 5',
+      );
       final colByName = <String, int>{};
       for (var i = 0; i < sampleRes.columns.length; i++) {
         colByName[sampleRes.columns[i].name] = i;
@@ -322,6 +359,13 @@ class _RowListColumnState extends State<RowListColumn> {
 
   String _rowLabel(List<Object?> rowVals, List<GridColumnSpec> cols) {
     if (cols.isEmpty) return '(row)';
+    final template = widget.step.rowLabelTemplate;
+    if (template != null) {
+      final label = renderRowLabel(template, {
+        for (var i = 0; i < cols.length; i++) cols[i].name: rowVals[i],
+      });
+      if (label.isNotEmpty) return label;
+    }
     return [
       for (var i = 0; i < cols.length; i++)
         '${cols[i].name}=${_short(rowVals[i])}',
@@ -341,6 +385,13 @@ class _RowListColumnState extends State<RowListColumn> {
     for (final pk in step.pkColumns) {
       final i = data.columns.indexWhere((c) => c.name == pk);
       pkValues.add(i >= 0 ? row[i] : null);
+    }
+    if (pkValues.any((v) => v is MaskedValue)) {
+      showToast(
+        context,
+        'The primary key is masked for you, so this row can\'t be opened.',
+      );
+      return;
     }
     final existing = widget.tab.selectedRowPkValuesAt(widget.index);
     if (existing != null && _listEq(existing, pkValues)) {
@@ -364,8 +415,18 @@ class _RowListColumnState extends State<RowListColumn> {
     final conn = _conn();
     if (conn == null) return;
     if (!step.catalogLoaded) return;
-    if (step.pkColumns.isEmpty || step.editPolicies.isEmpty) {
-      showToast(context, 'Cannot insert: table has no primary key.');
+    final rules = writeRulesFor(
+      conn,
+      schema: step.schema,
+      table: step.table,
+      columns: step.columns,
+      pkColumns: step.pkColumns,
+    );
+    final refusal = step.pkColumns.isEmpty || step.editPolicies.isEmpty
+        ? 'Cannot insert: table has no primary key.'
+        : rules.whyNoInsert(pkColumns: step.pkColumns);
+    if (refusal != null) {
+      showToast(context, refusal);
       return;
     }
     final values = await showDialog<Map<String, Object?>>(
@@ -380,6 +441,7 @@ class _RowListColumnState extends State<RowListColumn> {
         table: step.table,
         editable: step.editPolicies.where((p) => !p.readOnly).toList(),
         values: values,
+        returning: rules.returningList,
       );
       if (!mounted) return;
       showToast(context, 'Inserted. Reloading.');
@@ -417,7 +479,16 @@ class _RowListColumnState extends State<RowListColumn> {
               SizedBox(
                 width: 130,
                 child: DropdownButtonFormField<String?>(
-                  initialValue: step.filterColumn,
+                  // A column that stopped being readable (metadata reload,
+                  // View as…) is no longer an item; fall back to AI Infer.
+                  initialValue:
+                      step.columns.any(
+                        (c) =>
+                            c.name == step.filterColumn &&
+                            c.accessLevel.index >= AccessLevel.read.index,
+                      )
+                      ? step.filterColumn
+                      : null,
                   isDense: true,
                   isExpanded: true,
                   decoration: const InputDecoration(
@@ -440,7 +511,9 @@ class _RowListColumnState extends State<RowListColumn> {
                         overflow: TextOverflow.ellipsis,
                       ),
                     ),
-                    for (final c in step.columns)
+                    for (final c in step.columns.where(
+                      (c) => c.accessLevel.index >= AccessLevel.read.index,
+                    ))
                       DropdownMenuItem<String?>(
                         value: c.name,
                         child: Text(

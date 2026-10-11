@@ -14,6 +14,8 @@ import '../query/cancel_token.dart';
 import '../query/history_store.dart';
 import '../query/runner.dart';
 import '../query/sql_editor.dart';
+import '../meta/meta_cache.dart';
+import '../meta/meta_models.dart';
 import '../shell/app_state.dart';
 import '../util/pg_errors.dart';
 
@@ -83,6 +85,19 @@ class _QueryTabViewState extends State<QueryTabView> {
       return;
     }
     if (widget.tab.sql.trim().isEmpty) return;
+    // Access control: free SQL can't be policed column by column, so it is
+    // its own capability. Named queries are the alternative for roles
+    // without it.
+    final policy = MetadataCache.instance.policyForExecutor(conn);
+    if (!policy.can(Capability.query)) {
+      setState(
+        () => widget.tab.error =
+            'Your role on this connection cannot run free SQL (the query '
+            'capability). Use the named queries under "Queries & dashboards".',
+      );
+      AppState.instance.notifyChange();
+      return;
+    }
     final token = CancelToken();
     setState(() {
       widget.tab.isLoading = true;
@@ -210,6 +225,14 @@ class _QueryTabViewState extends State<QueryTabView> {
   }
 
   Future<void> _export(_ExportFormat format) async {
+    final conn = _conn();
+    if (conn != null &&
+        !MetadataCache.instance
+            .policyForExecutor(conn)
+            .can(Capability.export)) {
+      showToast(context, 'Your role on this connection cannot export.');
+      return;
+    }
     try {
       final path = switch (format) {
         _ExportFormat.sql => await ResultExporter.exportSqlText(widget.tab.sql),

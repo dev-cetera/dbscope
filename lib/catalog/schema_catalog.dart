@@ -1,5 +1,10 @@
 import '../db/executor.dart';
 import '../db/sqlite_kind.dart';
+import '../meta/access_policy.dart';
+import '../meta/masked_value.dart';
+import '../meta/meta_cache.dart';
+import '../meta/meta_models.dart';
+import '../meta/meta_sources.dart';
 import '../util/db_coerce.dart';
 import '../util/sql_quote.dart';
 import 'pg_type.dart';
@@ -33,6 +38,14 @@ class ColumnInfo {
   final bool isIdentity;
   final List<String>? enumValues;
 
+  /// Access level resolved for the viewer (schema metadata access control).
+  /// `full` when no access control applies. Columns at `none` never reach
+  /// a [ColumnInfo]: the catalog drops them.
+  final AccessLevel accessLevel;
+
+  /// Collapsed when a table opens (access-control `default_hidden`).
+  final bool defaultHidden;
+
   const ColumnInfo({
     required this.name,
     required this.type,
@@ -42,7 +55,25 @@ class ColumnInfo {
     required this.isGenerated,
     required this.isIdentity,
     this.enumValues,
+    this.accessLevel = AccessLevel.full,
+    this.defaultHidden = false,
   });
+
+  bool get isMasked => accessLevel == AccessLevel.masked;
+
+  ColumnInfo withAccess(AccessLevel level, {required bool defaultHidden}) =>
+      ColumnInfo(
+        name: name,
+        type: type,
+        typeName: typeName,
+        nullable: nullable,
+        defaultExpr: defaultExpr,
+        isGenerated: isGenerated,
+        isIdentity: isIdentity,
+        enumValues: enumValues,
+        accessLevel: level,
+        defaultHidden: defaultHidden,
+      );
 }
 
 class ForeignKey {
@@ -53,6 +84,11 @@ class ForeignKey {
   final String toSchema;
   final String toTable;
   final String toColumn;
+
+  /// True for a relationship declared in schema metadata (a `link` row)
+  /// rather than by a real constraint. Drawn dashed in the Schema view.
+  final bool isVirtual;
+
   const ForeignKey({
     required this.constraintName,
     required this.fromSchema,
@@ -61,6 +97,7 @@ class ForeignKey {
     required this.toSchema,
     required this.toTable,
     required this.toColumn,
+    this.isVirtual = false,
   });
 
   String get fromKey => '$fromSchema.$fromTable';
@@ -87,13 +124,44 @@ class TableSchema {
 // pragma_* table-valued functions and sqlite_master.
 const String _kSqliteMainSchema = 'main';
 
+/// Reads the database catalog. The default constructor filters every
+/// answer through the connection's access policy (schema metadata): tables
+/// and columns at `none` disappear, masked columns are flagged, virtual
+/// relationships from `link` rows are added. That makes this class the one
+/// choke point for access control — the sidebar, Schema view, Navigator,
+/// Linked view, DBML export and AI context all read the catalog.
+///
+/// [SchemaCatalog.unfiltered] is for DML and internals that must see the
+/// real shape (e.g. primary keys of a table whose PK is hidden).
 class SchemaCatalog {
   final DbExecutor conn;
-  SchemaCatalog(this.conn);
+  final bool _applyPolicy;
+
+  SchemaCatalog(this.conn) : _applyPolicy = true;
+  SchemaCatalog.unfiltered(this.conn) : _applyPolicy = false;
 
   bool get _isSqlite => conn.kind == kSqliteKind;
 
+  AccessPolicy get _policy => _applyPolicy
+      ? MetadataCache.instance.policyForExecutor(conn)
+      : AccessPolicy.unrestricted;
+
+  MetaSnapshot? get _snapshot =>
+      _applyPolicy ? MetadataCache.instance.snapshotForExecutor(conn) : null;
+
   Future<List<SchemaInfo>> listSchemas() async {
+    final all = await _listSchemasRaw();
+    final policy = _policy;
+    final snapshot = _snapshot;
+    if (!policy.active || snapshot == null || snapshot.isSqlite) return all;
+    if (policy.can(Capability.manage)) return all;
+    return [
+      for (final s in all)
+        if (!MetaTableNames.isDedicatedMetaSchema(s.name, snapshot.settings)) s,
+    ];
+  }
+
+  Future<List<SchemaInfo>> _listSchemasRaw() async {
     if (_isSqlite) {
       // Only the default database is exposed. ATTACH DATABASE is a real
       // SQLite feature but out of scope for v1 — users with attached
@@ -117,6 +185,16 @@ class SchemaCatalog {
   }
 
   Future<List<TableInfo>> listTables(String schema) async {
+    final all = await _listTablesRaw(schema);
+    final policy = _policy;
+    if (!policy.active) return all;
+    return [
+      for (final t in all)
+        if (!policy.forTable(t.schema, t.name).isNone) t,
+    ];
+  }
+
+  Future<List<TableInfo>> _listTablesRaw(String schema) async {
     if (_isSqlite) return _sqliteListTables(schema);
     final result = await conn.execute(
       '''
@@ -172,6 +250,32 @@ class SchemaCatalog {
   }
 
   Future<List<ColumnInfo>> listColumns(String schema, String table) async {
+    final all = await _listColumnsRaw(schema, table);
+    final policy = _policy;
+    if (!policy.active) return all;
+    if (policy.forTable(schema, table).isNone) return const [];
+    Set<String>? pk;
+    final out = <ColumnInfo>[];
+    for (final c in all) {
+      var decision = policy.forColumn(schema, table, c.name);
+      if (decision.isNone) {
+        pk ??= (await primaryKey(schema, table)).toSet();
+        if (!pk.contains(c.name)) continue;
+        decision = policy.forColumn(
+          schema,
+          table,
+          c.name,
+          isPrimaryKey: true,
+        );
+      }
+      out.add(
+        c.withAccess(decision.level, defaultHidden: decision.defaultHidden),
+      );
+    }
+    return out;
+  }
+
+  Future<List<ColumnInfo>> _listColumnsRaw(String schema, String table) async {
     if (_isSqlite) return _sqliteListColumns(schema, table);
     final result = await conn.execute(
       '''
@@ -367,6 +471,91 @@ class SchemaCatalog {
   }
 
   Future<List<ForeignKey>> listForeignKeys() async {
+    final real = await _listForeignKeysRaw();
+    final snapshot = _snapshot;
+    final virtual = snapshot == null
+        ? const <ForeignKey>[]
+        : await _virtualForeignKeys(snapshot);
+    final all = [...real, ...virtual];
+    final policy = _policy;
+    if (!policy.active) return all;
+    bool visible(String schema, String table, String column) =>
+        !policy.forColumn(schema, table, column).isNone;
+    return [
+      for (final fk in all)
+        if (visible(fk.fromSchema, fk.fromTable, fk.fromColumn) &&
+            visible(fk.toSchema, fk.toTable, fk.toColumn))
+          fk,
+    ];
+  }
+
+  /// `link` rows with a plain `to` become virtual FKs. Glob targets
+  /// (`*.*.owner_id`) are expanded against the real columns; polymorphic
+  /// and URL links depend on row values, so the inspector resolves those
+  /// per row instead.
+  Future<List<ForeignKey>> _virtualForeignKeys(MetaSnapshot snapshot) async {
+    final links = [
+      for (final l in snapshot.index.links)
+        if (l.to?.exactColumn != null && l.target.isColumnLevel) l,
+    ];
+    if (links.isEmpty) return const [];
+    final out = <ForeignKey>[];
+    final needsExpansion = links.any((l) => l.target.exactColumn == null);
+    List<(String, String, String)> allColumns = const [];
+    if (needsExpansion) allColumns = await _allColumnTriples();
+    for (final link in links) {
+      final to = link.to!.exactColumn!;
+      final exact = link.target.exactColumn;
+      final sources = exact != null
+          ? [(exact.schema, exact.table, exact.column)]
+          : [
+              for (final c in allColumns)
+                if (link.target.matchesColumn(c.$1, c.$2, c.$3)) c,
+            ];
+      for (final source in sources) {
+        out.add(
+          ForeignKey(
+            constraintName: 'virtual:${link.id}',
+            fromSchema: source.$1,
+            fromTable: source.$2,
+            fromColumn: source.$3,
+            toSchema: to.schema,
+            toTable: to.table,
+            toColumn: to.column,
+            isVirtual: true,
+          ),
+        );
+      }
+    }
+    return out;
+  }
+
+  Future<List<(String, String, String)>> _allColumnTriples() async {
+    if (_isSqlite) {
+      final out = <(String, String, String)>[];
+      for (final t in await _sqliteListTables(_kSqliteMainSchema)) {
+        final cols = await conn.execute(
+          'SELECT name FROM pragma_table_info(?)',
+          positional: [t.name],
+        );
+        for (final r in cols.rows) {
+          out.add((_kSqliteMainSchema, t.name, r[0] as String));
+        }
+      }
+      return out;
+    }
+    final res = await conn.execute('''
+ SELECT table_schema::text, table_name::text, column_name::text
+ FROM information_schema.columns
+ WHERE table_schema NOT IN ('pg_catalog', 'information_schema')
+ ''');
+    return [
+      for (final r in res.rows)
+        (r[0] as String, r[1] as String, r[2] as String),
+    ];
+  }
+
+  Future<List<ForeignKey>> _listForeignKeysRaw() async {
     if (_isSqlite) return _sqliteListForeignKeys();
     final result = await conn.execute(
       '''
@@ -502,14 +691,35 @@ class SchemaCatalog {
       params.add(pkValues[i]);
       wherePlaceholders.add('${quoteIdent(pkColumns[i])} = \$${params.length}');
     }
+    // With access control, select only what the viewer may see: `none`
+    // columns are left out entirely and masked ones come back as NULL.
+    var selectList = '*';
+    final masked = <String>{};
+    if (_policy.active) {
+      final columns = await listColumns(schema, table);
+      if (columns.isEmpty) return null;
+      selectList = [
+        for (final c in columns)
+          if (c.isMasked && !pkColumns.contains(c.name))
+            'NULL AS ${quoteIdent(c.name)}'
+          else
+            quoteIdent(c.name),
+      ].join(', ');
+      masked.addAll([
+        for (final c in columns)
+          if (c.isMasked) c.name,
+      ]);
+    }
     final sql =
-        'SELECT * FROM $qualified WHERE ${wherePlaceholders.join(' AND ')} LIMIT 1';
+        'SELECT $selectList FROM $qualified '
+        'WHERE ${wherePlaceholders.join(' AND ')} LIMIT 1';
     final result = await conn.execute(sql, positional: params);
     if (result.isEmpty) return null;
     final row = result.first;
     final map = <String, Object?>{};
     for (var i = 0; i < result.columns.length; i++) {
-      map[result.columns[i].name] = row[i];
+      final name = result.columns[i].name;
+      map[name] = masked.contains(name) ? MaskedValue.instance : row[i];
     }
     return map;
   }

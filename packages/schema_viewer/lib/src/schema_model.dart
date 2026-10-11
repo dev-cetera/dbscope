@@ -111,11 +111,16 @@ class SchemaEdgeData {
   /// Target-side column (the referenced PK/unique column).
   final String? targetField;
 
+  /// Draw dashed: a relationship the host knows about that isn't a real
+  /// constraint (e.g. declared in schema metadata).
+  final bool dashed;
+
   const SchemaEdgeData({
     required this.id,
     required this.sourceId,
     required this.targetId,
     this.sourceField,
     this.targetField,
+    this.dashed = false,
   });
 }

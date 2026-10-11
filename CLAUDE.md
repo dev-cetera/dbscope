@@ -231,6 +231,19 @@ Entry point: `View → Schema` (Cmd-D) in `menu_bar.dart`; that method focuses t
 
 The palette previously living at `lib/shell/relationship_gutter.dart` (`colorForTable`, `colorIndexForTable`, `buildTableColorMap`, `kRelationshipPalette`) was moved into `package:schema_viewer/schema_viewer.dart`; `relationship_gutter.dart` re-exports them so existing import sites (sidebar, etc.) keep working unchanged.
 
+## Schema metadata (`lib/meta/`)
+
+User-facing reference: README "Schema metadata". The shape of the code:
+
+- **Pure core, no Flutter**: `selector.dart` (grammar + specificity), `meta_models.dart` (rows, kinds, typed specs, roles/grants, `mergeMetaSources`), `meta_parse.dart` (tolerant: bad rows become `MetaProblem`s, never exceptions), `meta_index.dart` (`MetaIndex` — the only place the merge/specificity rules live), `access_policy.dart` (`AccessPolicy.resolve`), `action_binding.dart` (`@name` binding + scanner), `chart_sql.dart`, `enforcement_sql.dart`, `value_format.dart`. Each has a `test/meta_*_test.dart` that opens with its contract.
+- **Sources** (`meta_sources.dart`): `NativeCommentSource` (COMMENT ON on schemas, relations, columns, types), `DbTableSource` (three outcomes — absent / loaded / **unreadable, which fails closed**), `FileSource` (YAML/JSON with includes), `ProfileOverrideSource`. `native_facts.dart` reads constraints/indexes/triggers/policies live for the About dialogs.
+- **`MetadataCache`** (per window, per profile, like `DbmlCache`): loaded by `ConnectionRegistry._connect` *before* the connection is marked connected (so hidden tables never flash), reloaded via `reloadMetadata` and broadcast to other windows on the bus (`bus.publish` → `meta.changed:<id>`; BusService wildcards only match `.*`, so windows subscribe to `meta.*`). It maps executor → profile with an Expando so code holding only a `DbExecutor` finds the policy.
+- **The choke points** — keep them the only ones: `SchemaCatalog` (default constructor filters through the policy, adds virtual FKs; `SchemaCatalog.unfiltered` for DML/internals), `KeysetPager` (masked → `NULL AS col`, PK fetched then masked; `explicitColumns` when access control is active), `buildEditPolicies` (`lib/db/edit_policies.dart` — every EditPolicy list), `loadRowByPk`, `applyColumnAccess` for query results. A new `SELECT *`, a new `EditPolicy(` construction or a new AI egress path bypasses access control — route it through these.
+- **Metadata SQL is untrusted code**: `MetaTrust` (`ui/action_trust.dart`) pins a SHA-256 per scope (read / exec) in SharedPreferences (machine-local on purpose); `executeReadOnly` fences reads in `BEGIN TRANSACTION READ ONLY` (Postgres) / `PRAGMA query_only` (local SQLite). Backends without transactions (pg-proxy, on-device sqflite) can't be fenced.
+- **UI**: `meta_plugin.dart` registers the named-query and dashboard tab kinds, the Metadata menu (fixed labels — menus are built once, everything decides at click time) and a sidebar action provider. `ui/meta_menu.dart` builds every right-click's metadata entries from one `MetaClickContext`.
+- `tool/meta_to_sql.dart` reuses `MetaWriter` through a recording executor, so the CLI and the app write identical SQL. `test/meta_live_pg_test.dart` runs every query/check/chart/action of a real database's metadata (skipped unless `DBSCOPE_LIVE_PG` is set).
+- Gotcha that cost a hang: `future.whenComplete(() => map.remove(key))` returns the removed future, and `whenComplete` waits on it — a load that waits on itself. Use a block body.
+
 ## SQL safety invariants
 
 These are non-negotiable; the plan covers them and the codebase enforces them:

@@ -8,6 +8,8 @@
 // it can use FK relationships and neighbouring columns to disambiguate.
 
 import '../catalog/dbml_cache.dart';
+import '../meta/meta_cache.dart';
+import '../meta/meta_models.dart';
 import 'ai_key_resolver.dart';
 import 'provider.dart';
 import 'settings_store.dart';
@@ -25,6 +27,12 @@ class FieldExplainer {
     required String typeName,
     required Object? currentValue,
   }) async {
+    final policy = MetadataCache.instance.snapshotFor(connectionId)?.policy;
+    if (policy != null && !policy.can(Capability.ai)) {
+      throw const AssistantException(
+        'Your role on this connection cannot use AI features.',
+      );
+    }
     final settings = await AiSettingsStore.instance.load();
     final providerId = settings.providerId;
     if (providerId == null) {

@@ -9,7 +9,10 @@ import '../navigator/navigator_tab.dart';
 import '../rpc/scope.dart';
 import '../rpc/services/job_client.dart';
 import 'app_state.dart';
+import '../catalog/schema_catalog.dart';
 import '../jobs/copy_table_dialog.dart';
+import '../meta/meta_cache.dart';
+import '../meta/meta_models.dart';
 import 'sidebar_table_actions.dart';
 import 'soft_delete_dialog.dart';
 
@@ -94,6 +97,14 @@ final SidebarTableAction _copyQualified = SidebarTableAction(
 // Soft-delete and copy-to-DB rewrite rows; both should hide on
 // read-only / dml-incapable backends so the menu doesn't promise an
 // action that's going to fail when invoked.
+bool _canCopyOut(SidebarTableActionContext ctx) {
+  final snapshot = MetadataCache.instance.snapshotFor(ctx.connectionId);
+  final policy = snapshot?.policy;
+  if (policy == null || !policy.active) return true;
+  if (!policy.can(Capability.export)) return false;
+  return policy.forTable(ctx.schema, ctx.table).canSeeValues;
+}
+
 bool _backendSupportsDml(SidebarTableActionContext ctx) {
   final conn = ConnectionRegistry.instance.connectionFor(ctx.connectionId);
   if (conn == null) return false;
@@ -144,7 +155,36 @@ final SidebarTableAction _copyToAnother = SidebarTableAction(
   label: 'Copy to another DB…',
   icon: Icons.cloud_sync_outlined,
   startsGroup: true,
+  // Copying runs as a server-side job that never passes through the
+  // grid's column access, so it needs the export capability and full read
+  // access to the table (no masked or hidden columns) up front.
+  visibleWhen: _canCopyOut,
   onSelected: (ctx) async {
+    final source = ConnectionRegistry.instance.connectionFor(ctx.connectionId);
+    if (source != null &&
+        MetadataCache.instance.policyForExecutor(source).active) {
+      final visible = await SchemaCatalog(source).listColumns(
+        ctx.schema,
+        ctx.table,
+      );
+      final all = await SchemaCatalog.unfiltered(source).listColumns(
+        ctx.schema,
+        ctx.table,
+      );
+      final restricted =
+          visible.length < all.length ||
+          visible.any((c) => !c.accessLevel.atLeast(AccessLevel.read));
+      if (restricted) {
+        if (!ctx.buildContext.mounted) return;
+        showToast(
+          ctx.buildContext,
+          'Some columns of ${ctx.table} are hidden or masked for you, so it '
+          'cannot be copied out.',
+        );
+        return;
+      }
+      if (!ctx.buildContext.mounted) return;
+    }
     final profiles = ConnectionRegistry.instance.profiles;
     if (profiles.length < 2) {
       showToast(ctx.buildContext, 'Add a second connection first.');
@@ -167,6 +207,25 @@ final SidebarTableAction _copyToAnother = SidebarTableAction(
     );
     if (!ctx.buildContext.mounted) return;
     await ConnectionRegistry.instance.connectActive(context: ctx.buildContext);
+    if (!ctx.buildContext.mounted) return;
+    // The job writes into the target, so the target's own access control
+    // must allow full access to that table (it runs server-side, past the
+    // grid's gates).
+    final target = ConnectionRegistry.instance.connectionFor(result.target.id);
+    if (target != null) {
+      final targetAccess = MetadataCache.instance
+          .policyForExecutor(target)
+          .forTable(result.targetSchema, result.targetTable);
+      if (!targetAccess.level.atLeast(AccessLevel.full)) {
+        showToast(
+          ctx.buildContext,
+          'Your access to ${result.targetSchema}.${result.targetTable} on '
+          '${result.target.name} is ${targetAccess.level.name}; copying into '
+          'it needs full.',
+        );
+        return;
+      }
+    }
     final jobs = JobServiceClient(client);
     try {
       final submitted = await jobs.submit('copy_table', {

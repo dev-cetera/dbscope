@@ -14,6 +14,7 @@ import 'package:widgets/widgets.dart';
 import '../catalog/pg_type.dart';
 import '../catalog/schema_catalog.dart';
 import '../db/edit_policy.dart';
+import '../meta/meta_models.dart';
 import '../shell/app_state.dart';
 import 'grid_data.dart';
 import 'pg_grid_adapters.dart';
@@ -40,6 +41,18 @@ class DataGrid extends StatefulWidget {
   final String? table;
   final void Function(ForeignKey fk, bool incoming)? onFollowLink;
 
+  /// Extra right-click entries for the clicked cell (row index, original
+  /// column index) — metadata actions, links, "Visualise column", …
+  final List<GridMenuEntry> Function(
+    int rowIdx,
+    int columnIdx,
+    List<int> selectedRows,
+  )?
+  contextMenuExtras;
+
+  /// Metadata display (value renderers) by column name.
+  final Map<String, DisplaySpec> displayByColumn;
+
   const DataGrid({
     super.key,
     required this.data,
@@ -59,6 +72,8 @@ class DataGrid extends StatefulWidget {
     this.schema,
     this.table,
     this.onFollowLink,
+    this.contextMenuExtras,
+    this.displayByColumn = const {},
   });
 
   @override
@@ -126,6 +141,9 @@ class _DataGridState extends State<DataGrid> {
           indexed: c.indexed,
           defaultWidth:
               c.defaultWidth ?? defaultWidthForPgType(c.type ?? PgType.unknown),
+          hidden: c.hidden,
+          tooltip: c.tooltip,
+          marker: c.marker,
         ),
     ];
     final dataForGrid = g.GridData<PgType>(
@@ -144,6 +162,7 @@ class _DataGridState extends State<DataGrid> {
         inboundByColumn: inboundByColumn,
         onFollowLink: widget.onFollowLink,
         viewMode: widget.viewMode,
+        displayByColumn: widget.displayByColumn,
       ),
       cellEditor: EditPolicyCellEditor(policies),
       style: gridStyleFromPalette(palette),
@@ -155,6 +174,7 @@ class _DataGridState extends State<DataGrid> {
       onDeleteRow: widget.onDeleteRow,
       onOpenDetail: widget.onOpenDetail,
       onRowSelected: widget.onRowSelected,
+      contextMenuExtras: widget.contextMenuExtras,
     );
   }
 }

@@ -42,6 +42,9 @@ class DataGridController<TypeTag> {
   void updateCell(int rowIdx, String column, Object? value) =>
       _state?._applyUpdateCell(rowIdx, column, value);
 
+  /// Hide exactly [names] (every other column is shown).
+  void setHiddenColumns(Set<String> names) => _state?._applySetHidden(names);
+
   /// Set an explicit height for a single row. Pass `null` to clear the
   /// override and fall back to the grid's default `rowHeight`.
   void setRowHeight(int rowIdx, double? height) =>
@@ -131,6 +134,16 @@ class DataGrid<TypeTag> extends StatefulWidget {
   /// Show the row-number gutter. Disable for compact grids.
   final bool showGutter;
 
+  /// Extra right-click entries for the clicked cell, by row index,
+  /// ORIGINAL column index (into `data.columns`) and the selected rows. A right-click outside the
+  /// current selection first moves the selection to the clicked cell, so
+  /// entries always act on what the user pointed at.
+  final List<GridMenuEntry> Function(
+    int rowIdx,
+    int columnIdx,
+    List<int> selectedRows,
+  )? contextMenuExtras;
+
   const DataGrid({
     super.key,
     required this.data,
@@ -153,6 +166,7 @@ class DataGrid<TypeTag> extends StatefulWidget {
     this.onOpenDetail,
     this.onRowSelected,
     this.showGutter = true,
+    this.contextMenuExtras,
   });
 
   @override
@@ -190,7 +204,9 @@ class _DataGridState<TypeTag> extends State<DataGrid<TypeTag>> {
   static const double _kMaxRowHeight = 1200;
 
   CellRenderer<TypeTag> get _renderer =>
-      widget.cellRenderer ?? const DefaultCellRenderer();
+      // Typed explicitly: a bare `const DefaultCellRenderer()` here infers
+      // its own type argument, not TypeTag, and fails a cast while painting.
+      widget.cellRenderer ?? DefaultCellRenderer<TypeTag>();
 
   @override
   void initState() {
@@ -239,6 +255,10 @@ class _DataGridState<TypeTag> extends State<DataGrid<TypeTag>> {
         for (final c in _currentData.columns)
           c.defaultWidth ?? widget.defaultColumnWidth,
       ],
+      hidden: {
+        for (var i = 0; i < _currentData.columns.length; i++)
+          if (_currentData.columns[i].hidden) i,
+      },
     );
     _model.setRowCount(_currentData.rows.length);
   }
@@ -306,6 +326,13 @@ class _DataGridState<TypeTag> extends State<DataGrid<TypeTag>> {
     _rowHeightOverrides.clear();
     _initModel();
     if (mounted) setState(() {});
+  }
+
+  void _applySetHidden(Set<String> names) {
+    _model.setHidden({
+      for (var i = 0; i < _currentData.columns.length; i++)
+        if (names.contains(_currentData.columns[i].name)) i,
+    });
   }
 
   void _applyAppend(List<List<Object?>> rows) {
@@ -715,7 +742,7 @@ class _DataGridState<TypeTag> extends State<DataGrid<TypeTag>> {
                   Expanded(
                     child: GestureDetector(
                       onSecondaryTapDown: (d) =>
-                          _showContextMenu(d.globalPosition),
+                          _showContextMenu(d.globalPosition, d.localPosition),
                       child: Listener(
                         behavior: HitTestBehavior.translucent,
                         onPointerDown: (e) =>
@@ -790,10 +817,30 @@ class _DataGridState<TypeTag> extends State<DataGrid<TypeTag>> {
     );
   }
 
-  Future<void> _showContextMenu(Offset position) async {
+  Future<void> _showContextMenu(Offset position, Offset localPosition) async {
+    // Act on the clicked cell: a right-click outside the current selection
+    // moves the selection there first (inside it, a multi-cell selection is
+    // kept so copy still covers the whole range).
+    final hit = _hitTest(localPosition);
+    if (hit != null) {
+      final current = _model.selection;
+      final inside = current != null && current.contains(hit.row, hit.col);
+      if (!inside) _model.selectSingle(hit.row, hit.col);
+    }
     final selection = _model.selection;
     final rowIdx = selection?.focusRow;
     final hasSel = selection != null;
+    final extras = <GridMenuEntry>[];
+    final builder = widget.contextMenuExtras;
+    if (builder != null && hit != null) {
+      final s = _model.selection;
+      final selectedRows = s == null
+          ? [hit.row]
+          : [for (var r = s.rowMin; r <= s.rowMax; r++) r];
+      extras.addAll(
+        builder(hit.row, _model.viewToOriginal(hit.col), selectedRows),
+      );
+    }
     final items = <PopupMenuEntry<String>>[
       PopupMenuItem(
         value: 'copy_tsv',
@@ -811,6 +858,25 @@ class _DataGridState<TypeTag> extends State<DataGrid<TypeTag>> {
       ],
       if (widget.onDeleteRow != null && rowIdx != null)
         const PopupMenuItem(value: 'delete', child: Text('Delete row…')),
+      for (var i = 0; i < extras.length; i++) ...[
+        if (i == 0 || extras[i].startsGroup) const PopupMenuDivider(),
+        PopupMenuItem(
+          value: 'extra:$i',
+          enabled: extras[i].enabled,
+          child: Tooltip(
+            message: extras[i].enabled ? '' : (extras[i].disabledReason ?? ''),
+            child: Row(
+              children: [
+                if (extras[i].icon != null) ...[
+                  Icon(extras[i].icon, size: 16),
+                  const SizedBox(width: 8),
+                ],
+                Flexible(child: Text(extras[i].label)),
+              ],
+            ),
+          ),
+        ),
+      ],
     ];
     final selected = await showMenu<String>(
       context: context,
@@ -829,6 +895,10 @@ class _DataGridState<TypeTag> extends State<DataGrid<TypeTag>> {
     }
     if (selected == 'delete' && rowIdx != null) {
       widget.onDeleteRow?.call(rowIdx);
+    }
+    if (selected != null && selected.startsWith('extra:')) {
+      final index = int.parse(selected.substring('extra:'.length));
+      extras[index].onSelected?.call();
     }
   }
 }

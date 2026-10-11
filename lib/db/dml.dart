@@ -32,9 +32,14 @@ class CellEditor {
     final oldPlaceholder = '\$${params.length}';
 
     final qualified = quoteQualified(policy.schema, policy.table);
+    // CURRENT_TIMESTAMP rather than now(): it works on Postgres and SQLite.
+    final touches = [
+      for (final c in policy.touchColumns)
+        if (c != policy.column) ', ${quoteIdent(c)} = CURRENT_TIMESTAMP',
+    ].join();
     final sql =
         'UPDATE $qualified '
-        'SET ${quoteIdent(policy.column)} = \$1 '
+        'SET ${quoteIdent(policy.column)} = \$1$touches '
         'WHERE ${pkPlaceholders.join(' AND ')} '
         'AND ${quoteIdent(policy.column)} IS NOT DISTINCT FROM $oldPlaceholder';
 
@@ -92,6 +97,7 @@ class CellEditor {
     required String table,
     required List<EditPolicy> editable,
     required Map<String, Object?> values,
+    String returning = '*',
   }) async {
     final cols = <String>[];
     final placeholders = <String>[];
@@ -108,7 +114,7 @@ class CellEditor {
     }
     final qualified = quoteQualified(schema, table);
     final sql =
-        'INSERT INTO $qualified (${cols.join(', ')}) VALUES (${placeholders.join(', ')}) RETURNING *';
+        'INSERT INTO $qualified (${cols.join(', ')}) VALUES (${placeholders.join(', ')}) RETURNING $returning';
     final result = await conn.execute(sql, positional: params);
     if (result.isEmpty) return const [];
     return result.first;

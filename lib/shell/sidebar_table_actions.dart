@@ -57,6 +57,17 @@ class SidebarTableActionRegistry {
 
   final List<SidebarTableAction> _actions = [];
 
+  /// Providers compute extra actions per table at menu time (e.g. schema
+  /// metadata actions, which depend on the connection and table).
+  final List<List<SidebarTableAction> Function(SidebarTableActionContext ctx)>
+  _providers = [];
+
+  void registerProvider(
+    List<SidebarTableAction> Function(SidebarTableActionContext ctx) provider,
+  ) {
+    _providers.add(provider);
+  }
+
   void register(SidebarTableAction action) {
     _actions.removeWhere((a) => a.id == action.id);
     _actions.add(action);
@@ -64,8 +75,9 @@ class SidebarTableActionRegistry {
 
   /// All actions, in registration order, filtered by [visibleWhen].
   List<SidebarTableAction> visibleFor(SidebarTableActionContext ctx) {
-    return _actions
-        .where((a) => a.visibleWhen?.call(ctx) ?? true)
-        .toList(growable: false);
+    return [
+      ..._actions.where((a) => a.visibleWhen?.call(ctx) ?? true),
+      for (final provider in _providers) ...provider(ctx),
+    ];
   }
 }

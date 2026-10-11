@@ -7,6 +7,10 @@ import 'package:widgets/widgets.dart';
 import '../catalog/schema_catalog.dart';
 import '../connection/connection_picker.dart';
 import '../connection/registry.dart';
+import '../meta/dashboard/dashboard_tab.dart';
+import '../meta/meta_cache.dart';
+import '../meta/meta_models.dart';
+import '../meta/named_query/named_query_tab.dart';
 import '../navigator/navigator_tab.dart';
 import '../util/listenable_state_mixin.dart';
 import 'app_state.dart';
@@ -15,6 +19,7 @@ import 'sidebar_table_actions.dart';
 
 part 'parts/connection_picker.dart';
 part 'parts/table_row.dart';
+part 'parts/meta_rows.dart';
 
 /// Cross-widget channel: lets the app shell focus the sidebar's filter
 /// TextField when Cmd+F is pressed. The sidebar registers its focus
@@ -55,6 +60,20 @@ class _SidebarState extends State<Sidebar> with ListenableStateMixin {
   @override
   List<Listenable> get listenables => [AppState.instance];
 
+  /// The metadata snapshot the listing was built under; a new one (reload,
+  /// "View as…") can change which tables exist for this user.
+  MetaSnapshot? _metaUsed;
+
+  void _onMetadataChange() {
+    if (!mounted) return;
+    final id = _registry.activeId;
+    final snapshot = MetadataCache.instance.snapshotFor(id);
+    if (snapshot == null || snapshot.status != MetaLoadStatus.ready) return;
+    if (identical(snapshot, _metaUsed)) return;
+    _metaUsed = snapshot;
+    if (_registry.isConnected) _reload(keepExpansion: true);
+  }
+
   final _registry = ConnectionRegistry.instance;
   final _filterController = TextEditingController();
   final _filterFocus = FocusNode(debugLabel: 'sidebar-filter');
@@ -72,6 +91,8 @@ class _SidebarState extends State<Sidebar> with ListenableStateMixin {
   void initState() {
     super.initState();
     _registry.addListener(_onRegistryChange);
+    MetadataCache.instance.addListener(_onMetadataChange);
+    _metaUsed = MetadataCache.instance.snapshotFor(_registry.activeId);
     SidebarFocusController.instance.attach(_filterFocus);
     if (_registry.isConnected) _reload();
   }
@@ -80,6 +101,7 @@ class _SidebarState extends State<Sidebar> with ListenableStateMixin {
   void dispose() {
     SidebarFocusController.instance.detach(_filterFocus);
     _registry.removeListener(_onRegistryChange);
+    MetadataCache.instance.removeListener(_onMetadataChange);
     _scrollController.dispose();
     _filterController.dispose();
     _filterFocus.dispose();
@@ -105,7 +127,9 @@ class _SidebarState extends State<Sidebar> with ListenableStateMixin {
     }
   }
 
-  Future<void> _reload() async {
+  /// [keepExpansion]: a metadata refresh of the SAME connection keeps the
+  /// schemas the user collapsed or expanded.
+  Future<void> _reload({bool keepExpansion = false}) async {
     final conn = _registry.connection;
     final activeId = _registry.activeId;
     if (conn == null || activeId == null) return;
@@ -121,9 +145,14 @@ class _SidebarState extends State<Sidebar> with ListenableStateMixin {
       setState(() {
         _schemas = schemas;
         _tablesBySchema.clear();
-        _expanded.clear();
-        for (final s in schemas.where((s) => !s.isSystem)) {
-          _expanded.add(s.name);
+        if (keepExpansion) {
+          final names = {for (final s in schemas) s.name};
+          _expanded.removeWhere((name) => !names.contains(name));
+        } else {
+          _expanded.clear();
+          for (final s in schemas.where((s) => !s.isSystem)) {
+            _expanded.add(s.name);
+          }
         }
       });
       for (final s in schemas.where((s) => !s.isSystem)) {
@@ -244,14 +273,61 @@ class _SidebarState extends State<Sidebar> with ListenableStateMixin {
             : 'Pick a connection above.',
       );
     }
+    final snapshot = MetadataCache.instance.snapshotFor(activeId);
     final rows = <_FlatRow>[];
     for (final schema in _schemas) {
       final tables = _filteredTables(schema.name);
       if (_filter.isNotEmpty && tables.isEmpty) continue;
       rows.add(_FlatRow.schema(schema));
       if (_expanded.contains(schema.name)) {
+        // Metadata `display.group` folds tables into labelled groups;
+        // ungrouped tables follow.
+        final grouped = <String, List<TableInfo>>{};
+        final ungrouped = <TableInfo>[];
         for (final t in tables) {
+          final group = snapshot?.index.groupOf(schema.name, t.name);
+          if (group == null) {
+            ungrouped.add(t);
+          } else {
+            (grouped[group] ??= []).add(t);
+          }
+        }
+        final groupNames = grouped.keys.toList()..sort();
+        for (final g in groupNames) {
+          rows.add(_FlatRow.group(g));
+          for (final t in grouped[g]!) {
+            rows.add(_FlatRow.table(schema.name, t));
+          }
+        }
+        if (groupNames.isNotEmpty && ungrouped.isNotEmpty) {
+          rows.add(const _FlatRow.group('Other'));
+        }
+        for (final t in ungrouped) {
           rows.add(_FlatRow.table(schema.name, t));
+        }
+      }
+    }
+    if (snapshot != null) {
+      final policy = snapshot.policy;
+      final f = _filter.toLowerCase();
+      final queries = [
+        for (final q in snapshot.index.queries)
+          if (policy.forQuery(q.id).canSeeValues &&
+              (f.isEmpty || q.label.toLowerCase().contains(f)))
+            q,
+      ];
+      final dashboards = snapshot.index.dashboards;
+      final hasCharts = snapshot.index.charts.any((c) => !c.rowScoped);
+      if (queries.isNotEmpty || dashboards.isNotEmpty || hasCharts) {
+        rows.add(const _FlatRow.metaHeader());
+        for (final d in dashboards) {
+          rows.add(_FlatRow.dashboard(d.id, d.label));
+        }
+        if (hasCharts && dashboards.isEmpty) {
+          rows.add(const _FlatRow.dashboard(null, 'All charts'));
+        }
+        for (final q in queries) {
+          rows.add(_FlatRow.query(q));
         }
       }
     }
@@ -281,6 +357,25 @@ class _SidebarState extends State<Sidebar> with ListenableStateMixin {
               final r = rows[i];
               if (r.schema != null) {
                 return _buildSchemaRow(theme, r.schema!);
+              }
+              if (r.groupLabel != null) {
+                return _GroupHeaderRow(label: r.groupLabel!);
+              }
+              if (r.isMetaHeader) {
+                return const _GroupHeaderRow(
+                  label: 'Queries & dashboards',
+                  indent: 8,
+                );
+              }
+              if (r.query != null) {
+                return _QueryRow(query: r.query!, connectionId: activeId);
+              }
+              if (r.isDashboard) {
+                return _DashboardRow(
+                  dashboardId: r.dashboardId,
+                  label: r.dashboardLabel!,
+                  connectionId: activeId,
+                );
               }
               final tableKey = '${r.tableSchema!}.${r.table!.name}';
               return _TableRow(
@@ -319,6 +414,21 @@ class _SidebarState extends State<Sidebar> with ListenableStateMixin {
   }
 
   Widget _buildSchemaRow(ThemeData theme, SchemaInfo schema) {
+    final description = MetadataCache.instance
+        .snapshotFor(_registry.activeId)
+        ?.index
+        .describeSchema(schema.name)
+        .toTooltip();
+    final row = _buildSchemaRowBody(theme, schema);
+    if (description == null || description.isEmpty) return row;
+    return Tooltip(
+      message: description,
+      waitDuration: const Duration(milliseconds: 600),
+      child: row,
+    );
+  }
+
+  Widget _buildSchemaRowBody(ThemeData theme, SchemaInfo schema) {
     return GestureDetector(
       onSecondaryTapDown: (d) =>
           _showSchemaContextMenu(schema, d.globalPosition),
@@ -406,10 +516,35 @@ class _FlatRow {
   final String? tableSchema;
   final TableInfo? table;
 
-  const _FlatRow._({this.schema, this.tableSchema, this.table});
+  /// A metadata `display.group` sub-header inside a schema.
+  final String? groupLabel;
+
+  /// The "Queries & dashboards" header.
+  final bool isMetaHeader;
+  final NamedQuerySpec? query;
+  final bool isDashboard;
+  final String? dashboardId;
+  final String? dashboardLabel;
+
+  const _FlatRow._({
+    this.schema,
+    this.tableSchema,
+    this.table,
+    this.groupLabel,
+    this.isMetaHeader = false,
+    this.query,
+    this.isDashboard = false,
+    this.dashboardId,
+    this.dashboardLabel,
+  });
   _FlatRow.schema(SchemaInfo s) : this._(schema: s);
   _FlatRow.table(String schema, TableInfo t)
     : this._(tableSchema: schema, table: t);
+  const _FlatRow.group(String label) : this._(groupLabel: label);
+  const _FlatRow.metaHeader() : this._(isMetaHeader: true);
+  const _FlatRow.query(NamedQuerySpec q) : this._(query: q);
+  const _FlatRow.dashboard(String? id, String label)
+    : this._(isDashboard: true, dashboardId: id, dashboardLabel: label);
 
   String? get tableKey => table == null ? null : '$tableSchema.${table!.name}';
 }

@@ -6,6 +6,8 @@ import 'package:widgets/widgets.dart';
 import '../catalog/pg_type.dart';
 import '../catalog/schema_catalog.dart';
 import '../connection/registry.dart';
+import '../meta/meta_models.dart';
+import '../meta/value_format.dart';
 import '../shell/app_state.dart';
 import 'json_dialogs.dart';
 import 'typed_value_text.dart';
@@ -63,6 +65,9 @@ class CellValueDisplay extends StatelessWidget {
   /// underlined and tap-launchable.
   final bool detectUrl;
 
+  /// Metadata `display.renderer` for this column, if any.
+  final DisplaySpec? display;
+
   const CellValueDisplay({
     super.key,
     required this.value,
@@ -73,6 +78,7 @@ class CellValueDisplay extends StatelessWidget {
     this.onFollowLink,
     this.colored = true,
     this.detectUrl = true,
+    this.display,
   });
 
   bool get _isJson => pgType == PgType.json || pgType == PgType.jsonb;
@@ -83,12 +89,43 @@ class CellValueDisplay extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final palette = AppPalette.of(context);
-    final text = TypedValueText(
-      value: value,
-      pgType: pgType,
+    final renderer = display?.renderer;
+    final formatted = renderer == null
+        ? null
+        : formatForRenderer(renderer, display!.rendererArgs, value);
+    final swatch = renderer == ValueRenderer.color
+        ? parseColorValue(value)
+        : null;
+    Widget text = TypedValueText(
+      value: formatted ?? value,
+      pgType: formatted == null ? pgType : PgType.text,
       colorOverride: colored ? null : palette.text,
       detectUrl: detectUrl,
     );
+    if (formatted != null) {
+      text = Tooltip(
+        message: value.toString(),
+        waitDuration: const Duration(milliseconds: 600),
+        child: text,
+      );
+    }
+    if (swatch != null) {
+      text = Row(
+        children: [
+          Container(
+            width: 12,
+            height: 12,
+            margin: const EdgeInsets.only(right: 6),
+            decoration: BoxDecoration(
+              color: Color(swatch),
+              borderRadius: BorderRadius.circular(2),
+              border: Border.all(color: palette.text.withValues(alpha: 0.3)),
+            ),
+          ),
+          Expanded(child: text),
+        ],
+      );
+    }
     if (!_hasLink && !_hasJsonExpand) return text;
     return Row(
       mainAxisSize: MainAxisSize.max,

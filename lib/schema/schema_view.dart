@@ -145,6 +145,7 @@ class _SchemaTabViewState extends State<SchemaTabView> {
             targetId: tgtId,
             sourceField: fk.fromColumn,
             targetField: fk.toColumn,
+            dashed: fk.isVirtual,
           ),
         );
       }

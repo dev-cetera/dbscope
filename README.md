@@ -19,3 +19,85 @@ That's it - the app launches, and you add a connection profile from the UI.
 fvm flutter analyze          # lint
 fvm flutter test             # run tests
 ```
+
+## Schema metadata (optional)
+
+dbscope reads what the database already says about itself — Postgres
+`COMMENT ON` for schemas, tables, columns and types, plus constraints,
+indexes, defaults, triggers and RLS policies (right-click → *About …*). On
+top of that, a database can carry optional **metadata** that tells dbscope
+what the schema *means* and *who may see what*. Without it, nothing changes.
+
+**Where it comes from** (merged; later wins on equal specificity):
+
+1. Postgres comments (`COMMENT ON …`) — zero setup.
+2. Metadata tables in the database: schema `dbscope` (`meta`, `roles`,
+   `role_members`, `grants`) on Postgres, `_dbscope_*` tables on SQLite.
+   *Metadata ▸ Initialize metadata tables…* shows the DDL first.
+3. A metadata file (YAML or JSON) set per connection in *Metadata ▸
+   Settings…* — reviewable in PRs, and the only option for databases you
+   can't add tables to. `include: [other.yaml]` shares a base.
+4. This machine's per-connection overrides (soft-delete column).
+
+`fvm dart run tool/meta_to_sql.dart meta.yaml --replace --out meta.sql`
+turns a file into SQL that creates the tables and loads it (psql-ready).
+
+**Selectors** address everything: `*`, `schema`, `schema.table`,
+`schema.table.column`, `query:<id>`, `query:<id>.<column>`. Segments are
+literals, `"quoted literals"`, or globs (`*`, `*_internal`). The most specific
+rule wins: a column selector beats a table selector; then literal > partial
+glob > `*`.
+
+**File shape**
+
+```yaml
+format: 1
+rbac: { default: read, identity: claimed }   # access-control settings
+meta:
+  - { id: users.label, target: public.users, kind: display, rowLabel: "{name}" }
+  - id: overdue
+    kind: query
+    label: Overdue items
+    sql: SELECT id, name, due_at FROM items WHERE due_at < now()
+roles:
+  - { id: support, label: Support, capabilities: [export] }
+members:
+  - { role: support, principal: "pg:support_team" }   # or "user:me@example.com"
+grants:
+  - { id: g1, role: everyone, target: "*.*.password_hash", level: none }
+```
+
+**Kinds**
+
+| Kind | What it does |
+|---|---|
+| `describe` | label, description, unit, examples, deprecation, enum value meanings — tooltips, inspector, DBML notes for the AI |
+| `display` | `rowLabel` ("{name} ({status})"), `defaultSort` ("-created_at"), `defaultFilter`, `group` (sidebar folders), `renderer` (money, bytes, duration, timestamp, relative_time, color, url, json…) |
+| `sensitive` | `excludeFromAi`, `excludeFromExport` |
+| `policy` | `readOnly` + `reason`, `softDelete`, `touch` (stamped on edit), `pattern`/`min`/`max`, `danger: hardDelete` or `delete` |
+| `link` | virtual FKs (`to`), polymorphic (`polymorphic: {by, table: lower, map}`), JSON-path ids, URL templates |
+| `action` | right-click SQL: scope `global/table/row/cell/selection`, run `query/openTable/exec/url/copy`, placeholders `@row_<col>`, `@pk_<col>`, `@cell`, `@input_<name>`, `@rows_<col>` (always bound as parameters), `when`, `confirm`, `expectRows`, `roles` |
+| `query` | named queries — sidebar *Queries & dashboards*; their result columns take every other kind via `query:<id>.<col>` |
+| `chart` | line/area/bar/stacked_bar/pie/scatter/histogram/stat from a table (no SQL: `x`, `bucket`, `y: [{agg, column}]`, `series`, `range`, `rangeColumn`), a named query, or row-scoped SQL |
+| `dashboard` | a grid of chart ids |
+| `check` | SQL that should return no rows — *Metadata ▸ Run checks…* |
+| `ai` | notes and example question→SQL pairs for the SQL assistant |
+
+Right-click any column for *Visualise* — no metadata needed.
+
+**Access control.** Grant levels `none < masked < read < edit < full` per
+selector; capabilities `query` (free SQL), `export`, `ai`, `exec` (write
+actions), `manage`. Most specific grant wins across all of a user's roles;
+among equals the most generous. `none` columns are never fetched, masked ones
+come back as `NULL` and show `••••`. Identity: `pg:` principals are verified
+by the login; `user:` principals are claimed (typed into Settings) and only
+ever guardrails. Real enforcement is Postgres privileges — *Metadata ▸
+Generate enforcement SQL…* writes the GRANT/REVOKE script and reports drift;
+dbscope never runs it. Unreadable rules fail closed (read-only).
+
+**Trust.** Metadata SQL (actions, queries, charts, checks, default filters)
+runs only after you trust it on this machine; any change asks again and
+marks what changed. Queries, charts, checks and query actions also run
+inside a read-only transaction where the backend supports it (Postgres,
+local SQLite); default and `openTable` filters become part of the grid's own
+queries, so trust is their only guard.

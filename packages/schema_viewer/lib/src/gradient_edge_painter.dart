@@ -263,7 +263,21 @@ class SchemaEdgePainter extends CustomPainter {
       ..style = PaintingStyle.stroke
       ..strokeWidth = (g.highlighted ? 2.6 : 1.8) * scale
       ..strokeCap = StrokeCap.round;
-    canvas.drawPath(path, paint);
+    if (!g.edge.dashed) {
+      canvas.drawPath(path, paint);
+      return;
+    }
+    // Dashed: walk the path and draw alternating segments.
+    final dash = 6.0 * scale;
+    final gap = 5.0 * scale;
+    for (final metric in path.computeMetrics()) {
+      var distance = 0.0;
+      while (distance < metric.length) {
+        final end = math.min(distance + dash, metric.length);
+        canvas.drawPath(metric.extractPath(distance, end), paint);
+        distance = end + gap;
+      }
+    }
   }
 
   void _drawChevrons(Canvas canvas, _EdgeGeom g) {

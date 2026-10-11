@@ -96,7 +96,13 @@ class DbmlCache extends ChangeNotifier {
 
   Object? errorFor(String profileId) => _entries[profileId]?.error;
 
+  /// Bumped on every invalidate, so a generation that was already running
+  /// (built under the old metadata / access policy) can't store its result
+  /// over the newer one when it finishes.
+  final Map<String, int> _generations = {};
+
   void invalidate(String profileId) {
+    _generations[profileId] = (_generations[profileId] ?? 0) + 1;
     final had = _entries.remove(profileId);
     if (had != null) notifyListeners();
   }
@@ -108,6 +114,8 @@ class DbmlCache extends ChangeNotifier {
   ) async {
     // Future is constructed eagerly so we can store it as `inFlight`
     // before any await suspends us.
+    final generation = _generations[profileId] ?? 0;
+    bool current() => (_generations[profileId] ?? 0) == generation;
     late final Future<String> future;
     future = () async {
       try {
@@ -115,12 +123,16 @@ class DbmlCache extends ChangeNotifier {
           exec,
           databaseName: databaseName,
         ).generate();
-        _entries[profileId] = _CacheEntry.ready(dbml);
-        notifyListeners();
+        if (current()) {
+          _entries[profileId] = _CacheEntry.ready(dbml);
+          notifyListeners();
+        }
         return dbml;
       } catch (e) {
-        _entries[profileId] = _CacheEntry.failed(e);
-        notifyListeners();
+        if (current()) {
+          _entries[profileId] = _CacheEntry.failed(e);
+          notifyListeners();
+        }
         rethrow;
       }
     }();

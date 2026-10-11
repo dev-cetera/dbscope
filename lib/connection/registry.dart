@@ -5,10 +5,12 @@ import 'package:flutter/widgets.dart';
 import '../catalog/dbml_cache.dart';
 import '../db/executor.dart';
 import '../db/plugin.dart';
+import '../meta/meta_cache.dart';
 import '../rpc/backend_client.dart';
 import '../rpc/services/bus_client.dart';
 import '../rpc/services/profile_client.dart';
 import '../shell/ui_prefs.dart';
+import '../meta/meta_settings.dart';
 import 'profile.dart';
 
 class _ConnState {
@@ -38,6 +40,12 @@ class ConnectionRegistry extends ChangeNotifier {
   ProfileServiceClient? _profileClient;
   BusClient? _busClient;
   StreamSubscription<BusEvent>? _profileSub;
+  StreamSubscription<BusEvent>? _metaSub;
+
+  /// Identifies this window on the bus so it ignores its own
+  /// `meta.changed` broadcasts.
+  final String _windowNonce =
+      '${DateTime.now().microsecondsSinceEpoch}-${identityHashCode(Object())}';
 
   final Map<String, _ConnState> _states = {};
   final List<ConnectionProfile> _profiles = [];
@@ -60,6 +68,10 @@ class ConnectionRegistry extends ChangeNotifier {
       : (_states[_activeId]?.effectiveReadOnly ?? false);
 
   DbExecutor? connectionFor(String profileId) => _states[profileId]?.executor;
+
+  /// Whether [profileId]'s connection is in read-only mode.
+  bool isReadOnlyFor(String profileId) =>
+      _states[profileId]?.effectiveReadOnly ?? false;
 
   /// Return [id]'s profile with its stored password populated (from the
   /// server-side keychain). Used by connection-link export, which needs a
@@ -92,6 +104,47 @@ class ConnectionRegistry extends ChangeNotifier {
     _profileSub = _busClient!
         .subscribe('profile.changed')
         .listen(_onProfileEvent);
+    _metaSub?.cancel();
+    // BusService wildcards only match a `.*` suffix, so subscribe to
+    // `meta.*` and filter for `meta.changed:<profileId>` here.
+    _metaSub = _busClient!.subscribe('meta.*').listen(_onMetaEvent);
+    MetadataCache.instance.onReloadedBroadcast = (profileId) async {
+      try {
+        await _busClient?.publish('meta.changed:$profileId', {
+          'origin': _windowNonce,
+        });
+      } catch (_) {
+        // Other windows reload on their next connect anyway.
+      }
+    };
+  }
+
+  /// Another window reloaded metadata: reload this window's copy (and the
+  /// DBML built from it) without re-broadcasting.
+  void _onMetaEvent(BusEvent event) {
+    const prefix = 'meta.changed:';
+    if (!event.topic.startsWith(prefix)) return;
+    if (event.dataAsMap?['origin'] == _windowNonce) return;
+    final profileId = event.topic.substring('meta.changed:'.length);
+    if (_states[profileId]?.executor == null) return;
+    unawaited(_reloadMetadata(profileId, broadcast: false));
+  }
+
+  /// Reloads schema metadata for [profileId] and rebuilds the DBML cache
+  /// (which carries descriptions and respects access control).
+  Future<void> reloadMetadata(String profileId) =>
+      _reloadMetadata(profileId, broadcast: true);
+
+  Future<void> _reloadMetadata(
+    String profileId, {
+    required bool broadcast,
+  }) async {
+    final exec = _states[profileId]?.executor;
+    if (exec == null) return;
+    await MetadataCache.instance.reload(profileId, broadcast: broadcast);
+    DbmlCache.instance.invalidate(profileId);
+    DbmlCache.instance.warm(profileId, exec);
+    notifyListeners();
   }
 
   void _onProfileEvent(BusEvent event) {
@@ -123,7 +176,20 @@ class ConnectionRegistry extends ChangeNotifier {
         // re-apply it to the executor here so this window stops issuing
         // writes (or starts allowing them) without needing a reconnect.
         final readOnlyChanged = s.isReadOnlyOverride != p.readOnly;
+        final metadataChanged =
+            s.profile.metadata.toJson().toString() !=
+            p.metadata.toJson().toString();
         s.profile = p;
+        if (metadataChanged && s.executor != null) {
+          final exec = s.executor!;
+          unawaited(
+            MetadataCache.instance.profileChanged(p).then((_) {
+              DbmlCache.instance.invalidate(p.id);
+              DbmlCache.instance.warm(p.id, exec);
+              notifyListeners();
+            }),
+          );
+        }
         if (readOnlyChanged) {
           s.isReadOnlyOverride = p.readOnly;
           final exec = s.executor;
@@ -197,6 +263,7 @@ class ConnectionRegistry extends ChangeNotifier {
     _profiles.removeWhere((p) => p.id == id);
     if (_activeId == id) _activeId = null;
     DbmlCache.instance.invalidate(id);
+    MetadataCache.instance.invalidate(id);
     try {
       await client.remove(id);
     } catch (_) {}
@@ -283,6 +350,18 @@ class ConnectionRegistry extends ChangeNotifier {
           opened.executor.capabilities.sessionReadOnly) {
         await opened.executor.setReadOnly(true);
       }
+      // Schema metadata (descriptions, access control, …) loads before the
+      // connection is marked connected: the catalog filters through the
+      // access policy, so loading it first means hidden tables never flash
+      // into the sidebar. It is a handful of catalog queries, run together.
+      try {
+        await MetadataCache.instance.load(state.profile, opened.executor);
+      } catch (_) {
+        // Don't leak the socket / Cloud SQL proxy ref of a connection that
+        // never becomes `state.executor`.
+        await opened.executor.close();
+        rethrow;
+      }
       state.executor = opened.executor;
       // Warm the DBML cache in the background so DBML export and the AI
       // SQL assistant have a ready schema without paying for a fresh
@@ -352,6 +431,10 @@ class ConnectionRegistry extends ChangeNotifier {
         await _profileClient!.upsert(updated);
       } catch (_) {}
     }
+    // Profile overrides are the top metadata layer (soft-delete column).
+    if (state?.executor != null) {
+      await MetadataCache.instance.profileChanged(updated);
+    }
     notifyListeners();
   }
 
@@ -405,6 +488,34 @@ class ConnectionRegistry extends ChangeNotifier {
     _activeId = null;
     _profileSub?.cancel();
     _profileSub = null;
+    _metaSub?.cancel();
+    _metaSub = null;
+    notifyListeners();
+  }
+
+  /// Replace the profile's metadata settings and broadcast; the metadata
+  /// reloads in every window through the profile.changed path.
+  Future<void> setMetadataSettings(
+    String profileId,
+    MetadataSettings settings,
+  ) async {
+    final idx = _profiles.indexWhere((p) => p.id == profileId);
+    if (idx < 0) return;
+    final updated = _profiles[idx].copyWith(metadata: settings);
+    _profiles[idx] = updated;
+    final state = _states[profileId];
+    if (state != null) state.profile = updated;
+    if (_profileClient != null) {
+      try {
+        await _profileClient!.upsert(updated);
+      } catch (_) {}
+    }
+    final exec = state?.executor;
+    if (exec != null) {
+      await MetadataCache.instance.profileChanged(updated);
+      DbmlCache.instance.invalidate(profileId);
+      DbmlCache.instance.warm(profileId, exec);
+    }
     notifyListeners();
   }
 }

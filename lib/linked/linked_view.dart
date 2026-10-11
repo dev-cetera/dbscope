@@ -11,15 +11,18 @@ import 'package:widgets/widgets.dart';
 
 import 'package:schema_viewer/schema_viewer.dart';
 
-import '../catalog/pg_type.dart';
 import '../catalog/schema_catalog.dart';
 import '../connection/registry.dart';
 import '../db/executor.dart';
 import '../grid/data_grid.dart';
 import '../db/dml.dart';
+import '../db/edit_policies.dart';
 import '../db/edit_policy.dart';
 import '../inspector/grid_with_inspector.dart';
 import '../inspector/property_inspector.dart';
+import '../meta/meta_cache.dart';
+import '../meta/meta_models.dart';
+import '../meta/value_format.dart';
 import '../query/pager.dart';
 import '../shell/app_state.dart';
 import '../util/pg_errors.dart';
@@ -339,27 +342,13 @@ class _LinkedTabViewState extends State<LinkedTabView> {
       // discard this load so we don't paint stale data over a newer one.
       if (widget.tab.previewRow != ref) return;
       ref.columns = cols;
-      ref.editPolicies = [
-        for (final c in cols)
-          EditPolicy(
-            schema: ref.schema,
-            table: ref.table,
-            pkColumns: pk,
-            column: c.name,
-            type: c.type,
-            typeName: c.typeName,
-            nullable: c.nullable,
-            isGenerated: c.isGenerated,
-            isIdentity: c.isIdentity,
-            readOnly: pk.isEmpty || c.isGenerated || c.isIdentity,
-            multiLine:
-                c.type == PgType.json ||
-                c.type == PgType.jsonb ||
-                c.type == PgType.text,
-            nullIfBlank: c.nullable,
-            enumValues: c.enumValues,
-          ),
-      ];
+      ref.editPolicies = buildEditPolicies(
+        conn: conn,
+        schema: ref.schema,
+        table: ref.table,
+        columns: cols,
+        pkColumns: pk,
+      );
       ref.row = row;
       ref.isLoading = false;
       ref.error = row == null
@@ -514,27 +503,13 @@ class _LinkedTabViewState extends State<LinkedTabView> {
       );
       if (!mounted) return;
       node.columns = cols;
-      node.editPolicies = [
-        for (final c in cols)
-          EditPolicy(
-            schema: node.schema,
-            table: node.table,
-            pkColumns: pk,
-            column: c.name,
-            type: c.type,
-            typeName: c.typeName,
-            nullable: c.nullable,
-            isGenerated: c.isGenerated,
-            isIdentity: c.isIdentity,
-            readOnly: pk.isEmpty || c.isGenerated || c.isIdentity,
-            multiLine:
-                c.type == PgType.json ||
-                c.type == PgType.jsonb ||
-                c.type == PgType.text,
-            nullIfBlank: c.nullable,
-            enumValues: c.enumValues,
-          ),
-      ];
+      node.editPolicies = buildEditPolicies(
+        conn: conn,
+        schema: node.schema,
+        table: node.table,
+        columns: cols,
+        pkColumns: pk,
+      );
       node.row = row;
       node.isLoading = false;
       node.error = row == null

@@ -11,6 +11,7 @@ import 'package:widgets/widgets.dart';
 import '../catalog/pg_type.dart';
 import '../catalog/schema_catalog.dart';
 import '../db/edit_policy.dart';
+import '../meta/meta_models.dart';
 import 'cell_value_display.dart';
 import 'grid_data.dart';
 import 'inputs/column_input.dart';
@@ -24,11 +25,15 @@ class PgTypeCellRenderer extends g.CellRenderer<PgType> {
   final void Function(ForeignKey fk, bool incoming)? onFollowLink;
   final GridViewMode viewMode;
 
+  /// Metadata display (renderers) by column name.
+  final Map<String, DisplaySpec> displayByColumn;
+
   const PgTypeCellRenderer({
     this.outboundByColumn = const {},
     this.inboundByColumn = const {},
     this.onFollowLink,
     this.viewMode = GridViewMode.typed,
+    this.displayByColumn = const {},
   });
 
   @override
@@ -42,6 +47,7 @@ class PgTypeCellRenderer extends g.CellRenderer<PgType> {
       onFollowLink: onFollowLink,
       colored: viewMode == GridViewMode.typed,
       detectUrl: viewMode == GridViewMode.typed,
+      display: displayByColumn[ctx.column.name],
     );
   }
 }

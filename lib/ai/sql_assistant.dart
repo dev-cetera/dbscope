@@ -10,6 +10,9 @@
 
 import '../catalog/dbml_cache.dart';
 import '../catalog/schema_catalog.dart';
+import '../meta/meta_cache.dart';
+import '../meta/meta_models.dart';
+import '../meta/selector.dart';
 import '../db/executor.dart';
 import '../util/sql_parse.dart';
 import 'ai_key_resolver.dart';
@@ -38,6 +41,15 @@ class SqlAssistant {
     String? focusSchema,
     String? focusTable,
   }) async {
+    // Access control: the assistant sends the schema to an AI provider and
+    // writes free SQL, so it needs both capabilities.
+    final policy = MetadataCache.instance.policyForExecutor(conn);
+    if (!policy.can(Capability.ai) || !policy.can(Capability.query)) {
+      throw const AssistantException(
+        'Your role on this connection cannot use the AI SQL assistant '
+        '(it needs the ai and query capabilities).',
+      );
+    }
     final trimmed = prompt.trim();
     if (trimmed.isEmpty) {
       throw const AssistantException('Empty prompt.');
@@ -67,7 +79,7 @@ class SqlAssistant {
     final model = settings.model ?? await _autoPickModel(provider, apiKey);
 
     final schema = await buildSchemaContext();
-    final system = _systemPrompt(conn.kind);
+    final system = _systemPrompt(conn.kind) + _metadataNotes();
     final focus = (focusSchema != null && focusTable != null)
         ? '\n\nFocus table: "$focusSchema"."$focusTable". The user is '
               'currently looking at this table. Prefer to answer against it '
@@ -141,6 +153,46 @@ class SqlAssistant {
             .map((c) => c.typeName.isEmpty ? c.name : '${c.name}:${c.typeName}')
             .join(', ');
         buf.writeln('${s.name}.${t.name}($colDesc)');
+      }
+    }
+    return buf.toString();
+  }
+
+  /// `ai` rows from the schema metadata: free-text notes and example
+  /// question → SQL pairs, appended to the system prompt.
+  String _metadataNotes() {
+    final snapshot = MetadataCache.instance.snapshotForExecutor(conn);
+    if (snapshot == null) return '';
+    final policy = snapshot.policy;
+    // Notes aimed at objects this viewer can't see would leak their names
+    // (and the AI could echo them back); keep only notes whose target is
+    // global, or names a table/column the viewer can at least see.
+    bool visible(String target) {
+      final selector = Selector.tryParse(target);
+      if (selector == null) return false;
+      final column = selector.exactColumn;
+      if (column != null) {
+        return !policy
+            .forColumn(column.schema, column.table, column.column)
+            .isNone;
+      }
+      final table = selector.exactTable;
+      if (table != null) {
+        return !policy.forTable(table.schema, table.table).isNone;
+      }
+      return true;
+    }
+
+    final notes = [
+      for (final n in snapshot.index.aiNotes())
+        if (visible(n.target)) n,
+    ];
+    if (notes.isEmpty) return '';
+    final buf = StringBuffer('\n\nNotes from the schema owner:\n');
+    for (final n in notes) {
+      if (n.spec.notes != null) buf.writeln('- (${n.target}) ${n.spec.notes}');
+      for (final e in n.spec.examples) {
+        buf.writeln('- Example. Q: ${e.ask}\n  SQL: ${e.sql}');
       }
     }
     return buf.toString();

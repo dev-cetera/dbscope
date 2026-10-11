@@ -67,27 +67,13 @@ class _RowDetailColumnState extends State<RowDetailColumn> {
         pkColumns: pk,
         pkValues: values,
       );
-      final policies = [
-        for (final c in cols)
-          EditPolicy(
-            schema: step.schema,
-            table: step.table,
-            pkColumns: pk,
-            column: c.name,
-            type: c.type,
-            typeName: c.typeName,
-            nullable: c.nullable,
-            isGenerated: c.isGenerated,
-            isIdentity: c.isIdentity,
-            readOnly: pk.isEmpty || c.isGenerated || c.isIdentity,
-            multiLine:
-                c.type == PgType.json ||
-                c.type == PgType.jsonb ||
-                c.type == PgType.text,
-            nullIfBlank: c.nullable,
-            enumValues: c.enumValues,
-          ),
-      ];
+      final policies = buildEditPolicies(
+        conn: conn,
+        schema: step.schema,
+        table: step.table,
+        columns: cols,
+        pkColumns: pk,
+      );
       if (!mounted) return;
       step.columns = cols;
       step.editPolicies = policies;
@@ -145,33 +131,56 @@ class _RowDetailColumnState extends State<RowDetailColumn> {
     final pk = step.editPolicies.isNotEmpty
         ? step.editPolicies.first.pkColumns
         : const <String>[];
-    if (pk.isEmpty) {
-      showToast(context, 'Cannot delete: no primary key.');
+    final pkVals = <String, Object?>{for (final c in pk) c: step.row![c]};
+    final rules = writeRulesFor(
+      conn,
+      schema: step.schema,
+      table: step.table,
+      columns: step.columns,
+      pkColumns: pk,
+      profile: ConnectionRegistry.instance.profileById(
+        widget.tab.connectionId,
+      ),
+    );
+    final refusal = rules.whyNoDelete(pkColumns: pk, pkValues: pkVals);
+    if (refusal != null) {
+      showToast(context, refusal);
       return;
     }
+    final softColumn = rules.softDeleteColumn;
     final pkSummary = pk
         .map((c) => '$c = ${step.row![c]}')
         .toList(growable: false)
         .join(' AND ');
     final ok = await confirmDialog(
       context,
-      title: 'Delete row?',
-      message: 'WHERE $pkSummary',
-      confirmLabel: 'Delete',
+      title: softColumn == null ? 'Delete row?' : 'Soft-delete row?',
+      message: softColumn == null
+          ? 'WHERE $pkSummary'
+          : 'UPDATE ${step.schema}.${step.table} SET $softColumn = now()\n'
+                'WHERE $pkSummary',
+      confirmLabel: softColumn == null ? 'Delete' : 'Soft-delete',
       destructive: true,
     );
     if (!ok) return;
     try {
       final editor = CellEditor(conn);
-      final pkVals = <String, Object?>{
-        for (final c in pk) c: step.row![c],
-      };
-      await editor.deleteRow(
-        schema: step.schema,
-        table: step.table,
-        pkColumns: pk,
-        pkValues: pkVals,
-      );
+      if (softColumn == null) {
+        await editor.deleteRow(
+          schema: step.schema,
+          table: step.table,
+          pkColumns: pk,
+          pkValues: pkVals,
+        );
+      } else {
+        await editor.softDeleteRow(
+          schema: step.schema,
+          table: step.table,
+          pkColumns: pk,
+          pkValues: pkVals,
+          deletedColumn: softColumn,
+        );
+      }
       if (!mounted) return;
       showToast(context, 'Deleted.');
       // Collapse this column and refresh the parent list (if any).

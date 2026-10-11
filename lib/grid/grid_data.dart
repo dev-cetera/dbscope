@@ -9,7 +9,13 @@ import 'package:data_grid/data_grid.dart' as g;
 import '../catalog/pg_type.dart';
 
 export 'package:data_grid/data_grid.dart'
-    show GridEditEvent, GridSortEvent, GridStyle, GridStyleExtension, CellRange;
+    show
+        GridEditEvent,
+        GridSortEvent,
+        GridStyle,
+        GridStyleExtension,
+        CellRange,
+        GridMenuEntry;
 
 /// How the grid renders cells. New modes plug in by adding an enum
 /// value and a branch in `PgTypeCellRenderer`.
@@ -53,6 +59,9 @@ GridColumnSpec gridColumn({
   bool primaryKey = false,
   bool indexed = false,
   double? defaultWidth,
+  bool hidden = false,
+  String? tooltip,
+  String? marker,
 }) => g.GridColumnSpec<PgType>(
   name: name,
   type: type,
@@ -60,4 +69,7 @@ GridColumnSpec gridColumn({
   primaryKey: primaryKey,
   indexed: indexed,
   defaultWidth: defaultWidth,
+  hidden: hidden,
+  tooltip: tooltip,
+  marker: marker,
 );

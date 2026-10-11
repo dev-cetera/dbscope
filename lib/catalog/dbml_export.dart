@@ -1,4 +1,6 @@
 import '../db/executor.dart';
+import '../meta/meta_cache.dart';
+import '../meta/meta_index.dart';
 import 'schema_catalog.dart';
 
 class DbmlExportProgress {
@@ -27,7 +29,14 @@ class DbmlExporter {
 
   DbmlExporter(this.conn, {this.databaseName = 'dbscope'});
 
+  /// Schema metadata for this connection, when loaded: descriptions become
+  /// DBML notes, which is how the AI features learn what columns mean.
+  MetaIndex? get _meta =>
+      MetadataCache.instance.snapshotForExecutor(conn)?.index;
+
   Future<String> generate({DbmlProgressCallback? onProgress}) async {
+    // The filtered catalog: tables and columns at access level `none` never
+    // reach the DBML (and so never reach an AI prompt).
     final catalog = SchemaCatalog(conn);
 
     final schemas = (await catalog.listSchemas())
@@ -137,9 +146,13 @@ class DbmlExporter {
       if (def != null && def.toUpperCase() != 'NULL' && !c.isGenerated) {
         attrs.add('default: `${_escapeBacktick(def)}`');
       }
+      final note = _columnNote(t, c);
+      if (note != null) attrs.add("note: '${_escapeNote(note)}'");
       final attrStr = attrs.isEmpty ? '' : ' [${attrs.join(', ')}]';
       buf.writeln(' ${_columnName(c.name)} ${_dbmlType(c)}$attrStr');
     }
+    final tableNote = _meta?.describeTable(t.schema, t.name).description;
+    if (tableNote != null) buf.writeln(" Note: '${_escapeNote(tableNote)}'");
     if (pk.length > 1) {
       buf.writeln(' indexes {');
       final cols = pk.map(_columnName).join(', ');
@@ -164,7 +177,9 @@ class DbmlExporter {
           ? '${_qualifiedRef(first.toSchema, first.toTable)}.${_columnName(first.toColumn)}'
           : '${_qualifiedRef(first.toSchema, first.toTable)}.'
                 '(${group.map((g) => _columnName(g.toColumn)).join(', ')})';
-      buf.writeln('Ref: $from > $to');
+      buf.writeln(
+        'Ref: $from > $to${first.isVirtual ? ' // virtual (metadata link)' : ''}',
+      );
     }
   }
 
@@ -195,4 +210,22 @@ class DbmlExporter {
   }
 
   String _escapeBacktick(String s) => s.replaceAll('`', r'\`');
+
+  /// Description + enum meanings for a column, plus a marker when the
+  /// viewer only sees it masked.
+  String? _columnNote(TableInfo t, ColumnInfo c) {
+    final describe = _meta?.describeColumn(t.schema, t.name, c.name);
+    final parts = <String>[
+      ?describe?.description,
+      if (describe?.unit != null) 'unit: ${describe!.unit}',
+      if (describe != null && describe.values.isNotEmpty)
+        'values: ${describe.values.entries.map((e) => '${e.key} = ${e.value}').join('; ')}',
+      if (describe?.deprecated != null) 'deprecated: ${describe!.deprecated}',
+      if (c.isMasked) 'masked for this user',
+    ];
+    return parts.isEmpty ? null : parts.join(' | ');
+  }
+
+  String _escapeNote(String s) =>
+      s.replaceAll(r'\', r'\\').replaceAll("'", r"\'").replaceAll('\n', ' ');
 }

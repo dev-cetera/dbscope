@@ -27,4 +27,9 @@ class BusClient {
       return const BusEvent('', null);
     });
   }
+
+  /// Publishes [topic] to every window (via the host's BusService).
+  Future<void> publish(String topic, [Object? data]) async {
+    await _client.request('bus.publish', {'topic': topic, 'data': data});
+  }
 }

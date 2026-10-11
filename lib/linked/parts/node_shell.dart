@@ -75,6 +75,7 @@ SchemaNodeData _toSchemaNode(
   LinkedRowNode node,
   List<ForeignKey> allFks, {
   required bool showRowData,
+  String? rowLabelTemplate,
 }) {
   final fkByColumn = <String, ForeignKey>{};
   for (final fk in allFks) {
@@ -131,7 +132,11 @@ SchemaNodeData _toSchemaNode(
     schema: node.schema,
     tableName: node.table,
     fields: fields,
-    subtitle: _nodeSubtitle(node),
+    // Metadata `display.rowLabel` names the row ("Buy milk (OPEN)") once it
+    // has loaded; the PK identity stays the fallback.
+    subtitle: rowLabelTemplate != null && node.row != null
+        ? renderRowLabel(rowLabelTemplate, node.row!)
+        : _nodeSubtitle(node),
     headerLeadingIcon: node.isSeed ? Icons.flag : null,
     position: node.position,
     compact: true,
@@ -202,6 +207,11 @@ class _NodeShellState extends State<_NodeShell> {
       // brings the user to the linked view at all. Always-on data also
       // matches a row card's purpose (one row, not a schema preview).
       showRowData: hasRow,
+      rowLabelTemplate: MetadataCache.instance
+          .snapshotFor(widget.tab.connectionId)
+          ?.index
+          .displayTable(widget.node.schema, widget.node.table)
+          .rowLabel,
     );
 
     return Stack(

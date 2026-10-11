@@ -9,3 +9,18 @@ Future<void> writeTextFile(String path, String content) =>
 /// [ShellEnv] for why a GUI-launched app can't just read
 /// `Platform.environment`.
 String? envValue(String key) => ShellEnv.instance.value(key);
+
+/// Reads a UTF-8 text file. Throws when the file is missing or unreadable.
+Future<String> readTextFile(String path) => File(path).readAsString();
+
+/// Directory part of [path], for resolving relative includes.
+String parentDirectory(String path) => File(path).parent.path;
+
+/// Joins [relative] onto [directory] unless it is already absolute.
+String resolveRelativePath(String directory, String relative) {
+  if (relative.startsWith('/') ||
+      RegExp(r'^[A-Za-z]:[\\/]').hasMatch(relative)) {
+    return relative;
+  }
+  return '$directory${Platform.pathSeparator}$relative';
+}

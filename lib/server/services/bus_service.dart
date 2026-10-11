@@ -9,6 +9,8 @@
 // job.created -> {id, kind, ...}
 // job.progress:<jobId> -> {phase, processed, total?}
 // job.finished:<jobId> -> {ok, summary}
+// meta.changed:<profileId> -> {} (a window reloaded schema metadata;
+//   every other window reloads its own copy)
 //
 // Wildcard subscriptions: a subscriber may pass `topic: 'job.*'` to match
 // any topic starting with `job.`. Otherwise it's an exact match.
@@ -22,6 +24,17 @@ class BusService {
 
   void register(Server server) {
     server.onSubscription('bus.subscribe', _subscribe);
+    // Windows publish only cross-window "please refresh" signals here;
+    // server-side state changes still publish from their own services.
+    server.onRequest('bus.publish', (params) async {
+      final p = params is Map<String, Object?>
+          ? params
+          : const <String, Object?>{};
+      final topic = p['topic'];
+      if (topic is! String || topic.isEmpty) return false;
+      publish(topic, p['data']);
+      return true;
+    });
   }
 
   Stream<Object?> _subscribe(Object? params) {

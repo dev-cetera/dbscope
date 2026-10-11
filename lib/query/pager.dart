@@ -1,5 +1,6 @@
 import '../catalog/schema_catalog.dart';
 import '../db/executor.dart';
+import '../meta/masked_value.dart';
 import '../util/sql_quote.dart';
 import 'cancel_token.dart';
 
@@ -27,6 +28,11 @@ class KeysetPager {
   final String? baseWhere;
   final List<Object?> baseWhereParams;
 
+  /// Name every column instead of `SELECT *` on the no-PK path. Set when
+  /// access control is active: the catalog may have dropped `none` columns,
+  /// and `*` would fetch them anyway. (The keyed path always names columns.)
+  final bool explicitColumns;
+
   List<Object?>? _lastSortVals;
   List<Object?>? _lastPkVals;
   bool _done = false;
@@ -43,9 +49,28 @@ class KeysetPager {
     this.pageSize = 500,
     this.baseWhere,
     this.baseWhereParams = const [],
+    this.explicitColumns = false,
   });
 
   bool get isDone => _done;
+
+  /// The SELECT list: every column the catalog returned (columns at access
+  /// level `none` never get here), with masked non-key columns selected as
+  /// NULL so their values never leave the database. Primary keys are always
+  /// real — the keyset cursor needs them — and are masked after the cursor
+  /// is taken.
+  String get _selectList => columns
+      .map(
+        (c) => c.isMasked && !pkColumns.contains(c.name)
+            ? 'NULL AS ${quoteIdent(c.name)}'
+            : quoteIdent(c.name),
+      )
+      .join(', ');
+
+  Set<int> get _maskedIndexes => {
+    for (var i = 0; i < columns.length; i++)
+      if (columns[i].isMasked) i,
+  };
 
   Stream<Page> pages({CancelToken? cancelToken}) async* {
     if (pkColumns.isEmpty) {
@@ -57,8 +82,11 @@ class KeysetPager {
       final whereSql = (baseWhere == null || baseWhere!.isEmpty)
           ? ''
           : ' WHERE $baseWhere';
+      final selectList = explicitColumns && columns.isNotEmpty
+          ? _selectList
+          : '*';
       final sql =
-          'SELECT * FROM $qualified$whereSql$sortClause LIMIT $pageSize';
+          'SELECT $selectList FROM $qualified$whereSql$sortClause LIMIT $pageSize';
       final res = baseWhereParams.isEmpty
           ? await conn.execute(sql, cancelToken: cancelToken)
           : await conn.execute(
@@ -67,7 +95,7 @@ class KeysetPager {
               cancelToken: cancelToken,
             );
       _done = true;
-      yield Page(rows: res.rows);
+      yield Page(rows: maskRows(res.rows, _maskedIndexes));
       return;
     }
     while (!_done) {
@@ -99,7 +127,7 @@ class KeysetPager {
   Future<Page> _fetchOne({CancelToken? cancelToken}) async {
     _started = true;
     final qualified = quoteQualified(schema, table);
-    final colsSql = columns.map((c) => quoteIdent(c.name)).join(', ');
+    final colsSql = _selectList;
     final orderCols = <String>[
       if (sortColumn != null) quoteIdent(sortColumn!),
       for (final pk in pkColumns) quoteIdent(pk),
@@ -159,7 +187,7 @@ class KeysetPager {
     // stop; callers like TableLoader/fetchNext won't try a second query.
     if (pkColumns.isEmpty) {
       _done = true;
-      return Page(rows: rows);
+      return Page(rows: maskRows(rows, _maskedIndexes));
     }
     final last = rows.last;
     final colNames = columns.map((c) => c.name).toList();
@@ -175,6 +203,10 @@ class KeysetPager {
             else
               null,
           ];
-    return Page(rows: rows, lastSortVals: sortVals, lastPkVals: pkVals);
+    return Page(
+      rows: maskRows(rows, _maskedIndexes),
+      lastSortVals: sortVals,
+      lastPkVals: pkVals,
+    );
   }
 }

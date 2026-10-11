@@ -1,3 +1,5 @@
+import 'package:flutter/widgets.dart';
+
 /// Spec for one column in a [GridData].
 ///
 /// [TypeTag] is opaque to the grid — it carries whatever metadata the
@@ -28,6 +30,18 @@ class GridColumnSpec<TypeTag> {
   /// grid's [DataGrid.defaultColumnWidth].
   final double? defaultWidth;
 
+  /// Start hidden. The column keeps its data (copy/export of hidden
+  /// columns is the host's call) but takes no space until shown via
+  /// [DataGridController.setHiddenColumns].
+  final bool hidden;
+
+  /// Optional header tooltip (e.g. a column description).
+  final String? tooltip;
+
+  /// Optional short marker after the badges (e.g. a lock for read-only or
+  /// an eye-slash for masked columns).
+  final String? marker;
+
   const GridColumnSpec({
     required this.name,
     this.type,
@@ -35,6 +49,9 @@ class GridColumnSpec<TypeTag> {
     this.primaryKey = false,
     this.indexed = false,
     this.defaultWidth,
+    this.hidden = false,
+    this.tooltip,
+    this.marker,
   });
 }
 
@@ -64,4 +81,29 @@ class GridSortEvent {
   final String column;
   final bool descending;
   GridSortEvent(this.column, this.descending);
+}
+
+/// One extra entry a host adds to the grid's right-click menu. Built per
+/// click by [DataGrid.contextMenuExtras], so it can depend on the clicked
+/// row and column.
+class GridMenuEntry {
+  final String label;
+  final IconData? icon;
+  final bool enabled;
+
+  /// Shown when [enabled] is false (e.g. why an action is unavailable).
+  final String? disabledReason;
+  final VoidCallback? onSelected;
+
+  /// Draw a divider before this entry.
+  final bool startsGroup;
+
+  const GridMenuEntry({
+    required this.label,
+    this.icon,
+    this.enabled = true,
+    this.disabledReason,
+    this.onSelected,
+    this.startsGroup = false,
+  });
 }

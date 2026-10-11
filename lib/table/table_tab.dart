@@ -1,7 +1,22 @@
 import '../catalog/schema_catalog.dart';
 import '../db/edit_policy.dart';
 import '../grid/data_grid.dart';
+import '../meta/access_policy.dart';
 import '../tabs/tab_model.dart';
+
+/// A fixed WHERE applied to a table tab by a metadata `openTable` action
+/// (e.g. "Find account by email…"). Positional `$n` placeholders numbered
+/// from 1, values in [params]. Transient: not persisted with the tab.
+class MetaTableFilter {
+  final String label;
+  final String where;
+  final List<Object?> params;
+  const MetaTableFilter({
+    required this.label,
+    required this.where,
+    required this.params,
+  });
+}
 
 /// Sort state for a [TableTab]. Persisted with the tab so a refresh
 /// keeps the user's chosen sort.
@@ -70,6 +85,40 @@ class TableTab extends TabModel {
   /// is selected.
   int? selectedRowIndex;
 
+  /// Set when an `openTable` metadata action opened this tab.
+  final MetaTableFilter? metaFilter;
+
+  /// Columns the user (or metadata `default_hidden`) has collapsed. Null
+  /// until the first load seeds it from the access-control defaults.
+  Set<String>? hiddenColumns;
+
+  /// The viewer's access to the table (schema metadata access control).
+  AccessDecision tableAccess = AccessDecision.unrestricted;
+
+  /// Metadata `display.defaultFilter` in force for the current load.
+  String? defaultFilterApplied;
+
+  /// A metadata default filter exists but waits for the user to trust the
+  /// connection's metadata SQL.
+  bool defaultFilterPending = false;
+
+  /// Message shown instead of a hard delete (metadata `danger: hardDelete`).
+  String? hardDeleteRefusal;
+
+  /// Message shown instead of any delete (metadata `danger: delete`).
+  String? deleteRefusal;
+
+  /// `INSERT … RETURNING` list matching the loaded columns.
+  String returningList = '*';
+
+  /// Whether the metadata Charts strip is expanded.
+  bool chartsOpen = false;
+
+  /// The metadata snapshot (access policy) [data] was loaded under. A view
+  /// that finds a different current snapshot reloads, so rows fetched under
+  /// an older policy (before "View as…", a reload) never stay on screen.
+  Object? loadedUnder;
+
   TableTab({
     super.id,
     required super.connectionId,
@@ -80,8 +129,10 @@ class TableTab extends TabModel {
     this.isLoading = false,
     this.error,
     this.elapsed,
+    this.metaFilter,
   });
 
   @override
-  String get title => '$schema.$table';
+  String get title =>
+      metaFilter == null ? '$schema.$table' : '$table · ${metaFilter!.label}';
 }

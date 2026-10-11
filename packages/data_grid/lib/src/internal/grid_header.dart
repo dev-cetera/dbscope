@@ -114,12 +114,24 @@ class _HeaderCell<TypeTag> extends StatelessWidget {
                 Row(
                   children: [
                     Flexible(
-                      child: Text(
-                        spec.name,
-                        style: style.headerTitleStyle,
-                        overflow: TextOverflow.ellipsis,
+                      child: Tooltip(
+                        message: spec.tooltip ?? '',
+                        waitDuration: const Duration(milliseconds: 400),
+                        child: Text(
+                          spec.name,
+                          style: style.headerTitleStyle,
+                          overflow: TextOverflow.ellipsis,
+                        ),
                       ),
                     ),
+                    if (spec.marker != null)
+                      Padding(
+                        padding: const EdgeInsets.only(left: 4),
+                        child: Text(
+                          spec.marker!,
+                          style: style.headerSubtitleStyle,
+                        ),
+                      ),
                     if (badges.isNotEmpty)
                       Padding(
                         padding: const EdgeInsets.only(left: 4),

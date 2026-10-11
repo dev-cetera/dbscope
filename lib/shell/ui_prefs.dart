@@ -25,6 +25,7 @@ class UiPrefs {
   static const _kLastConnectionId = 'ui.lastConnectionId';
   static const _kOpenTabs = 'ui.openTabs';
   static const _kEnvFilePath = 'env.filePath';
+  static const _kMetaTrustPrefix = 'meta.trust.';
 
   SharedPreferences? _prefs;
 
@@ -76,6 +77,16 @@ class UiPrefs {
   void setOpenTabsJson(String v) => _prefs?.setString(_kOpenTabs, v);
 
   void setEnvFilePath(String? v) => _setOrRemove(_kEnvFilePath, v);
+
+  /// Pinned action-set hashes for a profile's metadata actions (JSON
+  /// `{"read": "<sha256>", "exec": "<sha256>"}`). Machine-local on purpose:
+  /// trust never travels with a shared profile or connection link. Null in
+  /// windows without SharedPreferences, which only means "ask again".
+  String? metaTrust(String profileId) =>
+      _prefs?.getString('$_kMetaTrustPrefix$profileId');
+
+  void setMetaTrust(String profileId, String? v) =>
+      _setOrRemove('$_kMetaTrustPrefix$profileId', v);
 
   /// Stores [v] trimmed, or drops the key when there is nothing to store.
   /// Removing rather than writing `''` is what lets a reader tell "never set"

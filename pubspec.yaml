@@ -52,6 +52,9 @@ dependencies:
   schema_viewer:
     path: packages/schema_viewer
   firebase_core: ^4.13.0
+  yaml: ^3.1.4
+  fl_chart: ^1.2.0
+  crypto: ^3.0.7
 
 dev_dependencies:
   flutter_test:

@@ -3,7 +3,13 @@ import '../catalog/schema_catalog.dart';
 import '../connection/profile.dart';
 import '../db/executor.dart';
 import '../grid/data_grid.dart';
+import '../db/edit_policies.dart';
 import '../db/edit_policy.dart';
+import '../meta/access_policy.dart';
+import '../meta/masked_value.dart';
+import '../meta/meta_cache.dart';
+import '../meta/meta_models.dart';
+import '../meta/read_only_exec.dart';
 import '../util/sql_parse.dart';
 import '../util/sql_quote.dart';
 import 'cancel_token.dart';
@@ -42,6 +48,31 @@ class TableLoadResult {
   /// show a badge so users aren't confused why row counts look low.
   final bool tenantFilterApplied;
 
+  /// The viewer's access to the table as a whole (schema metadata access
+  /// control). `full` when no access control applies.
+  final AccessDecision tableAccess;
+
+  /// Metadata `display.defaultFilter` applied to this load, if any.
+  final String? defaultFilterApplied;
+
+  /// A default filter exists but was not applied because the metadata SQL
+  /// is not trusted yet.
+  final bool defaultFilterPending;
+
+  /// The sort actually used: the caller's, or metadata `defaultSort`.
+  final ({String column, bool descending})? effectiveSort;
+
+  /// Set when metadata forbids hard deletes on this table
+  /// (`policy.danger: hardDelete`): the message to show instead.
+  final String? hardDeleteRefusal;
+
+  /// Set when metadata forbids any delete (`policy.danger: delete`).
+  final String? deleteRefusal;
+
+  /// Expression list for `INSERT … RETURNING`, matching [columns] (masked
+  /// columns come back as NULL, `none` columns not at all).
+  final String returningList;
+
   const TableLoadResult({
     required this.columns,
     required this.pkColumns,
@@ -52,7 +83,23 @@ class TableLoadResult {
     required this.elapsed,
     this.effectiveSoftDeleteColumn,
     this.tenantFilterApplied = false,
+    this.tableAccess = AccessDecision.unrestricted,
+    this.defaultFilterApplied,
+    this.defaultFilterPending = false,
+    this.effectiveSort,
+    this.hardDeleteRefusal,
+    this.deleteRefusal,
+    this.returningList = '*',
   });
+
+  bool get canInsert => tableAccess.level.atLeast(AccessLevel.full);
+  bool get canDelete => tableAccess.level.atLeast(AccessLevel.full);
+
+  /// Indexes of masked columns, for masking a freshly inserted row.
+  Set<int> get maskedIndexes => {
+    for (var i = 0; i < columns.length; i++)
+      if (columns[i].isMasked) i,
+  };
 
   GridData toGridData() => GridData(
     columns: [
@@ -79,8 +126,17 @@ class TableLoader {
     CancelToken? cancelToken,
     String? baseWhere,
     List<Object?> baseWhereParams = const [],
+    bool defaultFilterTrusted = false,
   }) async {
     final stopwatch = Stopwatch()..start();
+    final snapshot = MetadataCache.instance.snapshotForExecutor(conn);
+    final access = snapshot?.policy ?? AccessPolicy.unrestricted;
+    final tableAccess = access.forTable(schema, table);
+    if (tableAccess.isNone) {
+      throw StateError(
+        '$schema.$table is not available. ${tableAccess.reason}',
+      );
+    }
     final catalog = SchemaCatalog(conn);
     // The three catalog queries are independent. Fire them in parallel so
     // we pay one pipelined round-trip for the lot instead of three serial
@@ -93,15 +149,42 @@ class TableLoader {
     final columns = catalogResults[0] as List<ColumnInfo>;
     final pk = catalogResults[1] as List<String>;
     final indexed = catalogResults[2] as Set<String>;
+    final columnNames = {for (final c in columns) c.name};
+    final maskedNames = {
+      for (final c in columns)
+        if (c.isMasked) c.name,
+    };
 
+    final index = snapshot?.index;
+    final tablePolicy = index?.policyTable(schema, table);
+    final display = index?.displayTable(schema, table);
+
+    // The sort: the caller's, else metadata's defaultSort — never a masked
+    // column (its values are NULL here, so a keyset cursor on it breaks).
+    var sort = sortColumn == null
+        ? display?.parsedDefaultSort
+        : (column: sortColumn, descending: descending);
+    if (sort != null &&
+        (!columnNames.contains(sort.column) ||
+            maskedNames.contains(sort.column))) {
+      sort = null;
+    }
+
+    // A metadata default filter is SQL from the metadata: it applies only
+    // once the user trusted the connection's metadata SQL.
+    final defaultFilter = defaultFilterTrusted ? display?.defaultFilter : null;
+    final defaultFilterPending =
+        !defaultFilterTrusted && display?.defaultFilter != null;
     final composed = _composeBaseWhere(
       profile: profile,
+      metaSoftDelete: tablePolicy?.softDelete,
       schema: schema,
       table: table,
       columns: columns,
       showDeleted: showDeleted,
       callerWhere: baseWhere,
       callerParams: baseWhereParams,
+      defaultFilter: defaultFilter,
     );
 
     final pager = KeysetPager(
@@ -110,37 +193,32 @@ class TableLoader {
       table: table,
       columns: columns,
       pkColumns: pk,
-      sortColumn: sortColumn,
-      descending: descending,
+      sortColumn: sort?.column,
+      descending: sort?.descending ?? false,
       pageSize: pageSize,
       baseWhere: composed.where,
       baseWhereParams: composed.params,
+      explicitColumns: access.active,
     );
     final first = await pager.fetchNext(cancelToken: cancelToken);
     stopwatch.stop();
 
-    final policies = [
+    final policies = buildEditPolicies(
+      conn: conn,
+      schema: schema,
+      table: table,
+      columns: columns,
+      pkColumns: pk,
+      connectionReadOnly: connectionReadOnly,
+    );
+
+    final returningList = [
       for (final c in columns)
-        EditPolicy(
-          schema: schema,
-          table: table,
-          pkColumns: pk,
-          column: c.name,
-          type: c.type,
-          typeName: c.typeName,
-          nullable: c.nullable,
-          isGenerated: c.isGenerated,
-          isIdentity: c.isIdentity,
-          readOnly:
-              pk.isEmpty || c.isGenerated || c.isIdentity || connectionReadOnly,
-          multiLine:
-              c.type == PgType.json ||
-              c.type == PgType.jsonb ||
-              c.type == PgType.text,
-          nullIfBlank: c.nullable,
-          enumValues: c.enumValues,
-        ),
-    ];
+        if (c.isMasked && !pk.contains(c.name))
+          'NULL AS ${quoteIdent(c.name)}'
+        else
+          quoteIdent(c.name),
+    ].join(', ');
 
     return TableLoadResult(
       columns: columns,
@@ -152,20 +230,39 @@ class TableLoader {
       elapsed: stopwatch.elapsed,
       effectiveSoftDeleteColumn: composed.effectiveSoftDeleteColumn,
       tenantFilterApplied: composed.tenantFilterApplied,
+      tableAccess: tableAccess,
+      defaultFilterApplied: composed.defaultFilterApplied,
+      defaultFilterPending: defaultFilterPending,
+      effectiveSort: sort,
+      hardDeleteRefusal: (tablePolicy?.forbidsHardDelete ?? false)
+          ? (tablePolicy?.message ??
+                'Metadata forbids hard deletes on this table.')
+          : null,
+      deleteRefusal: (tablePolicy?.forbidsAnyDelete ?? false)
+          ? (tablePolicy?.message ?? 'Metadata forbids deleting rows here.')
+          : null,
+      returningList: columns.isEmpty ? '*' : returningList,
     );
   }
 }
+
+/// Masks the cells of a row returned by `INSERT … RETURNING` the same way
+/// the pager masks fetched rows.
+List<Object?> maskInsertedRow(List<Object?> row, Set<int> maskedIndexes) =>
+    maskRows([row], maskedIndexes).first;
 
 class _ComposedWhere {
   final String? where;
   final List<Object?> params;
   final String? effectiveSoftDeleteColumn;
   final bool tenantFilterApplied;
+  final String? defaultFilterApplied;
   const _ComposedWhere({
     required this.where,
     required this.params,
     required this.effectiveSoftDeleteColumn,
     required this.tenantFilterApplied,
+    this.defaultFilterApplied,
   });
 }
 
@@ -181,6 +278,8 @@ class _ComposedWhere {
 /// literal `IS NULL` check — no params.)
 _ComposedWhere _composeBaseWhere({
   required ConnectionProfile? profile,
+  required String? metaSoftDelete,
+  required String? defaultFilter,
   required String schema,
   required String table,
   required List<ColumnInfo> columns,
@@ -192,7 +291,9 @@ _ComposedWhere _composeBaseWhere({
   final params = <Object?>[...callerParams];
   final parts = <String>[];
   if (callerWhere != null && callerWhere.isNotEmpty) {
-    parts.add(callerWhere);
+    // Parenthesised: an `a OR b` filter must not swallow the soft-delete /
+    // tenant parts ANDed after it.
+    parts.add('($callerWhere)');
   }
 
   var tenantApplied = false;
@@ -204,8 +305,11 @@ _ComposedWhere _composeBaseWhere({
   }
 
   String? effectiveSoftDelete;
+  // The live profile override wins (it may have changed in another window
+  // since the metadata snapshot was taken); metadata's `softDelete` applies
+  // when the profile sets none.
   final overrides = profile?.overridesFor(schema, table);
-  final softDeleteCol = overrides?.softDeleteColumn;
+  final softDeleteCol = overrides?.softDeleteColumn ?? metaSoftDelete;
   if (softDeleteCol != null && colNames.contains(softDeleteCol)) {
     effectiveSoftDelete = softDeleteCol;
     if (!showDeleted) {
@@ -213,11 +317,20 @@ _ComposedWhere _composeBaseWhere({
     }
   }
 
+  // Metadata `display.defaultFilter`: a fixed SQL predicate written by
+  // whoever maintains the metadata, applied like the soft-delete filter.
+  String? defaultFilterApplied;
+  if (defaultFilter != null && defaultFilter.trim().isNotEmpty) {
+    parts.add('(${defaultFilter.trim()})');
+    defaultFilterApplied = defaultFilter.trim();
+  }
+
   return _ComposedWhere(
     where: parts.isEmpty ? null : parts.join(' AND '),
     params: params,
     effectiveSoftDeleteColumn: effectiveSoftDelete,
     tenantFilterApplied: tenantApplied,
+    defaultFilterApplied: defaultFilterApplied,
   );
 }
 
@@ -227,7 +340,12 @@ class QueryRunner {
 
   static const int maxRows = 10000;
 
-  Future<QueryRunResult> runSql(String sql, {CancelToken? cancelToken}) async {
+  Future<QueryRunResult> runSql(
+    String sql, {
+    CancelToken? cancelToken,
+    Map<String, Object?>? named,
+    bool readOnly = false,
+  }) async {
     var trimmed = sql.trim();
     if (trimmed.endsWith(';')) {
       trimmed = trimmed.substring(0, trimmed.length - 1).trim();
@@ -242,7 +360,17 @@ class QueryRunner {
     }
 
     final stopwatch = Stopwatch()..start();
-    final result = await conn.execute(trimmed, cancelToken: cancelToken);
+    // Metadata-defined SQL runs fenced into a read-only transaction.
+    final result = readOnly
+        ? await executeReadOnly(
+            conn,
+            trimmed,
+            named: named,
+            cancelToken: cancelToken,
+          )
+        : named == null || named.isEmpty
+        ? await conn.execute(trimmed, cancelToken: cancelToken)
+        : await conn.execute(trimmed, named: named, cancelToken: cancelToken);
     stopwatch.stop();
     if (cancelToken?.isCancelled ?? false) {
       throw const _CancelledException();
@@ -279,4 +407,35 @@ class _CancelledException implements Exception {
   const _CancelledException();
   @override
   String toString() => 'Query cancelled';
+}
+
+/// Applies per-column access to a query result: `none` columns are dropped,
+/// masked ones show [MaskedValue]. Used for named queries (whose result
+/// columns are addressable as `query:<id>.<col>`) and for action queries
+/// (best effort, by column name against the action's table).
+QueryRunResult applyColumnAccess(
+  QueryRunResult result,
+  AccessDecision Function(String column) decide,
+) {
+  final columns = result.data.columns;
+  final keep = <int>[];
+  final masked = <int>{};
+  for (var i = 0; i < columns.length; i++) {
+    final decision = decide(columns[i].name);
+    if (decision.isNone) continue;
+    if (decision.isMasked) masked.add(keep.length);
+    keep.add(i);
+  }
+  if (keep.length == columns.length && masked.isEmpty) return result;
+  final rows = [
+    for (final row in result.data.rows) [for (final i in keep) row[i]],
+  ];
+  return QueryRunResult(
+    data: GridData(
+      columns: [for (final i in keep) columns[i]],
+      rows: maskRows(rows, masked),
+    ),
+    elapsed: result.elapsed,
+    truncated: result.truncated,
+  );
 }

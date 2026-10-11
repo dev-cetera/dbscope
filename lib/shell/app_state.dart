@@ -268,6 +268,7 @@ class AppState extends ChangeNotifier {
     final existing = tabs.firstWhere(
       (t) =>
           t is TableTab &&
+          t.metaFilter == null &&
           t.connectionId == connectionId &&
           t.schema == schema &&
           t.table == table,

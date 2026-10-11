@@ -1,5 +1,7 @@
 import 'package:uuid/uuid.dart';
 
+import '../meta/meta_settings.dart';
+
 enum SslMode { disable, require, verifyFull }
 
 final RegExp readOnlyHeuristic = RegExp(
@@ -97,6 +99,9 @@ class ConnectionProfile {
   /// [TableOverrides]. Empty by default.
   final Map<String, TableOverrides> tableOverrides;
 
+  /// Where dbscope looks for schema metadata (tables and sidecar file).
+  final MetadataSettings metadata;
+
   ConnectionProfile({
     String? id,
     this.kind = kPostgresKind,
@@ -111,6 +116,7 @@ class ConnectionProfile {
     Map<String, Object?>? extra,
     this.tenantFilter,
     Map<String, TableOverrides>? tableOverrides,
+    this.metadata = MetadataSettings.defaults,
   }) : id = id ?? const Uuid().v4(),
        readOnly = readOnly ?? readOnlyHeuristic.hasMatch(name),
        extra = Map<String, Object?>.unmodifiable(extra ?? const {}),
@@ -138,6 +144,7 @@ class ConnectionProfile {
     Map<String, Object?>? extra,
     Object? tenantFilter = _sentinel,
     Map<String, TableOverrides>? tableOverrides,
+    MetadataSettings? metadata,
   }) => ConnectionProfile(
     id: id,
     kind: kind ?? this.kind,
@@ -154,6 +161,7 @@ class ConnectionProfile {
         ? this.tenantFilter
         : tenantFilter as TenantFilter?,
     tableOverrides: tableOverrides ?? this.tableOverrides,
+    metadata: metadata ?? this.metadata,
   );
 
   /// Replace the overrides for one table key. Passing null removes the
@@ -189,6 +197,7 @@ class ConnectionProfile {
       'tableOverrides': {
         for (final e in tableOverrides.entries) e.key: e.value.toJson(),
       },
+    if (!metadata.isDefault) 'metadata': metadata.toJson(),
   };
 
   static ConnectionProfile fromJson(
@@ -227,6 +236,7 @@ class ConnectionProfile {
           : const <String, Object?>{},
       tenantFilter: TenantFilter.fromJson(json['tenantFilter']),
       tableOverrides: overrides,
+      metadata: MetadataSettings.fromJson(json['metadata']),
     );
   }
 }

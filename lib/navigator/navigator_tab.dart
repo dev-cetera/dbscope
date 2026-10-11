@@ -45,6 +45,9 @@ class InboundFilter {
 /// from a parent row, plus an optional regex filter on a user-selected
 /// column.
 class RowListStep extends NavStep {
+  /// Metadata `display.rowLabel` for this table, when one applies.
+  String? rowLabelTemplate;
+
   final String schema;
   final String table;
   final InboundFilter? inboundFilter;
