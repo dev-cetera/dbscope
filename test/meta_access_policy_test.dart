@@ -15,6 +15,7 @@
 import 'package:dbscope/meta/access_policy.dart';
 import 'package:dbscope/meta/meta_models.dart';
 import 'package:dbscope/meta/meta_sources.dart';
+import 'package:dbscope/meta/meta_settings.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 MetaDocument worked() {
@@ -160,7 +161,12 @@ void main() {
   });
 
   test("dbscope's own tables need manage", () {
-    bool isMeta(String schema, String table) => schema == 'dbscope';
+    bool isMeta(String schema, String table) => MetaTableNames.isMetaTable(
+      schema,
+      table,
+      MetadataSettings.defaults,
+      sqlite: false,
+    );
     AccessPolicy resolve(Set<String> pg) => AccessPolicy.resolve(
       document: doc,
       settings: const RbacSettings(),
@@ -168,13 +174,33 @@ void main() {
       isMetaTable: isMeta,
     );
     expect(
-      resolve({'mallory'}).forTable('dbscope', 'grants').level,
+      resolve({'mallory'}).forTable('dbscope', 'dbscope_access_grants').level,
       AccessLevel.none,
     );
     expect(
-      resolve({'alice'}).forTable('dbscope', 'grants').level,
+      resolve({'alice'}).forTable('dbscope', 'dbscope_access_grants').level,
       isNot(AccessLevel.none),
     );
+  });
+
+  test('metadata tables carry the dbscope_ prefix; app tables never match', () {
+    bool isMeta(String schema, String table, {bool sqlite = false}) =>
+        MetaTableNames.isMetaTable(
+          schema,
+          table,
+          MetadataSettings.defaults,
+          sqlite: sqlite,
+        );
+    expect(isMeta('dbscope', 'dbscope_metadata'), isTrue);
+    expect(isMeta('dbscope', 'dbscope_access_roles'), isTrue);
+    expect(isMeta('dbscope', 'dbscope_access_role_members'), isTrue);
+    expect(isMeta('dbscope', 'dbscope_access_grants'), isTrue);
+    // An application's own access-control tables are not ours, even in
+    // the same schema.
+    expect(isMeta('dbscope', 'roles'), isFalse);
+    expect(isMeta('public', 'dbscope_access_roles'), isFalse);
+    expect(isMeta('main', '_dbscope_access_grants', sqlite: true), isTrue);
+    expect(isMeta('main', 'grants', sqlite: true), isFalse);
   });
 
   test('Postgres privileges cap the decision', () {

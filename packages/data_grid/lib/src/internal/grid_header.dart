@@ -16,6 +16,8 @@ class GridHeader<TypeTag> extends StatelessWidget {
   final void Function(int originalIdx)? onSortToggle;
   final void Function(int originalIdx, double width) onWidthChanged;
   final void Function(int fromView, int toView) onReorder;
+  final Widget Function(BuildContext context, int columnIdx, Widget header)?
+      headerBuilder;
 
   const GridHeader({
     super.key,
@@ -28,6 +30,7 @@ class GridHeader<TypeTag> extends StatelessWidget {
     required this.onSortToggle,
     required this.onWidthChanged,
     required this.onReorder,
+    this.headerBuilder,
   });
 
   @override
@@ -56,6 +59,7 @@ class GridHeader<TypeTag> extends StatelessWidget {
               onSortToggle: onSortToggle,
               onWidthChanged: onWidthChanged,
               onReorder: onReorder,
+              headerBuilder: headerBuilder,
             ),
         ],
       ),
@@ -75,6 +79,8 @@ class _HeaderCell<TypeTag> extends StatelessWidget {
   final void Function(int originalIdx)? onSortToggle;
   final void Function(int originalIdx, double width) onWidthChanged;
   final void Function(int fromView, int toView) onReorder;
+  final Widget Function(BuildContext context, int columnIdx, Widget header)?
+      headerBuilder;
 
   const _HeaderCell({
     required this.viewIdx,
@@ -88,6 +94,7 @@ class _HeaderCell<TypeTag> extends StatelessWidget {
     required this.onSortToggle,
     required this.onWidthChanged,
     required this.onReorder,
+    required this.headerBuilder,
   });
 
   @override
@@ -114,14 +121,10 @@ class _HeaderCell<TypeTag> extends StatelessWidget {
                 Row(
                   children: [
                     Flexible(
-                      child: Tooltip(
-                        message: spec.tooltip ?? '',
-                        waitDuration: const Duration(milliseconds: 400),
-                        child: Text(
-                          spec.name,
-                          style: style.headerTitleStyle,
-                          overflow: TextOverflow.ellipsis,
-                        ),
+                      child: Text(
+                        spec.name,
+                        style: style.headerTitleStyle,
+                        overflow: TextOverflow.ellipsis,
                       ),
                     ),
                     if (spec.marker != null)
@@ -180,7 +183,7 @@ class _HeaderCell<TypeTag> extends StatelessWidget {
       childWhenDragging: Opacity(opacity: 0.3, child: body),
       child: GestureDetector(
         onTap: onSortToggle == null ? null : () => onSortToggle!(originalIdx),
-        child: body,
+        child: _wrapped(context, body),
       ),
     );
 
@@ -222,6 +225,20 @@ class _HeaderCell<TypeTag> extends StatelessWidget {
           ),
         ),
       ],
+    );
+  }
+
+  /// The whole header cell (not just its title) carries the tooltip, so
+  /// hovering anywhere on it shows what the column is.
+  Widget _wrapped(BuildContext context, Widget body) {
+    final builder = headerBuilder;
+    if (builder != null) return builder(context, originalIdx, body);
+    final tooltip = spec.tooltip;
+    if (tooltip == null || tooltip.isEmpty) return body;
+    return Tooltip(
+      message: tooltip,
+      waitDuration: const Duration(milliseconds: 400),
+      child: body,
     );
   }
 }

@@ -8,7 +8,6 @@ import '../../connection/registry.dart';
 import '../../db/executor.dart';
 import '../../util/pg_errors.dart';
 import '../access_policy.dart';
-import '../chart_sql.dart';
 import '../charts/chart_view.dart';
 import '../meta_cache.dart';
 import '../meta_models.dart';
@@ -16,6 +15,7 @@ import '../meta_sources.dart';
 import '../meta_writer.dart';
 import '../native_facts.dart';
 import 'action_trust.dart';
+import 'description_tooltip.dart';
 import 'meta_menu.dart';
 
 const TextStyle _mono = TextStyle(fontFamily: 'monospace', fontSize: 12);
@@ -270,98 +270,6 @@ Future<void> showRowChartsDialog(
   );
 }
 
-Future<void> showVisualiseColumnDialog(
-  BuildContext context, {
-  required String connectionId,
-  required String schema,
-  required String table,
-  required String column,
-  required ColumnShape shape,
-}) async {
-  final executor = ConnectionRegistry.instance.connectionFor(connectionId);
-  if (executor == null) return;
-  final chart = visualiseColumnChart(
-    schema: schema,
-    table: table,
-    column: column,
-    shape: shape,
-  );
-  await showDialog<void>(
-    context: context,
-    builder: (ctx) => AppFormDialog(
-      title: '$table.$column',
-      width: 760,
-      submitLabel: null,
-      cancelLabel: 'Close',
-      content: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          MetaChartCard(chart: chart, executor: executor, height: 320),
-          const SizedBox(height: 8),
-          _NullShare(
-            connectionId: connectionId,
-            schema: schema,
-            table: table,
-            column: column,
-          ),
-        ],
-      ),
-    ),
-  );
-}
-
-class _NullShare extends StatefulWidget {
-  final String connectionId;
-  final String schema;
-  final String table;
-  final String column;
-  const _NullShare({
-    required this.connectionId,
-    required this.schema,
-    required this.table,
-    required this.column,
-  });
-
-  @override
-  State<_NullShare> createState() => _NullShareState();
-}
-
-class _NullShareState extends State<_NullShare> {
-  // Created once: a FutureBuilder future made in build re-queries on every
-  // rebuild.
-  late final Future<String> _future = _load();
-
-  String get connectionId => widget.connectionId;
-  String get schema => widget.schema;
-  String get table => widget.table;
-  String get column => widget.column;
-
-  Future<String> _load() async {
-    final executor = ConnectionRegistry.instance.connectionFor(connectionId);
-    if (executor == null) return '';
-    final res = await executor.execute(nullShareSql(schema, table, column));
-    final total = (res.rows.first[0] as num?)?.toInt() ?? 0;
-    final nonNull = (res.rows.first[1] as num?)?.toInt() ?? 0;
-    if (total == 0) return 'No rows.';
-    final nulls = total - nonNull;
-    final share = (nulls / total * 100).toStringAsFixed(1);
-    return '$total rows · $nulls null ($share%)';
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return FutureBuilder<String>(
-      future: _future,
-      builder: (context, snap) => Text(
-        snap.hasError
-            ? 'Could not count nulls: ${snap.error}'
-            : (snap.data ?? 'Counting…'),
-        style: Theme.of(context).textTheme.bodySmall,
-      ),
-    );
-  }
-}
-
 /// Description, access decision ("Why can't I see/edit this?"), policy and
 /// links for one column, with "Edit description…" for managers.
 Future<void> showAboutColumnDialog(
@@ -443,9 +351,12 @@ Future<void> showAboutColumnDialog(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             section('Description', [
-              SelectableText(
-                describe.isEmpty ? 'No description.' : describe.toTooltip(),
-              ),
+              if (describe.isEmpty)
+                const SelectableText('No description.')
+              else
+                SelectableText.rich(
+                  descriptionSpan(context, describe.toMarkdown()),
+                ),
               if (describe.values.isNotEmpty) ...[
                 const SizedBox(height: 6),
                 for (final e in describe.values.entries)
@@ -785,7 +696,9 @@ Future<void> showAboutTableDialog(
           children: [
             if (!describe.isEmpty) ...[
               Text('Description', style: theme.textTheme.labelLarge),
-              SelectableText(describe.toTooltip()),
+              SelectableText.rich(
+                descriptionSpan(context, describe.toMarkdown()),
+              ),
               const SizedBox(height: 12),
             ],
             _NativeFactsSection(

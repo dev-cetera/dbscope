@@ -53,6 +53,10 @@ class LinkedRowNode extends LinkedNode {
   bool isSeed;
 
   Map<String, Object?>? row;
+
+  /// Metadata `display.rowLabel` rendered for [row] ("Buy milk (OPEN)"),
+  /// or null. Set with [row]; the card shows it as its subtitle.
+  String? rowLabel;
   List<ColumnInfo> columns = const [];
   List<EditPolicy> editPolicies = const [];
   bool isLoading = false;

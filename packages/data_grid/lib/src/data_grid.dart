@@ -144,6 +144,12 @@ class DataGrid<TypeTag> extends StatefulWidget {
     List<int> selectedRows,
   )? contextMenuExtras;
 
+  /// Wraps each column header (ORIGINAL column index) — e.g. a rich
+  /// description tooltip and a right-click menu. Null shows the column's
+  /// plain [GridColumnSpec.tooltip], if any, over the whole header.
+  final Widget Function(BuildContext context, int columnIdx, Widget header)?
+      headerBuilder;
+
   const DataGrid({
     super.key,
     required this.data,
@@ -167,6 +173,7 @@ class DataGrid<TypeTag> extends StatefulWidget {
     this.onRowSelected,
     this.showGutter = true,
     this.contextMenuExtras,
+    this.headerBuilder,
   });
 
   @override
@@ -738,6 +745,7 @@ class _DataGridState<TypeTag> extends State<DataGrid<TypeTag>> {
                     onSortToggle: widget.onSort == null ? null : _onSortToggle,
                     onWidthChanged: _onWidthChanged,
                     onReorder: _onReorder,
+                    headerBuilder: widget.headerBuilder,
                   ),
                   Expanded(
                     child: GestureDetector(

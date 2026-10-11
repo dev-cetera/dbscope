@@ -50,9 +50,8 @@ class _QueryRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    return Tooltip(
-      message: query.description ?? query.label,
-      waitDuration: const Duration(milliseconds: 500),
+    return DescriptionTooltip(
+      markdown: '**${query.label}**\n\n${query.description ?? ''}',
       child: InkWell(
         onTap: _open,
         child: Padding(

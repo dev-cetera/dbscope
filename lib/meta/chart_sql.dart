@@ -11,7 +11,6 @@
 
 import '../util/sql_quote.dart';
 import 'meta_models.dart';
-import 'selector.dart';
 
 enum SqlDialect { postgres, sqlite }
 
@@ -193,57 +192,3 @@ String? _rangeClause(ChartSpec chart, SqlDialect dialect) {
   }
   return "${_sqliteTime(ident)} >= datetime('now', '-$hours hours')";
 }
-
-/// A zero-config chart for one column ("Visualise column"): top values for
-/// text/enums, a histogram for numbers, counts per day for timestamps.
-enum ColumnShape { categorical, numeric, temporal }
-
-ChartSpec visualiseColumnChart({
-  required String schema,
-  required String table,
-  required String column,
-  required ColumnShape shape,
-}) {
-  final target = Selector.forTable(schema, table);
-  switch (shape) {
-    case ColumnShape.categorical:
-      return ChartSpec(
-        id: 'visualise:$schema.$table.$column',
-        target: target,
-        label: 'Top values of $column',
-        type: ChartType.bar,
-        source: ChartTableSource(schema, table),
-        x: column,
-        y: const [ChartMeasure(aggregate: ChartAggregate.count, label: 'rows')],
-        limit: 20,
-      );
-    case ColumnShape.numeric:
-      return ChartSpec(
-        id: 'visualise:$schema.$table.$column',
-        target: target,
-        label: 'Distribution of $column',
-        type: ChartType.histogram,
-        source: ChartTableSource(schema, table),
-        x: column,
-      );
-    case ColumnShape.temporal:
-      return ChartSpec(
-        id: 'visualise:$schema.$table.$column',
-        target: target,
-        label: 'Rows per day by $column',
-        type: ChartType.bar,
-        source: ChartTableSource(schema, table),
-        x: column,
-        bucket: ChartBucket.day,
-        y: const [ChartMeasure(aggregate: ChartAggregate.count, label: 'rows')],
-        range: ChartRange.last365Days,
-        limit: 366,
-      );
-  }
-}
-
-/// `SELECT count(*), count(col)` — the null percentage shown beside a
-/// visualised column.
-String nullShareSql(String schema, String table, String column) =>
-    'SELECT count(*) AS total, count(${quoteIdent(column)}) AS non_null '
-    'FROM ${quoteQualified(schema, table)}';

@@ -95,6 +95,11 @@ CREATE TABLE IF NOT EXISTS ${n.grants} (
   enabled BOOLEAN NOT NULL DEFAULT TRUE,
   spec JSONB NOT NULL DEFAULT '{}'
 );
+COMMENT ON SCHEMA $schema IS 'dbscope (database viewer) metadata: descriptions, display, queries, charts and viewer access rules. Not used by the application.';
+COMMENT ON TABLE ${n.meta} IS 'dbscope: schema metadata rows (display, links, actions, named queries, charts, checks, AI notes).';
+COMMENT ON TABLE ${n.roles} IS 'dbscope: roles for what the database VIEWER shows each person. Not the application''s roles.';
+COMMENT ON TABLE ${n.members} IS 'dbscope: who holds which viewer role (user:<email> or pg:<role>).';
+COMMENT ON TABLE ${n.grants} IS 'dbscope: what each viewer role may see or edit (none / masked / read / edit / full).';
 -- Everyone must be able to READ the rules (the client applies them);
 -- grant writes only to the people who manage them.
 GRANT USAGE ON SCHEMA $schema TO PUBLIC;

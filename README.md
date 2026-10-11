@@ -31,8 +31,11 @@ what the schema *means* and *who may see what*. Without it, nothing changes.
 **Where it comes from** (merged; later wins on equal specificity):
 
 1. Postgres comments (`COMMENT ON …`) — zero setup.
-2. Metadata tables in the database: schema `dbscope` (`meta`, `roles`,
-   `role_members`, `grants`) on Postgres, `_dbscope_*` tables on SQLite.
+2. Metadata tables in the database, every one prefixed so it can't be
+   mistaken for the application's own tables (a bare `roles` could be the
+   app's access control): schema `dbscope` with `dbscope_metadata`,
+   `dbscope_access_roles`, `dbscope_access_role_members` and
+   `dbscope_access_grants` on Postgres; `_dbscope_metadata`, … on SQLite.
    *Metadata ▸ Initialize metadata tables…* shows the DDL first.
 3. A metadata file (YAML or JSON) set per connection in *Metadata ▸
    Settings…* — reviewable in PRs, and the only option for databases you
@@ -83,7 +86,8 @@ grants:
 | `check` | SQL that should return no rows — *Metadata ▸ Run checks…* |
 | `ai` | notes and example question→SQL pairs for the SQL assistant |
 
-Right-click any column for *Visualise* — no metadata needed.
+Charts exist only where the metadata defines them: there is no ad-hoc
+"visualise any column", so what can be charted is decided in review.
 
 **Access control.** Grant levels `none < masked < read < edit < full` per
 selector; capabilities `query` (free SQL), `export`, `ai`, `exec` (write

@@ -489,17 +489,23 @@ class DescribeSpec {
       deprecated == null &&
       values.isEmpty;
 
-  /// Multi-line text for a tooltip. Empty when there is nothing to say.
-  String toTooltip() {
-    final lines = <String>[
-      ?label,
-      ?description,
-      if (unit != null) 'Unit: $unit',
-      if (owner != null) 'Owner: $owner',
-      if (deprecated != null) 'Deprecated: $deprecated',
-      if (examples.isNotEmpty) 'e.g. ${examples.join(', ')}',
+  /// Markdown for tooltips and About dialogs. Empty when there is nothing
+  /// to say. The label leads, then the short facts, then the description
+  /// (which may carry its own fine print below a rule).
+  String toMarkdown() {
+    final facts = [
+      if (unit != null) '- **Unit:** $unit',
+      if (owner != null) '- **Owner:** $owner',
+      if (deprecated != null) '- **Deprecated:** $deprecated',
+      if (examples.isNotEmpty)
+        '- **Examples:** ${examples.map((e) => '`$e`').join(', ')}',
+      for (final e in values.entries) '- `${e.key}` — ${e.value}',
     ];
-    return lines.join('\n');
+    return [
+      if (label != null) '**$label**',
+      if (facts.isNotEmpty) facts.join('\n'),
+      ?description,
+    ].join('\n\n');
   }
 }
 

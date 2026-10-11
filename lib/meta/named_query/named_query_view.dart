@@ -18,6 +18,7 @@ import '../meta_cache.dart';
 import '../meta_models.dart';
 import '../ui/action_trust.dart';
 import '../ui/meta_dialogs.dart';
+import '../ui/meta_column_header.dart';
 import '../ui/meta_menu.dart';
 import 'named_query_tab.dart';
 
@@ -179,10 +180,21 @@ class _NamedQueryViewState extends State<NamedQueryView>
     }
   }
 
-  /// Adds descriptions (header tooltips) and masked markers.
+  /// Column headers that explain themselves (null without a query id).
+  Widget Function(BuildContext, int, Widget)? _headerBuilder() {
+    final queryId = tab.queryId;
+    if (queryId == null) return null;
+    return (context, columnIdx, header) => MetaColumnHeader.forQuery(
+      connectionId: tab.connectionId,
+      queryId: queryId,
+      column: tab.data!.columns[columnIdx].name,
+      columnType: tab.data!.columns[columnIdx].pgType,
+      child: header,
+    );
+  }
+
+  /// Adds masked markers. (Descriptions come from [MetaColumnHeader].)
   GridData _decorate(GridData data) {
-    final id = tab.queryId;
-    final index = _snapshot?.index;
     return GridData(
       columns: [
         for (var i = 0; i < data.columns.length; i++)
@@ -190,11 +202,6 @@ class _NamedQueryViewState extends State<NamedQueryView>
             name: data.columns[i].name,
             type: data.columns[i].pgType,
             typeName: data.columns[i].typeName,
-            tooltip: id == null || index == null
-                ? null
-                : index
-                      .describeQueryColumn(id, data.columns[i].name)
-                      .toTooltip(),
             marker: data.rows.isNotEmpty && data.rows.first[i] is MaskedValue
                 ? '••'
                 : null,
@@ -373,6 +380,7 @@ class _NamedQueryViewState extends State<NamedQueryView>
               viewMode: tab.viewMode,
               displayByColumn: _displayByColumn(),
               contextMenuExtras: _menuExtras,
+              headerBuilder: _headerBuilder(),
               onRowSelected: (index) {
                 if (tab.selectedRowIndex == index) return;
                 setState(() => tab.selectedRowIndex = index);

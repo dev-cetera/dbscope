@@ -58,7 +58,7 @@ const int _kListPageSize = 200;
 /// ref-target rows only), so [_compactColumnsFor] is what drives both
 /// height and edge-anchor math.
 double _nodeHeightFor(LinkedRowNode node, List<ForeignKey> allFks) {
-  final hasSubtitle = node.isSeed && node.pkColumns.isNotEmpty;
+  final hasSubtitle = _nodeSubtitle(node) != null;
   final cols = _compactColumnsFor(node, allFks).length;
   return schemaNodeHeight(cols, hasSubtitle: hasSubtitle);
 }
@@ -72,7 +72,7 @@ double? _columnAnchorYFor(
   String? columnName,
 ) {
   if (columnName == null) return null;
-  final hasSubtitle = node.isSeed && node.pkColumns.isNotEmpty;
+  final hasSubtitle = _nodeSubtitle(node) != null;
   final cols = _compactColumnsFor(node, allFks);
   final idx = cols.indexOf(columnName);
   if (idx < 0) return null;
@@ -115,17 +115,9 @@ double _autoWidthFor(LinkedRowNode node, List<ForeignKey> fks) {
   // header; reserve their width so the title doesn't truncate.
   widest += 50;
 
-  // Subtitle (pk=val ...).
-  if (node.isSeed && node.pkColumns.isNotEmpty) {
-    final parts = <String>[];
-    for (var i = 0; i < node.pkColumns.length; i++) {
-      final v = i < node.pkValues.length ? node.pkValues[i] : null;
-      final s = v?.toString() ?? 'NULL';
-      parts.add(
-        '${node.pkColumns[i]}=${s.length > 24 ? '${s.substring(0, 24)}…' : s}',
-      );
-    }
-    final subtitle = '(${parts.join(', ')})';
+  // Subtitle: the row label, or the seed's (pk=val ...).
+  final subtitle = _nodeSubtitle(node);
+  if (subtitle != null) {
     final sw = measure(subtitle, subtitleStyle);
     if (sw > widest) widest = sw;
   }
@@ -162,6 +154,23 @@ class LinkedTabView extends StatefulWidget {
 }
 
 class _LinkedTabViewState extends State<LinkedTabView> {
+  /// The metadata row label for [row], or null without a template.
+  String? _metaRowLabel(
+    String schema,
+    String table,
+    Map<String, Object?>? row,
+  ) {
+    if (row == null) return null;
+    final template = MetadataCache.instance
+        .snapshotFor(widget.tab.connectionId)
+        ?.index
+        .displayTable(schema, table)
+        .rowLabel;
+    if (template == null) return null;
+    final label = renderRowLabel(template, row).trim();
+    return label.isEmpty ? null : label;
+  }
+
   @override
   void initState() {
     super.initState();
@@ -511,6 +520,7 @@ class _LinkedTabViewState extends State<LinkedTabView> {
         pkColumns: pk,
       );
       node.row = row;
+      node.rowLabel = _metaRowLabel(node.schema, node.table, row);
       node.isLoading = false;
       node.error = row == null
           ? 'Row not found (it may have been deleted).'

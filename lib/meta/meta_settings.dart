@@ -2,7 +2,7 @@
 
 /// Whether dbscope looks for metadata tables in the database.
 enum MetaTablesMode {
-  /// Use `dbscope.*` (Postgres) / `_dbscope_*` (SQLite) when present.
+  /// Use `dbscope.dbscope_*` (Postgres) / `_dbscope_*` (SQLite) when present.
   auto,
 
   /// Use a custom schema name (Postgres) or table prefix (SQLite).

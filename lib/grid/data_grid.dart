@@ -42,13 +42,18 @@ class DataGrid extends StatefulWidget {
   final void Function(ForeignKey fk, bool incoming)? onFollowLink;
 
   /// Extra right-click entries for the clicked cell (row index, original
-  /// column index) — metadata actions, links, "Visualise column", …
+  /// column index) — metadata actions, links, "About this column", …
   final List<GridMenuEntry> Function(
     int rowIdx,
     int columnIdx,
     List<int> selectedRows,
   )?
   contextMenuExtras;
+
+  /// Wraps each column header (original column index): description
+  /// tooltip, right-click "About this column".
+  final Widget Function(BuildContext context, int columnIdx, Widget header)?
+  headerBuilder;
 
   /// Metadata display (value renderers) by column name.
   final Map<String, DisplaySpec> displayByColumn;
@@ -73,6 +78,7 @@ class DataGrid extends StatefulWidget {
     this.table,
     this.onFollowLink,
     this.contextMenuExtras,
+    this.headerBuilder,
     this.displayByColumn = const {},
   });
 
@@ -175,6 +181,7 @@ class _DataGridState extends State<DataGrid> {
       onOpenDetail: widget.onOpenDetail,
       onRowSelected: widget.onRowSelected,
       contextMenuExtras: widget.contextMenuExtras,
+      headerBuilder: widget.headerBuilder,
     );
   }
 }

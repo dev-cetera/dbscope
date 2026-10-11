@@ -19,9 +19,7 @@ import '../../navigator/navigator_tab.dart';
 import '../../shell/app_state.dart';
 import '../../table/table_tab.dart';
 import '../../util/sql_quote.dart';
-import '../access_policy.dart';
 import '../action_binding.dart';
-import '../chart_sql.dart';
 import '../masked_value.dart';
 import '../meta_cache.dart';
 import '../meta_models.dart';
@@ -103,9 +101,8 @@ class MetaMenuItem {
 /// chosen entry runs (the grid / inspector / sidebar widget's context).
 List<MetaMenuItem> buildMetaMenuItems(
   BuildContext context,
-  MetaClickContext click, {
-  bool includeVisualise = true,
-}) {
+  MetaClickContext click,
+) {
   final snapshot = MetadataCache.instance.snapshotFor(click.connectionId);
   if (snapshot == null) return const [];
   final index = snapshot.index;
@@ -181,27 +178,8 @@ List<MetaMenuItem> buildMetaMenuItems(
     }
   }
 
-  // Visualise + about.
+  // About.
   final tail = <MetaMenuItem>[];
-  if (includeVisualise &&
-      click.isTable &&
-      click.column != null &&
-      _columnReadable(snapshot.policy, click)) {
-    tail.add(
-      MetaMenuItem(
-        label: 'Visualise "${click.column}"',
-        icon: Icons.bar_chart,
-        onSelected: () => showVisualiseColumnDialog(
-          context,
-          connectionId: click.connectionId,
-          schema: click.schema!,
-          table: click.table!,
-          column: click.column!,
-          shape: shapeOf(click.columnType),
-        ),
-      ),
-    );
-  }
   if (click.column != null && (click.isTable || click.queryId != null)) {
     final masked = click.cell is MaskedValue;
     tail.add(
@@ -226,27 +204,6 @@ bool _globMissesRow(ActionSpec action, MetaClickContext click) {
   final text = action.sql ?? action.filter;
   if (text == null) return false;
   return missingRowPlaceholders(text, click.binding()).isNotEmpty;
-}
-
-bool _columnReadable(AccessPolicy policy, MetaClickContext click) =>
-    policy.forColumn(click.schema!, click.table!, click.column!).canSeeValues;
-
-ColumnShape shapeOf(PgType? type) {
-  switch (type) {
-    case PgType.int2:
-    case PgType.int4:
-    case PgType.int8:
-    case PgType.numeric:
-    case PgType.real:
-    case PgType.doublePrecision:
-      return ColumnShape.numeric;
-    case PgType.date:
-    case PgType.timestamp:
-    case PgType.timestamptz:
-      return ColumnShape.temporal;
-    default:
-      return ColumnShape.categorical;
-  }
 }
 
 /// One action as a menu item, enabled or disabled with the reason.

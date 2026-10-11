@@ -126,13 +126,9 @@ class _TableRow extends StatelessWidget {
         .snapshotFor(connectionId)
         ?.index
         .describeTable(schema, table.name)
-        .toTooltip();
+        .toMarkdown();
     if (text == null || text.isEmpty) return child;
-    return Tooltip(
-      message: text,
-      waitDuration: const Duration(milliseconds: 600),
-      child: child,
-    );
+    return DescriptionTooltip(markdown: text, child: child);
   }
 
   String _fmt(int rows) {

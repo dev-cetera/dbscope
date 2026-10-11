@@ -11,6 +11,7 @@ import '../meta/dashboard/dashboard_tab.dart';
 import '../meta/meta_cache.dart';
 import '../meta/meta_models.dart';
 import '../meta/named_query/named_query_tab.dart';
+import '../meta/ui/description_tooltip.dart';
 import '../navigator/navigator_tab.dart';
 import '../util/listenable_state_mixin.dart';
 import 'app_state.dart';
@@ -418,14 +419,10 @@ class _SidebarState extends State<Sidebar> with ListenableStateMixin {
         .snapshotFor(_registry.activeId)
         ?.index
         .describeSchema(schema.name)
-        .toTooltip();
+        .toMarkdown();
     final row = _buildSchemaRowBody(theme, schema);
     if (description == null || description.isEmpty) return row;
-    return Tooltip(
-      message: description,
-      waitDuration: const Duration(milliseconds: 600),
-      child: row,
-    );
+    return DescriptionTooltip(markdown: description, child: row);
   }
 
   Widget _buildSchemaRowBody(ThemeData theme, SchemaInfo schema) {

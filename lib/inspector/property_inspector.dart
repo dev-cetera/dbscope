@@ -10,6 +10,7 @@ import '../grid/inputs/column_input.dart';
 import '../meta/masked_value.dart';
 import '../meta/meta_cache.dart';
 import '../meta/meta_models.dart';
+import '../meta/ui/description_tooltip.dart';
 import '../meta/ui/meta_menu.dart';
 import 'ai_info_block.dart';
 
@@ -337,14 +338,18 @@ class _PropertyFieldRowState extends State<PropertyFieldRow> {
                   ),
                 ),
               Expanded(
-                child: Tooltip(
-                  message: _description(),
-                  waitDuration: const Duration(milliseconds: 400),
-                  child: Text(
-                    widget.column.name,
-                    style: theme.textTheme.labelSmall?.copyWith(
-                      fontWeight: FontWeight.w600,
-                      color: theme.hintColor,
+                child: GestureDetector(
+                  behavior: HitTestBehavior.opaque,
+                  onSecondaryTapDown: (details) =>
+                      _showContextMenu(details.globalPosition),
+                  child: DescriptionTooltip(
+                    markdown: _description(),
+                    child: Text(
+                      widget.column.name,
+                      style: theme.textTheme.labelSmall?.copyWith(
+                        fontWeight: FontWeight.w600,
+                        color: theme.hintColor,
+                      ),
                     ),
                   ),
                 ),
@@ -436,7 +441,7 @@ class _PropertyFieldRowState extends State<PropertyFieldRow> {
     if (schema == null || table == null || snapshot == null) return '';
     return snapshot.index
         .describeColumn(schema, table, widget.column.name)
-        .toTooltip();
+        .toMarkdown();
   }
 
   DisplaySpec? _displaySpec() {

@@ -150,27 +150,54 @@ class MetaTableNames {
     DbExecutor executor,
     MetadataSettings settings,
   ) {
-    if (isSqliteExecutor(executor)) {
-      final prefix = settings.sqlitePrefix;
+    final sqlite = isSqliteExecutor(executor);
+    String name(String logicalName) =>
+        physical(logicalName, settings, sqlite: sqlite);
+    if (sqlite) {
       return MetaTableNames(
-        meta: quoteIdent('${prefix}meta'),
-        roles: quoteIdent('${prefix}roles'),
-        members: quoteIdent('${prefix}role_members'),
-        grants: quoteIdent('${prefix}grants'),
+        meta: quoteIdent(name(metadata)),
+        roles: quoteIdent(name(accessRoles)),
+        members: quoteIdent(name(accessRoleMembers)),
+        grants: quoteIdent(name(accessGrants)),
       );
     }
     final schema = settings.postgresSchema;
     return MetaTableNames(
-      meta: quoteQualified(schema, 'meta'),
-      roles: quoteQualified(schema, 'roles'),
-      members: quoteQualified(schema, 'role_members'),
-      grants: quoteQualified(schema, 'grants'),
+      meta: quoteQualified(schema, name(metadata)),
+      roles: quoteQualified(schema, name(accessRoles)),
+      members: quoteQualified(schema, name(accessRoleMembers)),
+      grants: quoteQualified(schema, name(accessGrants)),
       schema: schema,
     );
   }
 
-  /// The four logical table names.
-  static const logical = ['meta', 'roles', 'role_members', 'grants'];
+  static const metadata = 'metadata';
+  static const accessRoles = 'access_roles';
+  static const accessRoleMembers = 'access_role_members';
+  static const accessGrants = 'access_grants';
+
+  /// The four logical table names, in creation order.
+  static const logical = [
+    metadata,
+    accessRoles,
+    accessRoleMembers,
+    accessGrants,
+  ];
+
+  /// Every Postgres metadata table carries this prefix, so it reads as
+  /// dbscope's own wherever it shows up — a bare `roles` or `grants` could
+  /// be the application's own access control.
+  static const postgresTablePrefix = 'dbscope_';
+
+  /// The real table name of [logicalName]: `dbscope_<name>` on Postgres
+  /// (inside the metadata schema), `<prefix><name>` on SQLite.
+  static String physical(
+    String logicalName,
+    MetadataSettings settings, {
+    required bool sqlite,
+  }) => sqlite
+      ? '${settings.sqlitePrefix}$logicalName'
+      : '$postgresTablePrefix$logicalName';
 
   /// Is [schema].[table] exactly one of dbscope's own four tables? Exact
   /// names only: a prefix or schema match would also hide user tables that
@@ -182,11 +209,11 @@ class MetaTableNames {
     MetadataSettings settings, {
     required bool sqlite,
   }) {
-    if (sqlite) {
-      final prefix = settings.sqlitePrefix;
-      return logical.any((l) => table == '$prefix$l');
-    }
-    return schema == settings.postgresSchema && logical.contains(table);
+    final isOurs = logical.any(
+      (l) => table == physical(l, settings, sqlite: sqlite),
+    );
+    if (sqlite) return isOurs;
+    return schema == settings.postgresSchema && isOurs;
   }
 
   /// Whether the whole metadata schema may be hidden from non-managers:
@@ -224,7 +251,7 @@ class DbTableSource {
     }
 
     try {
-      if (present.contains('meta')) {
+      if (present.contains(MetaTableNames.metadata)) {
         final res = await executor.execute(
           'SELECT id, target, kind, spec, priority, enabled FROM ${names.meta}',
         );
@@ -239,7 +266,7 @@ class DbTableSource {
           }, where: names.meta);
         }
       }
-      if (present.contains('roles')) {
+      if (present.contains(MetaTableNames.accessRoles)) {
         final res = await executor.execute(
           'SELECT id, label, description, inherits, capabilities, db_role, spec '
           'FROM ${names.roles}',
@@ -256,7 +283,7 @@ class DbTableSource {
           }, where: names.roles);
         }
       }
-      if (present.contains('role_members')) {
+      if (present.contains(MetaTableNames.accessRoleMembers)) {
         final res = await executor.execute(
           'SELECT role_id, principal FROM ${names.members}',
         );
@@ -267,7 +294,7 @@ class DbTableSource {
           }, where: names.members);
         }
       }
-      if (present.contains('grants')) {
+      if (present.contains(MetaTableNames.accessGrants)) {
         final res = await executor.execute(
           'SELECT id, role_id, target, level, default_hidden, note, enabled, spec '
           'FROM ${names.grants}',
@@ -299,30 +326,34 @@ class DbTableSource {
     DbExecutor executor,
     MetadataSettings settings,
   ) async {
-    const logical = ['meta', 'roles', 'role_members', 'grants'];
-    if (isSqliteExecutor(executor)) {
-      final prefix = settings.sqlitePrefix;
+    final sqlite = isSqliteExecutor(executor);
+    // Physical name → logical name.
+    final byPhysical = {
+      for (final l in MetaTableNames.logical)
+        MetaTableNames.physical(l, settings, sqlite: sqlite): l,
+    };
+    if (sqlite) {
       final res = await executor.execute(
         "SELECT name FROM sqlite_master WHERE type = 'table' AND name IN "
         '(?1, ?2, ?3, ?4)',
-        positional: [for (final l in logical) '$prefix$l'],
+        positional: byPhysical.keys.toList(),
       );
-      return {
-        for (final row in res.rows) (row[0] as String).substring(prefix.length),
-      };
+      return {for (final row in res.rows) ?byPhysical[row[0] as String]};
     }
+    // The names are our own constants, so listing them inline is safe.
+    final inList = byPhysical.keys.map((n) => "'$n'").join(', ');
     final res = await executor.execute(
       '''
  SELECT c.relname
  FROM pg_class c
  JOIN pg_namespace n ON n.oid = c.relnamespace
  WHERE n.nspname = @schema
- AND c.relname IN ('meta', 'roles', 'role_members', 'grants')
+ AND c.relname IN ($inList)
  AND c.relkind IN ('r', 'v', 'p')
  ''',
       named: {'schema': settings.postgresSchema},
     );
-    return {for (final row in res.rows) row[0] as String};
+    return {for (final row in res.rows) ?byPhysical[row[0] as String]};
   }
 }
 

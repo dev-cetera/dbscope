@@ -20,6 +20,8 @@ import '../meta/meta_cache.dart';
 import '../meta/meta_models.dart';
 import '../meta/named_query/named_query_tab.dart';
 import '../meta/ui/action_trust.dart';
+import '../meta/ui/description_tooltip.dart';
+import '../meta/ui/meta_column_header.dart';
 import '../meta/ui/meta_dialogs.dart';
 import '../meta/ui/meta_menu.dart';
 import '../navigator/navigator_tab.dart';
@@ -255,9 +257,6 @@ class _TableTabViewState extends State<TableTabView> {
     required List<String> pk,
     required Set<String> indexed,
   }) {
-    final snapshot = MetadataCache.instance.snapshotFor(
-      widget.tab.connectionId,
-    );
     final hidden = widget.tab.hiddenColumns ?? const <String>{};
     return GridData(
       columns: [
@@ -269,9 +268,6 @@ class _TableTabViewState extends State<TableTabView> {
             primaryKey: pk.contains(c.name),
             indexed: indexed.contains(c.name),
             hidden: hidden.contains(c.name),
-            tooltip: snapshot?.index
-                .describeColumn(widget.tab.schema, widget.tab.table, c.name)
-                .toTooltip(),
             marker: c.isMasked ? '••' : null,
           ),
       ],
@@ -963,7 +959,7 @@ class _TableTabViewState extends State<TableTabView> {
           onTrustDefaultFilter: _trustDefaultFilter,
           tableDescription: snapshot?.index
               .describeTable(tab.schema, tab.table)
-              .toTooltip(),
+              .toMarkdown(),
         ),
         if (tab.chartsOpen && charts.isNotEmpty && executor != null)
           SizedBox(
@@ -1027,6 +1023,15 @@ class _TableTabViewState extends State<TableTabView> {
             onFollowLink: _followLink,
             displayByColumn: _displayByColumn(),
             contextMenuExtras: _menuExtras,
+            headerBuilder: (context, columnIdx, header) =>
+                MetaColumnHeader.forTable(
+                  connectionId: tab.connectionId,
+                  schema: tab.schema,
+                  table: tab.table,
+                  column: tab.data!.columns[columnIdx].name,
+                  columnType: tab.data!.columns[columnIdx].pgType,
+                  child: header,
+                ),
           ),
         ),
       ],
@@ -1100,8 +1105,8 @@ class TableTabHeader extends StatelessWidget {
         mainAxisSize: MainAxisSize.min,
         children: [
           if ((tableDescription ?? '').isNotEmpty) ...[
-            Tooltip(
-              message: tableDescription!,
+            DescriptionTooltip(
+              markdown: tableDescription!,
               child: Icon(Icons.info_outline, size: 14, color: theme.hintColor),
             ),
             const SizedBox(width: 8),

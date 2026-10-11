@@ -689,7 +689,14 @@ Future<void> showEnforcementSql(BuildContext context) async {
     isMetaTable: snapshot.isMetaTable,
     metaTables: [
       for (final name in MetaTableNames.logical)
-        (schema: snapshot.settings.postgresSchema, table: name),
+        (
+          schema: snapshot.settings.postgresSchema,
+          table: MetaTableNames.physical(
+            name,
+            snapshot.settings,
+            sqlite: false,
+          ),
+        ),
     ],
   );
   // Drift: what the database grants today vs what the plan expects.

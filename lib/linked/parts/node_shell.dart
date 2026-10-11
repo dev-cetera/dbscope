@@ -18,10 +18,14 @@ String _rowLabel(List<Object?> rowVals, List<GridColumnSpec> cols) {
   ].join(', ');
 }
 
-/// Subtitle the SchemaCard renders under the table name when a node is
-/// a seed: `(pk_col=val, pk_col=val)`. Returns null for non-seed nodes
-/// so the card stays compact.
+/// Subtitle the SchemaCard renders under the table name: the metadata row
+/// label once the row has loaded, else `(pk_col=val, …)` for a seed, else
+/// null so the card stays compact. The ONE place this is decided — node
+/// height, edge anchors and auto-width all ask it, so the card never
+/// renders taller than the box the canvas gives it.
 String? _nodeSubtitle(LinkedRowNode n) {
+  final rowLabel = n.rowLabel;
+  if (rowLabel != null) return rowLabel;
   if (!n.isSeed) return null;
   if (n.pkColumns.isEmpty) return null;
   final parts = <String>[];
@@ -75,7 +79,6 @@ SchemaNodeData _toSchemaNode(
   LinkedRowNode node,
   List<ForeignKey> allFks, {
   required bool showRowData,
-  String? rowLabelTemplate,
 }) {
   final fkByColumn = <String, ForeignKey>{};
   for (final fk in allFks) {
@@ -132,11 +135,7 @@ SchemaNodeData _toSchemaNode(
     schema: node.schema,
     tableName: node.table,
     fields: fields,
-    // Metadata `display.rowLabel` names the row ("Buy milk (OPEN)") once it
-    // has loaded; the PK identity stays the fallback.
-    subtitle: rowLabelTemplate != null && node.row != null
-        ? renderRowLabel(rowLabelTemplate, node.row!)
-        : _nodeSubtitle(node),
+    subtitle: _nodeSubtitle(node),
     headerLeadingIcon: node.isSeed ? Icons.flag : null,
     position: node.position,
     compact: true,
@@ -207,11 +206,6 @@ class _NodeShellState extends State<_NodeShell> {
       // brings the user to the linked view at all. Always-on data also
       // matches a row card's purpose (one row, not a schema preview).
       showRowData: hasRow,
-      rowLabelTemplate: MetadataCache.instance
-          .snapshotFor(widget.tab.connectionId)
-          ?.index
-          .displayTable(widget.node.schema, widget.node.table)
-          .rowLabel,
     );
 
     return Stack(
