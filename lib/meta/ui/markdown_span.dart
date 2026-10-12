@@ -13,14 +13,6 @@ import 'package:markdown/markdown.dart' as md;
 import 'package:widgets/widgets.dart';
 
 class MarkdownColors {
-  final Color text;
-  final Color muted;
-  final Color strong;
-  final Color code;
-  final Color codeBackground;
-  final Color link;
-  final String monoFontFamily;
-
   const MarkdownColors({
     required this.text,
     required this.muted,
@@ -40,6 +32,13 @@ class MarkdownColors {
     link: palette.accent,
     monoFontFamily: palette.monoFontFamily,
   );
+  final Color text;
+  final Color muted;
+  final Color strong;
+  final Color code;
+  final Color codeBackground;
+  final Color link;
+  final String monoFontFamily;
 }
 
 /// [source] as one span. [base] is the body style (font, size, colour).
@@ -53,9 +52,7 @@ TextSpan markdownSpan(
     encodeHtml: false,
   ).parse(source.trim());
   final builder = _SpanBuilder(base: base, colors: colors);
-  for (final node in nodes) {
-    builder.block(node);
-  }
+  nodes.forEach(builder.block);
   return TextSpan(style: base, children: builder.spans);
 }
 
@@ -63,14 +60,13 @@ const _kRuleLength = 28;
 const _kFinePrintScale = 0.92;
 
 class _SpanBuilder {
+  _SpanBuilder({required this.base, required this.colors});
   final TextStyle base;
   final MarkdownColors colors;
   final List<InlineSpan> spans = [];
 
   /// True after a horizontal rule: the rest is fine print.
-  bool _finePrint = false;
-
-  _SpanBuilder({required this.base, required this.colors});
+  var _finePrint = false;
 
   TextStyle get _body => _finePrint
       ? base.copyWith(

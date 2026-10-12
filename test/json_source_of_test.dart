@@ -9,9 +9,8 @@
 // * A `text` column storing valid JSON source passes through
 // untouched — we don't double-encode.
 
-import 'package:flutter_test/flutter_test.dart';
-
 import 'package:dbscope/grid/json_dialogs.dart';
+import 'package:flutter_test/flutter_test.dart';
 
 void main() {
   group('jsonSourceOf', () {

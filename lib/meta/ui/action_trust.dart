@@ -28,16 +28,16 @@ enum TrustScope { read, exec }
 
 /// One piece of metadata SQL as shown in the trust dialog.
 class TrustItem {
-  final String id;
-  final String kind;
-  final String label;
-  final String text;
   const TrustItem({
     required this.id,
     required this.kind,
     required this.label,
     required this.text,
   });
+  final String id;
+  final String kind;
+  final String label;
+  final String text;
 
   String get fingerprint =>
       sha256.convert(utf8.encode(jsonEncode([id, kind, text]))).toString();

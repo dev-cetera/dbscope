@@ -1,10 +1,10 @@
 import '../catalog/pg_type.dart';
 import '../catalog/schema_catalog.dart';
 import '../connection/profile.dart';
-import '../db/executor.dart';
-import '../grid/data_grid.dart';
 import '../db/edit_policies.dart';
 import '../db/edit_policy.dart';
+import '../db/executor.dart';
+import '../grid/data_grid.dart';
 import '../meta/access_policy.dart';
 import '../meta/masked_value.dart';
 import '../meta/meta_cache.dart';
@@ -16,18 +16,35 @@ import 'cancel_token.dart';
 import 'pager.dart';
 
 class QueryRunResult {
-  final GridData data;
-  final Duration elapsed;
-  final bool truncated;
-
   const QueryRunResult({
     required this.data,
     required this.elapsed,
     this.truncated = false,
   });
+  final GridData data;
+  final Duration elapsed;
+  final bool truncated;
 }
 
 class TableLoadResult {
+  const TableLoadResult({
+    required this.columns,
+    required this.pkColumns,
+    required this.indexedColumns,
+    required this.editPolicies,
+    required this.pager,
+    required this.firstRows,
+    required this.elapsed,
+    this.effectiveSoftDeleteColumn,
+    this.tenantFilterApplied = false,
+    this.tableAccess = AccessDecision.unrestricted,
+    this.defaultFilterApplied,
+    this.defaultFilterPending = false,
+    this.effectiveSort,
+    this.hardDeleteRefusal,
+    this.deleteRefusal,
+    this.returningList = '*',
+  });
   final List<ColumnInfo> columns;
   final List<String> pkColumns;
   final Set<String> indexedColumns;
@@ -73,25 +90,6 @@ class TableLoadResult {
   /// columns come back as NULL, `none` columns not at all).
   final String returningList;
 
-  const TableLoadResult({
-    required this.columns,
-    required this.pkColumns,
-    required this.indexedColumns,
-    required this.editPolicies,
-    required this.pager,
-    required this.firstRows,
-    required this.elapsed,
-    this.effectiveSoftDeleteColumn,
-    this.tenantFilterApplied = false,
-    this.tableAccess = AccessDecision.unrestricted,
-    this.defaultFilterApplied,
-    this.defaultFilterPending = false,
-    this.effectiveSort,
-    this.hardDeleteRefusal,
-    this.deleteRefusal,
-    this.returningList = '*',
-  });
-
   bool get canInsert => tableAccess.level.atLeast(AccessLevel.full);
   bool get canDelete => tableAccess.level.atLeast(AccessLevel.full);
 
@@ -111,9 +109,9 @@ class TableLoadResult {
 }
 
 class TableLoader {
+  TableLoader(this.conn, {this.connectionReadOnly = true});
   final DbExecutor conn;
   final bool connectionReadOnly;
-  TableLoader(this.conn, {this.connectionReadOnly = true});
 
   Future<TableLoadResult> loadTable({
     required String schema,
@@ -252,11 +250,6 @@ List<Object?> maskInsertedRow(List<Object?> row, Set<int> maskedIndexes) =>
     maskRows([row], maskedIndexes).first;
 
 class _ComposedWhere {
-  final String? where;
-  final List<Object?> params;
-  final String? effectiveSoftDeleteColumn;
-  final bool tenantFilterApplied;
-  final String? defaultFilterApplied;
   const _ComposedWhere({
     required this.where,
     required this.params,
@@ -264,6 +257,11 @@ class _ComposedWhere {
     required this.tenantFilterApplied,
     this.defaultFilterApplied,
   });
+  final String? where;
+  final List<Object?> params;
+  final String? effectiveSoftDeleteColumn;
+  final bool tenantFilterApplied;
+  final String? defaultFilterApplied;
 }
 
 /// Build the WHERE clause that gets passed to [KeysetPager], merging:
@@ -335,10 +333,10 @@ _ComposedWhere _composeBaseWhere({
 }
 
 class QueryRunner {
-  final DbExecutor conn;
   QueryRunner(this.conn);
+  final DbExecutor conn;
 
-  static const int maxRows = 10000;
+  static const maxRows = 10000;
 
   Future<QueryRunResult> runSql(
     String sql, {

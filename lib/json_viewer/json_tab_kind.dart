@@ -6,7 +6,7 @@ import 'json_tab_view.dart';
 
 /// JsonTabs are transient — they're spawned from a JSON cell viewer
 /// and don't survive a restart. So no serialize/deserialize.
-final TabKind jsonTabKind = TabKind(
+final jsonTabKind = TabKind(
   id: 'json',
   modelType: JsonTab,
   icon: Icons.data_object,

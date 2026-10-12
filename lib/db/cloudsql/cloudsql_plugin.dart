@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:postgres/postgres.dart' as pg;
 
 import '../../connection/profile.dart';
 import '../../plugins/dbscope_plugin.dart';
@@ -70,7 +71,7 @@ class CloudSqlKindPlugin implements ConnectionKindPlugin {
   /// the dial fails ("server closed the connection unexpectedly"). Retry
   /// transient failures until the deadline, but fail fast on auth errors so
   /// a wrong password doesn't hang for a minute.
-  Future<dynamic> _openWithRetry(
+  Future<pg.Connection> _openWithRetry(
     CloudSqlConfig cfg,
     ConnectionProfile profile,
   ) async {
@@ -85,7 +86,6 @@ class CloudSqlKindPlugin implements ConnectionKindPlugin {
           database: profile.database,
           username: profile.username,
           password: profile.password,
-          sslMode: SslMode.disable,
         );
       } catch (e) {
         if (!_isTransient(e) || DateTime.now().isAfter(deadline)) {

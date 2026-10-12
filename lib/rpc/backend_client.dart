@@ -9,16 +9,15 @@ import 'envelope.dart';
 import 'transport.dart';
 
 class BackendClient {
-  final Transport _transport;
-  StreamSubscription<Envelope>? _sub;
-  int _seq = 0;
-  final Map<String, Completer<Object?>> _pending = {};
-  final Map<String, StreamController<Object?>> _streams = {};
-  bool _disposed = false;
-
   BackendClient(this._transport) {
     _sub = _transport.incoming.listen(_handle);
   }
+  final Transport _transport;
+  StreamSubscription<Envelope>? _sub;
+  var _seq = 0;
+  final Map<String, Completer<Object?>> _pending = {};
+  final Map<String, StreamController<Object?>> _streams = {};
+  var _disposed = false;
 
   String _nextId() => 'c${++_seq}';
 
@@ -32,23 +31,19 @@ class BackendClient {
         } else {
           c.complete(env.result);
         }
-        break;
       case EnvelopeKind.evt:
         _streams[env.id]?.add(env.result);
-        break;
       case EnvelopeKind.end:
         final s = _streams.remove(env.id);
-        s?.close();
-        break;
+        unawaited(s?.close());
       case EnvelopeKind.err:
         final s = _streams.remove(env.id);
         if (s != null) {
           if (env.error != null) {
             s.addError(env.error!);
           }
-          s.close();
+          unawaited(s.close());
         }
-        break;
       case EnvelopeKind.req:
       case EnvelopeKind.sub:
       case EnvelopeKind.unsub:

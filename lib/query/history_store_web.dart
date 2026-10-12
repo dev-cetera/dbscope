@@ -13,7 +13,7 @@ export 'history_models.dart';
 /// desktop.
 class HistoryStore {
   HistoryStore._();
-  static final HistoryStore instance = HistoryStore._();
+  static final instance = HistoryStore._();
 
   String _key(String connectionId) => 'dbscope.history.$connectionId';
 

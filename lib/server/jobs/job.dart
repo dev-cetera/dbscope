@@ -10,19 +10,22 @@ import '../services/connection_service.dart';
 enum JobState { queued, running, completed, failed, cancelled }
 
 class JobSpec {
-  final String kind; // wire type tag, e.g. 'copy_table'
-  final Map<String, Object?> params;
   const JobSpec({required this.kind, required this.params});
 
-  Map<String, Object?> toJson() => {'kind': kind, 'params': params};
-
-  static JobSpec fromJson(Map<String, Object?> json) => JobSpec(
-    kind: json['kind'] as String,
+  factory JobSpec.fromJson(Map<String, Object?> json) => JobSpec(
+    kind: json['kind']! as String,
     params: (json['params'] as Map<String, Object?>?) ?? const {},
   );
+
+  final String kind; // wire type tag, e.g. 'copy_table'
+  final Map<String, Object?> params;
+
+  Map<String, Object?> toJson() => {'kind': kind, 'params': params};
 }
 
 class JobRecord {
+  JobRecord({required this.id, required this.spec})
+    : createdAt = DateTime.now();
   final String id;
   final JobSpec spec;
   JobState state = JobState.queued;
@@ -31,9 +34,6 @@ class JobRecord {
   Map<String, Object?> summary = const {};
   final DateTime createdAt;
   DateTime? finishedAt;
-
-  JobRecord({required this.id, required this.spec})
-    : createdAt = DateTime.now();
 
   Map<String, Object?> toJson() => {
     'id': id,
@@ -52,16 +52,15 @@ abstract class JobHandler {
 }
 
 class JobContext {
-  final JobRecord record;
-  final ConnectionService connections;
-  final BusService bus;
-  bool _cancelled = false;
-
   JobContext({
     required this.record,
     required this.connections,
     required this.bus,
   });
+  final JobRecord record;
+  final ConnectionService connections;
+  final BusService bus;
+  var _cancelled = false;
 
   bool get cancelled => _cancelled;
 

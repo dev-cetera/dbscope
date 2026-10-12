@@ -64,7 +64,7 @@ class _DefaultHost implements DbscopeHost {
 /// contributions into the appropriate sub-registries.
 class DbscopePluginRegistry {
   DbscopePluginRegistry._();
-  static final DbscopePluginRegistry instance = DbscopePluginRegistry._();
+  static final instance = DbscopePluginRegistry._();
 
   static const DbscopeHost _host = _DefaultHost();
 

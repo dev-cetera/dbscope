@@ -24,8 +24,8 @@ class EnvDialog extends StatefulWidget {
 }
 
 class _EnvDialogState extends State<EnvDialog> {
-  final TextEditingController _pathController = TextEditingController();
-  bool _busy = false;
+  final _pathController = TextEditingController();
+  var _busy = false;
 
   @override
   void initState() {
@@ -180,8 +180,8 @@ class _EnvDialogState extends State<EnvDialog> {
 
 /// Outcome of the last load: where it read, and which names it found.
 class _EnvStatus extends StatelessWidget {
-  final ShellEnv env;
   const _EnvStatus({required this.env});
+  final ShellEnv env;
 
   @override
   Widget build(BuildContext context) {

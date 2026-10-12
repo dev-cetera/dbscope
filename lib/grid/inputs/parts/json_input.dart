@@ -1,15 +1,14 @@
 part of '../column_input.dart';
 
 class _JsonInput extends StatefulWidget {
-  final String? value;
-  final bool enabled;
-  final ValueChanged<Object?> onChanged;
-
   const _JsonInput({
     required this.value,
     required this.enabled,
     required this.onChanged,
   });
+  final String? value;
+  final bool enabled;
+  final ValueChanged<Object?> onChanged;
 
   @override
   State<_JsonInput> createState() => _JsonInputState();

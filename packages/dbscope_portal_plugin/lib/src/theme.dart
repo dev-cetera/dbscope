@@ -46,9 +46,9 @@ class _PortalColors {
 /// Clean geometric sans-serif — closest readily available to the Univers /
 /// DIN family Aperture Science branding uses. Falls back through the stack
 /// if a host platform lacks the primary face.
-const String _portalUiFontFamily = 'Helvetica Neue';
+const _portalUiFontFamily = 'Helvetica Neue';
 
-const AppPalette portalPalette = AppPalette(
+const portalPalette = AppPalette(
   surface: _PortalColors.labWhite,
   surfaceRaised: _PortalColors.labOffWhite,
   surfaceRecessed: _PortalColors.labPanel,
@@ -95,7 +95,7 @@ ThemeData buildPortalTheme({String? fontFamily}) {
 
   OutlineInputBorder outline(Color color) => OutlineInputBorder(
     borderRadius: radius,
-    borderSide: BorderSide(color: color, width: 1),
+    borderSide: BorderSide(color: color),
   );
 
   final bodyText = palette.bodyText;
@@ -144,16 +144,13 @@ ThemeData buildPortalTheme({String? fontFamily}) {
     ),
     colorScheme: const ColorScheme.light(
       primary: _PortalColors.portalOrange,
-      onPrimary: _PortalColors.labWhite,
       secondary: _PortalColors.portalBlue,
       onSecondary: _PortalColors.labWhite,
-      surface: _PortalColors.labWhite,
       onSurface: _PortalColors.text,
       surfaceContainer: _PortalColors.labPanel,
       surfaceContainerHigh: _PortalColors.labOffWhite,
       surfaceContainerHighest: _PortalColors.labOffWhite,
       error: Color(0xFFC1272D),
-      onError: _PortalColors.labWhite,
       tertiaryContainer: _PortalColors.portalBlueSoft,
       onTertiaryContainer: _PortalColors.text,
       errorContainer: Color(0xFFFFE0E0),
@@ -166,7 +163,7 @@ ThemeData buildPortalTheme({String? fontFamily}) {
       backgroundColor: palette.surfaceRaised,
       shape: RoundedRectangleBorder(
         borderRadius: radius,
-        side: BorderSide(color: palette.border, width: 1),
+        side: BorderSide(color: palette.border),
       ),
       titleTextStyle: TextStyle(
         color: palette.text,
@@ -206,7 +203,7 @@ ThemeData buildPortalTheme({String? fontFamily}) {
       color: palette.surfaceRaised,
       shape: RoundedRectangleBorder(
         borderRadius: radius,
-        side: BorderSide(color: palette.border, width: 1),
+        side: BorderSide(color: palette.border),
       ),
       textStyle: bodyText,
       elevation: 4,
@@ -217,7 +214,7 @@ ThemeData buildPortalTheme({String? fontFamily}) {
         shape: WidgetStatePropertyAll(
           RoundedRectangleBorder(
             borderRadius: radius,
-            side: BorderSide(color: palette.border, width: 1),
+            side: BorderSide(color: palette.border),
           ),
         ),
         elevation: const WidgetStatePropertyAll(4),
@@ -228,7 +225,7 @@ ThemeData buildPortalTheme({String? fontFamily}) {
       elevation: 0,
       shape: RoundedRectangleBorder(
         borderRadius: radius,
-        side: BorderSide(color: palette.border, width: 1),
+        side: BorderSide(color: palette.border),
       ),
     ),
     elevatedButtonTheme: ElevatedButtonThemeData(
@@ -303,7 +300,7 @@ ThemeData buildPortalTheme({String? fontFamily}) {
       backgroundColor: palette.surfaceRecessed,
       foregroundColor: palette.text,
       elevation: 0,
-      shape: Border(bottom: BorderSide(color: palette.border, width: 1)),
+      shape: Border(bottom: BorderSide(color: palette.border)),
     ),
     tooltipTheme: TooltipThemeData(
       decoration: BoxDecoration(color: palette.text, borderRadius: radius),
@@ -325,7 +322,7 @@ ThemeData buildPortalTheme({String? fontFamily}) {
       }),
     ),
     listTileTheme: ListTileThemeData(
-      contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 0),
+      contentPadding: const EdgeInsets.symmetric(horizontal: 10),
       minVerticalPadding: 2,
       dense: true,
       textColor: palette.text,

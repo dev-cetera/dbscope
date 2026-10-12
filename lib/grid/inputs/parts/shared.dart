@@ -30,15 +30,14 @@ class _NullPlaceholder extends StatelessWidget {
 }
 
 class _NullButton extends StatelessWidget {
-  final bool isNull;
-  final bool enabled;
-  final VoidCallback onToggle;
-
   const _NullButton({
     required this.isNull,
     required this.enabled,
     required this.onToggle,
   });
+  final bool isNull;
+  final bool enabled;
+  final VoidCallback onToggle;
 
   @override
   Widget build(BuildContext context) {
@@ -68,15 +67,14 @@ class _NullButton extends StatelessWidget {
 
 /// Shared theme-aware frame around an interactive input child.
 class _Field extends StatelessWidget {
-  final Widget child;
-  final bool enabled;
-  final EdgeInsetsGeometry padding;
-
   const _Field({
     required this.child,
     required this.enabled,
     this.padding = const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
   });
+  final Widget child;
+  final bool enabled;
+  final EdgeInsetsGeometry padding;
 
   @override
   Widget build(BuildContext context) {

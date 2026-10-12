@@ -26,6 +26,7 @@ import 'package:dbscope/meta/meta_writer.dart';
 import 'package:dbscope/meta/read_only_exec.dart';
 import 'package:dbscope/meta/ui/action_trust.dart';
 import 'package:dbscope/meta/value_format.dart';
+import 'package:dbscope/query/cancel_token.dart';
 import 'package:dbscope/query/pager.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -413,7 +414,7 @@ class _ThrowingExecutor extends FakeDbExecutor {
     String sql, {
     List<Object?>? positional,
     Map<String, Object?>? named,
-    cancelToken,
+    CancelToken? cancelToken,
   }) async {
     await super.execute(sql, positional: positional, named: named);
     if (sql.contains('boom')) throw StateError('boom');

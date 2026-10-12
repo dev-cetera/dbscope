@@ -4,8 +4,8 @@ import '../db/edit_policy.dart';
 import 'inputs/column_input.dart';
 
 class InsertRowDialog extends StatefulWidget {
-  final List<EditPolicy> policies;
   const InsertRowDialog({super.key, required this.policies});
+  final List<EditPolicy> policies;
 
   @override
   State<InsertRowDialog> createState() => _InsertRowDialogState();

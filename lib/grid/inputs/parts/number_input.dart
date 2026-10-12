@@ -1,17 +1,16 @@
 part of '../column_input.dart';
 
 class _NumberInput extends StatelessWidget {
-  final String? value;
-  final bool enabled;
-  final bool allowDecimal;
-  final ValueChanged<Object?> onChanged;
-
   const _NumberInput({
     required this.value,
     required this.enabled,
     required this.allowDecimal,
     required this.onChanged,
   });
+  final String? value;
+  final bool enabled;
+  final bool allowDecimal;
+  final ValueChanged<Object?> onChanged;
 
   @override
   Widget build(BuildContext context) {

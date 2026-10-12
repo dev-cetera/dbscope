@@ -1,3 +1,6 @@
+/// @docImport '../shell/app_state.dart';
+library;
+
 import 'package:uuid/uuid.dart';
 
 import '../query/cancel_token.dart';
@@ -11,21 +14,20 @@ import '../query/cancel_token.dart';
 /// subclass; transient state (in-flight Futures, scroll controllers)
 /// lives on the matching view widget.
 abstract class TabModel {
+  TabModel({String? id, required this.connectionId})
+    : id = id ?? const Uuid().v4();
   final String id;
   final String connectionId;
   CancelToken? cancelToken;
 
   /// Pinned tabs survive [AppState] auto-eviction and the
   /// "Close others / to right / to left" actions.
-  bool pinned = false;
+  var pinned = false;
 
   /// Monotonic counter snapshot from `AppState._tabClock` at last
   /// activation. Used as the LRU key when evicting beyond
   /// `AppState.maxTabs`.
-  int lastActivatedAt = 0;
-
-  TabModel({String? id, required this.connectionId})
-    : id = id ?? const Uuid().v4();
+  var lastActivatedAt = 0;
 
   String get title;
 }

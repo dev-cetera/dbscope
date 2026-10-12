@@ -6,7 +6,7 @@ import 'package:flutter/material.dart';
 import 'executor.dart';
 import 'profile_dialog.dart';
 
-const String kPgProxyKind = 'pg_proxy';
+const kPgProxyKind = 'pg_proxy';
 
 class PgProxyKindPlugin implements ConnectionKindPlugin {
   const PgProxyKindPlugin();

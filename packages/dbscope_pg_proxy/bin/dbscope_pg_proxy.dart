@@ -82,15 +82,21 @@ Future<void> main(List<String> args) async {
 
 Future<void> _handleUpgrade(HttpRequest req, _Opts opts) async {
   final socket = await WebSocketTransformer.upgrade(req);
-  await _Session(socket, opts).run();
+  try {
+    await _Session(socket, opts).run();
+  } finally {
+    // After the session has closed its DB connection.
+    try {
+      await socket.close();
+    } catch (_) {}
+  }
 }
 
 class _Session {
+  _Session(this.socket, this.opts);
   final WebSocket socket;
   final _Opts opts;
   pg.Connection? _conn;
-
-  _Session(this.socket, this.opts);
 
   Future<void> run() async {
     try {
@@ -121,9 +127,6 @@ class _Session {
     } finally {
       try {
         await _conn?.close();
-      } catch (_) {}
-      try {
-        await socket.close();
       } catch (_) {}
     }
   }
@@ -243,16 +246,10 @@ class _Session {
     } catch (e) {
       String? code;
       String? constraint;
-      try {
-        final dyn = e as dynamic;
-        final c = dyn.code;
-        if (c is String) code = c;
-      } catch (_) {}
-      try {
-        final dyn = e as dynamic;
-        final n = dyn.constraintName;
-        if (n is String) constraint = n;
-      } catch (_) {}
+      if (e is pg.ServerException) {
+        code = e.code;
+        constraint = e.constraintName;
+      }
       await _send({
         'type': 'error',
         'id': id,
@@ -288,7 +285,7 @@ class _Session {
   // UndecodedBytes for any OID it doesn't have a codec for (custom domains,
   // citext, …); the binary protocol bytes are still UTF-8 for text-like
   // types. Only actual bytea (OID 17) gets the `\xDEADBEEF` hex preview.
-  static const int _byteaOid = 17;
+  static const _byteaOid = 17;
   Object? _decodeUndecodedBytes(pg.UndecodedBytes v) {
     if (v.typeOid != _byteaOid) {
       try {
@@ -310,21 +307,21 @@ class _Session {
 }
 
 class _Opts {
-  final String host;
-  final int port;
-  final String? sharedSecret;
-  final String? allowOrigin;
   _Opts({
     required this.host,
     required this.port,
     required this.sharedSecret,
     required this.allowOrigin,
   });
+  final String host;
+  final int port;
+  final String? sharedSecret;
+  final String? allowOrigin;
 }
 
 _Opts _parseArgs(List<String> args) {
-  String host = '127.0.0.1';
-  int port = 8765;
+  var host = '127.0.0.1';
+  var port = 8765;
   String? secret;
   String? allow;
   for (var i = 0; i < args.length; i++) {

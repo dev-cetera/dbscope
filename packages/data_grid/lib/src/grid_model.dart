@@ -1,3 +1,6 @@
+/// @docImport '../data_grid.dart';
+library;
+
 import 'package:flutter/foundation.dart';
 
 import 'cell_range.dart';
@@ -11,13 +14,18 @@ import 'cell_range.dart';
 /// widget; the model holds purely UI state derived from "there are N
 /// columns and M rows".
 class GridModel extends ChangeNotifier {
+  GridModel({
+    this.minColumnWidth = 40,
+    this.maxColumnWidth = 1600,
+  });
+
   /// View-order of columns, expressed as indices into the original
   /// `GridData.columns` list. `_order[visiblePos] = originalIndex`.
   List<int> _order = const [];
   List<double> _widths = const [];
   CellRange? _selection;
-  int _columnCount = 0;
-  int _rowCount = 0;
+  var _columnCount = 0;
+  var _rowCount = 0;
 
   /// Row+col currently being edited (one cell at a time — the focused
   /// cell of the current selection). Both null when no edit is in
@@ -29,11 +37,6 @@ class GridModel extends ChangeNotifier {
   /// with unusually narrow or wide columns.
   final double minColumnWidth;
   final double maxColumnWidth;
-
-  GridModel({
-    this.minColumnWidth = 40,
-    this.maxColumnWidth = 1600,
-  });
 
   List<int> get order => _order;
   List<double> get widths => _widths;
@@ -70,7 +73,10 @@ class GridModel extends ChangeNotifier {
     List<double> defaultWidths, {
     Set<int> hidden = const {},
   }) {
-    assert(defaultWidths.length == columnCount);
+    assert(
+      defaultWidths.length == columnCount,
+      'defaultWidths needs one entry per column',
+    );
     _columnCount = columnCount;
     _order = [
       for (var i = 0; i < columnCount; i++)

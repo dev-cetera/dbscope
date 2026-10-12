@@ -28,6 +28,18 @@ import 'meta_dialogs.dart';
 
 /// What the user right-clicked.
 class MetaClickContext {
+  const MetaClickContext({
+    required this.connectionId,
+    this.schema,
+    this.table,
+    this.queryId,
+    this.row = const {},
+    this.pkColumns = const [],
+    this.column,
+    this.columnType,
+    this.cell,
+    this.selection = const [],
+  });
   final String connectionId;
 
   /// The real table, when the row came from one.
@@ -43,19 +55,6 @@ class MetaClickContext {
   final PgType? columnType;
   final Object? cell;
   final List<Map<String, Object?>> selection;
-
-  const MetaClickContext({
-    required this.connectionId,
-    this.schema,
-    this.table,
-    this.queryId,
-    this.row = const {},
-    this.pkColumns = const [],
-    this.column,
-    this.columnType,
-    this.cell,
-    this.selection = const [],
-  });
 
   bool get isTable => schema != null && table != null;
   bool get hasRow => row.isNotEmpty;
@@ -80,13 +79,6 @@ class MetaClickContext {
 }
 
 class MetaMenuItem {
-  final String label;
-  final IconData? icon;
-  final bool enabled;
-  final String? disabledReason;
-  final VoidCallback? onSelected;
-  final bool startsGroup;
-
   const MetaMenuItem({
     required this.label,
     this.icon,
@@ -95,6 +87,12 @@ class MetaMenuItem {
     this.onSelected,
     this.startsGroup = false,
   });
+  final String label;
+  final IconData? icon;
+  final bool enabled;
+  final String? disabledReason;
+  final VoidCallback? onSelected;
+  final bool startsGroup;
 }
 
 /// Every metadata entry for [click]. [context] must stay mounted while the
@@ -373,7 +371,7 @@ List<MetaMenuItem> _linkItems(BuildContext context, MetaClickContext click) {
 }
 
 Object? _jsonPathValue(Object? cell, String path) {
-  Object? current = cell;
+  var current = cell;
   if (current is String) {
     try {
       current = jsonDecode(current);

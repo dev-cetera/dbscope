@@ -6,8 +6,8 @@ import 'cloudsql_config.dart';
 
 /// New/edit dialog for a Cloud SQL (Postgres via Auth Proxy) connection.
 class CloudSqlDialog extends StatefulWidget {
-  final ConnectionProfile? initial;
   const CloudSqlDialog({super.key, this.initial});
+  final ConnectionProfile? initial;
 
   @override
   State<CloudSqlDialog> createState() => _CloudSqlDialogState();
@@ -24,10 +24,10 @@ class _CloudSqlDialogState extends State<CloudSqlDialog> {
   late final TextEditingController _localPort;
   late final TextEditingController _proxyPath;
   late final TextEditingController _gcloudPath;
-  bool _assignPublicIp = true;
-  bool _readOnly = true;
-  bool _passwordVisible = false;
-  bool _showAdvanced = false;
+  var _assignPublicIp = true;
+  var _readOnly = true;
+  var _passwordVisible = false;
+  var _showAdvanced = false;
 
   @override
   void initState() {
@@ -104,7 +104,6 @@ class _CloudSqlDialogState extends State<CloudSqlDialog> {
       database: _database.text.trim(),
       username: _username.text.trim(),
       password: _password.text,
-      sslMode: SslMode.disable,
       readOnly: _readOnly,
       extra: cfg.toExtra(),
       tenantFilter: widget.initial?.tenantFilter,

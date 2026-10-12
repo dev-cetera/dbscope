@@ -41,7 +41,7 @@ class MetaPlugin extends DbscopePlugin {
           MenuItemSpec(label: label, onSelected: () => run(context)),
     );
 
-    for (final c in [
+    [
       item('Reload metadata', reloadActiveMetadata),
       item('Problems…', showMetadataProblems),
       item('Settings…', showMetadataSettings),
@@ -59,9 +59,7 @@ class MetaPlugin extends DbscopePlugin {
       item('Import metadata file into tables…', importMetadataFile),
       item('Export metadata to file…', exportMetadataFile),
       item('Generate enforcement SQL…', showEnforcementSql),
-    ]) {
-      host.menus.register(c);
-    }
+    ].forEach(host.menus.register);
 
     host.sidebarActions.registerProvider(_sidebarActions);
   }

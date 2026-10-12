@@ -9,10 +9,9 @@
 
 import 'dart:async';
 
-import 'package:flutter_test/flutter_test.dart';
-
 import 'package:dbscope/rpc/envelope.dart';
 import 'package:dbscope/server/server.dart';
+import 'package:flutter_test/flutter_test.dart';
 
 void main() {
   group('Server.dispatch — request/response', () {

@@ -24,12 +24,19 @@ import '../meta_sources.dart';
 import '../read_only_exec.dart';
 
 class ChartSeriesData {
+  const ChartSeriesData(this.name, this.values);
   final String name;
   final List<double?> values;
-  const ChartSeriesData(this.name, this.values);
 }
 
 class ChartData {
+  const ChartData({
+    this.xLabels = const [],
+    this.xNumbers,
+    this.series = const [],
+    this.stat,
+  });
+
   /// Category / bucket labels along x (empty for `stat`).
   final List<String> xLabels;
 
@@ -40,19 +47,12 @@ class ChartData {
   /// For `stat`: the single value.
   final double? stat;
 
-  const ChartData({
-    this.xLabels = const [],
-    this.xNumbers,
-    this.series = const [],
-    this.stat,
-  });
-
   bool get isEmpty => series.every((s) => s.values.isEmpty) && stat == null;
 }
 
 class ChartRunError implements Exception {
-  final String message;
   const ChartRunError(this.message);
+  final String message;
   @override
   String toString() => message;
 }
@@ -290,7 +290,7 @@ List<List<Object?>> _ascendingByX(List<List<Object?>> rows, int xi) {
     final v = xOf(r);
     return v is DateTime
         ? v.microsecondsSinceEpoch.toDouble()
-        : (v as num).toDouble();
+        : (v! as num).toDouble();
   }
 
   // List.sort isn't stable; the index tie-break keeps equal x values (one

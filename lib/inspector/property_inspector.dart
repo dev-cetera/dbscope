@@ -1,11 +1,17 @@
+/// @docImport 'package:data_grid/data_grid.dart';
+/// @docImport '../grid/typed_value_text.dart';
+library;
+
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:widgets/widgets.dart';
 
 import '../catalog/pg_type.dart';
 import '../catalog/schema_catalog.dart';
-import '../grid/cell_value_display.dart';
 import '../db/edit_policy.dart';
+import '../grid/cell_value_display.dart';
 import '../grid/inputs/column_input.dart';
 import '../meta/masked_value.dart';
 import '../meta/meta_cache.dart';
@@ -32,6 +38,22 @@ import 'ai_info_block.dart';
 /// tap-followable. The table-view callsite uses this to render rich
 /// data without spawning navigator columns.
 class PropertyInspector extends StatelessWidget {
+  const PropertyInspector({
+    super.key,
+    required this.schema,
+    required this.table,
+    required this.columns,
+    required this.row,
+    required this.editPolicies,
+    required this.pkColumns,
+    required this.foreignKeys,
+    required this.onSave,
+    this.connectionId,
+    this.selectedFollowedColumn,
+    this.selectedInboundConstraintKey,
+    this.onFollowOutbound,
+    this.onOpenInbound,
+  });
   final String schema;
   final String table;
   final List<ColumnInfo> columns;
@@ -56,23 +78,6 @@ class PropertyInspector extends StatelessWidget {
   final void Function(String fromColumn, Object? value, List<ForeignKey> group)?
   onFollowOutbound;
   final void Function(List<ForeignKey> group)? onOpenInbound;
-
-  const PropertyInspector({
-    super.key,
-    required this.schema,
-    required this.table,
-    required this.columns,
-    required this.row,
-    required this.editPolicies,
-    required this.pkColumns,
-    required this.foreignKeys,
-    required this.onSave,
-    this.connectionId,
-    this.selectedFollowedColumn,
-    this.selectedInboundConstraintKey,
-    this.onFollowOutbound,
-    this.onOpenInbound,
-  });
 
   EditPolicy _policyFor(ColumnInfo c) {
     for (final p in editPolicies) {
@@ -119,9 +124,9 @@ class PropertyInspector extends StatelessWidget {
       }
     }
 
-    void onLink(ForeignKey fk, bool incoming) {
+    void onLink(ForeignKey fk, {required bool incoming}) {
       if (incoming) {
-        if (onOpenInbound != null) onOpenInbound!([fk]);
+        onOpenInbound?.call([fk]);
       } else {
         if (onFollowOutbound != null) {
           final group = outboundGroupByColumn[fk.fromColumn] ?? [fk];
@@ -181,26 +186,6 @@ class PropertyInspector extends StatelessWidget {
 /// link / JSON expand affordances), and inline edit-on-double-click
 /// for editable rows.
 class PropertyFieldRow extends StatefulWidget {
-  final ColumnInfo column;
-  final Object? value;
-  final EditPolicy policy;
-  final bool isPk;
-  final ForeignKey? outboundFk;
-  final List<ForeignKey> inboundRefs;
-  final bool isFollowed;
-  final void Function(ForeignKey fk, bool incoming)? onFollowLink;
-  final Future<void> Function(EditPolicy, Object?) onSave;
-
-  /// Table identification — passed to the AI Info path so it can scope
-  /// its DBML lookup correctly.
-  final String? schema;
-  final String? table;
-  final String? connectionId;
-
-  /// The whole row and its primary key, for metadata actions and links.
-  final Map<String, Object?> row;
-  final List<String> pkColumns;
-
   const PropertyFieldRow({
     super.key,
     required this.column,
@@ -218,16 +203,35 @@ class PropertyFieldRow extends StatefulWidget {
     this.row = const {},
     this.pkColumns = const [],
   });
+  final ColumnInfo column;
+  final Object? value;
+  final EditPolicy policy;
+  final bool isPk;
+  final ForeignKey? outboundFk;
+  final List<ForeignKey> inboundRefs;
+  final bool isFollowed;
+  final void Function(ForeignKey fk, {required bool incoming})? onFollowLink;
+  final Future<void> Function(EditPolicy, Object?) onSave;
+
+  /// Table identification — passed to the AI Info path so it can scope
+  /// its DBML lookup correctly.
+  final String? schema;
+  final String? table;
+  final String? connectionId;
+
+  /// The whole row and its primary key, for metadata actions and links.
+  final Map<String, Object?> row;
+  final List<String> pkColumns;
 
   @override
   State<PropertyFieldRow> createState() => _PropertyFieldRowState();
 }
 
 class _PropertyFieldRowState extends State<PropertyFieldRow> {
-  bool _editing = false;
+  var _editing = false;
   Object? _pending;
   Object? _initial;
-  final AiInfoController _aiInfo = AiInfoController();
+  final _aiInfo = AiInfoController();
 
   @override
   void initState() {
@@ -266,7 +270,7 @@ class _PropertyFieldRowState extends State<PropertyFieldRow> {
     }
     final t = widget.column.type;
     if (t == PgType.json || t == PgType.jsonb) {
-      _startJsonDialogEdit();
+      unawaited(_startJsonDialogEdit());
       return;
     }
     setState(() {
@@ -365,7 +369,7 @@ class _PropertyFieldRowState extends State<PropertyFieldRow> {
                 )
               else if (widget.policy.readOnlyReason != null)
                 Tooltip(
-                  message: widget.policy.readOnlyReason!,
+                  message: widget.policy.readOnlyReason,
                   child: Icon(
                     Icons.lock_outline,
                     size: 11,
@@ -383,7 +387,7 @@ class _PropertyFieldRowState extends State<PropertyFieldRow> {
             ],
           ),
           const SizedBox(height: 2),
-          _editing ? _editor(theme) : _display(theme),
+          if (_editing) _editor(theme) else _display(theme),
         ],
       ),
     );
@@ -559,16 +563,15 @@ class _PropertyFieldRowState extends State<PropertyFieldRow> {
 /// One INBOUND RELATIONS link — opens a row-list of the referencing
 /// table filtered by the inbound FK.
 class InboundRelationRow extends StatelessWidget {
-  final List<ForeignKey> group;
-  final bool isSelected;
-  final VoidCallback onTap;
-
   const InboundRelationRow({
     super.key,
     required this.group,
     required this.isSelected,
     required this.onTap,
   });
+  final List<ForeignKey> group;
+  final bool isSelected;
+  final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {

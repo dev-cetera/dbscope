@@ -7,28 +7,26 @@ import '../../tabs/tab_model.dart';
 import '../../util/listenable_state_mixin.dart';
 import '../charts/chart_view.dart';
 import '../meta_cache.dart';
-import '../meta_models.dart';
 
 /// A grid of charts from schema metadata: one `dashboard` row (its
 /// `charts` list), or — with no id — every chart that isn't row-scoped.
 class DashboardTab extends TabModel {
-  final String? dashboardId;
-  final String label;
-
   DashboardTab({
     super.id,
     required super.connectionId,
     required this.dashboardId,
     required this.label,
   });
+  final String? dashboardId;
+  final String label;
 
   @override
   String get title => label;
 }
 
 class DashboardView extends StatefulWidget {
-  final DashboardTab tab;
   const DashboardView({super.key, required this.tab});
+  final DashboardTab tab;
 
   @override
   State<DashboardView> createState() => _DashboardViewState();
@@ -40,7 +38,7 @@ class _DashboardViewState extends State<DashboardView>
   List<Listenable> get listenables => [MetadataCache.instance];
 
   /// Bumped by Refresh so every card reloads.
-  int _generation = 0;
+  var _generation = 0;
 
   @override
   Widget build(BuildContext context) {
@@ -53,7 +51,7 @@ class _DashboardViewState extends State<DashboardView>
       return const EmptyState(icon: Icons.power_off, message: 'Not connected.');
     }
     final index = snapshot.index;
-    final DashboardSpec? spec = tab.dashboardId == null
+    final spec = tab.dashboardId == null
         ? null
         : index.dashboards.where((d) => d.id == tab.dashboardId).firstOrNull;
     final charts = spec == null
@@ -123,7 +121,7 @@ class _DashboardViewState extends State<DashboardView>
   }
 }
 
-final TabKind dashboardTabKind = TabKind(
+final dashboardTabKind = TabKind(
   id: 'dashboard',
   modelType: DashboardTab,
   icon: Icons.dashboard_outlined,

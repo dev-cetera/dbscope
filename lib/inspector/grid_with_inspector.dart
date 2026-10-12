@@ -8,14 +8,13 @@ import '../shell/app_state.dart';
 /// [AppState.propertyInspectorCollapsed] toggle, so a Hide/Show action
 /// from any tab affects every tab.
 class GridWithInspector extends StatelessWidget {
-  final Widget grid;
-  final Widget inspector;
-
   const GridWithInspector({
     super.key,
     required this.grid,
     required this.inspector,
   });
+  final Widget grid;
+  final Widget inspector;
 
   @override
   Widget build(BuildContext context) {

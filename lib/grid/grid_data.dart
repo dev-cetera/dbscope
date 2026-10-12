@@ -10,12 +10,12 @@ import '../catalog/pg_type.dart';
 
 export 'package:data_grid/data_grid.dart'
     show
+        CellRange,
         GridEditEvent,
+        GridMenuEntry,
         GridSortEvent,
         GridStyle,
-        GridStyleExtension,
-        CellRange,
-        GridMenuEntry;
+        GridStyleExtension;
 
 /// How the grid renders cells. New modes plug in by adding an enum
 /// value and a branch in `PgTypeCellRenderer`.
@@ -24,8 +24,9 @@ enum GridViewMode {
   typed('Typed')
   ;
 
-  final String label;
   const GridViewMode(this.label);
+
+  final String label;
 }
 
 /// Powerdb's column spec — `data_grid` parameterised over [PgType].

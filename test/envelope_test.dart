@@ -3,9 +3,8 @@
 // subwindow. Round-trip each kind through JSON and check the discriminator
 // stays stable.
 
-import 'package:flutter_test/flutter_test.dart';
-
 import 'package:dbscope/rpc/envelope.dart';
+import 'package:flutter_test/flutter_test.dart';
 
 void main() {
   group('EnvelopeKind.parse', () {

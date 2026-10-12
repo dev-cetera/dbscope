@@ -8,11 +8,10 @@
 // nullIfBlank so an empty grid cell becomes NULL when the column is
 // not nullable-blank.
 
-import 'package:flutter_test/flutter_test.dart';
-
 import 'package:dbscope/catalog/pg_type.dart';
 import 'package:dbscope/db/dml.dart';
 import 'package:dbscope/db/edit_policy.dart';
+import 'package:flutter_test/flutter_test.dart';
 
 import 'support/fake_executor.dart';
 
@@ -62,9 +61,9 @@ void main() {
 
       final call = exec.calls.single;
       expect(call.sql, contains('UPDATE "public"."users"'));
-      expect(call.sql, contains('SET "name" = \$1'));
-      expect(call.sql, contains('WHERE "id" = \$2'));
-      expect(call.sql, contains('AND "name" IS NOT DISTINCT FROM \$3'));
+      expect(call.sql, contains(r'SET "name" = $1'));
+      expect(call.sql, contains(r'WHERE "id" = $2'));
+      expect(call.sql, contains(r'AND "name" IS NOT DISTINCT FROM $3'));
       // params in order: new value, pk value(s), old value.
       expect(call.positional, ['Bob', 42, 'Alice']);
     });
@@ -82,9 +81,9 @@ void main() {
       );
 
       final call = exec.calls.single;
-      expect(call.sql, contains('"tenant_id" = \$2'));
-      expect(call.sql, contains('"id" = \$3'));
-      expect(call.sql, contains('IS NOT DISTINCT FROM \$4'));
+      expect(call.sql, contains(r'"tenant_id" = $2'));
+      expect(call.sql, contains(r'"id" = $3'));
+      expect(call.sql, contains(r'IS NOT DISTINCT FROM $4'));
       // Parsed value is still the raw string because the policy type is text.
       expect(call.positional, ['6', 't1', 'u9', 5]);
     });
@@ -144,7 +143,7 @@ void main() {
 
       expect(n, 1);
       final call = exec.calls.single;
-      expect(call.sql, 'DELETE FROM "public"."users" WHERE "id" = \$1');
+      expect(call.sql, r'DELETE FROM "public"."users" WHERE "id" = $1');
       expect(call.positional, [7]);
     });
 
@@ -163,7 +162,7 @@ void main() {
       final call = exec.calls.single;
       expect(
         call.sql,
-        'DELETE FROM "public"."memberships" WHERE "group_id" = \$1 AND "user_id" = \$2',
+        r'DELETE FROM "public"."memberships" WHERE "group_id" = $1 AND "user_id" = $2',
       );
       expect(call.positional, ['g', 'u']);
     });
@@ -180,7 +179,7 @@ void main() {
         table: 'users',
         editable: [
           _policy(column: 'id', type: PgType.int4, typeName: 'int4'),
-          _policy(column: 'name'),
+          _policy(),
         ],
         values: {'id': '1', 'name': 'Alice'},
       );
@@ -189,7 +188,7 @@ void main() {
       final call = exec.calls.single;
       expect(
         call.sql,
-        'INSERT INTO "public"."users" ("id", "name") VALUES (\$1, \$2) RETURNING *',
+        r'INSERT INTO "public"."users" ("id", "name") VALUES ($1, $2) RETURNING *',
       );
       // id was parsed as int, name kept as string.
       expect(call.positional, [1, 'Alice']);
@@ -205,7 +204,7 @@ void main() {
         table: 'users',
         editable: [
           _policy(column: 'id', type: PgType.int4, typeName: 'int4'),
-          _policy(column: 'name'),
+          _policy(),
         ],
         values: {'id': '1'},
       );
@@ -224,7 +223,7 @@ void main() {
         () => editor.insertRow(
           schema: 'public',
           table: 'users',
-          editable: [_policy(column: 'name')],
+          editable: [_policy()],
           values: const {},
         ),
         throwsA(isA<FormatException>()),
@@ -247,7 +246,7 @@ void main() {
 
     test('empty string with nullIfBlank=false → empty string', () {
       expect(
-        CellEditor.parseValue(_policy(nullIfBlank: false), ''),
+        CellEditor.parseValue(_policy(), ''),
         '',
       );
     });

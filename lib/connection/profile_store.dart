@@ -7,7 +7,7 @@ import 'secure_store.dart';
 /// SecureStore (the OS keychain), keyed by profile id.
 class ProfileStore {
   ProfileStore._();
-  static final ProfileStore instance = ProfileStore._();
+  static final instance = ProfileStore._();
 
   Future<List<ConnectionProfile>> load() async {
     final doc = await ProjectStore.instance.load();

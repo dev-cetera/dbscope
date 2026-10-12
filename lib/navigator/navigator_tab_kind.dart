@@ -4,7 +4,7 @@ import '../tabs/tab_kind.dart';
 import 'navigator_tab.dart';
 import 'navigator_view.dart';
 
-final TabKind navigatorTabKind = TabKind(
+final navigatorTabKind = TabKind(
   id: 'navigator',
   modelType: NavigatorTab,
   icon: Icons.view_column_outlined,

@@ -27,10 +27,9 @@ class _CodeEditorHostHub {
   _CodeEditorHostHub._() {
     DesktopMultiWindow.setMethodHandler(_handle);
   }
-  static final _CodeEditorHostHub instance = _CodeEditorHostHub._();
+  static final instance = _CodeEditorHostHub._();
 
-  final Map<String, Completer<String?>> _pending =
-      <String, Completer<String?>>{};
+  final _pending = <String, Completer<String?>>{};
 
   Future<String?> awaitRequest(String requestId) {
     final completer = Completer<String?>();

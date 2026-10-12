@@ -22,42 +22,6 @@ import 'pg_grid_adapters.dart';
 export 'grid_data.dart';
 
 class DataGrid extends StatefulWidget {
-  final GridData data;
-  final bool isLoading;
-  final String? error;
-  final List<EditPolicy> editPolicies;
-  final g.DataGridController<PgType>? controller;
-  final void Function(g.GridEditEvent event)? onCellEdit;
-  final void Function(g.GridSortEvent event)? onSort;
-  final void Function(int rowIdx)? onDeleteRow;
-  final void Function(int rowIdx)? onOpenDetail;
-  final void Function(int? rowIdx)? onRowSelected;
-  final VoidCallback? onLoadMore;
-  final bool hasMore;
-  final GridViewMode viewMode;
-
-  final List<ForeignKey> foreignKeys;
-  final String? schema;
-  final String? table;
-  final void Function(ForeignKey fk, bool incoming)? onFollowLink;
-
-  /// Extra right-click entries for the clicked cell (row index, original
-  /// column index) — metadata actions, links, "About this column", …
-  final List<GridMenuEntry> Function(
-    int rowIdx,
-    int columnIdx,
-    List<int> selectedRows,
-  )?
-  contextMenuExtras;
-
-  /// Wraps each column header (original column index): description
-  /// tooltip, right-click "About this column".
-  final Widget Function(BuildContext context, int columnIdx, Widget header)?
-  headerBuilder;
-
-  /// Metadata display (value renderers) by column name.
-  final Map<String, DisplaySpec> displayByColumn;
-
   const DataGrid({
     super.key,
     required this.data,
@@ -81,6 +45,41 @@ class DataGrid extends StatefulWidget {
     this.headerBuilder,
     this.displayByColumn = const {},
   });
+  final GridData data;
+  final bool isLoading;
+  final String? error;
+  final List<EditPolicy> editPolicies;
+  final g.DataGridController<PgType>? controller;
+  final void Function(g.GridEditEvent event)? onCellEdit;
+  final void Function(g.GridSortEvent event)? onSort;
+  final void Function(int rowIdx)? onDeleteRow;
+  final void Function(int rowIdx)? onOpenDetail;
+  final void Function(int? rowIdx)? onRowSelected;
+  final VoidCallback? onLoadMore;
+  final bool hasMore;
+  final GridViewMode viewMode;
+
+  final List<ForeignKey> foreignKeys;
+  final String? schema;
+  final String? table;
+  final void Function(ForeignKey fk, {required bool incoming})? onFollowLink;
+
+  /// Extra right-click entries for the clicked cell (row index, original
+  /// column index) — metadata actions, links, "About this column", …
+  final List<GridMenuEntry> Function(
+    int rowIdx,
+    int columnIdx,
+    List<int> selectedRows,
+  )?
+  contextMenuExtras;
+
+  /// Wraps each column header (original column index): description
+  /// tooltip, right-click "About this column".
+  final Widget Function(BuildContext context, int columnIdx, Widget header)?
+  headerBuilder;
+
+  /// Metadata display (value renderers) by column name.
+  final Map<String, DisplaySpec> displayByColumn;
 
   @override
   State<DataGrid> createState() => _DataGridState();

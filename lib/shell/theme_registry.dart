@@ -9,6 +9,13 @@ import 'package:flutter/material.dart';
 /// register themselves from `main.dart`. Removing the package removes
 /// the theme entirely — no references survive in core.
 class ThemePlugin {
+  const ThemePlugin({
+    required this.id,
+    required this.label,
+    required this.build,
+    this.overlays = const [],
+  });
+
   /// Stable id persisted as the user's chosen theme. Never rename; old
   /// stored preferences would fail to resolve.
   final String id;
@@ -23,13 +30,6 @@ class ThemePlugin {
   /// Optional full-app overlay widgets shown in the root `Stack` when
   /// this theme is active. Each is recreated on theme change.
   final List<WidgetBuilder> overlays;
-
-  const ThemePlugin({
-    required this.id,
-    required this.label,
-    required this.build,
-    this.overlays = const [],
-  });
 }
 
 /// Process-wide registry of theme plugins. `main.dart` calls
@@ -37,7 +37,7 @@ class ThemePlugin {
 /// `all` to populate.
 class ThemeRegistry {
   ThemeRegistry._();
-  static final ThemeRegistry instance = ThemeRegistry._();
+  static final instance = ThemeRegistry._();
 
   final List<ThemePlugin> _ordered = [];
   final Map<String, ThemePlugin> _byId = {};

@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/scheduler.dart';
@@ -14,6 +16,8 @@ import 'schema_model.dart';
 class SchemaCanvasController {
   _SchemaCanvasState? _state;
 
+  // Paired with `_detach`; a setter would hide that lifecycle pairing.
+  // ignore: use_setters_to_change_properties
   void _attach(_SchemaCanvasState state) {
     _state = state;
   }
@@ -31,17 +35,10 @@ class SchemaCanvasController {
   void fitView() => _state?.fitView();
 }
 
-/// Callbacks bundled and passed to a custom [cardBuilder] so the host
+/// Callbacks bundled and passed to a custom [SchemaCanvas.cardBuilder] so the host
 /// can wrap the default [SchemaCard] in extra widgets while keeping
 /// drag / select / resize behaviour intact.
 class SchemaCanvasCardCallbacks {
-  final VoidCallback? onTap;
-  final VoidCallback? onHeaderPanStart;
-  final void Function(DragUpdateDetails details)? onHeaderPanUpdate;
-  final VoidCallback? onHeaderPanEnd;
-  final void Function(Offset globalPosition)? onSecondaryTapDown;
-  final VoidCallback? onToggleCompact;
-  final VoidCallback? onActivate;
   const SchemaCanvasCardCallbacks({
     this.onTap,
     this.onHeaderPanStart,
@@ -51,6 +48,13 @@ class SchemaCanvasCardCallbacks {
     this.onToggleCompact,
     this.onActivate,
   });
+  final VoidCallback? onTap;
+  final VoidCallback? onHeaderPanStart;
+  final void Function(DragUpdateDetails details)? onHeaderPanUpdate;
+  final VoidCallback? onHeaderPanEnd;
+  final void Function(Offset globalPosition)? onSecondaryTapDown;
+  final VoidCallback? onToggleCompact;
+  final VoidCallback? onActivate;
 }
 
 /// Pan-zoom-drag canvas that lays out [SchemaCard]s plus gradient
@@ -66,6 +70,27 @@ class SchemaCanvasCardCallbacks {
 /// Both consumers share this widget; only the "what to do when a card
 /// is activated" wiring differs.
 class SchemaCanvas extends StatefulWidget {
+  const SchemaCanvas({
+    super.key,
+    required this.nodes,
+    required this.edges,
+    required this.pan,
+    required this.scale,
+    required this.onPanChanged,
+    required this.onScaleChanged,
+    required this.selectedId,
+    required this.onSelectedChanged,
+    this.onResizeEnd,
+    this.onCompactToggled,
+    this.cardBuilder,
+    this.onCardActivated,
+    this.cardActivateTooltip = 'Open',
+    this.cardActivateIcon = Icons.open_in_new,
+    this.onCardSecondaryTap,
+    this.showBackgroundGrid = true,
+    this.autoFitOnFirstLayout = true,
+    this.controller,
+  });
   final List<SchemaNodeData> nodes;
   final List<SchemaEdgeData> edges;
 
@@ -86,7 +111,8 @@ class SchemaCanvas extends StatefulWidget {
   final void Function(String nodeId)? onResizeEnd;
 
   /// Called when the user toggles compact mode from the header button.
-  final void Function(String nodeId, bool willBeCompact)? onCompactToggled;
+  final void Function(String nodeId, {required bool willBeCompact})?
+      onCompactToggled;
 
   /// Custom card renderer. Defaults to a plain [SchemaCard]. Hosts
   /// that need a wrapper (e.g. to overlay a resize handle, or to embed
@@ -95,11 +121,11 @@ class SchemaCanvas extends StatefulWidget {
   final Widget Function(
     BuildContext context,
     SchemaNodeData node,
-    bool isSelected,
-    bool isHighlighted,
-    bool hasSelection,
-    SchemaCanvasCardCallbacks cb,
-  )? cardBuilder;
+    SchemaCanvasCardCallbacks cb, {
+    required bool isSelected,
+    required bool isHighlighted,
+    required bool hasSelection,
+  })? cardBuilder;
 
   /// Called when the user clicks the card's "open" header button.
   /// Hosts wire this to their drill-in action (open table view, open
@@ -131,28 +157,6 @@ class SchemaCanvas extends StatefulWidget {
   /// the canvas (header buttons, keyboard shortcuts, etc).
   final SchemaCanvasController? controller;
 
-  const SchemaCanvas({
-    super.key,
-    required this.nodes,
-    required this.edges,
-    required this.pan,
-    required this.scale,
-    required this.onPanChanged,
-    required this.onScaleChanged,
-    required this.selectedId,
-    required this.onSelectedChanged,
-    this.onResizeEnd,
-    this.onCompactToggled,
-    this.cardBuilder,
-    this.onCardActivated,
-    this.cardActivateTooltip = 'Open',
-    this.cardActivateIcon = Icons.open_in_new,
-    this.onCardSecondaryTap,
-    this.showBackgroundGrid = true,
-    this.autoFitOnFirstLayout = true,
-    this.controller,
-  });
-
   @override
   State<SchemaCanvas> createState() => _SchemaCanvasState();
 }
@@ -172,18 +176,18 @@ class _SchemaCanvasState extends State<SchemaCanvas>
   Duration _lastTick = Duration.zero;
   // Slower than admin_site's React Flow 3.5s cycle — the user found
   // the faster speed distracting on a packed schema.
-  static const Duration _kChevronCycle = Duration(milliseconds: 6000);
+  static const _kChevronCycle = Duration(milliseconds: 6000);
 
   // Trackpad pinch state. We track baseline scale on PointerPanZoomStart
   // and apply incremental factor on each update so the gesture feels
   // continuous instead of compounding.
-  double _pinchBaseScale = 1.0;
+  var _pinchBaseScale = 1.0;
   Offset _pinchPan = Offset.zero;
   Offset _pinchFocalLocal = Offset.zero;
 
   /// Has the host's onPanChanged + onScaleChanged seen a fit-view
   /// initialisation? We only fire it once per canvas instance.
-  bool _autoFitDone = false;
+  var _autoFitDone = false;
 
   /// Where this canvas's top-left sat inside the window on the previous
   /// frame. See [_anchorViewport].
@@ -192,7 +196,8 @@ class _SchemaCanvasState extends State<SchemaCanvas>
   @override
   void initState() {
     super.initState();
-    _ticker = createTicker(_onTick)..start();
+    _ticker = createTicker(_onTick);
+    unawaited(_ticker.start());
     widget.controller?._attach(this);
   }
 
@@ -233,10 +238,10 @@ class _SchemaCanvasState extends State<SchemaCanvas>
   /// Keep the diagram pinned to the screen when the viewport's own
   /// origin moves.
   ///
-  /// [pan] is canvas-local, so a card sits at `pan + position * scale`
+  /// `pan` is canvas-local, so a card sits at `pan + position * scale`
   /// measured from this widget's top-left. When a pane to the LEFT of
   /// the canvas opens or closes, that top-left slides sideways and the
-  /// whole diagram slides with it. Shifting [pan] by the inverse holds
+  /// whole diagram slides with it. Shifting `pan` by the inverse holds
   /// every card at the same screen position instead.
   ///
   /// Only the canvas's offset INSIDE the window is consulted, which is
@@ -473,10 +478,10 @@ class _SchemaCanvasState extends State<SchemaCanvas>
       return widget.cardBuilder!(
         context,
         node,
-        isSelected,
-        isHighlighted,
-        hasSelection,
         cb,
+        isSelected: isSelected,
+        isHighlighted: isHighlighted,
+        hasSelection: hasSelection,
       );
     }
     return SchemaCard(
@@ -505,8 +510,10 @@ class _SchemaCanvasState extends State<SchemaCanvas>
     if (!widget.autoFitOnFirstLayout) return;
     if (widget.nodes.isEmpty) return;
     if (viewport.width <= 0 || viewport.height <= 0) return;
-    double minX = double.infinity, minY = double.infinity;
-    double maxX = -double.infinity, maxY = -double.infinity;
+    var minX = double.infinity;
+    var minY = double.infinity;
+    var maxX = -double.infinity;
+    var maxY = -double.infinity;
     for (final n in widget.nodes) {
       final r = rectForNode(n);
       if (r.left < minX) minX = r.left;
@@ -648,7 +655,10 @@ class _SchemaCanvasState extends State<SchemaCanvas>
                           // neighbours get pushed out of the way and
                           // can never sit on top of each other.
                           _cascadeFromSizeChange(node.id);
-                          widget.onCompactToggled!(node.id, willBe);
+                          widget.onCompactToggled!(
+                            node.id,
+                            willBeCompact: willBe,
+                          );
                           setState(() {});
                         },
                   onActivate: widget.onCardActivated == null
@@ -688,16 +698,16 @@ class _SchemaCanvasState extends State<SchemaCanvas>
 /// Spacing is 20 canvas units; dots scale and translate with the
 /// canvas pan/zoom so they look stationary relative to the diagram.
 class _DotGridPainter extends CustomPainter {
-  final Offset pan;
-  final double scale;
-  final Color color;
   const _DotGridPainter({
     required this.pan,
     required this.scale,
     required this.color,
   });
+  final Offset pan;
+  final double scale;
+  final Color color;
 
-  static const double _kGridSpacing = 20.0;
+  static const _kGridSpacing = 20.0;
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -708,8 +718,8 @@ class _DotGridPainter extends CustomPainter {
     // Align the grid so a dot lies at pan + (0,0) in screen space.
     final startX = pan.dx % spacing;
     final startY = pan.dy % spacing;
-    for (double y = startY; y < size.height; y += spacing) {
-      for (double x = startX; x < size.width; x += spacing) {
+    for (var y = startY; y < size.height; y += spacing) {
+      for (var x = startX; x < size.width; x += spacing) {
         canvas.drawCircle(Offset(x, y), 0.8 * scale.clamp(0.5, 2.0), paint);
       }
     }
@@ -726,16 +736,16 @@ class _DotGridPainter extends CustomPainter {
 /// scales during paint — that way hit-tests and gesture deltas stay in
 /// canvas (unscaled) space.
 class _ScaledCard extends StatelessWidget {
-  final double scale;
-  final double width;
-  final double height;
-  final Widget child;
   const _ScaledCard({
     required this.scale,
     required this.width,
     required this.height,
     required this.child,
   });
+  final double scale;
+  final double width;
+  final double height;
+  final Widget child;
 
   @override
   Widget build(BuildContext context) {

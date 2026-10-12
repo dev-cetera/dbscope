@@ -19,9 +19,9 @@ class SchemaTab extends TabModel {
 
   /// Catalog-load state. Surfaced in the view so the user sees a
   /// loading placeholder vs. an error banner vs. the diagram itself.
-  bool isLoading = false;
+  var isLoading = false;
   String? error;
-  bool isLoaded = false;
+  var isLoaded = false;
 
   final Map<String, List<ColumnInfo>> _columnCache = {};
   List<ColumnInfo>? cachedColumns(String schema, String table) =>
@@ -31,7 +31,7 @@ class SchemaTab extends TabModel {
   }
 
   Offset pan = Offset.zero;
-  double scale = 1.0;
+  var scale = 1.0;
   String? selectedId;
 
   SchemaLayoutMode layoutMode;

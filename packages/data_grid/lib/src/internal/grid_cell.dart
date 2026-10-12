@@ -8,28 +8,10 @@ import '../grid_data.dart';
 import '../grid_style.dart';
 
 /// One cell in the body of the grid. Two modes:
-/// - Display: delegates to [renderer.build].
-/// - Edit: delegates to [editor.build] wrapped in Enter/Tab/Esc
+/// - Display: delegates to `renderer.build`.
+/// - Edit: delegates to `editor.build` wrapped in Enter/Tab/Esc
 /// shortcuts.
 class GridCell<TypeTag> extends StatefulWidget {
-  final Object? value;
-  final int rowIdx;
-  final int originalIdx;
-  final GridColumnSpec<TypeTag> column;
-  final CellRenderer<TypeTag> renderer;
-  final CellEditor<TypeTag>? editor;
-  final CellOverlayProvider<TypeTag>? overlay;
-  final GridStyle style;
-  final bool isSelected;
-  final bool isFocused;
-  final bool isEditing;
-  final double width;
-  final double height;
-  final VoidCallback? onTap;
-  final VoidCallback? onDoubleTap;
-  final void Function(Object? newValue)? onCommit;
-  final VoidCallback? onCancel;
-
   const GridCell({
     super.key,
     required this.value,
@@ -50,6 +32,23 @@ class GridCell<TypeTag> extends StatefulWidget {
     this.onCommit,
     this.onCancel,
   });
+  final Object? value;
+  final int rowIdx;
+  final int originalIdx;
+  final GridColumnSpec<TypeTag> column;
+  final CellRenderer<TypeTag> renderer;
+  final CellEditor<TypeTag>? editor;
+  final CellOverlayProvider<TypeTag>? overlay;
+  final GridStyle style;
+  final bool isSelected;
+  final bool isFocused;
+  final bool isEditing;
+  final double width;
+  final double height;
+  final VoidCallback? onTap;
+  final VoidCallback? onDoubleTap;
+  final void Function(Object? newValue)? onCommit;
+  final VoidCallback? onCancel;
 
   bool get isEditable => editor?.canEdit(column) ?? false;
 
@@ -59,7 +58,7 @@ class GridCell<TypeTag> extends StatefulWidget {
 
 class _GridCellState<TypeTag> extends State<GridCell<TypeTag>> {
   Object? _pending;
-  final FocusNode _editFocus = FocusNode();
+  final _editFocus = FocusNode();
 
   @override
   void initState() {
@@ -104,7 +103,7 @@ class _GridCellState<TypeTag> extends State<GridCell<TypeTag>> {
             ? style.selectionBackground
             : style.cellBackground);
     final border = widget.isFocused
-        ? Border.all(color: style.accent, width: 1)
+        ? Border.all(color: style.accent)
         : Border(
             right: BorderSide(color: style.cellBorder, width: 0.5),
             bottom: BorderSide(color: style.cellBorder, width: 0.5),

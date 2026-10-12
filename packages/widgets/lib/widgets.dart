@@ -10,7 +10,27 @@
 /// Adaptive chrome widgets: [AppBevel], [AppButton], [AppToggleButton],
 /// [AppFrame], [AppInset], [AppMenuBar] / [AppMenu] / [AppMenuItem],
 /// [AppStatusBar], [AppTabBar] / [AppTab], [MetricChip].
+///
+/// @docImport 'package:flutter/material.dart';
+/// @docImport 'src/themes/vscode_dark_theme.dart';
+/// @docImport 'src/themes/win95_theme.dart';
 library;
+
+import 'widgets.dart'
+    show
+        AppBevel,
+        AppButton,
+        AppFrame,
+        AppInset,
+        AppMenu,
+        AppMenuBar,
+        AppMenuItem,
+        AppStatusBar,
+        AppTab,
+        AppTabBar,
+        AppToggleButton,
+        ChromeKind,
+        MetricChip;
 
 export 'src/app_bevel.dart';
 export 'src/app_button.dart';

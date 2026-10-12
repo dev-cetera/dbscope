@@ -24,9 +24,9 @@ import 'executor.dart';
 /// updates the plugin made to the profile (e.g. a plugin may have learned
 /// a refresh token during login and wants it persisted).
 class OpenResult {
+  const OpenResult({required this.executor, this.updatedProfile});
   final DbExecutor executor;
   final ConnectionProfile? updatedProfile;
-  const OpenResult({required this.executor, this.updatedProfile});
 }
 
 abstract class ConnectionKindPlugin {
@@ -50,7 +50,7 @@ abstract class ConnectionKindPlugin {
 /// during main(); external packages register their kinds from main() too.
 class ConnectionKindRegistry {
   ConnectionKindRegistry._();
-  static final ConnectionKindRegistry instance = ConnectionKindRegistry._();
+  static final instance = ConnectionKindRegistry._();
 
   final Map<String, ConnectionKindPlugin> _kinds = {};
 

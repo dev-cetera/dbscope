@@ -18,17 +18,16 @@ enum PgErrorKind {
 }
 
 class ClassifiedError {
-  final PgErrorKind kind;
-  final String message;
-  final String? constraintName;
-  final Object original;
-
   ClassifiedError(
     this.kind,
     this.message,
     this.original, {
     this.constraintName,
   });
+  final PgErrorKind kind;
+  final String message;
+  final String? constraintName;
+  final Object original;
 
   @override
   String toString() => message;
@@ -40,16 +39,28 @@ class ClassifiedError {
   String? constraint;
   try {
     final dyn = error as dynamic;
+    // Duck-typed on purpose: `classify` takes anything thrown by any driver
+    // (postgres, sqlite, the pg proxy), which share no type; the try/catch
+    // absorbs a missing field.
+    // ignore: avoid_dynamic_calls
     final c = dyn.code;
     if (c is String) code = c;
   } catch (_) {}
   try {
     final dyn = error as dynamic;
+    // Duck-typed on purpose: `classify` takes anything thrown by any driver
+    // (postgres, sqlite, the pg proxy), which share no type; the try/catch
+    // absorbs a missing field.
+    // ignore: avoid_dynamic_calls
     final m = dyn.message;
     if (m is String) message = m;
   } catch (_) {}
   try {
     final dyn = error as dynamic;
+    // Duck-typed on purpose: `classify` takes anything thrown by any driver
+    // (postgres, sqlite, the pg proxy), which share no type; the try/catch
+    // absorbs a missing field.
+    // ignore: avoid_dynamic_calls
     final n = dyn.constraintName;
     if (n is String) constraint = n;
   } catch (_) {}

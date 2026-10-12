@@ -20,10 +20,9 @@ export 'sqlite_kind.dart';
 /// `$N` and `@name` are rewritten to SQLite's `?N` and `:name` so the
 /// existing Postgres-flavoured call sites work unchanged.
 class SqliteExecutor implements DbExecutor {
-  final sq.Database _db;
-  bool _closed = false;
-
   SqliteExecutor(this._db);
+  final sq.Database _db;
+  var _closed = false;
 
   @override
   String get kind => kSqliteKind;
@@ -34,7 +33,6 @@ class SqliteExecutor implements DbExecutor {
   @override
   DbCapabilities get capabilities => const DbCapabilities(
     sessionReadOnly: true,
-    cancelByClose: false,
     dml: true,
     transactions: true,
   );
@@ -154,11 +152,6 @@ class SqliteExecutor implements DbExecutor {
       cols.add(
         DbColumn(
           name: rs.columnNames[i],
-          // sqlite3 doesn't surface declared types per-column from the result
-          // set API; catalog code uses PRAGMA table_info for that. Leaving
-          // null falls back to PgType.unknown which is the correct degraded
-          // behaviour for unknown columns (e.g. expressions, view outputs).
-          typeName: null,
         ),
       );
     }
@@ -172,7 +165,7 @@ class SqliteExecutor implements DbExecutor {
   }
 
   @override
-  Future<void> setReadOnly(bool readOnly) async {
+  Future<void> setReadOnly({required bool readOnly}) async {
     if (_closed) return;
     _db.execute('PRAGMA query_only = ${readOnly ? 1 : 0}');
   }

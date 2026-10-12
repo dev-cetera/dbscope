@@ -15,14 +15,6 @@ import 'services/job_service.dart';
 import 'services/profile_service.dart';
 
 class HostBackend {
-  final Server server;
-  final BusService bus;
-  final ProfileService profiles;
-  final ConnectionService connections;
-  final JobService jobs;
-  late final BackendClient localClient;
-  late final LocalTransport _localTransport;
-
   HostBackend._({
     required this.server,
     required this.bus,
@@ -30,9 +22,7 @@ class HostBackend {
     required this.connections,
     required this.jobs,
   }) {
-    _localTransport = LocalTransport((env, reply) {
-      server.dispatch(env, reply);
-    });
+    _localTransport = LocalTransport(server.dispatch);
     localClient = BackendClient(_localTransport);
   }
 
@@ -55,6 +45,13 @@ class HostBackend {
       jobs: jobs,
     );
   }
+  final Server server;
+  final BusService bus;
+  final ProfileService profiles;
+  final ConnectionService connections;
+  final JobService jobs;
+  late final BackendClient localClient;
+  late final LocalTransport _localTransport;
 
   Future<void> dispose() async {
     await connections.closeAll();

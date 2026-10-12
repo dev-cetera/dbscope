@@ -6,16 +6,6 @@ import 'package:flutter/material.dart';
 /// Centralises the surface color, padding, font sizes, and border so
 /// they don't drift per call-site.
 class AppPanel extends StatelessWidget {
-  final String? title;
-  final String? subtitle;
-  final IconData? titleIcon;
-  final Widget? trailing;
-  final Widget? filter;
-  final Widget child;
-
-  /// Right-side border (useful when stacking panels side-by-side).
-  final bool rightBorder;
-
   const AppPanel({
     super.key,
     required this.child,
@@ -26,6 +16,15 @@ class AppPanel extends StatelessWidget {
     this.filter,
     this.rightBorder = false,
   });
+  final String? title;
+  final String? subtitle;
+  final IconData? titleIcon;
+  final Widget? trailing;
+  final Widget? filter;
+  final Widget child;
+
+  /// Right-side border (useful when stacking panels side-by-side).
+  final bool rightBorder;
 
   @override
   Widget build(BuildContext context) {
@@ -63,15 +62,6 @@ class AppPanel extends StatelessWidget {
 /// The header strip used by [AppPanel] and any view that wants the same
 /// surface treatment without the body container.
 class PanelHeader extends StatelessWidget {
-  final String? title;
-  final String? subtitle;
-  final IconData? titleIcon;
-  final Widget? trailing;
-
-  /// Slightly tighter vertical padding for headers that float above
-  /// their own content (e.g. toolbars) vs panels that hold a column.
-  final EdgeInsetsGeometry padding;
-
   const PanelHeader({
     super.key,
     this.title,
@@ -80,6 +70,14 @@ class PanelHeader extends StatelessWidget {
     this.trailing,
     this.padding = const EdgeInsets.fromLTRB(8, 4, 4, 4),
   });
+  final String? title;
+  final String? subtitle;
+  final IconData? titleIcon;
+  final Widget? trailing;
+
+  /// Slightly tighter vertical padding for headers that float above
+  /// their own content (e.g. toolbars) vs panels that hold a column.
+  final EdgeInsetsGeometry padding;
 
   @override
   Widget build(BuildContext context) {

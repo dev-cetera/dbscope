@@ -1,7 +1,7 @@
 import '../../connection/profile.dart';
 
 /// Kind id serialised in [ConnectionProfile.kind] for Cloud SQL profiles.
-const String kCloudSqlKind = 'cloudsql';
+const kCloudSqlKind = 'cloudsql';
 
 /// Cloud SQL-specific settings, persisted opaquely in
 /// [ConnectionProfile.extra]. The core never reads these — only the Cloud
@@ -10,9 +10,40 @@ const String kCloudSqlKind = 'cloudsql';
 /// A Cloud SQL profile is "a Postgres profile that reaches its instance
 /// through the Cloud SQL Auth Proxy". The regular profile fields carry the
 /// Postgres side (database, username, password, and the *local* proxy
-/// host/port — always 127.0.0.1:[localPort]); [extra] carries what the
+/// host/port — always 127.0.0.1:[localPort]); `extra` carries what the
 /// proxy needs.
 class CloudSqlConfig {
+  const CloudSqlConfig({
+    required this.instanceConnectionName,
+    required this.gcpProject,
+    required this.instanceName,
+    this.localPort = 9480,
+    this.assignPublicIp = true,
+    this.cloudSqlProxyPath = '',
+    this.gcloudPath = '',
+  });
+
+  factory CloudSqlConfig.fromProfile(ConnectionProfile profile) {
+    final e = profile.extra;
+    final icn = (e[_kInstance] as String?)?.trim() ?? '';
+    final segments = icn.split(':');
+    final derivedProject = segments.isNotEmpty ? segments.first : '';
+    final derivedInstance = segments.isNotEmpty ? segments.last : '';
+    return CloudSqlConfig(
+      instanceConnectionName: icn,
+      gcpProject: (e[_kProject] as String?)?.trim().isNotEmpty ?? false
+          ? (e[_kProject]! as String).trim()
+          : derivedProject,
+      instanceName: (e[_kInstanceName] as String?)?.trim().isNotEmpty ?? false
+          ? (e[_kInstanceName]! as String).trim()
+          : derivedInstance,
+      localPort: (e[_kLocalPort] as num?)?.toInt() ?? profile.port,
+      assignPublicIp: e[_kAssignIp] as bool? ?? true,
+      cloudSqlProxyPath: (e[_kProxyPath] as String?)?.trim() ?? '',
+      gcloudPath: (e[_kGcloudPath] as String?)?.trim() ?? '',
+    );
+  }
+
   /// Full instance connection name: `project:region:instance`.
   final String instanceConnectionName;
 
@@ -41,47 +72,16 @@ class CloudSqlConfig {
   /// [assignPublicIp] is true.
   final String gcloudPath;
 
-  const CloudSqlConfig({
-    required this.instanceConnectionName,
-    required this.gcpProject,
-    required this.instanceName,
-    this.localPort = 9480,
-    this.assignPublicIp = true,
-    this.cloudSqlProxyPath = '',
-    this.gcloudPath = '',
-  });
-
   /// A stable key identifying one running proxy (instance + local port).
   String get proxyKey => '$instanceConnectionName@$localPort';
 
-  static const String _kInstance = 'instanceConnectionName';
-  static const String _kProject = 'gcpProject';
-  static const String _kInstanceName = 'instanceName';
-  static const String _kLocalPort = 'localPort';
-  static const String _kAssignIp = 'assignPublicIp';
-  static const String _kProxyPath = 'cloudSqlProxyPath';
-  static const String _kGcloudPath = 'gcloudPath';
-
-  factory CloudSqlConfig.fromProfile(ConnectionProfile profile) {
-    final e = profile.extra;
-    final icn = (e[_kInstance] as String?)?.trim() ?? '';
-    final segments = icn.split(':');
-    final derivedProject = segments.isNotEmpty ? segments.first : '';
-    final derivedInstance = segments.isNotEmpty ? segments.last : '';
-    return CloudSqlConfig(
-      instanceConnectionName: icn,
-      gcpProject: (e[_kProject] as String?)?.trim().isNotEmpty == true
-          ? (e[_kProject] as String).trim()
-          : derivedProject,
-      instanceName: (e[_kInstanceName] as String?)?.trim().isNotEmpty == true
-          ? (e[_kInstanceName] as String).trim()
-          : derivedInstance,
-      localPort: (e[_kLocalPort] as num?)?.toInt() ?? profile.port,
-      assignPublicIp: e[_kAssignIp] as bool? ?? true,
-      cloudSqlProxyPath: (e[_kProxyPath] as String?)?.trim() ?? '',
-      gcloudPath: (e[_kGcloudPath] as String?)?.trim() ?? '',
-    );
-  }
+  static const _kInstance = 'instanceConnectionName';
+  static const _kProject = 'gcpProject';
+  static const _kInstanceName = 'instanceName';
+  static const _kLocalPort = 'localPort';
+  static const _kAssignIp = 'assignPublicIp';
+  static const _kProxyPath = 'cloudSqlProxyPath';
+  static const _kGcloudPath = 'gcloudPath';
 
   /// Serialise back into the [ConnectionProfile.extra] shape. Empty
   /// optional fields are omitted to keep the JSON tight.

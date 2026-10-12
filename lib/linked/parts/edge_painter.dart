@@ -12,8 +12,8 @@ part of '../linked_view.dart';
 // loops around the rim.
 // ---------------------------------------------------------------------------
 
-const int _kChevronCount = 2;
-const double _kChevronSize = 6.0;
+const _kChevronCount = 2;
+const _kChevronSize = 6.0;
 
 enum _LinkedAnchorSide { left, right, top, bottom }
 
@@ -27,6 +27,14 @@ extension on _LinkedAnchorSide {
 }
 
 class _EdgePainter extends CustomPainter {
+  const _EdgePainter({
+    required this.tab,
+    required this.pan,
+    required this.scale,
+    required this.dragNodeId,
+    required this.dragDelta,
+    required this.tickerValue,
+  });
   final LinkedTab tab;
   final Offset pan;
   final double scale;
@@ -36,15 +44,6 @@ class _EdgePainter extends CustomPainter {
   /// 0..1, repeats every chevron cycle. Drives chevron position along
   /// each path.
   final double tickerValue;
-
-  const _EdgePainter({
-    required this.tab,
-    required this.pan,
-    required this.scale,
-    required this.dragNodeId,
-    required this.dragDelta,
-    required this.tickerValue,
-  });
 
   Rect _rectOf(LinkedNode n) {
     final dx = n.position.dx + (n.id == dragNodeId ? dragDelta.dx : 0);
@@ -114,9 +113,9 @@ class _EdgePainter extends CustomPainter {
   }) {
     _LinkedAnchorSide? bestASide;
     _LinkedAnchorSide? bestBSide;
-    Offset bestA = srcRect.center;
-    Offset bestB = tgtRect.center;
-    double bestDist = double.infinity;
+    var bestA = srcRect.center;
+    var bestB = tgtRect.center;
+    var bestDist = double.infinity;
 
     for (final aSide in _LinkedAnchorSide.values) {
       final aPt = _anchorOn(src, srcRect, aSide, sourceField);
@@ -239,7 +238,7 @@ class _EdgePainter extends CustomPainter {
     for (var i = 0; i < _kChevronCount; i++) {
       final phase = (tickerValue + i / _kChevronCount) % 1.0;
       final at = phase * total;
-      double remaining = at;
+      var remaining = at;
       Offset? pos;
       double tangentAngle = 0;
       for (final m in metrics) {
@@ -310,14 +309,6 @@ class _EdgePainter extends CustomPainter {
 }
 
 class _LinkedEdgeGeom {
-  final Offset start;
-  final Offset end;
-  final _LinkedAnchorSide startSide;
-  final _LinkedAnchorSide endSide;
-  final Color fromColor;
-  final Color toColor;
-  final bool highlighted;
-  final bool dimmed;
   const _LinkedEdgeGeom({
     required this.start,
     required this.end,
@@ -328,4 +319,12 @@ class _LinkedEdgeGeom {
     required this.highlighted,
     required this.dimmed,
   });
+  final Offset start;
+  final Offset end;
+  final _LinkedAnchorSide startSide;
+  final _LinkedAnchorSide endSide;
+  final Color fromColor;
+  final Color toColor;
+  final bool highlighted;
+  final bool dimmed;
 }

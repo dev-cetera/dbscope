@@ -7,17 +7,16 @@ import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/scheduler.dart';
 import 'package:flutter/services.dart';
-import 'package:widgets/widgets.dart';
-
 import 'package:schema_viewer/schema_viewer.dart';
+import 'package:widgets/widgets.dart';
 
 import '../catalog/schema_catalog.dart';
 import '../connection/registry.dart';
-import '../db/executor.dart';
-import '../grid/data_grid.dart';
 import '../db/dml.dart';
 import '../db/edit_policies.dart';
 import '../db/edit_policy.dart';
+import '../db/executor.dart';
+import '../grid/data_grid.dart';
 import '../inspector/grid_with_inspector.dart';
 import '../inspector/property_inspector.dart';
 import '../meta/meta_cache.dart';
@@ -51,7 +50,7 @@ const double _kSubtitleHeight = kSchemaSubtitleHeight;
 const double _kHorizontalGap = 80;
 const double _kVerticalGap = 24;
 const double _kResizeHandleWidth = 6;
-const int _kListPageSize = 200;
+const _kListPageSize = 200;
 
 /// Rendered height for a row node — header + optional seed-subtitle +
 /// one row per visible column. Cards render in compact mode (PK / FK /
@@ -110,7 +109,7 @@ double _autoWidthFor(LinkedRowNode node, List<ForeignKey> fks) {
   }
 
   // Header: table name + (optional) seed flag + the two header buttons.
-  double widest = measure(node.table, headerStyle) + (node.isSeed ? 18 : 0);
+  var widest = measure(node.table, headerStyle) + (node.isSeed ? 18 : 0);
   // Two 20-px header buttons (open + compact) live in the SchemaCard
   // header; reserve their width so the title doesn't truncate.
   widest += 50;
@@ -146,8 +145,8 @@ double _autoWidthFor(LinkedRowNode node, List<ForeignKey> fks) {
 }
 
 class LinkedTabView extends StatefulWidget {
-  final LinkedTab tab;
   const LinkedTabView({super.key, required this.tab});
+  final LinkedTab tab;
 
   @override
   State<LinkedTabView> createState() => _LinkedTabViewState();
@@ -176,7 +175,7 @@ class _LinkedTabViewState extends State<LinkedTabView> {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
-      _loadFKs();
+      unawaited(_loadFKs());
       _bootstrapSeedIfNeeded();
     });
   }
@@ -230,7 +229,7 @@ class _LinkedTabViewState extends State<LinkedTabView> {
     }
     // Place the new node somewhere visible — to the right of the right-
     // most existing node if any, otherwise origin.
-    Offset position = const Offset(60, 60);
+    var position = const Offset(60, 60);
     if (tab.nodes.isNotEmpty) {
       final maxRight = tab.nodes
           .map((n) => n.position.dx)
@@ -253,7 +252,7 @@ class _LinkedTabViewState extends State<LinkedTabView> {
     tab.selectedNodeId = node.id;
     tab.previewRow = null;
     AppState.instance.notifyChange();
-    _loadRowNode(node);
+    unawaited(_loadRowNode(node));
   }
 
   /// Drops the connected component containing [node] from the canvas.
@@ -318,7 +317,7 @@ class _LinkedTabViewState extends State<LinkedTabView> {
     );
     tab.previewRow = ref;
     AppState.instance.notifyChange();
-    _loadPreviewRow(ref);
+    unawaited(_loadPreviewRow(ref));
   }
 
   Future<void> _loadPreviewRow(LinkedRowRef ref) async {
@@ -537,7 +536,7 @@ class _LinkedTabViewState extends State<LinkedTabView> {
   /// Soft cap on the auto-expanded canvas. The auto-expand will still add
   /// nodes up to this many, but stops cascading further. The user can
   /// re-`Explode` to re-layout, or close nodes to reclaim slots.
-  static const int _kAutoExpandNodeCap = 30;
+  static const _kAutoExpandNodeCap = 30;
 
   /// Diagram-mode behaviour: when a row node loads, automatically spawn
   /// every adjacent FK relationship (outbound + inbound). Re-uses
@@ -580,7 +579,7 @@ class _LinkedTabViewState extends State<LinkedTabView> {
       }
     }
     for (final group in inboundByConstraint.values) {
-      _spawnInbound(node, group, retargetPicker: false);
+      unawaited(_spawnInbound(node, group, retargetPicker: false));
     }
   }
 
@@ -670,7 +669,7 @@ class _LinkedTabViewState extends State<LinkedTabView> {
       ),
     );
     AppState.instance.notifyChange();
-    _loadRowNode(node);
+    unawaited(_loadRowNode(node));
   }
 
   /// Inbound: fetches the first row that references [source] via this FK
@@ -755,7 +754,7 @@ class _LinkedTabViewState extends State<LinkedTabView> {
         ),
       );
       AppState.instance.notifyChange();
-      _loadRowNode(node);
+      unawaited(_loadRowNode(node));
     } catch (_) {
       // Best-effort — inbound auto-expand failure shouldn't block the
       // user from working with the rest of the canvas.
@@ -768,7 +767,7 @@ class _LinkedTabViewState extends State<LinkedTabView> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final tab = widget.tab;
-    return Container(
+    return ColoredBox(
       color: theme.colorScheme.surfaceContainerLow,
       child: Column(
         children: [
@@ -827,7 +826,7 @@ class _LinkedTabViewState extends State<LinkedTabView> {
                           if (node.row == null &&
                               !node.isLoading &&
                               node.error == null) {
-                            _loadRowNode(node);
+                            unawaited(_loadRowNode(node));
                           }
                         },
                         onRowNodeActivate: (node) {
@@ -873,21 +872,21 @@ class _LinkedTabViewState extends State<LinkedTabView> {
                         if (tab.previewRow != null) {
                           final promoted = _promotePreview();
                           if (promoted == null) return;
-                          _spawnInbound(promoted, group);
+                          unawaited(_spawnInbound(promoted, group));
                           return;
                         }
                         final selected = tab.selectedRowNode;
                         if (selected == null) return;
-                        _spawnInbound(selected, group);
+                        unawaited(_spawnInbound(selected, group));
                       },
                       onReload: () {
                         final preview = tab.previewRow;
                         if (preview != null) {
-                          _loadPreviewRow(preview);
+                          unawaited(_loadPreviewRow(preview));
                           return;
                         }
                         final selected = tab.selectedRowNode;
-                        if (selected != null) _loadRowNode(selected);
+                        if (selected != null) unawaited(_loadRowNode(selected));
                       },
                     ),
                   ),
@@ -918,11 +917,6 @@ class _LinkedTabViewState extends State<LinkedTabView> {
 // ---------------------------------------------------------------------------
 
 class _Header extends StatelessWidget {
-  final LinkedTab tab;
-  final VoidCallback onResetView;
-  final VoidCallback onExplode;
-  final VoidCallback onZoomIn;
-  final VoidCallback onZoomOut;
   const _Header({
     required this.tab,
     required this.onResetView,
@@ -930,6 +924,11 @@ class _Header extends StatelessWidget {
     required this.onZoomIn,
     required this.onZoomOut,
   });
+  final LinkedTab tab;
+  final VoidCallback onResetView;
+  final VoidCallback onExplode;
+  final VoidCallback onZoomIn;
+  final VoidCallback onZoomOut;
 
   @override
   Widget build(BuildContext context) {
@@ -985,12 +984,6 @@ class _Header extends StatelessWidget {
 /// affordances match. Visibility is controlled by the global
 /// [AppState.propertyInspectorCollapsed] toggle.
 class _RightInspector extends StatelessWidget {
-  final LinkedTab tab;
-  final Future<void> Function(EditPolicy policy, Object? newRaw) onSave;
-  final void Function(String fromColumn, Object? value, List<ForeignKey> group)
-  onFollowOutbound;
-  final void Function(List<ForeignKey> group) onOpenInbound;
-  final VoidCallback onReload;
   const _RightInspector({
     required this.tab,
     required this.onSave,
@@ -998,6 +991,12 @@ class _RightInspector extends StatelessWidget {
     required this.onOpenInbound,
     required this.onReload,
   });
+  final LinkedTab tab;
+  final Future<void> Function(EditPolicy policy, Object? newRaw) onSave;
+  final void Function(String fromColumn, Object? value, List<ForeignKey> group)
+  onFollowOutbound;
+  final void Function(List<ForeignKey> group) onOpenInbound;
+  final VoidCallback onReload;
 
   @override
   Widget build(BuildContext context) {
@@ -1007,7 +1006,7 @@ class _RightInspector extends StatelessWidget {
     final hasPreview = preview != null;
     // Source-of-truth for what the inspector renders: preview wins when
     // set; otherwise fall back to the selected node.
-    final isLoading = hasPreview ? preview.isLoading : false;
+    final isLoading = hasPreview && preview.isLoading;
     final error = hasPreview ? preview.error : selected?.error;
     final rowMap = hasPreview ? preview.row : selected?.row;
     final schema = hasPreview ? preview.schema : selected?.schema;
@@ -1096,6 +1095,11 @@ class _RightInspector extends StatelessWidget {
 /// row pushes it to the inspector preview without spawning a node. Hidden
 /// entirely when no node is selected so the canvas keeps full width.
 class _CanvasWithMiddle extends StatelessWidget {
+  const _CanvasWithMiddle({
+    required this.tab,
+    required this.canvas,
+    required this.onTapPreviewRow,
+  });
   final LinkedTab tab;
   final Widget canvas;
   final void Function({
@@ -1105,11 +1109,6 @@ class _CanvasWithMiddle extends StatelessWidget {
     required List<Object?> pkValues,
   })
   onTapPreviewRow;
-  const _CanvasWithMiddle({
-    required this.tab,
-    required this.canvas,
-    required this.onTapPreviewRow,
-  });
 
   @override
   Widget build(BuildContext context) {
@@ -1137,6 +1136,11 @@ class _CanvasWithMiddle extends StatelessWidget {
 /// one pushes it to the inspector preview. Collapses to a thin
 /// [_PanelExpander] strip.
 class _MiddlePane extends StatelessWidget {
+  const _MiddlePane({
+    required this.tab,
+    required this.selected,
+    required this.onTapPreviewRow,
+  });
   final LinkedTab tab;
   final LinkedRowNode selected;
   final void Function({
@@ -1146,11 +1150,6 @@ class _MiddlePane extends StatelessWidget {
     required List<Object?> pkValues,
   })
   onTapPreviewRow;
-  const _MiddlePane({
-    required this.tab,
-    required this.selected,
-    required this.onTapPreviewRow,
-  });
 
   @override
   Widget build(BuildContext context) {
@@ -1210,14 +1209,14 @@ class _MiddlePane extends StatelessWidget {
 /// Thin vertical strip shown in place of a collapsed panel. Tapping the
 /// chevron icon expands the panel via the supplied [onTap].
 class _PanelExpander extends StatelessWidget {
-  final IconData icon;
-  final String tooltip;
-  final VoidCallback onTap;
   const _PanelExpander({
     required this.icon,
     required this.tooltip,
     required this.onTap,
   });
+  final IconData icon;
+  final String tooltip;
+  final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
@@ -1309,7 +1308,7 @@ void _applyExplodeLayout(LinkedTab tab) {
           .fold<double>(_kDefaultNodeWidth, (a, b) => a > b ? a : b),
   };
   final colStart = <int, double>{};
-  double cursor = margin;
+  var cursor = margin;
   for (final d in sortedDepths) {
     colStart[d] = cursor;
     cursor += colWidth[d]! + _kHorizontalGap;

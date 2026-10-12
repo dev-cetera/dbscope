@@ -4,9 +4,8 @@
 
 import 'dart:async';
 
-import 'package:flutter_test/flutter_test.dart';
-
 import 'package:dbscope/query/cancel_token.dart';
+import 'package:flutter_test/flutter_test.dart';
 
 void main() {
   test('starts uncancelled', () {
@@ -56,7 +55,9 @@ void main() {
   test('whenCancelled resolves before a delayed observer fires', () async {
     final token = CancelToken();
     final completer = Completer<bool>();
-    token.whenCancelled.then((_) => completer.complete(token.isCancelled));
+    unawaited(
+      token.whenCancelled.then((_) => completer.complete(token.isCancelled)),
+    );
     token.cancel();
     expect(await completer.future, isTrue);
   });

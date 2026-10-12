@@ -33,8 +33,8 @@ import '../util/pg_errors.dart';
 import '../util/sql_quote.dart';
 
 class TableTabView extends StatefulWidget {
-  final TableTab tab;
   const TableTabView({super.key, required this.tab});
+  final TableTab tab;
 
   @override
   State<TableTabView> createState() => _TableTabViewState();
@@ -43,7 +43,7 @@ class TableTabView extends StatefulWidget {
 class _TableTabViewState extends State<TableTabView> {
   KeysetPager? _pager;
   Timer? _autoRefreshTimer;
-  final DataGridController _gridController = DataGridController();
+  final _gridController = DataGridController();
 
   /// Background fetch of the page after the one currently rendered.
   /// Non-null while a prefetch is in flight or its result is waiting to
@@ -60,8 +60,8 @@ class _TableTabViewState extends State<TableTabView> {
   /// large enough that ordinary up-down scrolling within a session
   /// stays inside the buffer. Scrolling further back requires Refresh
   /// or Jump-to-PK.
-  static const int _maxBufferedRows = 50000;
-  static const int _trimChunk = 5000;
+  static const _maxBufferedRows = 50000;
+  static const _trimChunk = 5000;
 
   /// The metadata snapshot this table was last loaded under. When the
   /// metadata reloads (or "View as…" switches roles) the access decisions
@@ -76,12 +76,12 @@ class _TableTabViewState extends State<TableTabView> {
     if (current == null || identical(current, _loadedUnder)) return;
     if (current.status != MetaLoadStatus.ready) return;
     _loadedUnder = current;
-    _load();
+    unawaited(_load());
   }
 
   /// Bumped by every [_load]; a load that finishes after a newer one
   /// started discards its result (older policy, older sort/filter).
-  int _loadGeneration = 0;
+  var _loadGeneration = 0;
 
   @override
   void initState() {
@@ -103,7 +103,7 @@ class _TableTabViewState extends State<TableTabView> {
       // would fire setState on ancestor listeners while their build is in
       // flight if we ran during initState.
       WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (mounted) _load();
+        if (mounted) unawaited(_load());
       });
     }
     _setupAutoRefresh();
@@ -222,13 +222,13 @@ class _TableTabViewState extends State<TableTabView> {
         if (widget.tab.sort == null && result.effectiveSort != null) {
           widget.tab.sort = TableSortState(
             result.effectiveSort!.column,
-            result.effectiveSort!.descending,
+            descending: result.effectiveSort!.descending,
           );
         }
       });
       // FKs are a one-time per-database query — load them lazily.
       if (widget.tab.foreignKeys.isEmpty) {
-        _loadForeignKeys(conn);
+        unawaited(_loadForeignKeys(conn));
       }
       // Reset the grid to the fresh column/row set. This is the only
       // place a full rebuild happens (sort change, table open, refresh).
@@ -369,7 +369,10 @@ class _TableTabViewState extends State<TableTabView> {
       if (!ok) return;
     }
     setState(() {
-      widget.tab.sort = TableSortState(event.column, event.descending);
+      widget.tab.sort = TableSortState(
+        event.column,
+        descending: event.descending,
+      );
     });
     await _load();
   }
@@ -660,7 +663,7 @@ class _TableTabViewState extends State<TableTabView> {
     }
   }
 
-  void _followLink(ForeignKey fk, bool incoming) {
+  void _followLink(ForeignKey fk, {required bool incoming}) {
     final data = widget.tab.data;
     final selectedIdx = widget.tab.selectedRowIndex;
     if (data == null || selectedIdx == null) return;
@@ -676,7 +679,7 @@ class _TableTabViewState extends State<TableTabView> {
       if (pkValue is MaskedValue) {
         showToast(
           context,
-          'That value is masked for you, so it can\'t be followed.',
+          "That value is masked for you, so it can't be followed.",
         );
         return;
       }
@@ -719,7 +722,7 @@ class _TableTabViewState extends State<TableTabView> {
       if (row[fromIdx] is MaskedValue) {
         showToast(
           context,
-          'That value is masked for you, so it can\'t be followed.',
+          "That value is masked for you, so it can't be followed.",
         );
         return;
       }
@@ -941,12 +944,10 @@ class _TableTabViewState extends State<TableTabView> {
             setState(() => widget.tab.viewMode = v);
             AppState.instance.notifyChange();
           },
-          onToggleInspector: () {
-            AppState.instance.togglePropertyInspector();
-          },
+          onToggleInspector: AppState.instance.togglePropertyInspector,
           onToggleShowDeleted: () {
             setState(() => widget.tab.showDeleted = !widget.tab.showDeleted);
-            _load();
+            unawaited(_load());
           },
           inspectorCollapsed: !showInspector,
           readOnly: readOnly,
@@ -1057,24 +1058,6 @@ class _TableTabViewState extends State<TableTabView> {
 }
 
 class TableTabHeader extends StatelessWidget {
-  final TableTab tab;
-  final VoidCallback onRefresh;
-  final VoidCallback onInsert;
-  final VoidCallback onExactCount;
-  final ValueChanged<AutoRefreshInterval> onAutoRefreshChanged;
-  final ValueChanged<GridViewMode> onViewModeChanged;
-  final VoidCallback onToggleInspector;
-  final VoidCallback onToggleShowDeleted;
-  final bool inspectorCollapsed;
-  final bool readOnly;
-  final bool hasCharts;
-  final VoidCallback onToggleCharts;
-  final VoidCallback onPickColumns;
-  final VoidCallback onTrustDefaultFilter;
-
-  /// Metadata description of the table, shown as the title's tooltip.
-  final String? tableDescription;
-
   const TableTabHeader({
     super.key,
     required this.tab,
@@ -1093,6 +1076,23 @@ class TableTabHeader extends StatelessWidget {
     required this.onTrustDefaultFilter,
     this.tableDescription,
   });
+  final TableTab tab;
+  final VoidCallback onRefresh;
+  final VoidCallback onInsert;
+  final VoidCallback onExactCount;
+  final ValueChanged<AutoRefreshInterval> onAutoRefreshChanged;
+  final ValueChanged<GridViewMode> onViewModeChanged;
+  final VoidCallback onToggleInspector;
+  final VoidCallback onToggleShowDeleted;
+  final bool inspectorCollapsed;
+  final bool readOnly;
+  final bool hasCharts;
+  final VoidCallback onToggleCharts;
+  final VoidCallback onPickColumns;
+  final VoidCallback onTrustDefaultFilter;
+
+  /// Metadata description of the table, shown as the title's tooltip.
+  final String? tableDescription;
 
   @override
   Widget build(BuildContext context) {
@@ -1137,7 +1137,7 @@ class TableTabHeader extends StatelessWidget {
                 label: 'default filter off',
                 tooltip:
                     'The metadata defines a default filter for this table. '
-                    'It applies once you trust this connection\'s metadata '
+                    "It applies once you trust this connection's metadata "
                     'SQL — click to review it.',
                 color: theme.colorScheme.errorContainer,
               ),
@@ -1319,16 +1319,16 @@ class TableTabHeader extends StatelessWidget {
 }
 
 class _Badge extends StatelessWidget {
-  final IconData icon;
-  final String label;
-  final String tooltip;
-  final Color color;
   const _Badge({
     required this.icon,
     required this.label,
     required this.tooltip,
     required this.color,
   });
+  final IconData icon;
+  final String label;
+  final String tooltip;
+  final Color color;
 
   @override
   Widget build(BuildContext context) {

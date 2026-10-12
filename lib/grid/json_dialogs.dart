@@ -34,15 +34,15 @@ String jsonSourceOf(Object? v) {
 /// that button. The dialog itself stays decoupled from tab/connection
 /// state.
 class JsonViewerDialog extends StatelessWidget {
-  final String columnName;
-  final String pretty;
-  final VoidCallback? onOpenInNewTab;
   const JsonViewerDialog({
     super.key,
     required this.columnName,
     required this.pretty,
     this.onOpenInNewTab,
   });
+  final String columnName;
+  final String pretty;
+  final VoidCallback? onOpenInNewTab;
 
   @override
   Widget build(BuildContext context) {
@@ -55,7 +55,6 @@ class JsonViewerDialog extends StatelessWidget {
           initialText: pretty,
           language: CodeLanguages.json,
           readOnly: true,
-          maxLines: null,
           expands: true,
         ),
       ),

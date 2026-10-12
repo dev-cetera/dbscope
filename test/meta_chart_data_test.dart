@@ -46,7 +46,7 @@ void main() {
   test('time x plots ascending even when the query sorts descending', () async {
     final data = await _run([
       [DateTime.utc(2026, 10, 3), 3],
-      [DateTime.utc(2026, 10, 1), 1],
+      [DateTime.utc(2026, 10), 1],
       [DateTime.utc(2026, 10, 2), 2],
     ]);
     expect(data.series.single.values, [1.0, 2.0, 3.0]);

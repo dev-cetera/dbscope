@@ -12,9 +12,6 @@ import 'meta_dialogs.dart';
 import 'meta_menu.dart';
 
 class MetaColumnHeader extends StatelessWidget {
-  final MetaClickContext click;
-  final Widget child;
-
   const MetaColumnHeader({super.key, required this.click, required this.child});
 
   /// A header of [schema].[table].[column].
@@ -56,6 +53,8 @@ class MetaColumnHeader extends StatelessWidget {
     ),
     child: child,
   );
+  final MetaClickContext click;
+  final Widget child;
 
   String _markdown() {
     final index = MetadataCache.instance.snapshotFor(click.connectionId)?.index;

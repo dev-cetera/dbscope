@@ -1,17 +1,6 @@
 part of '../column_input.dart';
 
 class _RawTextInput extends StatefulWidget {
-  final String? value;
-  final bool enabled;
-  final bool multiLine;
-  final bool monospace;
-  final String? hint;
-  final ValueChanged<Object?> onChanged;
-  final List<TextInputFormatter>? formatters;
-  final TextInputType? keyboardType;
-  final Widget? prefix;
-  final Widget? suffix;
-
   const _RawTextInput({
     required this.value,
     required this.enabled,
@@ -24,6 +13,16 @@ class _RawTextInput extends StatefulWidget {
     this.prefix,
     this.suffix,
   });
+  final String? value;
+  final bool enabled;
+  final bool multiLine;
+  final bool monospace;
+  final String? hint;
+  final ValueChanged<Object?> onChanged;
+  final List<TextInputFormatter>? formatters;
+  final TextInputType? keyboardType;
+  final Widget? prefix;
+  final Widget? suffix;
 
   @override
   State<_RawTextInput> createState() => _RawTextInputState();
@@ -104,12 +103,11 @@ class _RawTextInputState extends State<_RawTextInput> {
     return _Field(
       enabled: widget.enabled,
       child: Row(
-        crossAxisAlignment: CrossAxisAlignment.center,
         children: [
           if (widget.prefix != null)
             Padding(
               padding: const EdgeInsets.only(right: 4),
-              child: widget.prefix!,
+              child: widget.prefix,
             ),
           Expanded(child: field),
           if (widget.suffix != null) widget.suffix!,

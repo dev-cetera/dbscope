@@ -7,4 +7,4 @@
 //
 // DbscopePluginRegistry.instance.register(PgProxyPlugin());
 
-export 'src/plugin.dart' show PgProxyPlugin, PgProxyKindPlugin;
+export 'src/plugin.dart' show PgProxyKindPlugin, PgProxyPlugin;

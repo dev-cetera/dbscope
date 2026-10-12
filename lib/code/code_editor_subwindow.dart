@@ -61,10 +61,9 @@ class CodeEditorSubwindowScreen extends StatefulWidget {
 }
 
 class _CodeEditorSubwindowScreenState extends State<CodeEditorSubwindowScreen> {
-  final GlobalKey<CodeEditorPanelState> _panelKey =
-      GlobalKey<CodeEditorPanelState>();
-  bool _isValid = true;
-  bool _replied = false;
+  final _panelKey = GlobalKey<CodeEditorPanelState>();
+  var _isValid = true;
+  var _replied = false;
 
   CodeValidator? get _validator =>
       widget.payload.formatJson ? _validateJson : null;
@@ -112,7 +111,7 @@ class _CodeEditorSubwindowScreenState extends State<CodeEditorSubwindowScreen> {
   void _save() {
     final state = _panelKey.currentState;
     if (state == null || !state.isValid) return;
-    _reply(cancelled: false, text: state.text);
+    unawaited(_reply(cancelled: false, text: state.text));
   }
 
   void _cancel() => _reply(cancelled: true);

@@ -44,7 +44,7 @@ class SqliteKindPlugin implements ConnectionKindPlugin {
       throw StateError('SQLite profile has no file path set.');
     }
     final file = File(path);
-    if (!await file.exists()) {
+    if (!file.existsSync()) {
       throw StateError('SQLite file does not exist: $path');
     }
     // Always open read-write so toggling read-only via PRAGMA query_only
@@ -68,8 +68,8 @@ class SqliteKindPlugin implements ConnectionKindPlugin {
 }
 
 class SqliteConnectionDialog extends StatefulWidget {
-  final ConnectionProfile? initial;
   const SqliteConnectionDialog({super.key, this.initial});
+  final ConnectionProfile? initial;
 
   @override
   State<SqliteConnectionDialog> createState() => _SqliteConnectionDialogState();
@@ -79,7 +79,7 @@ class _SqliteConnectionDialogState extends State<SqliteConnectionDialog> {
   final _formKey = GlobalKey<FormState>();
   late final TextEditingController _name;
   late final TextEditingController _path;
-  bool _readOnly = false;
+  var _readOnly = false;
 
   @override
   void initState() {

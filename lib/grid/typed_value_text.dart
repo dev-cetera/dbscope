@@ -14,6 +14,16 @@ import 'json_dialogs.dart' show jsonSourceOf;
 /// When [detectUrl] is true (default) and the rendered text matches an
 /// http(s) URL, the URL portion is underlined and tap-launchable.
 class TypedValueText extends StatelessWidget {
+  const TypedValueText({
+    super.key,
+    required this.value,
+    required this.pgType,
+    this.overflow = TextOverflow.ellipsis,
+    this.align,
+    this.detectUrl = true,
+    this.colorOverride,
+    this.decorationOverride,
+  });
   final Object? value;
   final PgType pgType;
   final TextOverflow overflow;
@@ -28,17 +38,6 @@ class TypedValueText extends StatelessWidget {
   /// Extra decoration applied on top of the URL detection (e.g. FK
   /// underline in non-URL strings).
   final TextDecoration? decorationOverride;
-
-  const TypedValueText({
-    super.key,
-    required this.value,
-    required this.pgType,
-    this.overflow = TextOverflow.ellipsis,
-    this.align,
-    this.detectUrl = true,
-    this.colorOverride,
-    this.decorationOverride,
-  });
 
   @override
   Widget build(BuildContext context) {
@@ -181,21 +180,21 @@ final _emailPattern = RegExp(
 final _phonePattern = RegExp(
   r'(?<=^|[\s,;:()])(?:'
   r'\+\d{8,15}\b'
-  r'|'
+  '|'
   r'\+\d{1,3}[\s\-]\d{2,4}[\s\-]\d{2,4}[\s\-]\d{2,4}\b'
-  r'|'
+  '|'
   r'\(\d{2,4}\)\s?\d{2,4}[\s\-]?\d{2,4}\b'
-  r'|'
+  '|'
   r'\d{3}[\s\-]\d{3}[\s\-]\d{4}\b'
-  r')',
+  ')',
 );
 
 class _Match {
+  const _Match(this.start, this.end, this.text, this.launchUri);
   final int start;
   final int end;
   final String text;
   final String launchUri;
-  const _Match(this.start, this.end, this.text, this.launchUri);
 }
 
 bool _isTextLike(PgType t) {
@@ -205,7 +204,23 @@ bool _isTextLike(PgType t) {
     case PgType.name:
     case PgType.unknown:
       return true;
-    default:
+    case PgType.int2:
+    case PgType.int4:
+    case PgType.int8:
+    case PgType.numeric:
+    case PgType.real:
+    case PgType.doublePrecision:
+    case PgType.bool_:
+    case PgType.date:
+    case PgType.time:
+    case PgType.timestamp:
+    case PgType.timestamptz:
+    case PgType.interval:
+    case PgType.uuid:
+    case PgType.json:
+    case PgType.jsonb:
+    case PgType.bytea:
+    case PgType.array:
       return false;
   }
 }

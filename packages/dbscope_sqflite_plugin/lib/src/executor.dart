@@ -43,7 +43,7 @@ class DeviceSqliteExecutor implements DbExecutor {
   final SqliteExecutor _inner;
   final sq.Database _db;
   final String _localDbPath;
-  bool _closed = false;
+  var _closed = false;
 
   /// Pulls [remoteDbPath] (and best-effort its `-wal` sidecar — never the
   /// `-shm`, sqlite always rebuilds it) into a fresh temp directory, then
@@ -76,9 +76,9 @@ class DeviceSqliteExecutor implements DbExecutor {
         // open .db alone — sqlite will read it without a -wal.
         try {
           final wal = File(walPath);
-          if (await wal.exists()) await wal.delete();
+          if (wal.existsSync()) await wal.delete();
           final shm = File('$localDbPath-shm');
-          if (await shm.exists()) await shm.delete();
+          if (shm.existsSync()) await shm.delete();
         } catch (_) {}
         db = _openAndPrepare(localDbPath);
       }
@@ -101,7 +101,7 @@ class DeviceSqliteExecutor implements DbExecutor {
   /// Opens [path] with `package:sqlite3`, folds any -wal into the main
   /// file via `wal_checkpoint(TRUNCATE)`, then switches to rollback
   /// journal mode so subsequent writes don't recreate WAL sidecars on
-  /// the local snapshot. Throws (and disposes [db]) if anything in the
+  /// the local snapshot. Throws (and disposes `db`) if anything in the
   /// preparation step fails, so the caller's fallback path sees a
   /// consistent "couldn't open" signal.
   static sq.Database _openAndPrepare(String path) {
@@ -131,16 +131,8 @@ class DeviceSqliteExecutor implements DbExecutor {
         // PRAGMA query_only on the local snapshot — affects local edits
         // before they get pushed.
         sessionReadOnly: true,
-        // Local sqlite3 is sync FFI; the Stop button can't preempt.
-        cancelByClose: false,
         // Writes work — they roundtrip through the device on each call.
         dml: true,
-        // sqlite3 supports transactions, but dbscope's catalog/grid edit
-        // paths drive them via implicit autocommit and we want every
-        // committed change pushed immediately. Disabling here keeps the
-        // UI honest: it won't BEGIN a multi-statement TX that would only
-        // push at COMMIT time. (Re-enable if write batching is needed.)
-        transactions: false,
       );
 
   @override
@@ -166,7 +158,8 @@ class DeviceSqliteExecutor implements DbExecutor {
   }
 
   @override
-  Future<void> setReadOnly(bool readOnly) => _inner.setReadOnly(readOnly);
+  Future<void> setReadOnly({required bool readOnly}) =>
+      _inner.setReadOnly(readOnly: readOnly);
 
   @override
   Future<void> close({bool force = false}) async {

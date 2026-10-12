@@ -11,6 +11,40 @@ enum ChromeKind { bevel, flat }
 /// for these via [AppPalette.of] rather than hard-coded constants.
 @immutable
 class AppPalette extends ThemeExtension<AppPalette> {
+  const AppPalette({
+    required this.surface,
+    required this.surfaceRaised,
+    required this.surfaceRecessed,
+    required this.field,
+    required this.fieldDisabled,
+    required this.border,
+    required this.borderStrong,
+    required this.text,
+    required this.mutedText,
+    required this.accent,
+    required this.onAccent,
+    required this.accentSoft,
+    required this.rowHover,
+    required this.rowSelected,
+    required this.rowEditing,
+    required this.rowReadOnly,
+    required this.typeString,
+    required this.typeNumber,
+    required this.typeBool,
+    required this.typeDate,
+    required this.typeUuid,
+    required this.typeJson,
+    required this.typeBinary,
+    required this.typeNull,
+    required this.bevelHighlight,
+    required this.bevelShadow,
+    required this.chrome,
+    required this.cornerRadius,
+    required this.uiFontFamily,
+    required this.monoFontFamily,
+    required this.bodyFontSize,
+    required this.smallFontSize,
+  });
   // Backgrounds.
   final Color surface;
   final Color surfaceRaised;
@@ -63,41 +97,6 @@ class AppPalette extends ThemeExtension<AppPalette> {
   final String monoFontFamily;
   final double bodyFontSize;
   final double smallFontSize;
-
-  const AppPalette({
-    required this.surface,
-    required this.surfaceRaised,
-    required this.surfaceRecessed,
-    required this.field,
-    required this.fieldDisabled,
-    required this.border,
-    required this.borderStrong,
-    required this.text,
-    required this.mutedText,
-    required this.accent,
-    required this.onAccent,
-    required this.accentSoft,
-    required this.rowHover,
-    required this.rowSelected,
-    required this.rowEditing,
-    required this.rowReadOnly,
-    required this.typeString,
-    required this.typeNumber,
-    required this.typeBool,
-    required this.typeDate,
-    required this.typeUuid,
-    required this.typeJson,
-    required this.typeBinary,
-    required this.typeNull,
-    required this.bevelHighlight,
-    required this.bevelShadow,
-    required this.chrome,
-    required this.cornerRadius,
-    required this.uiFontFamily,
-    required this.monoFontFamily,
-    required this.bodyFontSize,
-    required this.smallFontSize,
-  });
 
   static AppPalette of(BuildContext context) {
     final ext = Theme.of(context).extension<AppPalette>();

@@ -28,13 +28,13 @@ import 'dbml_export.dart';
 enum DbmlStatus { none, pending, ready, failed }
 
 class _CacheEntry {
-  final String? dbml;
-  final Future<String>? inFlight;
-  final Object? error;
   const _CacheEntry._({this.dbml, this.inFlight, this.error});
   const _CacheEntry.ready(String value) : this._(dbml: value);
   const _CacheEntry.pending(Future<String> future) : this._(inFlight: future);
   const _CacheEntry.failed(Object err) : this._(error: err);
+  final String? dbml;
+  final Future<String>? inFlight;
+  final Object? error;
 
   DbmlStatus get status {
     if (dbml != null) return DbmlStatus.ready;
@@ -46,7 +46,7 @@ class _CacheEntry {
 
 class DbmlCache extends ChangeNotifier {
   DbmlCache._();
-  static final DbmlCache instance = DbmlCache._();
+  static final instance = DbmlCache._();
 
   final Map<String, _CacheEntry> _entries = {};
 
@@ -74,11 +74,13 @@ class DbmlCache extends ChangeNotifier {
   }) {
     final existing = _entries[profileId];
     if (existing?.dbml != null || existing?.inFlight != null) return;
-    _generate(
-      profileId,
-      exec,
-      databaseName,
-    ).catchError((_) => ''); // swallow at the warm callsite
+    unawaited(
+      _generate(
+        profileId,
+        exec,
+        databaseName,
+      ).catchError((_) => ''), // swallow at the warm callsite
+    );
   }
 
   /// Returns the cached value if present, else null. Used by callers

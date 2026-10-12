@@ -7,13 +7,12 @@ import 'package:flutter/widgets.dart';
 import 'backend_client.dart';
 
 class BackendScope extends InheritedWidget {
-  final BackendClient client;
-
   const BackendScope({
     super.key,
     required this.client,
     required super.child,
   });
+  final BackendClient client;
 
   static BackendClient of(BuildContext context) {
     final scope = context.dependOnInheritedWidgetOfExactType<BackendScope>();

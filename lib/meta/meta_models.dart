@@ -50,7 +50,7 @@ abstract final class MetaKinds {
 
   /// Kinds whose rows merge field by field into one effective value per
   /// target. Every other known kind is a list of independent entries.
-  static const scalar = {
+  static const Set<String> scalar = {
     format,
     rbac,
     describe,
@@ -60,7 +60,7 @@ abstract final class MetaKinds {
     ai,
   };
 
-  static const known = {
+  static const Set<String> known = {
     format,
     rbac,
     describe,
@@ -80,18 +80,10 @@ abstract final class MetaKinds {
 /// The format version this build understands. A document declaring a
 /// higher version still loads (unknown fields are ignored) but reports a
 /// problem so the user knows something may be missing.
-const int kSupportedMetaFormatVersion = 1;
+const kSupportedMetaFormatVersion = 1;
 
 /// One metadata row, from any source.
 class MetaRow {
-  final String id;
-  final Selector target;
-  final String kind;
-  final Map<String, Object?> spec;
-  final int priority;
-  final bool enabled;
-  final MetaSourceKind source;
-
   const MetaRow({
     required this.id,
     required this.target,
@@ -101,6 +93,13 @@ class MetaRow {
     this.enabled = true,
     required this.source,
   });
+  final String id;
+  final Selector target;
+  final String kind;
+  final Map<String, Object?> spec;
+  final int priority;
+  final bool enabled;
+  final MetaSourceKind source;
 
   bool get isScalarKind => MetaKinds.scalar.contains(kind);
 }
@@ -108,10 +107,10 @@ class MetaRow {
 /// A row or file that could not be used, with the reason. Shown in the
 /// Metadata problems panel; never fatal.
 class MetaProblem {
+  const MetaProblem(this.source, this.where, this.message);
   final MetaSourceKind source;
   final String where;
   final String message;
-  const MetaProblem(this.source, this.where, this.message);
 
   @override
   String toString() => '[${source.label}] $where: $message';
@@ -192,15 +191,6 @@ enum IdentityMode {
 }
 
 class MetaRole {
-  final String id;
-  final String label;
-  final String? description;
-  final List<String> inherits;
-  final Set<Capability> capabilities;
-  final String? dbRole;
-  final Map<String, Object?> spec;
-  final MetaSourceKind source;
-
   const MetaRole({
     required this.id,
     required this.label,
@@ -211,6 +201,14 @@ class MetaRole {
     this.spec = const {},
     required this.source,
   });
+  final String id;
+  final String label;
+  final String? description;
+  final List<String> inherits;
+  final Set<Capability> capabilities;
+  final String? dbRole;
+  final Map<String, Object?> spec;
+  final MetaSourceKind source;
 }
 
 /// Principal prefixes for [MetaRoleMember.principal].
@@ -220,30 +218,19 @@ abstract final class PrincipalPrefix {
 }
 
 class MetaRoleMember {
-  final String roleId;
-
-  /// `pg:<role>` (verified), `user:<email>` (claimed) or `*` (everyone).
-  final String principal;
-  final MetaSourceKind source;
-
   const MetaRoleMember({
     required this.roleId,
     required this.principal,
     required this.source,
   });
+  final String roleId;
+
+  /// `pg:<role>` (verified), `user:<email>` (claimed) or `*` (everyone).
+  final String principal;
+  final MetaSourceKind source;
 }
 
 class MetaGrant {
-  final String id;
-  final String roleId;
-  final Selector target;
-  final AccessLevel level;
-  final bool defaultHidden;
-  final String? note;
-  final bool enabled;
-  final Map<String, Object?> spec;
-  final MetaSourceKind source;
-
   const MetaGrant({
     required this.id,
     required this.roleId,
@@ -255,13 +242,31 @@ class MetaGrant {
     this.spec = const {},
     required this.source,
   });
+  final String id;
+  final String roleId;
+  final Selector target;
+  final AccessLevel level;
+  final bool defaultHidden;
+  final String? note;
+  final bool enabled;
+  final Map<String, Object?> spec;
+  final MetaSourceKind source;
 }
 
 /// The built-in role every user holds.
-const String kEveryoneRoleId = 'everyone';
+const kEveryoneRoleId = 'everyone';
 
 /// Everything loaded for one connection, after sources are merged.
 class MetaDocument {
+  const MetaDocument({
+    this.rows = const [],
+    this.roles = const [],
+    this.members = const [],
+    this.grants = const [],
+    this.problems = const [],
+    this.hasAccessControl = false,
+  });
+
   /// Rows keyed by id (higher source already replaced lower ones; disabled
   /// rows removed).
   final List<MetaRow> rows;
@@ -274,15 +279,6 @@ class MetaDocument {
   /// control is in play for this connection.
   final bool hasAccessControl;
 
-  const MetaDocument({
-    this.rows = const [],
-    this.roles = const [],
-    this.members = const [],
-    this.grants = const [],
-    this.problems = const [],
-    this.hasAccessControl = false,
-  });
-
   static const empty = MetaDocument();
 
   bool get isEmpty =>
@@ -294,6 +290,16 @@ class MetaDocument {
 
 /// One source's raw contribution before merging.
 class MetaSourceData {
+  const MetaSourceData({
+    required this.source,
+    this.rows = const [],
+    this.roles = const [],
+    this.members = const [],
+    this.grants = const [],
+    this.problems = const [],
+    this.disabledRowIds = const {},
+    this.disabledGrantIds = const {},
+  });
   final MetaSourceKind source;
   final List<MetaRow> rows;
   final List<MetaRole> roles;
@@ -305,17 +311,6 @@ class MetaSourceData {
   /// They remove the same id from every lower source.
   final Set<String> disabledRowIds;
   final Set<String> disabledGrantIds;
-
-  const MetaSourceData({
-    required this.source,
-    this.rows = const [],
-    this.roles = const [],
-    this.members = const [],
-    this.grants = const [],
-    this.problems = const [],
-    this.disabledRowIds = const {},
-    this.disabledGrantIds = const {},
-  });
 }
 
 /// Merges sources lowest-precedence first. Same id → the later source
@@ -332,9 +327,7 @@ MetaDocument mergeMetaSources(List<MetaSourceData> sources) {
 
   for (final source in ordered) {
     problems.addAll(source.problems);
-    for (final id in source.disabledRowIds) {
-      rowsById.remove(id);
-    }
+    source.disabledRowIds.forEach(rowsById.remove);
     for (final row in source.rows) {
       rowsById[row.id] = row;
     }
@@ -345,9 +338,7 @@ MetaDocument mergeMetaSources(List<MetaSourceData> sources) {
     for (final member in source.members) {
       members['${member.roleId}\u0000${member.principal}'] = member;
     }
-    for (final id in source.disabledGrantIds) {
-      grantsById.remove(id);
-    }
+    source.disabledGrantIds.forEach(grantsById.remove);
     for (final grant in source.grants) {
       grantsById[grant.id] = grant;
       hasAccessControl = true;
@@ -447,14 +438,6 @@ List<Map<String, Object?>> specMapList(Map<String, Object?> spec, String key) {
 }
 
 class DescribeSpec {
-  final String? label;
-  final String? description;
-  final List<String> examples;
-  final String? unit;
-  final String? owner;
-  final String? deprecated;
-  final Map<String, String> values;
-
   const DescribeSpec({
     this.label,
     this.description,
@@ -464,8 +447,6 @@ class DescribeSpec {
     this.deprecated,
     this.values = const {},
   });
-
-  static const empty = DescribeSpec();
 
   factory DescribeSpec.fromJson(Map<String, Object?> spec) => DescribeSpec(
     label: specString(spec, 'label'),
@@ -479,6 +460,15 @@ class DescribeSpec {
         if (e.value != null) e.key: e.value.toString(),
     },
   );
+  final String? label;
+  final String? description;
+  final List<String> examples;
+  final String? unit;
+  final String? owner;
+  final String? deprecated;
+  final Map<String, String> values;
+
+  static const empty = DescribeSpec();
 
   bool get isEmpty =>
       label == null &&
@@ -534,15 +524,6 @@ enum ValueRenderer {
 }
 
 class DisplaySpec {
-  final String? rowLabel;
-  final List<String> order;
-  final List<String> pinned;
-  final String? defaultSort;
-  final String? defaultFilter;
-  final ValueRenderer? renderer;
-  final Map<String, Object?> rendererArgs;
-  final String? group;
-
   const DisplaySpec({
     this.rowLabel,
     this.order = const [],
@@ -554,8 +535,6 @@ class DisplaySpec {
     this.group,
   });
 
-  static const empty = DisplaySpec();
-
   factory DisplaySpec.fromJson(Map<String, Object?> spec) => DisplaySpec(
     rowLabel: specString(spec, 'rowLabel'),
     order: specStringList(spec, 'order'),
@@ -566,6 +545,16 @@ class DisplaySpec {
     rendererArgs: specMap(spec, 'rendererArgs'),
     group: specString(spec, 'group'),
   );
+  final String? rowLabel;
+  final List<String> order;
+  final List<String> pinned;
+  final String? defaultSort;
+  final String? defaultFilter;
+  final ValueRenderer? renderer;
+  final Map<String, Object?> rendererArgs;
+  final String? group;
+
+  static const empty = DisplaySpec();
 
   /// `"-created_at"` → (column: created_at, descending: true).
   ({String column, bool descending})? get parsedDefaultSort {
@@ -579,33 +568,22 @@ class DisplaySpec {
 }
 
 class SensitiveSpec {
-  final bool excludeFromAi;
-  final bool excludeFromExport;
   const SensitiveSpec({
     this.excludeFromAi = false,
     this.excludeFromExport = false,
   });
 
-  static const none = SensitiveSpec();
-
   factory SensitiveSpec.fromJson(Map<String, Object?> spec) => SensitiveSpec(
     excludeFromAi: specBool(spec, 'excludeFromAi'),
     excludeFromExport: specBool(spec, 'excludeFromExport'),
   );
+  final bool excludeFromAi;
+  final bool excludeFromExport;
+
+  static const none = SensitiveSpec();
 }
 
 class PolicySpec {
-  final bool readOnly;
-  final String? reason;
-  final String? softDelete;
-  final bool tenant;
-  final List<String> touch;
-  final String? pattern;
-  final num? min;
-  final num? max;
-  final String? danger;
-  final String? message;
-
   const PolicySpec({
     this.readOnly = false,
     this.reason,
@@ -619,8 +597,6 @@ class PolicySpec {
     this.message,
   });
 
-  static const empty = PolicySpec();
-
   factory PolicySpec.fromJson(Map<String, Object?> spec) => PolicySpec(
     readOnly: specBool(spec, 'readOnly'),
     reason: specString(spec, 'reason'),
@@ -633,6 +609,18 @@ class PolicySpec {
     danger: specString(spec, 'danger'),
     message: specString(spec, 'message'),
   );
+  final bool readOnly;
+  final String? reason;
+  final String? softDelete;
+  final bool tenant;
+  final List<String> touch;
+  final String? pattern;
+  final num? min;
+  final num? max;
+  final String? danger;
+  final String? message;
+
+  static const empty = PolicySpec();
 
   /// `danger: hardDelete` — refuse DELETE; a soft-delete column still works.
   bool get forbidsHardDelete => danger == 'hardDelete';
@@ -643,14 +631,12 @@ class PolicySpec {
 }
 
 class AiExample {
+  const AiExample(this.ask, this.sql);
   final String ask;
   final String sql;
-  const AiExample(this.ask, this.sql);
 }
 
 class AiSpec {
-  final String? notes;
-  final List<AiExample> examples;
   const AiSpec({this.notes, this.examples = const []});
 
   factory AiSpec.fromJson(Map<String, Object?> spec) => AiSpec(
@@ -661,11 +647,11 @@ class AiSpec {
           AiExample(specString(e, 'ask')!, specString(e, 'sql')!),
     ],
   );
+  final String? notes;
+  final List<AiExample> examples;
 }
 
 class RbacSettings {
-  final AccessLevel defaultLevel;
-  final IdentityMode identity;
   const RbacSettings({
     this.defaultLevel = AccessLevel.read,
     this.identity = IdentityMode.either,
@@ -675,6 +661,8 @@ class RbacSettings {
     defaultLevel: AccessLevel.tryParse(spec['default']) ?? AccessLevel.read,
     identity: IdentityMode.tryParse(spec['identity']) ?? IdentityMode.either,
   );
+  final AccessLevel defaultLevel;
+  final IdentityMode identity;
 }
 
 /// How a polymorphic link maps the kind column's value to a table name.
@@ -699,6 +687,46 @@ enum TableNameTransform {
 }
 
 class LinkSpec {
+  const LinkSpec({
+    required this.id,
+    required this.target,
+    this.to,
+    this.polymorphicBy,
+    this.polymorphicMap = const {},
+    this.polymorphicTable,
+    this.polymorphicColumn = 'id',
+    this.polymorphicSchema,
+    this.jsonPath,
+    this.urlLabel,
+    this.urlTemplate,
+  });
+
+  factory LinkSpec.fromRow(MetaRow row) {
+    final spec = row.spec;
+    final poly = specMap(spec, 'polymorphic');
+    final url = specMap(spec, 'url');
+    final map = <String, Selector>{};
+    for (final e in specMap(poly, 'map').entries) {
+      final sel = e.value is String
+          ? Selector.tryParse(e.value! as String)
+          : null;
+      if (sel != null) map[e.key] = sel;
+    }
+    final toRaw = specString(spec, 'to');
+    return LinkSpec(
+      id: row.id,
+      target: row.target,
+      to: toRaw == null ? null : Selector.tryParse(toRaw),
+      polymorphicBy: specString(poly, 'by'),
+      polymorphicMap: map,
+      polymorphicTable: TableNameTransform.tryParse(poly['table']),
+      polymorphicColumn: specString(poly, 'column') ?? 'id',
+      polymorphicSchema: specString(poly, 'schema'),
+      jsonPath: specString(spec, 'jsonPath'),
+      urlLabel: specString(url, 'label'),
+      urlTemplate: specString(url, 'template'),
+    );
+  }
   final String id;
   final Selector target;
 
@@ -721,47 +749,6 @@ class LinkSpec {
   /// External URL template (`{cell}`, `{row.<col>}`).
   final String? urlLabel;
   final String? urlTemplate;
-
-  const LinkSpec({
-    required this.id,
-    required this.target,
-    this.to,
-    this.polymorphicBy,
-    this.polymorphicMap = const {},
-    this.polymorphicTable,
-    this.polymorphicColumn = 'id',
-    this.polymorphicSchema,
-    this.jsonPath,
-    this.urlLabel,
-    this.urlTemplate,
-  });
-
-  factory LinkSpec.fromRow(MetaRow row) {
-    final spec = row.spec;
-    final poly = specMap(spec, 'polymorphic');
-    final url = specMap(spec, 'url');
-    final map = <String, Selector>{};
-    for (final e in specMap(poly, 'map').entries) {
-      final sel = e.value is String
-          ? Selector.tryParse(e.value as String)
-          : null;
-      if (sel != null) map[e.key] = sel;
-    }
-    final toRaw = specString(spec, 'to');
-    return LinkSpec(
-      id: row.id,
-      target: row.target,
-      to: toRaw == null ? null : Selector.tryParse(toRaw),
-      polymorphicBy: specString(poly, 'by'),
-      polymorphicMap: map,
-      polymorphicTable: TableNameTransform.tryParse(poly['table']),
-      polymorphicColumn: specString(poly, 'column') ?? 'id',
-      polymorphicSchema: specString(poly, 'schema'),
-      jsonPath: specString(spec, 'jsonPath'),
-      urlLabel: specString(url, 'label'),
-      urlTemplate: specString(url, 'template'),
-    );
-  }
 
   bool get isUrl => urlTemplate != null;
   bool get isPolymorphic => polymorphicBy != null;
@@ -805,17 +792,34 @@ enum ActionRun {
 }
 
 class ActionInput {
-  final String name;
-  final String prompt;
-  final String type;
   const ActionInput({
     required this.name,
     required this.prompt,
     this.type = 'text',
   });
+  final String name;
+  final String prompt;
+  final String type;
 }
 
 class ActionSpec {
+  const ActionSpec({
+    required this.id,
+    required this.target,
+    required this.label,
+    required this.scope,
+    required this.run,
+    this.group,
+    this.sql,
+    this.filter,
+    this.template,
+    this.table,
+    this.inputs = const [],
+    this.when = const {},
+    this.confirm,
+    this.expectRows,
+    this.roles = const [],
+  });
   final String id;
   final Selector target;
   final String label;
@@ -837,24 +841,6 @@ class ActionSpec {
   final String? confirm;
   final int? expectRows;
   final List<String> roles;
-
-  const ActionSpec({
-    required this.id,
-    required this.target,
-    required this.label,
-    required this.scope,
-    required this.run,
-    this.group,
-    this.sql,
-    this.filter,
-    this.template,
-    this.table,
-    this.inputs = const [],
-    this.when = const {},
-    this.confirm,
-    this.expectRows,
-    this.roles = const [],
-  });
 
   static ActionSpec? fromRow(MetaRow row, List<MetaProblem> problems) {
     final spec = row.spec;
@@ -911,14 +897,6 @@ class ActionSpec {
 }
 
 class NamedQuerySpec {
-  /// The row id doubles as the query id (`query:<id>` in selectors).
-  final String id;
-  final String label;
-  final String? description;
-  final String sql;
-  final List<ActionInput> inputs;
-  final String? group;
-
   const NamedQuerySpec({
     required this.id,
     required this.label,
@@ -927,6 +905,14 @@ class NamedQuerySpec {
     this.inputs = const [],
     this.group,
   });
+
+  /// The row id doubles as the query id (`query:<id>` in selectors).
+  final String id;
+  final String label;
+  final String? description;
+  final String sql;
+  final List<ActionInput> inputs;
+  final String? group;
 
   static NamedQuerySpec? fromRow(MetaRow row, List<MetaProblem> problems) {
     final sql = specString(row.spec, 'sql');
@@ -1044,10 +1030,10 @@ enum ChartRange {
 }
 
 class ChartMeasure {
+  const ChartMeasure({this.aggregate, this.column, this.label});
   final ChartAggregate? aggregate;
   final String? column;
   final String? label;
-  const ChartMeasure({this.aggregate, this.column, this.label});
 }
 
 /// Where a chart's data comes from.
@@ -1057,26 +1043,42 @@ sealed class ChartSource {
 
 /// A table; dbscope builds the aggregate SQL.
 class ChartTableSource extends ChartSource {
+  const ChartTableSource(this.schema, this.table);
   final String schema;
   final String table;
-  const ChartTableSource(this.schema, this.table);
 }
 
 /// A named query.
 class ChartQuerySource extends ChartSource {
-  final String queryId;
   const ChartQuerySource(this.queryId);
+  final String queryId;
 }
 
 /// Inline SQL (row-scoped charts bind `@row_<col>`).
 class ChartSqlSource extends ChartSource {
-  final String sql;
   const ChartSqlSource(this.sql);
+  final String sql;
 }
 
 class ChartSpec {
-  static const int defaultTimeoutMs = 10000;
-  static const int defaultLimit = 500;
+  const ChartSpec({
+    required this.id,
+    required this.target,
+    required this.label,
+    required this.type,
+    required this.source,
+    this.x,
+    this.bucket,
+    this.y = const [],
+    this.series,
+    this.range = ChartRange.all,
+    this.rangeColumn,
+    this.rowScoped = false,
+    this.timeoutMs = defaultTimeoutMs,
+    this.limit = defaultLimit,
+  });
+  static const defaultTimeoutMs = 10000;
+  static const defaultLimit = 500;
 
   final String id;
   final Selector target;
@@ -1096,23 +1098,6 @@ class ChartSpec {
   final bool rowScoped;
   final int timeoutMs;
   final int limit;
-
-  const ChartSpec({
-    required this.id,
-    required this.target,
-    required this.label,
-    required this.type,
-    required this.source,
-    this.x,
-    this.bucket,
-    this.y = const [],
-    this.series,
-    this.range = ChartRange.all,
-    this.rangeColumn,
-    this.rowScoped = false,
-    this.timeoutMs = defaultTimeoutMs,
-    this.limit = defaultLimit,
-  });
 
   static ChartSpec? fromRow(MetaRow row, List<MetaProblem> problems) {
     final spec = row.spec;
@@ -1204,13 +1189,6 @@ enum CheckSeverity {
 }
 
 class CheckSpec {
-  final String id;
-  final Selector target;
-  final String label;
-  final String sql;
-  final CheckSeverity severity;
-  final String? description;
-
   const CheckSpec({
     required this.id,
     required this.target,
@@ -1219,6 +1197,12 @@ class CheckSpec {
     this.severity = CheckSeverity.warning,
     this.description,
   });
+  final String id;
+  final Selector target;
+  final String label;
+  final String sql;
+  final CheckSeverity severity;
+  final String? description;
 
   static CheckSpec? fromRow(MetaRow row, List<MetaProblem> problems) {
     final sql = specString(row.spec, 'sql');
@@ -1238,11 +1222,6 @@ class CheckSpec {
 }
 
 class DashboardSpec {
-  final String id;
-  final String label;
-  final List<String> chartIds;
-  final int columns;
-
   const DashboardSpec({
     required this.id,
     required this.label,
@@ -1256,4 +1235,8 @@ class DashboardSpec {
     chartIds: specStringList(row.spec, 'charts'),
     columns: (specInt(row.spec, 'columns') ?? 2).clamp(1, 4),
   );
+  final String id;
+  final String label;
+  final List<String> chartIds;
+  final int columns;
 }

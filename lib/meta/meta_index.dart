@@ -20,61 +20,47 @@ sealed class MetaTarget {
 }
 
 class TableTarget extends MetaTarget {
+  const TableTarget(this.schema, this.table);
   final String schema;
   final String table;
-  const TableTarget(this.schema, this.table);
   @override
   bool matches(Selector selector) => selector.matchesTable(schema, table);
 }
 
 class SchemaTarget extends MetaTarget {
-  final String schema;
   const SchemaTarget(this.schema);
+  final String schema;
   @override
   bool matches(Selector selector) => selector.matchesSchemaOnly(schema);
 }
 
 class ColumnTarget extends MetaTarget {
+  const ColumnTarget(this.schema, this.table, this.column);
   final String schema;
   final String table;
   final String column;
-  const ColumnTarget(this.schema, this.table, this.column);
   @override
   bool matches(Selector selector) =>
       selector.matchesColumn(schema, table, column);
 }
 
 class QueryTarget extends MetaTarget {
-  final String queryId;
   const QueryTarget(this.queryId);
+  final String queryId;
   @override
   bool matches(Selector selector) => selector.matchesQuery(queryId);
 }
 
 class QueryColumnTarget extends MetaTarget {
+  const QueryColumnTarget(this.queryId, this.column);
   final String queryId;
   final String column;
-  const QueryColumnTarget(this.queryId, this.column);
   @override
   bool matches(Selector selector) =>
       selector.matchesQueryColumn(queryId, column);
 }
 
 class MetaIndex {
-  final MetaDocument document;
-  final List<LinkSpec> links;
-  final List<ActionSpec> actions;
-  final List<NamedQuerySpec> queries;
-  final List<ChartSpec> charts;
-  final List<CheckSpec> checks;
-  final List<DashboardSpec> dashboards;
-  final RbacSettings rbac;
-
-  /// Problems found while parsing list kinds (on top of the document's).
-  final List<MetaProblem> problems;
-
-  final Map<String, List<MetaRow>> _scalarRowsByKind;
-
   MetaIndex._({
     required this.document,
     required this.links,
@@ -87,8 +73,6 @@ class MetaIndex {
     required this.problems,
     required Map<String, List<MetaRow>> scalarRowsByKind,
   }) : _scalarRowsByKind = scalarRowsByKind;
-
-  static final MetaIndex empty = MetaIndex.build(MetaDocument.empty);
 
   factory MetaIndex.build(MetaDocument document) {
     final problems = <MetaProblem>[];
@@ -176,6 +160,21 @@ class MetaIndex {
       scalarRowsByKind: scalar,
     );
   }
+  final MetaDocument document;
+  final List<LinkSpec> links;
+  final List<ActionSpec> actions;
+  final List<NamedQuerySpec> queries;
+  final List<ChartSpec> charts;
+  final List<CheckSpec> checks;
+  final List<DashboardSpec> dashboards;
+  final RbacSettings rbac;
+
+  /// Problems found while parsing list kinds (on top of the document's).
+  final List<MetaProblem> problems;
+
+  final Map<String, List<MetaRow>> _scalarRowsByKind;
+
+  static final empty = MetaIndex.build(MetaDocument.empty);
 
   List<MetaProblem> get allProblems => [...document.problems, ...problems];
 

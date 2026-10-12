@@ -1,10 +1,9 @@
 part of '../sidebar.dart';
 
 class _ConnectionPicker extends StatelessWidget {
+  const _ConnectionPicker({required this.registry, required this.onReload});
   final ConnectionRegistry registry;
   final Future<void> Function() onReload;
-
-  const _ConnectionPicker({required this.registry, required this.onReload});
 
   Future<void> _openMenu(BuildContext context, Offset globalPos) async {
     // Pull a fresh list every time so a saved-from-another-window
@@ -127,13 +126,11 @@ class _ConnectionPicker extends StatelessWidget {
     switch (action.kind) {
       case _ActionKind.switchTo:
         await registry.setActive(action.id, context: context);
-        break;
       case _ActionKind.add:
         final created = await showAddConnectionDialog(context);
         if (created == null || !context.mounted) return;
         await registry.connectProfile(created, context: context);
         AppState.instance.notifyChange();
-        break;
       case _ActionKind.edit:
         final p = registry.profileById(action.id!);
         if (p == null) return;
@@ -147,7 +144,6 @@ class _ConnectionPicker extends StatelessWidget {
             await registry.connectActive(context: context);
           }
         }
-        break;
       case _ActionKind.remove:
         final p = registry.profileById(action.id!);
         if (p == null) return;
@@ -162,18 +158,14 @@ class _ConnectionPicker extends StatelessWidget {
           await registry.removeProfile(p.id);
           AppState.instance.closeTabsForConnection(p.id);
         }
-        break;
       case _ActionKind.disconnect:
         await registry.disconnect();
-        break;
       case _ActionKind.toggleRo:
         final p = registry.profileById(action.id!);
         if (p == null) return;
-        await registry.setReadOnly(p.id, !registry.isReadOnly);
-        break;
+        await registry.setReadOnly(p.id, readOnly: !registry.isReadOnly);
       case _ActionKind.refresh:
         await registry.reloadProfiles();
-        break;
     }
   }
 
@@ -204,7 +196,7 @@ class _ConnectionPicker extends StatelessWidget {
                   final box = btnCtx.findRenderObject() as RenderBox?;
                   if (box == null) return;
                   final origin = box.localToGlobal(Offset(0, box.size.height));
-                  _openMenu(btnCtx, origin);
+                  unawaited(_openMenu(btnCtx, origin));
                 },
                 child: Tooltip(
                   message: 'Connections',
@@ -245,7 +237,7 @@ class _ConnectionPicker extends StatelessWidget {
 enum _ActionKind { switchTo, add, edit, remove, disconnect, toggleRo, refresh }
 
 class _PickerAction {
+  const _PickerAction(this.kind, {this.id});
   final _ActionKind kind;
   final String? id;
-  const _PickerAction(this.kind, {this.id});
 }

@@ -15,24 +15,24 @@ import 'meta_models.dart';
 enum SqlDialect { postgres, sqlite }
 
 class ChartSqlError implements Exception {
-  final String message;
   const ChartSqlError(this.message);
+  final String message;
   @override
   String toString() => message;
 }
 
 /// Rows a histogram reads before binning.
-const int kHistogramSampleRows = 10000;
+const kHistogramSampleRows = 10000;
 
 class ChartSql {
-  final String sql;
-  final int measureCount;
-  final bool hasSeries;
   const ChartSql(
     this.sql, {
     required this.measureCount,
     required this.hasSeries,
   });
+  final String sql;
+  final int measureCount;
+  final bool hasSeries;
 }
 
 /// [readableColumns] is every column the viewer may read (access level

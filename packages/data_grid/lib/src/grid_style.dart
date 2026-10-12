@@ -5,48 +5,6 @@ import 'package:flutter/material.dart';
 /// out of the box; pass a custom [GridStyle] to override.
 @immutable
 class GridStyle {
-  /// Cell background when not selected.
-  final Color cellBackground;
-
-  /// Cell background when part of the selection range (but not the
-  /// focused cell).
-  final Color selectionBackground;
-
-  /// Cell background for the focused cell (the cursor).
-  final Color focusBackground;
-
-  /// Cell border (between cells).
-  final Color cellBorder;
-
-  /// Strong border under the header row.
-  final Color headerBorderStrong;
-
-  /// Accent color for the focused-cell outline, sort arrow, drop
-  /// indicator while reordering columns.
-  final Color accent;
-
-  /// Soft accent — gutter highlight when a row is selected.
-  final Color accentSoft;
-
-  /// Header + gutter background.
-  final Color headerBackground;
-
-  /// Primary text color in cells and headers.
-  final Color textColor;
-
-  /// Muted text color (column type subtitles, gutter numbers).
-  final Color mutedTextColor;
-
-  /// Text style for cell body content (rendered by the default
-  /// renderer; custom renderers may pick their own).
-  final TextStyle cellTextStyle;
-
-  /// Text style for header column names.
-  final TextStyle headerTitleStyle;
-
-  /// Text style for header subtitles (type label) + gutter numbers.
-  final TextStyle headerSubtitleStyle;
-
   const GridStyle({
     required this.cellBackground,
     required this.selectionBackground,
@@ -88,6 +46,48 @@ class GridStyle {
       headerSubtitleStyle: TextStyle(color: muted, fontSize: 11),
     );
   }
+
+  /// Cell background when not selected.
+  final Color cellBackground;
+
+  /// Cell background when part of the selection range (but not the
+  /// focused cell).
+  final Color selectionBackground;
+
+  /// Cell background for the focused cell (the cursor).
+  final Color focusBackground;
+
+  /// Cell border (between cells).
+  final Color cellBorder;
+
+  /// Strong border under the header row.
+  final Color headerBorderStrong;
+
+  /// Accent color for the focused-cell outline, sort arrow, drop
+  /// indicator while reordering columns.
+  final Color accent;
+
+  /// Soft accent — gutter highlight when a row is selected.
+  final Color accentSoft;
+
+  /// Header + gutter background.
+  final Color headerBackground;
+
+  /// Primary text color in cells and headers.
+  final Color textColor;
+
+  /// Muted text color (column type subtitles, gutter numbers).
+  final Color mutedTextColor;
+
+  /// Text style for cell body content (rendered by the default
+  /// renderer; custom renderers may pick their own).
+  final TextStyle cellTextStyle;
+
+  /// Text style for header column names.
+  final TextStyle headerTitleStyle;
+
+  /// Text style for header subtitles (type label) + gutter numbers.
+  final TextStyle headerSubtitleStyle;
 
   GridStyle copyWith({
     Color? cellBackground,
@@ -136,8 +136,8 @@ GridStyle resolveGridStyle(BuildContext context, [GridStyle? explicit]) {
 /// into their [ThemeData.extensions] without touching every grid
 /// callsite.
 class GridStyleExtension extends ThemeExtension<GridStyleExtension> {
-  final GridStyle style;
   const GridStyleExtension(this.style);
+  final GridStyle style;
 
   @override
   GridStyleExtension copyWith({GridStyle? style}) =>

@@ -15,12 +15,12 @@ export 'project_models.dart';
 /// localStorage), so it throws.
 class ProjectStore {
   ProjectStore._();
-  static final ProjectStore instance = ProjectStore._();
+  static final instance = ProjectStore._();
 
-  static const String _kStorageKey = 'dbscope.project';
+  static const _kStorageKey = 'dbscope.project';
 
-  ProjectDocument _doc = ProjectDocument();
-  bool _loaded = false;
+  var _doc = ProjectDocument();
+  var _loaded = false;
   Future<void>? _writeQueue;
 
   Never appDir() {

@@ -18,10 +18,7 @@ class AppStatusBar extends StatelessWidget {
       child: Container(
         decoration: BoxDecoration(
           color: p.surface,
-          border:
-              p.isBevel
-                  ? null
-                  : Border(top: BorderSide(color: p.border, width: 1)),
+          border: p.isBevel ? null : Border(top: BorderSide(color: p.border)),
         ),
         padding: const EdgeInsets.fromLTRB(2, 2, 2, 2),
         child: Row(

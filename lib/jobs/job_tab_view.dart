@@ -9,8 +9,8 @@ import '../../rpc/services/job_client.dart';
 import '../shell/app_state.dart';
 
 class JobTabView extends StatefulWidget {
-  final JobTab tab;
   const JobTabView({super.key, required this.tab});
+  final JobTab tab;
 
   @override
   State<JobTabView> createState() => _JobTabViewState();
@@ -35,8 +35,8 @@ class _JobTabViewState extends State<JobTabView> {
 
   @override
   void dispose() {
-    _progressSub?.cancel();
-    _finishedSub?.cancel();
+    unawaited(_progressSub?.cancel());
+    unawaited(_finishedSub?.cancel());
     super.dispose();
   }
 

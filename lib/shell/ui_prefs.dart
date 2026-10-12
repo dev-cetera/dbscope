@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -12,7 +14,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 /// affect first-frame layout on next launch.
 class UiPrefs {
   UiPrefs._();
-  static final UiPrefs instance = UiPrefs._();
+  static final instance = UiPrefs._();
 
   static const _kSidebarWidth = 'ui.sidebarWidth';
   static const _kSidebarOnRight = 'ui.sidebarOnRight';
@@ -64,11 +66,13 @@ class UiPrefs {
   String? get envFilePath => _prefs?.getString(_kEnvFilePath);
 
   void setSidebarWidth(double v) => _prefs?.setDouble(_kSidebarWidth, v);
-  void setSidebarOnRight(bool v) => _prefs?.setBool(_kSidebarOnRight, v);
-  void setSidebarVisible(bool v) => _prefs?.setBool(_kSidebarVisible, v);
+  void setSidebarOnRight({required bool onRight}) =>
+      _prefs?.setBool(_kSidebarOnRight, onRight);
+  void setSidebarVisible({required bool visible}) =>
+      _prefs?.setBool(_kSidebarVisible, visible);
   void setInspectorWidth(double v) => _prefs?.setDouble(_kInspectorWidth, v);
-  void setInspectorCollapsed(bool v) =>
-      _prefs?.setBool(_kInspectorCollapsed, v);
+  void setInspectorCollapsed({required bool collapsed}) =>
+      _prefs?.setBool(_kInspectorCollapsed, collapsed);
   void setThemeMode(String v) => _prefs?.setString(_kThemeMode, v);
   void setSqlEditorHeight(double v) => _prefs?.setDouble(_kSqlEditorHeight, v);
   void setRowHeight(double v) => _prefs?.setDouble(_kRowHeight, v);
@@ -94,9 +98,9 @@ class UiPrefs {
   void _setOrRemove(String key, String? v) {
     final trimmed = v?.trim();
     if (trimmed == null || trimmed.isEmpty) {
-      _prefs?.remove(key);
+      unawaited(_prefs?.remove(key));
     } else {
-      _prefs?.setString(key, trimmed);
+      unawaited(_prefs?.setString(key, trimmed));
     }
   }
 }

@@ -5,6 +5,9 @@
 // provider is active, which model, the allowSampleRows flag — kept in
 // SharedPreferences, separate from the API keys in SecureStore).
 
+/// @docImport 'settings_store.dart';
+library;
+
 export 'package:ai_broker/ai_broker.dart'
     show
         AiBroker,
@@ -17,6 +20,18 @@ export 'package:ai_broker/ai_broker.dart'
 /// User-visible AI configuration. Persisted via [AiSettingsStore]; API
 /// keys live in SecureStore and are merged in at consumption time.
 class AiSettings {
+  const AiSettings({
+    this.providerId,
+    this.model,
+    this.allowSampleRows = false,
+  });
+
+  factory AiSettings.fromJson(Map<String, Object?> json) => AiSettings(
+    providerId: json['providerId'] as String?,
+    model: json['model'] as String?,
+    allowSampleRows: json['allowSampleRows'] as bool? ?? false,
+  );
+
   /// Active provider id. Null when nothing is configured yet.
   final String? providerId;
 
@@ -28,12 +43,6 @@ class AiSettings {
   /// regex inferrer. Off by default — sample rows are real customer data
   /// and might be sensitive.
   final bool allowSampleRows;
-
-  const AiSettings({
-    this.providerId,
-    this.model,
-    this.allowSampleRows = false,
-  });
 
   AiSettings copyWith({
     String? providerId,
@@ -50,10 +59,4 @@ class AiSettings {
     if (model != null) 'model': model,
     'allowSampleRows': allowSampleRows,
   };
-
-  static AiSettings fromJson(Map<String, Object?> json) => AiSettings(
-    providerId: json['providerId'] as String?,
-    model: json['model'] as String?,
-    allowSampleRows: json['allowSampleRows'] as bool? ?? false,
-  );
 }

@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/foundation.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
@@ -29,6 +31,8 @@ const double _kResizeHotZone = 4;
 class DataGridController<TypeTag> {
   _DataGridState<TypeTag>? _state;
 
+  // Paired with `_detach`; a setter would hide that lifecycle pairing.
+  // ignore: use_setters_to_change_properties
   void _attach(_DataGridState<TypeTag> state) => _state = state;
   void _detach(_DataGridState<TypeTag> state) {
     if (identical(_state, state)) _state = null;
@@ -66,6 +70,32 @@ class DataGridController<TypeTag> {
 /// column reorder/resize, pluggable cell renderers + editors,
 /// TSV/CSV copy, imperative controller, billion-row-friendly.
 class DataGrid<TypeTag> extends StatefulWidget {
+  const DataGrid({
+    super.key,
+    required this.data,
+    this.isLoading = false,
+    this.error,
+    this.controller,
+    this.cellRenderer,
+    this.cellEditor,
+    this.cellOverlay,
+    this.style,
+    this.rowHeight,
+    this.onRowHeightChanged,
+    this.headerHeight = _kDefaultHeaderHeight,
+    this.defaultColumnWidth = 220,
+    this.onLoadMore,
+    this.hasMore = false,
+    this.onCellEdit,
+    this.onSort,
+    this.onDeleteRow,
+    this.onOpenDetail,
+    this.onRowSelected,
+    this.showGutter = true,
+    this.contextMenuExtras,
+    this.headerBuilder,
+  });
+
   /// Initial data set. After mount, prefer pushing changes through
   /// [controller] — when a controller is attached the widget ignores
   /// later identity changes on [data].
@@ -150,50 +180,23 @@ class DataGrid<TypeTag> extends StatefulWidget {
   final Widget Function(BuildContext context, int columnIdx, Widget header)?
       headerBuilder;
 
-  const DataGrid({
-    super.key,
-    required this.data,
-    this.isLoading = false,
-    this.error,
-    this.controller,
-    this.cellRenderer,
-    this.cellEditor,
-    this.cellOverlay,
-    this.style,
-    this.rowHeight,
-    this.onRowHeightChanged,
-    this.headerHeight = _kDefaultHeaderHeight,
-    this.defaultColumnWidth = 220,
-    this.onLoadMore,
-    this.hasMore = false,
-    this.onCellEdit,
-    this.onSort,
-    this.onDeleteRow,
-    this.onOpenDetail,
-    this.onRowSelected,
-    this.showGutter = true,
-    this.contextMenuExtras,
-    this.headerBuilder,
-  });
-
   @override
   State<DataGrid<TypeTag>> createState() => _DataGridState<TypeTag>();
 }
 
 class _DataGridState<TypeTag> extends State<DataGrid<TypeTag>> {
   late GridData<TypeTag> _currentData;
-  final GridModel _model = GridModel();
-  final ScrollController _vScroll = ScrollController();
-  final ScrollController _hScroll = ScrollController();
-  final FocusNode _gridFocus = FocusNode(debugLabel: 'DataGrid');
-  final ScrollController _gutterScroll = ScrollController();
-  late final ValueNotifier<double> _fallbackRowHeight =
-      ValueNotifier<double>(32);
+  final _model = GridModel();
+  final _vScroll = ScrollController();
+  final _hScroll = ScrollController();
+  final _gridFocus = FocusNode(debugLabel: 'DataGrid');
+  final _gutterScroll = ScrollController();
+  late final _fallbackRowHeight = ValueNotifier<double>(32);
   String? _sortColumn;
-  bool _sortDescending = false;
+  var _sortDescending = false;
   int? _lastReportedRowIdx;
-  bool _syncingScroll = false;
-  bool _isDragging = false;
+  var _syncingScroll = false;
+  var _isDragging = false;
 
   ValueListenable<double> get _rowHeightListenable =>
       widget.rowHeight ?? _fallbackRowHeight;
@@ -425,7 +428,7 @@ class _DataGridState<TypeTag> extends State<DataGrid<TypeTag>> {
       }
       return;
     }
-    final clamped = height.clamp(_kMinRowHeight, _kMaxRowHeight).toDouble();
+    final clamped = height.clamp(_kMinRowHeight, _kMaxRowHeight);
     if (_rowHeightOverrides[rowIdx] == clamped) return;
     _rowHeightOverrides[rowIdx] = clamped;
     if (mounted) setState(() {});
@@ -439,8 +442,7 @@ class _DataGridState<TypeTag> extends State<DataGrid<TypeTag>> {
 
   void _onGutterResize(int rowIdx, double delta) {
     final current = _heightFor(rowIdx);
-    final next =
-        (current + delta).clamp(_kMinRowHeight, _kMaxRowHeight).toDouble();
+    final next = (current + delta).clamp(_kMinRowHeight, _kMaxRowHeight);
     _applySetRowHeight(rowIdx, next);
     widget.onRowHeightChanged?.call(rowIdx, next);
   }
@@ -458,12 +460,12 @@ class _DataGridState<TypeTag> extends State<DataGrid<TypeTag>> {
   void _onSortToggle(int originalIdx) {
     if (widget.onSort == null) return;
     final col = _currentData.columns[originalIdx];
-    final desc = _sortColumn == col.name ? !_sortDescending : false;
+    final desc = _sortColumn == col.name && !_sortDescending;
     setState(() {
       _sortColumn = col.name;
       _sortDescending = desc;
     });
-    widget.onSort!(GridSortEvent(col.name, desc));
+    widget.onSort!(GridSortEvent(col.name, descending: desc));
   }
 
   void _onWidthChanged(int originalIdx, double width) =>
@@ -474,7 +476,7 @@ class _DataGridState<TypeTag> extends State<DataGrid<TypeTag>> {
 
   // --- Cell interaction --------------------------------------------------
 
-  void _onCellTap(int row, int col, bool extend) {
+  void _onCellTap(int row, int col, {required bool extend}) {
     if (extend) {
       _model.extendSelection(row, col);
     } else {
@@ -491,7 +493,7 @@ class _DataGridState<TypeTag> extends State<DataGrid<TypeTag>> {
     if (!editor.canEdit(spec)) return;
     if (widget.onCellEdit == null) return;
     if (editor.requiresDialog(spec)) {
-      _editViaDialog(row, originalIdx, spec);
+      unawaited(_editViaDialog(row, originalIdx, spec));
       return;
     }
     _model.beginEdit(row, col);
@@ -520,7 +522,7 @@ class _DataGridState<TypeTag> extends State<DataGrid<TypeTag>> {
     final int absRow;
     if (_rowHeightOverrides.isEmpty) {
       // Fast path: every row has the default height.
-      absRow = (targetY ~/ _rowHeight);
+      absRow = targetY ~/ _rowHeight;
     } else {
       // Mixed heights: walk forward summing extents. In practice
       // overrides are a small map and the visible window is bounded,
@@ -686,7 +688,7 @@ class _DataGridState<TypeTag> extends State<DataGrid<TypeTag>> {
       ),
       _CopyIntent: CallbackAction<_CopyIntent>(
         onInvoke: (_) {
-          if (!_model.isEditing) _onCopyRequest();
+          if (!_model.isEditing) unawaited(_onCopyRequest());
           return null;
         },
       ),
@@ -809,7 +811,7 @@ class _DataGridState<TypeTag> extends State<DataGrid<TypeTag>> {
           rowCount: _currentData.rows.length,
           scrollController: _gutterScroll,
           selection: _model.selection,
-          onSelectRow: (row, extend) {
+          onSelectRow: (row, {required extend}) {
             if (extend) {
               _model.extendSelection(row, _model.order.length - 1);
             } else {
@@ -914,9 +916,9 @@ class _DataGridState<TypeTag> extends State<DataGrid<TypeTag>> {
 enum _CopyFormat { tsv, csv }
 
 class _MoveIntent extends Intent {
+  const _MoveIntent(this.dRow, this.dCol);
   final int dRow;
   final int dCol;
-  const _MoveIntent(this.dRow, this.dCol);
 }
 
 class _CopyIntent extends Intent {
@@ -955,17 +957,8 @@ class _LoadingOverlay extends StatelessWidget {
 
 /// Sticky row-index gutter on the left of the grid. Click selects the
 /// whole row, drag extends row selection, dragging the bottom 4 px of
-/// any cell fires [onResizeDelta] so the caller can grow row height.
+/// any cell fires [onRowResizeDelta] so the caller can grow row height.
 class _GutterColumn extends StatelessWidget {
-  final GridStyle style;
-  final double headerHeight;
-  final double Function(int rowIdx) rowHeightFor;
-  final int rowCount;
-  final ScrollController scrollController;
-  final CellRange? selection;
-  final void Function(int row, bool extend) onSelectRow;
-  final void Function(int rowIdx, double delta) onRowResizeDelta;
-
   const _GutterColumn({
     required this.style,
     required this.headerHeight,
@@ -976,6 +969,14 @@ class _GutterColumn extends StatelessWidget {
     required this.onSelectRow,
     required this.onRowResizeDelta,
   });
+  final GridStyle style;
+  final double headerHeight;
+  final double Function(int rowIdx) rowHeightFor;
+  final int rowCount;
+  final ScrollController scrollController;
+  final CellRange? selection;
+  final void Function(int row, {required bool extend}) onSelectRow;
+  final void Function(int rowIdx, double delta) onRowResizeDelta;
 
   @override
   Widget build(BuildContext context) {
@@ -1018,7 +1019,8 @@ class _GutterColumn extends StatelessWidget {
                     height: rowHeightFor(i),
                     style: style,
                     isSelected: isSelected,
-                    onTap: (extend) => onSelectRow(i, extend),
+                    onTap: ({required extend}) =>
+                        onSelectRow(i, extend: extend),
                     onResizeDelta: (delta) => onRowResizeDelta(i, delta),
                   );
                 },
@@ -1032,13 +1034,6 @@ class _GutterColumn extends StatelessWidget {
 }
 
 class _GutterCell extends StatelessWidget {
-  final int rowIdx;
-  final double height;
-  final GridStyle style;
-  final bool isSelected;
-  final void Function(bool extend) onTap;
-  final ValueChanged<double> onResizeDelta;
-
   const _GutterCell({
     required this.rowIdx,
     required this.height,
@@ -1047,6 +1042,12 @@ class _GutterCell extends StatelessWidget {
     required this.onTap,
     required this.onResizeDelta,
   });
+  final int rowIdx;
+  final double height;
+  final GridStyle style;
+  final bool isSelected;
+  final void Function({required bool extend}) onTap;
+  final ValueChanged<double> onResizeDelta;
 
   @override
   Widget build(BuildContext context) {
@@ -1058,7 +1059,7 @@ class _GutterCell extends StatelessWidget {
           behavior: HitTestBehavior.opaque,
           onTap: () {
             final shift = HardwareKeyboard.instance.isShiftPressed;
-            onTap(shift);
+            onTap(extend: shift);
           },
           child: Container(
             height: height,

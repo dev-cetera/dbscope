@@ -8,7 +8,7 @@ import '../ai/field_explainer.dart';
 /// transitions live here.
 class AiInfoController extends ChangeNotifier {
   String? _info;
-  bool _loading = false;
+  var _loading = false;
 
   String? get info => _info;
   bool get isLoading => _loading;
@@ -56,8 +56,8 @@ class AiInfoController extends ChangeNotifier {
 /// spinner or the AI's explanation. Tightly bound to [AiInfoController]
 /// but decoupled from any concrete data fetcher.
 class AiInfoBlock extends StatelessWidget {
-  final AiInfoController controller;
   const AiInfoBlock({super.key, required this.controller});
+  final AiInfoController controller;
 
   @override
   Widget build(BuildContext context) {
@@ -115,8 +115,8 @@ class AiInfoBlock extends StatelessWidget {
 }
 
 class _ThinkingRow extends StatelessWidget {
-  final Color hint;
   const _ThinkingRow({required this.hint});
+  final Color hint;
 
   @override
   Widget build(BuildContext context) {

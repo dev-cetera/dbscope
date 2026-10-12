@@ -37,9 +37,9 @@ class _Win95Colors {
 /// Font family for the bundled MS Sans Serif TTF. Flutter prefixes fonts
 /// declared by a package with `packages/<name>/` when consumers reference
 /// them without the explicit `package:` argument.
-const String _win95UiFontFamily = 'packages/widgets/MS Sans Serif';
+const _win95UiFontFamily = 'packages/widgets/MS Sans Serif';
 
-const AppPalette win95Palette = AppPalette(
+const win95Palette = AppPalette(
   surface: _Win95Colors.background,
   surfaceRaised: _Win95Colors.light,
   surfaceRecessed: _Win95Colors.shadow,
@@ -78,16 +78,17 @@ const AppPalette win95Palette = AppPalette(
 /// the bundled MS Sans Serif default so consumers that want the platform UI
 /// font (e.g. system-ui on macOS) can opt out without forking the theme.
 ThemeData buildWin95Theme({String? fontFamily}) {
-  final palette = fontFamily == null
-      ? win95Palette
-      : win95Palette.copyWith(uiFontFamily: fontFamily);
+  final palette =
+      fontFamily == null
+          ? win95Palette
+          : win95Palette.copyWith(uiFontFamily: fontFamily);
   const outline = OutlineInputBorder(
     borderRadius: BorderRadius.zero,
-    borderSide: BorderSide(color: _Win95Colors.shadow, width: 1),
+    borderSide: BorderSide(color: _Win95Colors.shadow),
   );
   const focusOutline = OutlineInputBorder(
     borderRadius: BorderRadius.zero,
-    borderSide: BorderSide(color: _Win95Colors.titleBar, width: 1),
+    borderSide: BorderSide(color: _Win95Colors.titleBar),
   );
 
   final bodyText = palette.bodyText;
@@ -131,16 +132,13 @@ ThemeData buildWin95Theme({String? fontFamily}) {
     ),
     colorScheme: const ColorScheme.light(
       primary: _Win95Colors.titleBar,
-      onPrimary: _Win95Colors.titleBarText,
       secondary: _Win95Colors.titleBar,
       onSecondary: _Win95Colors.titleBarText,
       surface: _Win95Colors.background,
-      onSurface: _Win95Colors.text,
       surfaceContainer: _Win95Colors.background,
       surfaceContainerHigh: _Win95Colors.background,
       surfaceContainerHighest: _Win95Colors.background,
       error: Color(0xFF8B0000),
-      onError: _Win95Colors.titleBarText,
       tertiaryContainer: _Win95Colors.titleBar,
       onTertiaryContainer: _Win95Colors.titleBarText,
       errorContainer: Color(0xFFFFE0E0),
@@ -151,7 +149,7 @@ ThemeData buildWin95Theme({String? fontFamily}) {
     ),
     dialogTheme: DialogThemeData(
       backgroundColor: palette.surface,
-      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.zero),
+      shape: const RoundedRectangleBorder(),
       titleTextStyle: TextStyle(
         color: palette.text,
         fontFamily: palette.uiFontFamily,
@@ -187,8 +185,7 @@ ThemeData buildWin95Theme({String? fontFamily}) {
     popupMenuTheme: PopupMenuThemeData(
       color: palette.surface,
       shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.zero,
-        side: BorderSide(color: _Win95Colors.darkShadow, width: 1),
+        side: BorderSide(),
       ),
       textStyle: bodyText,
       elevation: 0,
@@ -197,7 +194,7 @@ ThemeData buildWin95Theme({String? fontFamily}) {
       style: MenuStyle(
         backgroundColor: WidgetStatePropertyAll(_Win95Colors.background),
         shape: WidgetStatePropertyAll(
-          RoundedRectangleBorder(borderRadius: BorderRadius.zero),
+          RoundedRectangleBorder(),
         ),
         elevation: WidgetStatePropertyAll(0),
       ),
@@ -205,15 +202,15 @@ ThemeData buildWin95Theme({String? fontFamily}) {
     cardTheme: CardThemeData(
       color: palette.surface,
       elevation: 0,
-      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.zero),
+      shape: const RoundedRectangleBorder(),
     ),
     elevatedButtonTheme: ElevatedButtonThemeData(
       style: ElevatedButton.styleFrom(
         backgroundColor: palette.surface,
         foregroundColor: palette.text,
-        shape: const RoundedRectangleBorder(borderRadius: BorderRadius.zero),
+        shape: const RoundedRectangleBorder(),
         elevation: 0,
-        side: const BorderSide(color: _Win95Colors.darkShadow, width: 1),
+        side: const BorderSide(),
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
         textStyle: boldText,
       ),
@@ -222,9 +219,9 @@ ThemeData buildWin95Theme({String? fontFamily}) {
       style: FilledButton.styleFrom(
         backgroundColor: palette.surface,
         foregroundColor: palette.text,
-        shape: const RoundedRectangleBorder(borderRadius: BorderRadius.zero),
+        shape: const RoundedRectangleBorder(),
         elevation: 0,
-        side: const BorderSide(color: _Win95Colors.darkShadow, width: 1),
+        side: const BorderSide(),
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
         textStyle: boldText,
       ),
@@ -232,14 +229,14 @@ ThemeData buildWin95Theme({String? fontFamily}) {
     textButtonTheme: TextButtonThemeData(
       style: TextButton.styleFrom(
         foregroundColor: palette.text,
-        shape: const RoundedRectangleBorder(borderRadius: BorderRadius.zero),
+        shape: const RoundedRectangleBorder(),
         textStyle: bodyText,
       ),
     ),
     iconButtonTheme: IconButtonThemeData(
       style: IconButton.styleFrom(
         foregroundColor: palette.text,
-        shape: const RoundedRectangleBorder(borderRadius: BorderRadius.zero),
+        shape: const RoundedRectangleBorder(),
         backgroundColor: Colors.transparent,
       ),
     ),
@@ -256,7 +253,7 @@ ThemeData buildWin95Theme({String? fontFamily}) {
         fontFamily: palette.uiFontFamily,
         fontSize: 12,
       ),
-      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.zero),
+      shape: const RoundedRectangleBorder(),
       behavior: SnackBarBehavior.fixed,
     ),
     progressIndicatorTheme: ProgressIndicatorThemeData(
@@ -273,7 +270,7 @@ ThemeData buildWin95Theme({String? fontFamily}) {
       decoration: const BoxDecoration(
         color: _Win95Colors.tooltip,
         border: Border.fromBorderSide(
-          BorderSide(color: _Win95Colors.darkShadow, width: 1),
+          BorderSide(),
         ),
       ),
       textStyle: TextStyle(
@@ -296,7 +293,7 @@ ThemeData buildWin95Theme({String? fontFamily}) {
       }),
     ),
     listTileTheme: ListTileThemeData(
-      contentPadding: const EdgeInsets.symmetric(horizontal: 8, vertical: 0),
+      contentPadding: const EdgeInsets.symmetric(horizontal: 8),
       minVerticalPadding: 0,
       dense: true,
       textColor: palette.text,
@@ -306,7 +303,7 @@ ThemeData buildWin95Theme({String? fontFamily}) {
       menuStyle: const MenuStyle(
         backgroundColor: WidgetStatePropertyAll(_Win95Colors.background),
         shape: WidgetStatePropertyAll(
-          RoundedRectangleBorder(borderRadius: BorderRadius.zero),
+          RoundedRectangleBorder(),
         ),
         elevation: WidgetStatePropertyAll(0),
       ),

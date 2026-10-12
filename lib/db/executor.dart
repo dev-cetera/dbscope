@@ -27,15 +27,14 @@ import '../query/cancel_token.dart';
 
 /// Backend-agnostic result of executing one statement.
 class DbResult {
-  final List<DbColumn> columns;
-  final List<List<Object?>> rows;
-  final int affectedRows;
-
   const DbResult({
     required this.columns,
     required this.rows,
     this.affectedRows = 0,
   });
+  final List<DbColumn> columns;
+  final List<List<Object?>> rows;
+  final int affectedRows;
 
   bool get isEmpty => rows.isEmpty;
   List<Object?> get first => rows.first;
@@ -43,17 +42,24 @@ class DbResult {
 
 /// Column metadata from a result set.
 class DbColumn {
+  const DbColumn({required this.name, this.typeName});
   final String name;
 
   /// Postgres-style type name (e.g. 'int4', 'text'). Null if the backend
   /// doesn't expose types — callers map null to PgType.unknown.
   final String? typeName;
-  const DbColumn({required this.name, this.typeName});
 }
 
 /// Capability flags. Default to false for safety; backends override
 /// `capabilities` to advertise what they support.
 class DbCapabilities {
+  const DbCapabilities({
+    this.sessionReadOnly = false,
+    this.cancelByClose = false,
+    this.dml = false,
+    this.transactions = false,
+  });
+
   /// Whether `setReadOnly` is real (SET default_transaction_read_only).
   /// HTTP-mediated backends can't toggle session state.
   final bool sessionReadOnly;
@@ -66,13 +72,6 @@ class DbCapabilities {
 
   /// Whether multi-statement transactions are supported.
   final bool transactions;
-
-  const DbCapabilities({
-    this.sessionReadOnly = false,
-    this.cancelByClose = false,
-    this.dml = false,
-    this.transactions = false,
-  });
 
   static const postgres = DbCapabilities(
     sessionReadOnly: true,
@@ -108,7 +107,7 @@ abstract class DbExecutor {
   /// `SET default_transaction_read_only = {ON,OFF}`. Backends without
   /// session state should make this a no-op (and report
   /// `capabilities.sessionReadOnly == false`).
-  Future<void> setReadOnly(bool readOnly);
+  Future<void> setReadOnly({required bool readOnly});
 
   /// Close the executor. `force = true` is the "abort whatever is in
   /// flight" path used by the user-facing Stop button — Postgres-backed

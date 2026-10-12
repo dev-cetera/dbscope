@@ -2,7 +2,7 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
 class SecureStore {
   SecureStore._();
-  static final SecureStore instance = SecureStore._();
+  static final instance = SecureStore._();
 
   // macOS note: usesDataProtectionKeychain=false uses the legacy
   // file-based keychain, which does NOT require the
@@ -11,10 +11,8 @@ class SecureStore {
   // $(AppIdentifierPrefix) resolves to nothing valid. The legacy
   // keychain still lives in the user's login keychain and persists
   // across restarts — secure enough for our purposes.
-  final FlutterSecureStorage _storage = const FlutterSecureStorage(
-    iOptions: IOSOptions(accessibility: KeychainAccessibility.unlocked),
+  final _storage = const FlutterSecureStorage(
     mOptions: MacOsOptions(
-      accessibility: KeychainAccessibility.unlocked,
       usesDataProtectionKeychain: false,
     ),
   );

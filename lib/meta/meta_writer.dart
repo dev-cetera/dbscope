@@ -11,9 +11,9 @@ import 'meta_settings.dart';
 import 'meta_sources.dart';
 
 class MetaWriter {
+  MetaWriter(this.executor, this.settings);
   final DbExecutor executor;
   final MetadataSettings settings;
-  MetaWriter(this.executor, this.settings);
 
   bool get _sqlite => isSqliteExecutor(executor);
   MetaTableNames get _names => MetaTableNames.forExecutor(executor, settings);

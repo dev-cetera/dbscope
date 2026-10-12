@@ -8,9 +8,8 @@ import 'executor.dart';
 
 /// DbExecutor backed by package:postgres. Owns one TCP connection.
 class PostgresExecutor implements DbExecutor {
+  PostgresExecutor(pg.Connection conn) : _conn = conn;
   final pg.Connection _conn;
-
-  PostgresExecutor(this._conn);
 
   /// The underlying connection. Some legacy paths (e.g. server-side jobs
   /// that drop down to raw protocol features) still need direct access.
@@ -80,7 +79,7 @@ class PostgresExecutor implements DbExecutor {
   @visibleForTesting
   static Object? decodeValue(Object? v) => _decodeValue(v);
 
-  static const int _byteaOid = 17;
+  static const _byteaOid = 17;
 
   static Object? _decodeValue(Object? v) {
     if (v is! pg.UndecodedBytes) return v;
@@ -100,7 +99,7 @@ class PostgresExecutor implements DbExecutor {
   }
 
   @override
-  Future<void> setReadOnly(bool readOnly) async {
+  Future<void> setReadOnly({required bool readOnly}) async {
     await _conn.execute(
       'SET default_transaction_read_only = ${readOnly ? 'ON' : 'OFF'}',
     );

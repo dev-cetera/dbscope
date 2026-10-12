@@ -39,15 +39,12 @@ class Server {
   void dispatch(Envelope env, Replier out) {
     switch (env.kind) {
       case EnvelopeKind.req:
-        _handleRequest(env, out);
-        break;
+        unawaited(_handleRequest(env, out));
       case EnvelopeKind.sub:
         _handleSub(env, out);
-        break;
       case EnvelopeKind.unsub:
         final s = _subs.remove(env.id);
-        s?.cancel();
-        break;
+        unawaited(s?.cancel());
       case EnvelopeKind.res:
       case EnvelopeKind.evt:
       case EnvelopeKind.end:
@@ -106,9 +103,11 @@ class Server {
       out(Envelope.err(env.id, RpcError('handler_error', e.toString())));
       return;
     }
+    // Kept in `_subs` and cancelled on `unsub` (see `dispatch`).
+    // ignore: cancel_subscriptions
     final sub = stream.listen(
       (data) => out(Envelope.evt(env.id, data)),
-      onError: (e, st) {
+      onError: (Object e, StackTrace st) {
         out(
           Envelope.err(
             env.id,

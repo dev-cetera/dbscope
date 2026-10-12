@@ -8,21 +8,15 @@ import 'package:flutter/widgets.dart';
 /// shared `package:widgets` already owns `AppMenu`/`AppMenuItem` types
 /// with a different shape (no submenus, string shortcuts).
 class MenuSpec {
+  const MenuSpec({required this.label, required this.items});
   final String label;
   final List<MenuItemSpec> items;
-  const MenuSpec({required this.label, required this.items});
 }
 
 /// One entry in a menu. Either an action ([onSelected] set) or a
 /// submenu ([children] set). A new visual group starts on any item
 /// flagged [startsGroup].
 class MenuItemSpec {
-  final String label;
-  final VoidCallback? onSelected;
-  final SingleActivator? shortcut;
-  final List<MenuItemSpec>? children;
-  final bool startsGroup;
-
   const MenuItemSpec({
     required this.label,
     this.onSelected,
@@ -30,6 +24,11 @@ class MenuItemSpec {
     this.children,
     this.startsGroup = false,
   });
+  final String label;
+  final VoidCallback? onSelected;
+  final SingleActivator? shortcut;
+  final List<MenuItemSpec>? children;
+  final bool startsGroup;
 
   bool get isSubmenu => children != null;
 }
@@ -39,17 +38,17 @@ class MenuItemSpec {
 /// and decides at click-time which action to dispatch. Items are
 /// inserted at the end of the named menu, after the built-in items.
 class MenuContribution {
-  /// Target menu by label: 'File', 'View', 'Connection', 'AI', etc.
-  /// New menu labels are added automatically if no built-in matches.
-  final String menu;
-  final MenuItemSpec Function(BuildContext context) build;
-  final bool startsGroup;
-
   const MenuContribution({
     required this.menu,
     required this.build,
     this.startsGroup = true,
   });
+
+  /// Target menu by label: 'File', 'View', 'Connection', 'AI', etc.
+  /// New menu labels are added automatically if no built-in matches.
+  final String menu;
+  final MenuItemSpec Function(BuildContext context) build;
+  final bool startsGroup;
 }
 
 /// Process-wide registry of menu contributions. The built-in menus
@@ -57,7 +56,7 @@ class MenuContribution {
 /// to them or define new top-level menus by registering items here.
 class MenuContributionRegistry {
   MenuContributionRegistry._();
-  static final MenuContributionRegistry instance = MenuContributionRegistry._();
+  static final instance = MenuContributionRegistry._();
 
   final List<MenuContribution> _contributions = [];
 

@@ -37,10 +37,10 @@ enum ShellEnvStatus {
 /// synchronous lookup at every call site.
 class ShellEnv {
   ShellEnv._();
-  static final ShellEnv instance = ShellEnv._();
+  static final instance = ShellEnv._();
 
   /// False only on web, where there is no shell and no filesystem.
-  static const bool isSupported = true;
+  static const isSupported = true;
 
   /// The file consulted when the user hasn't chosen one.
   ///
@@ -88,7 +88,7 @@ class ShellEnv {
       return;
     }
     final file = File(target);
-    if (!await file.exists()) {
+    if (!file.existsSync()) {
       _fileVars = const {};
       _status = ShellEnvStatus.missing;
       return;
@@ -139,7 +139,7 @@ class ShellEnv {
         ? path
         : '${parent.path}${Platform.pathSeparator}$path';
     final file = File(absolute);
-    if (!await file.exists()) return null;
+    if (!file.existsSync()) return null;
     try {
       return await file.readAsString();
     } catch (_) {

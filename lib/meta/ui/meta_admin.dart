@@ -28,7 +28,7 @@ import 'action_trust.dart';
 import 'meta_dialogs.dart';
 import 'meta_menu.dart';
 
-const TextStyle _mono = TextStyle(fontFamily: 'monospace', fontSize: 12);
+const _mono = TextStyle(fontFamily: 'monospace', fontSize: 12);
 
 /// The active connection's id and snapshot, or null with a toast.
 ({String id, MetaSnapshot snapshot})? _active(BuildContext context) {
@@ -246,10 +246,10 @@ Future<void> showViewAs(BuildContext context) async {
 }
 
 class _CheckResult {
+  const _CheckResult(this.check, {this.count, this.error});
   final CheckSpec check;
   final int? count;
   final String? error;
-  const _CheckResult(this.check, {this.count, this.error});
 }
 
 Future<void> showChecks(BuildContext context) async {

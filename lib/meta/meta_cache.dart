@@ -24,20 +24,6 @@ enum MetaLoadStatus { none, loading, ready }
 
 /// Everything known about one connection's metadata at one moment.
 class MetaSnapshot {
-  final String profileId;
-  final MetaLoadStatus status;
-  final MetaIndex index;
-  final AccessPolicy policy;
-  final MetaTablesOutcome tablesOutcome;
-  final String? tablesError;
-  final MetadataSettings settings;
-  final AccessIdentity identity;
-  final bool isSqlite;
-  final DateTime? loadedAt;
-
-  /// Role ids being previewed with "View as…", or null.
-  final Set<String>? viewAsRoleIds;
-
   const MetaSnapshot({
     required this.profileId,
     required this.status,
@@ -63,6 +49,19 @@ class MetaSnapshot {
         identity: AccessIdentity.anonymous,
         isSqlite: false,
       );
+  final String profileId;
+  final MetaLoadStatus status;
+  final MetaIndex index;
+  final AccessPolicy policy;
+  final MetaTablesOutcome tablesOutcome;
+  final String? tablesError;
+  final MetadataSettings settings;
+  final AccessIdentity identity;
+  final bool isSqlite;
+  final DateTime? loadedAt;
+
+  /// Role ids being previewed with "View as…", or null.
+  final Set<String>? viewAsRoleIds;
 
   List<MetaProblem> get problems => [
     ...index.allProblems,
@@ -90,14 +89,14 @@ class MetaSnapshot {
 }
 
 class _LoadArgs {
+  const _LoadArgs(this.profile, this.executor);
   final ConnectionProfile profile;
   final DbExecutor executor;
-  const _LoadArgs(this.profile, this.executor);
 }
 
 class MetadataCache extends ChangeNotifier {
   MetadataCache._();
-  static final MetadataCache instance = MetadataCache._();
+  static final instance = MetadataCache._();
 
   final Map<String, MetaSnapshot> _snapshots = {};
   final Map<String, _LoadArgs> _lastArgs = {};
@@ -158,7 +157,7 @@ class MetadataCache extends ChangeNotifier {
     // would make the load wait on itself forever.
     final future = _load(profile, executor, previous?.viewAsRoleIds)
         .whenComplete(() {
-          _inFlight.remove(profile.id);
+          unawaited(_inFlight.remove(profile.id));
         });
     _inFlight[profile.id] = future;
     return future;
@@ -268,7 +267,7 @@ class MetadataCache extends ChangeNotifier {
           const MetaProblem(
             MetaSourceKind.file,
             'access control',
-            'The database defines access control, so the metadata file\'s '
+            "The database defines access control, so the metadata file's "
                 'roles, members, grants and rbac settings are ignored.',
           ),
         ],
@@ -365,7 +364,7 @@ class MetadataCache extends ChangeNotifier {
         'SELECT r.rolname::text FROM pg_roles r '
         "WHERE pg_has_role(current_user, r.oid, 'member')",
       );
-      return {for (final row in res.rows) row[0] as String};
+      return {for (final row in res.rows) row[0]! as String};
     } catch (_) {
       // No role info → no pg: principals. The policy degrades to claimed
       // identity and `everyone`, which only ever narrows access.
@@ -396,8 +395,8 @@ class MetadataCache extends ChangeNotifier {
           <String, ({bool select, bool insert, bool update, bool delete})>{};
       for (final row in tableRes.rows) {
         tables[PrivilegeCeilings.tableKey(
-          row[0] as String,
-          row[1] as String,
+          row[0]! as String,
+          row[1]! as String,
         )] = (
           select: row[2] == true,
           insert: row[3] == true,
@@ -425,9 +424,9 @@ class MetadataCache extends ChangeNotifier {
       final columns = <String, ({bool select, bool update})>{};
       for (final row in columnRes.rows) {
         columns[PrivilegeCeilings.columnKey(
-          row[0] as String,
-          row[1] as String,
-          row[2] as String,
+          row[0]! as String,
+          row[1]! as String,
+          row[2]! as String,
         )] = (
           select: row[3] == true,
           update: row[4] == true,

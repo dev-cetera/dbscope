@@ -12,17 +12,17 @@ const _kMaxWidth = 440.0;
 const _kLineHeight = 1.35;
 
 class DescriptionTooltip extends StatelessWidget {
-  /// Markdown. Empty shows no tooltip at all.
-  final String markdown;
-  final Widget child;
-  final Duration waitDuration;
-
   const DescriptionTooltip({
     super.key,
     required this.markdown,
     required this.child,
     this.waitDuration = const Duration(milliseconds: 500),
   });
+
+  /// Markdown. Empty shows no tooltip at all.
+  final String markdown;
+  final Widget child;
+  final Duration waitDuration;
 
   @override
   Widget build(BuildContext context) {

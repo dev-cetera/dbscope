@@ -22,6 +22,22 @@ import 'type_colors.dart';
 /// [SchemaFieldSpec.valueIsNull] is set) instead of the static type
 /// label. That's how a host can show live row data on the same card.
 class SchemaCard extends StatelessWidget {
+  const SchemaCard({
+    super.key,
+    required this.node,
+    this.isSelected = false,
+    this.isHighlighted = false,
+    this.hasSelection = false,
+    this.onTap,
+    this.onHeaderPanStart,
+    this.onHeaderPanUpdate,
+    this.onHeaderPanEnd,
+    this.onSecondaryTapDown,
+    this.onToggleCompact,
+    this.onActivate,
+    this.activateTooltip = 'Open',
+    this.activateIcon = Icons.open_in_new,
+  });
   final SchemaNodeData node;
   final bool isSelected;
   final bool isHighlighted;
@@ -55,23 +71,6 @@ class SchemaCard extends StatelessWidget {
   /// Custom icon for the activate button. Defaults to
   /// [Icons.open_in_new].
   final IconData activateIcon;
-
-  const SchemaCard({
-    super.key,
-    required this.node,
-    this.isSelected = false,
-    this.isHighlighted = false,
-    this.hasSelection = false,
-    this.onTap,
-    this.onHeaderPanStart,
-    this.onHeaderPanUpdate,
-    this.onHeaderPanEnd,
-    this.onSecondaryTapDown,
-    this.onToggleCompact,
-    this.onActivate,
-    this.activateTooltip = 'Open',
-    this.activateIcon = Icons.open_in_new,
-  });
 
   @override
   Widget build(BuildContext context) {
@@ -120,7 +119,6 @@ class SchemaCard extends StatelessWidget {
                   // 0 4px 14px black-0.45 (drop shadow).
                   BoxShadow(
                     color: Colors.white.withValues(alpha: 0.4),
-                    blurRadius: 0,
                     spreadRadius: 1,
                   ),
                   BoxShadow(
@@ -187,18 +185,6 @@ class SchemaCard extends StatelessWidget {
 }
 
 class _SchemaCardHeader extends StatelessWidget {
-  final SchemaNodeData node;
-  final Color headerColor;
-  final VoidCallback? onTap;
-  final VoidCallback? onHeaderPanStart;
-  final void Function(DragUpdateDetails details)? onHeaderPanUpdate;
-  final VoidCallback? onHeaderPanEnd;
-  final void Function(Offset globalPosition)? onSecondaryTapDown;
-  final VoidCallback? onToggleCompact;
-  final VoidCallback? onActivate;
-  final String activateTooltip;
-  final IconData activateIcon;
-
   const _SchemaCardHeader({
     required this.node,
     required this.headerColor,
@@ -212,6 +198,17 @@ class _SchemaCardHeader extends StatelessWidget {
     required this.activateTooltip,
     required this.activateIcon,
   });
+  final SchemaNodeData node;
+  final Color headerColor;
+  final VoidCallback? onTap;
+  final VoidCallback? onHeaderPanStart;
+  final void Function(DragUpdateDetails details)? onHeaderPanUpdate;
+  final VoidCallback? onHeaderPanEnd;
+  final void Function(Offset globalPosition)? onSecondaryTapDown;
+  final VoidCallback? onToggleCompact;
+  final VoidCallback? onActivate;
+  final String activateTooltip;
+  final IconData activateIcon;
 
   @override
   Widget build(BuildContext context) {
@@ -316,16 +313,16 @@ class _SchemaCardHeader extends StatelessWidget {
 }
 
 class _HeaderButton extends StatelessWidget {
-  final String tooltip;
-  final Color onHeaderColor;
-  final VoidCallback onPressed;
-  final Widget child;
   const _HeaderButton({
     required this.tooltip,
     required this.onHeaderColor,
     required this.onPressed,
     required this.child,
   });
+  final String tooltip;
+  final Color onHeaderColor;
+  final VoidCallback onPressed;
+  final Widget child;
 
   @override
   Widget build(BuildContext context) {
@@ -347,7 +344,6 @@ class _HeaderButton extends StatelessWidget {
               borderRadius: BorderRadius.circular(3),
               border: Border.all(
                 color: Colors.white.withValues(alpha: 0.45),
-                width: 1,
               ),
             ),
             alignment: Alignment.center,
@@ -386,12 +382,12 @@ class _EmptyBody extends StatelessWidget {
 }
 
 class _SchemaFieldRow extends StatelessWidget {
-  final SchemaFieldSpec field;
-  final bool darkMode;
   const _SchemaFieldRow({
     required this.field,
     required this.darkMode,
   });
+  final SchemaFieldSpec field;
+  final bool darkMode;
 
   @override
   Widget build(BuildContext context) {

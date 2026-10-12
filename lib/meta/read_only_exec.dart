@@ -33,8 +33,8 @@ bool canFenceReadOnly(DbExecutor executor) =>
     executor.capabilities.transactions;
 
 class MetaSessionBusy implements Exception {
-  final String message;
   const MetaSessionBusy(this.message);
+  final String message;
   @override
   String toString() => message;
 }

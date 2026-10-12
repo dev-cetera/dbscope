@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:schema_viewer/schema_viewer.dart';
 import 'package:widgets/widgets.dart';
@@ -13,22 +15,22 @@ import 'schema_tab.dart';
 /// [SchemaEdgeData], runs the dagre-like layout, and hands everything
 /// off to the shared [SchemaCanvas] from package:schema_viewer.
 class SchemaTabView extends StatefulWidget {
-  final SchemaTab tab;
   const SchemaTabView({super.key, required this.tab});
+  final SchemaTab tab;
 
   @override
   State<SchemaTabView> createState() => _SchemaTabViewState();
 }
 
 class _SchemaTabViewState extends State<SchemaTabView> {
-  late final SchemaCanvasController _canvasCtrl = SchemaCanvasController();
+  late final _canvasCtrl = SchemaCanvasController();
 
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
-      if (!widget.tab.isLoaded) _loadSchema();
+      if (!widget.tab.isLoaded) unawaited(_loadSchema());
     });
   }
 
@@ -316,7 +318,7 @@ class _SchemaTabViewState extends State<SchemaTabView> {
                     AppState.instance.notifyChange();
                     setState(() {});
                   },
-                  onCompactToggled: (id, willBeCompact) {
+                  onCompactToggled: (id, {required willBeCompact}) {
                     AppState.instance.notifyChange();
                   },
                   onCardActivated: _onCardActivated,
@@ -329,16 +331,16 @@ class _SchemaTabViewState extends State<SchemaTabView> {
 }
 
 class _LayoutModeButton extends StatelessWidget {
-  final String label;
-  final String tooltip;
-  final bool isSelected;
-  final VoidCallback onPressed;
   const _LayoutModeButton({
     required this.label,
     required this.tooltip,
     required this.isSelected,
     required this.onPressed,
   });
+  final String label;
+  final String tooltip;
+  final bool isSelected;
+  final VoidCallback onPressed;
 
   @override
   Widget build(BuildContext context) {

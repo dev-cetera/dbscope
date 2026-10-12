@@ -158,6 +158,7 @@ void main() {
           }
         }
       }
+      // A diagnostic count for whoever runs this live-DB test by hand.
       // ignore: avoid_print
       print('columns with a native COMMENT: $withComment');
     });

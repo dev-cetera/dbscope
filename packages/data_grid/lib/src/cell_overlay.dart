@@ -15,14 +15,14 @@ abstract class CellOverlayProvider<TypeTag> {
 }
 
 class CellOverlayContext<TypeTag> {
-  final int rowIdx;
-  final int originalIdx;
-  final GridColumnSpec<TypeTag> column;
-  final Object? value;
   const CellOverlayContext({
     required this.rowIdx,
     required this.originalIdx,
     required this.column,
     required this.value,
   });
+  final int rowIdx;
+  final int originalIdx;
+  final GridColumnSpec<TypeTag> column;
+  final Object? value;
 }

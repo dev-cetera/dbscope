@@ -18,4 +18,4 @@
 // 4. delete any saved profiles of this kind from the connection picker.
 
 export 'src/plugin.dart'
-    show SqfliteRemotePlugin, SqfliteRemoteKindPlugin, kSqfliteRemoteKind;
+    show SqfliteRemoteKindPlugin, SqfliteRemotePlugin, kSqfliteRemoteKind;

@@ -23,7 +23,7 @@ import '../../util/sql_quote.dart';
 import 'job.dart';
 
 class CopyTableJob implements JobHandler {
-  static const int batchSize = 500;
+  static const batchSize = 500;
 
   @override
   String get kind => 'copy_table';
@@ -78,7 +78,7 @@ class CopyTableJob implements JobHandler {
  '''),
       parameters: {'schema': sourceSchema, 'table': sourceTable},
     );
-    final columns = [for (final row in colResult) row[0] as String];
+    final columns = [for (final row in colResult) row[0]! as String];
     if (columns.isEmpty) {
       throw RpcError('empty_schema', 'no columns for $qSource');
     }
@@ -92,7 +92,7 @@ class CopyTableJob implements JobHandler {
  '''),
       parameters: {'schema': targetSchema, 'table': targetTable},
     );
-    final targetCols = {for (final row in tgtColResult) row[0] as String};
+    final targetCols = {for (final row in tgtColResult) row[0]! as String};
     if (targetCols.isEmpty) {
       throw RpcError('missing_target', 'target $qTarget not found');
     }

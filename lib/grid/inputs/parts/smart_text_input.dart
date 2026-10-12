@@ -3,17 +3,16 @@ part of '../column_input.dart';
 enum _SmartKind { auto, plain, email, phone, url }
 
 class _SmartTextInput extends StatefulWidget {
-  final String? value;
-  final bool enabled;
-  final bool multiLine;
-  final ValueChanged<Object?> onChanged;
-
   const _SmartTextInput({
     required this.value,
     required this.enabled,
     required this.multiLine,
     required this.onChanged,
   });
+  final String? value;
+  final bool enabled;
+  final bool multiLine;
+  final ValueChanged<Object?> onChanged;
 
   @override
   State<_SmartTextInput> createState() => _SmartTextInputState();
@@ -103,17 +102,16 @@ class _SmartTextInputState extends State<_SmartTextInput> {
 }
 
 class _SmartKindMenu extends StatelessWidget {
-  final _SmartKind current;
-  final _SmartKind detected;
-  final String Function(_SmartKind) labelFor;
-  final ValueChanged<_SmartKind> onSelected;
-
   const _SmartKindMenu({
     required this.current,
     required this.detected,
     required this.labelFor,
     required this.onSelected,
   });
+  final _SmartKind current;
+  final _SmartKind detected;
+  final String Function(_SmartKind) labelFor;
+  final ValueChanged<_SmartKind> onSelected;
 
   @override
   Widget build(BuildContext context) {

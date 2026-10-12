@@ -23,7 +23,6 @@ void main() {
     database: 'compledo',
     username: 'app',
     password: 'super-secret-p@ss w0rd',
-    sslMode: SslMode.disable,
     readOnly: true,
     extra: const {
       'instanceConnectionName':
@@ -67,8 +66,8 @@ void main() {
     // Sanity: it is a connection link with the expected shape.
     final map = jsonDecode(json) as Map<String, Object?>;
     expect(map['dbscopeConnection'], 1);
-    expect((map['profile'] as Map).containsKey('password'), isFalse);
-    expect((map['secret'] as Map)['alg'], 'aes-gcm-256');
+    expect((map['profile']! as Map).containsKey('password'), isFalse);
+    expect((map['secret']! as Map)['alg'], 'aes-gcm-256');
   });
 
   test('wrong passphrase throws BadPassphraseException', () async {
@@ -88,9 +87,9 @@ void main() {
       passphrase: 'pw',
     );
     final map = jsonDecode(json) as Map<String, Object?>;
-    final secret = map['secret'] as Map<String, Object?>;
+    final secret = map['secret']! as Map<String, Object?>;
     // Flip the ciphertext to a different valid base64 blob of same length.
-    final cipher = base64.decode(secret['ciphertext'] as String);
+    final cipher = base64.decode(secret['ciphertext']! as String);
     cipher[0] = cipher[0] ^ 0xFF;
     secret['ciphertext'] = base64.encode(cipher);
     final tampered = jsonEncode(map);

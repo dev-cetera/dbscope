@@ -4,6 +4,16 @@ import 'package:flutter/widgets.dart';
 /// PK, FK, and isRefTarget control the badge/colour treatment; in compact
 /// mode we filter to the union of those three.
 class SchemaFieldSpec {
+  const SchemaFieldSpec({
+    required this.name,
+    required this.typeLabel,
+    this.pk = false,
+    this.fk = false,
+    this.isRefTarget = false,
+    this.linkedTable,
+    this.valueDisplay,
+    this.valueIsNull = false,
+  });
   final String name;
   final String typeLabel;
   final bool pk;
@@ -27,17 +37,6 @@ class SchemaFieldSpec {
   /// True when [valueDisplay] is logically NULL (renders muted).
   final bool valueIsNull;
 
-  const SchemaFieldSpec({
-    required this.name,
-    required this.typeLabel,
-    this.pk = false,
-    this.fk = false,
-    this.isRefTarget = false,
-    this.linkedTable,
-    this.valueDisplay,
-    this.valueIsNull = false,
-  });
-
   SchemaFieldSpec copyWith({
     String? valueDisplay,
     bool? valueIsNull,
@@ -59,6 +58,18 @@ class SchemaFieldSpec {
 /// (`schema.table`), used as the React-Flow-equivalent stable id and
 /// matched against edges. `position` is canvas-space top-left.
 class SchemaNodeData {
+  SchemaNodeData({
+    required this.id,
+    required this.schema,
+    required this.tableName,
+    required this.fields,
+    this.subtitle,
+    this.headerLeadingIcon,
+    Offset? position,
+    this.compact = true,
+    this.widthOverridden = false,
+    this.widthOverride,
+  }) : position = position ?? Offset.zero;
   final String id;
   final String schema;
   final String tableName;
@@ -80,25 +91,20 @@ class SchemaNodeData {
 
   /// Override width when [widthOverridden] is true.
   double? widthOverride;
-
-  SchemaNodeData({
-    required this.id,
-    required this.schema,
-    required this.tableName,
-    required this.fields,
-    this.subtitle,
-    this.headerLeadingIcon,
-    Offset? position,
-    this.compact = true,
-    this.widthOverridden = false,
-    this.widthOverride,
-  }) : position = position ?? Offset.zero;
 }
 
 /// Directed FK edge between two schema nodes. Source is the FK side
 /// (the table that owns the foreign key); target is the referenced
 /// (PK) side.
 class SchemaEdgeData {
+  const SchemaEdgeData({
+    required this.id,
+    required this.sourceId,
+    required this.targetId,
+    this.sourceField,
+    this.targetField,
+    this.dashed = false,
+  });
   final String id;
   final String sourceId;
   final String targetId;
@@ -114,13 +120,4 @@ class SchemaEdgeData {
   /// Draw dashed: a relationship the host knows about that isn't a real
   /// constraint (e.g. declared in schema metadata).
   final bool dashed;
-
-  const SchemaEdgeData({
-    required this.id,
-    required this.sourceId,
-    required this.targetId,
-    this.sourceField,
-    this.targetField,
-    this.dashed = false,
-  });
 }

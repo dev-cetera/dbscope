@@ -8,6 +8,8 @@
 /// the user is exploring, with live row values in each card).
 library;
 
+import 'schema_viewer.dart' show SchemaCanvas, SchemaEdgeData, SchemaNodeData;
+
 export 'src/gradient_edge_painter.dart' show SchemaEdgePainter;
 export 'src/schema_canvas.dart'
     show SchemaCanvas, SchemaCanvasCardCallbacks, SchemaCanvasController;

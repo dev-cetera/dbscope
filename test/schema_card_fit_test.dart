@@ -14,8 +14,8 @@ SchemaNodeData _node({String? subtitle}) => SchemaNodeData(
   tableName: 'items',
   subtitle: subtitle,
   fields: [
-    SchemaFieldSpec(name: 'id', typeLabel: 'uuid', pk: true),
-    SchemaFieldSpec(name: 'group_id', typeLabel: 'uuid', fk: true),
+    const SchemaFieldSpec(name: 'id', typeLabel: 'uuid', pk: true),
+    const SchemaFieldSpec(name: 'group_id', typeLabel: 'uuid', fk: true),
   ],
 );
 

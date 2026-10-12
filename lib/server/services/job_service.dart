@@ -13,15 +13,14 @@ import 'bus_service.dart';
 import 'connection_service.dart';
 
 class JobService {
+  JobService({required ConnectionService connections, required BusService bus})
+    : _connections = connections,
+      _bus = bus;
   final ConnectionService _connections;
   final BusService _bus;
   final Map<String, JobHandler> _handlers = {};
   final Map<String, JobRecord> _jobs = {};
   final Map<String, JobContext> _contexts = {};
-
-  JobService({required ConnectionService connections, required BusService bus})
-    : _connections = connections,
-      _bus = bus;
 
   void registerHandler(JobHandler handler) {
     _handlers[handler.kind] = handler;
@@ -32,7 +31,7 @@ class JobService {
     server.onRequest('job.list', (_) async => _listJson());
     server.onRequest('job.get', (p) async {
       _ensureMap(p);
-      final id = (p as Map<String, Object?>)['id'] as String?;
+      final id = (p! as Map<String, Object?>)['id'] as String?;
       if (id == null) {
         throw const RpcError('bad_params', 'id required');
       }
@@ -42,7 +41,7 @@ class JobService {
     });
     server.onRequest('job.cancel', (p) async {
       _ensureMap(p);
-      final id = (p as Map<String, Object?>)['id'] as String?;
+      final id = (p! as Map<String, Object?>)['id'] as String?;
       if (id == null) {
         throw const RpcError('bad_params', 'id required');
       }
@@ -53,7 +52,7 @@ class JobService {
 
   Future<Object?> _submit(Object? params) async {
     _ensureMap(params);
-    final p = params as Map<String, Object?>;
+    final p = params! as Map<String, Object?>;
     final spec = JobSpec.fromJson(p);
     final handler = _handlers[spec.kind];
     if (handler == null) {

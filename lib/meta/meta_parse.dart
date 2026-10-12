@@ -26,7 +26,7 @@ import 'selector.dart';
 
 /// Keys a meta entry may carry besides its spec. Anything else on an entry
 /// without an explicit `spec:` is treated as the spec (inline form).
-const Set<String> _metaEntryKeys = {
+const _metaEntryKeys = <String>{
   'id',
   'target',
   'kind',
@@ -58,7 +58,7 @@ Map<String, Object?> decodeSpecCell(Object? cell) {
 }
 
 List<String> decodeStringListCell(Object? cell) {
-  Object? value = cell;
+  var value = cell;
   if (value is String && value.trim().startsWith('[')) {
     value = jsonDecode(value);
   }
@@ -94,6 +94,7 @@ String? _str(Object? v) {
 
 /// Accumulates parsed entries for one source.
 class MetaSourceBuilder {
+  MetaSourceBuilder(this.source);
   final MetaSourceKind source;
   final List<MetaRow> rows = [];
   final List<MetaRole> roles = [];
@@ -102,8 +103,6 @@ class MetaSourceBuilder {
   final List<MetaProblem> problems = [];
   final Set<String> disabledRowIds = {};
   final Set<String> disabledGrantIds = {};
-
-  MetaSourceBuilder(this.source);
 
   MetaSourceData build() => MetaSourceData(
     source: source,

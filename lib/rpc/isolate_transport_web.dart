@@ -9,18 +9,18 @@ import 'transport.dart';
 
 class WindowRouter {
   WindowRouter._();
-  static final WindowRouter instance = WindowRouter._();
+  static final instance = WindowRouter._();
 
   void ensureInstalled() {}
 }
 
 class IsolateTransport implements Transport {
-  final int targetWindowId;
   IsolateTransport({this.targetWindowId = 0}) {
     throw UnsupportedError(
       'IsolateTransport is not supported on the web build.',
     );
   }
+  final int targetWindowId;
 
   @override
   Stream<Envelope> get incoming => const Stream.empty();
@@ -33,12 +33,5 @@ class IsolateTransport implements Transport {
 }
 
 class HostWindowRouter {
-  HostWindowRouter({
-    required void Function(
-      Envelope envelope,
-      int fromWindowId,
-      void Function(Envelope) reply,
-    )
-    dispatch,
-  });
+  HostWindowRouter();
 }

@@ -1,3 +1,6 @@
+/// @docImport 'package:flutter/scheduler.dart';
+library;
+
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
 
@@ -7,8 +10,8 @@ import 'table_colors.dart';
 
 /// Two chevrons per edge animating along the bezier path so direction
 /// reads at a glance without marching-ants noise.
-const int _kChevronCount = 2;
-const double _kChevronSize = 6.0;
+const _kChevronCount = 2;
+const _kChevronSize = 6.0;
 
 /// Which side of a card an edge endpoint sits on. The bezier control
 /// point pulls along this side's outward direction, so the curve
@@ -29,15 +32,6 @@ extension on _Side {
 }
 
 class _EdgeGeom {
-  final SchemaEdgeData edge;
-  final Offset start;
-  final Offset end;
-  final _Side startSide;
-  final _Side endSide;
-  final Color fromColor;
-  final Color toColor;
-  final bool highlighted;
-  final bool dimmed;
   const _EdgeGeom({
     required this.edge,
     required this.start,
@@ -49,9 +43,29 @@ class _EdgeGeom {
     required this.highlighted,
     required this.dimmed,
   });
+  final SchemaEdgeData edge;
+  final Offset start;
+  final Offset end;
+  final _Side startSide;
+  final _Side endSide;
+  final Color fromColor;
+  final Color toColor;
+  final bool highlighted;
+  final bool dimmed;
 }
 
 class SchemaEdgePainter extends CustomPainter {
+  SchemaEdgePainter({
+    required this.nodes,
+    required this.edges,
+    required this.pan,
+    required this.scale,
+    required this.tickerValue,
+    required this.selectedId,
+    required this.highlightedNodeIds,
+    this.dragNodeId,
+    this.dragDelta = Offset.zero,
+  });
   final List<SchemaNodeData> nodes;
   final List<SchemaEdgeData> edges;
   final Offset pan;
@@ -76,18 +90,6 @@ class SchemaEdgePainter extends CustomPainter {
   /// card live while it's being moved.
   final String? dragNodeId;
   final Offset dragDelta;
-
-  SchemaEdgePainter({
-    required this.nodes,
-    required this.edges,
-    required this.pan,
-    required this.scale,
-    required this.tickerValue,
-    required this.selectedId,
-    required this.highlightedNodeIds,
-    this.dragNodeId,
-    this.dragDelta = Offset.zero,
-  });
 
   Rect _screenRect(SchemaNodeData n) {
     final r = rectForNode(n);
@@ -155,9 +157,9 @@ class SchemaEdgePainter extends CustomPainter {
   }) {
     _Side? bestASide;
     _Side? bestBSide;
-    Offset bestA = srcRect.center;
-    Offset bestB = tgtRect.center;
-    double bestDist = double.infinity;
+    var bestA = srcRect.center;
+    var bestB = tgtRect.center;
+    var bestDist = double.infinity;
 
     for (final aSide in _Side.values) {
       final aPt = _anchorOn(src, srcRect, aSide, sourceField);
@@ -290,7 +292,7 @@ class SchemaEdgePainter extends CustomPainter {
     for (var i = 0; i < _kChevronCount; i++) {
       final phase = (tickerValue + i / _kChevronCount) % 1.0;
       final at = phase * total;
-      double remaining = at;
+      var remaining = at;
       Offset? pos;
       double tangentAngle = 0;
       for (final m in metrics) {

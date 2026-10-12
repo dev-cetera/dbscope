@@ -12,7 +12,7 @@ export 'history_models.dart';
 /// file, so it stays as a sibling JSON file next to the project file.
 class HistoryStore {
   HistoryStore._();
-  static final HistoryStore instance = HistoryStore._();
+  static final instance = HistoryStore._();
 
   Future<File> _historyFile(String connectionId) async {
     final dir = await ProjectStore.instance.appDir();
@@ -21,7 +21,7 @@ class HistoryStore {
 
   Future<List<HistoryEntry>> loadHistory(String connectionId) async {
     final file = await _historyFile(connectionId);
-    if (!await file.exists()) return [];
+    if (!file.existsSync()) return [];
     final raw = await file.readAsString();
     if (raw.trim().isEmpty) return [];
     final list = jsonDecode(raw) as List<Object?>;

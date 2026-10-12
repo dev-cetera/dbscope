@@ -63,7 +63,7 @@ class FieldExplainer {
     final dbml = DbmlCache.instance.peek(connectionId);
 
     final valuePreview = _previewValue(currentValue);
-    final system =
+    const system =
         'You are a database concierge. Given a DBML schema '
         'and one specific column, explain in 1-2 short sentences what '
         'that column represents and (if helpful) what the current value '

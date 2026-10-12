@@ -13,6 +13,20 @@ import 'package:flutter/material.dart';
 /// the submit button entirely — useful for picker-style dialogs whose
 /// only "submit" is a row tap inside the body.
 class AppFormDialog extends StatelessWidget {
+  const AppFormDialog({
+    super.key,
+    required this.title,
+    required this.content,
+    this.width = 460,
+    this.height,
+    this.scrollable = true,
+    this.onSubmit,
+    this.submitLabel = 'OK',
+    this.submitIcon,
+    this.cancelLabel = 'Cancel',
+    this.extraActions = const [],
+  });
+
   /// Dialog title text. Rendered with the theme's titleMedium style.
   final String title;
 
@@ -50,20 +64,6 @@ class AppFormDialog extends StatelessWidget {
 
   /// Optional extra actions inserted between Cancel and Submit.
   final List<Widget> extraActions;
-
-  const AppFormDialog({
-    super.key,
-    required this.title,
-    required this.content,
-    this.width = 460,
-    this.height,
-    this.scrollable = true,
-    this.onSubmit,
-    this.submitLabel = 'OK',
-    this.submitIcon,
-    this.cancelLabel = 'Cancel',
-    this.extraActions = const [],
-  });
 
   @override
   Widget build(BuildContext context) {

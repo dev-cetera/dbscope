@@ -1,9 +1,12 @@
+/// @docImport '../inspector/property_inspector.dart';
+library;
+
 import 'package:flutter/widgets.dart';
 import 'package:uuid/uuid.dart';
 
 import '../catalog/schema_catalog.dart';
-import '../grid/data_grid.dart';
 import '../db/edit_policy.dart';
+import '../grid/data_grid.dart';
 import '../navigator/navigator_tab.dart';
 import '../query/pager.dart';
 import '../shell/app_state.dart';
@@ -20,6 +23,11 @@ bool _samePk(List<Object?> a, List<Object?> b) {
 /// renders a single row (PropertyInspector) or a paginated list of rows
 /// that the user can promote to row nodes.
 sealed class LinkedNode {
+  LinkedNode({
+    String? id,
+    required this.position,
+    this.width = 240,
+  }) : id = id ?? const Uuid().v4();
   final String id;
   Offset position;
 
@@ -28,12 +36,6 @@ sealed class LinkedNode {
   /// once columns load, and lets the user further resize by dragging the
   /// right edge.
   double width;
-
-  LinkedNode({
-    String? id,
-    required this.position,
-    this.width = 240,
-  }) : id = id ?? const Uuid().v4();
 }
 
 /// A single row on the canvas. The node card renders as a compact
@@ -41,6 +43,16 @@ sealed class LinkedNode {
 /// row contents are surfaced in the right-side [PropertyInspector] when
 /// the node is selected.
 class LinkedRowNode extends LinkedNode {
+  LinkedRowNode({
+    super.id,
+    required super.position,
+    super.width,
+    required this.schema,
+    required this.table,
+    required this.pkColumns,
+    required this.pkValues,
+    this.isSeed = false,
+  });
   final String schema;
   final String table;
   final List<String> pkColumns;
@@ -59,19 +71,8 @@ class LinkedRowNode extends LinkedNode {
   String? rowLabel;
   List<ColumnInfo> columns = const [];
   List<EditPolicy> editPolicies = const [];
-  bool isLoading = false;
+  var isLoading = false;
   String? error;
-
-  LinkedRowNode({
-    super.id,
-    required super.position,
-    super.width,
-    required this.schema,
-    required this.table,
-    required this.pkColumns,
-    required this.pkValues,
-    this.isSeed = false,
-  });
 
   bool sameRowAs(String otherSchema, String otherTable, List<Object?> otherPk) {
     if (otherSchema != schema || otherTable != table) return false;
@@ -103,23 +104,6 @@ class LinkedRowNode extends LinkedNode {
 /// nodes (filtered by the inbound FK). Clicking a row inside a list node
 /// promotes that row to a [LinkedRowNode] connected by an edge.
 class LinkedListNode extends LinkedNode {
-  final String schema;
-  final String table;
-  final InboundFilter? inboundFilter;
-
-  List<ColumnInfo> columns = const [];
-  List<String> pkColumns = const [];
-  Set<String> indexedColumns = const {};
-  List<EditPolicy> editPolicies = const [];
-  bool catalogLoaded = false;
-
-  GridData? data;
-  KeysetPager? pager;
-  bool isLoading = false;
-  bool isLoadingMore = false;
-  bool hasNextPage = false;
-  String? error;
-
   LinkedListNode({
     super.id,
     required super.position,
@@ -128,6 +112,22 @@ class LinkedListNode extends LinkedNode {
     required this.table,
     this.inboundFilter,
   });
+  final String schema;
+  final String table;
+  final InboundFilter? inboundFilter;
+
+  List<ColumnInfo> columns = const [];
+  List<String> pkColumns = const [];
+  Set<String> indexedColumns = const {};
+  List<EditPolicy> editPolicies = const [];
+  var catalogLoaded = false;
+
+  GridData? data;
+  KeysetPager? pager;
+  var isLoading = false;
+  var isLoadingMore = false;
+  var hasNextPage = false;
+  String? error;
 }
 
 /// Inspector-only row reference. Lets the user "peek" at a row in the
@@ -135,6 +135,12 @@ class LinkedListNode extends LinkedNode {
 /// a [LinkedRowNode]. Lives independently of the node list so the canvas
 /// stays uncluttered while browsing the middle row-list panel.
 class LinkedRowRef {
+  LinkedRowRef({
+    required this.schema,
+    required this.table,
+    required this.pkColumns,
+    required this.pkValues,
+  });
   final String schema;
   final String table;
   final List<String> pkColumns;
@@ -143,15 +149,8 @@ class LinkedRowRef {
   Map<String, Object?>? row;
   List<ColumnInfo> columns = const [];
   List<EditPolicy> editPolicies = const [];
-  bool isLoading = false;
+  var isLoading = false;
   String? error;
-
-  LinkedRowRef({
-    required this.schema,
-    required this.table,
-    required this.pkColumns,
-    required this.pkValues,
-  });
 
   bool sameRowAs(String otherSchema, String otherTable, List<Object?> otherPk) {
     if (otherSchema != schema || otherTable != table) return false;
@@ -164,11 +163,6 @@ class LinkedRowRef {
 /// column on the target node. The edge painter uses these to anchor
 /// the endpoints to the exact column rows inside each card.
 class LinkedEdge {
-  final String fromNodeId;
-  final String toNodeId;
-  final String? fromColumn;
-  final String? toColumn;
-  final bool incoming;
   const LinkedEdge({
     required this.fromNodeId,
     required this.toNodeId,
@@ -176,6 +170,11 @@ class LinkedEdge {
     this.toColumn,
     this.incoming = false,
   });
+  final String fromNodeId;
+  final String toNodeId;
+  final String? fromColumn;
+  final String? toColumn;
+  final bool incoming;
 }
 
 /// Canvas-style tab that renders a row plus its FK-linked rows as a web
@@ -183,11 +182,18 @@ class LinkedEdge {
 /// once and reused for every node so chips render without per-node round
 /// trips.
 class LinkedTab extends TabModel {
+  LinkedTab({
+    super.id,
+    required super.connectionId,
+    this.seedSchema,
+    this.seedTable,
+  }) : pickerSchema = seedSchema,
+       pickerTable = seedTable;
   final List<LinkedNode> nodes = [];
   final List<LinkedEdge> edges = [];
 
   List<ForeignKey> foreignKeys = const [];
-  bool fksLoaded = false;
+  var fksLoaded = false;
   String? fksError;
 
   /// Pan offset applied to the entire canvas. Persisted on the tab so
@@ -196,7 +202,7 @@ class LinkedTab extends TabModel {
 
   /// Zoom factor applied to the canvas. 1.0 = no scaling. Persisted so
   /// switching tabs keeps the zoom level the user set.
-  double scale = 1.0;
+  var scale = 1.0;
 
   /// Set when the tab was opened with a target table but no seed row yet
   /// (e.g. from the sidebar context menu). The view uses this to seed the
@@ -228,16 +234,8 @@ class LinkedTab extends TabModel {
   /// preview-picker panel. Per-tab so opening another linked tab keeps
   /// its own layout. Right inspector visibility is shared via
   /// [AppState.propertyInspectorCollapsed] and stays global.
-  bool leftPickerCollapsed = false;
-  bool middlePanelCollapsed = false;
-
-  LinkedTab({
-    super.id,
-    required super.connectionId,
-    this.seedSchema,
-    this.seedTable,
-  }) : pickerSchema = seedSchema,
-       pickerTable = seedTable;
+  var leftPickerCollapsed = false;
+  var middlePanelCollapsed = false;
 
   @override
   String get title {

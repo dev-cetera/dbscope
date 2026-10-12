@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:widgets/widgets.dart';
 
@@ -17,14 +19,14 @@ import '../masked_value.dart';
 import '../meta_cache.dart';
 import '../meta_models.dart';
 import '../ui/action_trust.dart';
-import '../ui/meta_dialogs.dart';
 import '../ui/meta_column_header.dart';
+import '../ui/meta_dialogs.dart';
 import '../ui/meta_menu.dart';
 import 'named_query_tab.dart';
 
 class NamedQueryView extends StatefulWidget {
-  final NamedQueryTab tab;
   const NamedQueryView({super.key, required this.tab});
+  final NamedQueryTab tab;
 
   @override
   State<NamedQueryView> createState() => _NamedQueryViewState();
@@ -53,9 +55,9 @@ class _NamedQueryViewState extends State<NamedQueryView>
     final id = tab.queryId;
     final allowed =
         id == null || (_snapshot?.policy.forQuery(id).canSeeValues ?? true);
-    if (tab.autoRun && allowed && _spec?.inputs.isEmpty != false) {
+    if (tab.autoRun && allowed && (_spec?.inputs.isEmpty ?? true)) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (mounted) _run();
+        if (mounted) unawaited(_run());
       });
     }
     tab.autoRun = false;
@@ -136,7 +138,7 @@ class _NamedQueryViewState extends State<NamedQueryView>
     if (!trusted) {
       setState(
         () => tab.error =
-            'This query comes from the connection\'s metadata. Trust its '
+            "This query comes from the connection's metadata. Trust its "
             'metadata SQL to run it.',
       );
       return;

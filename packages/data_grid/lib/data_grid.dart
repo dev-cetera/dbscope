@@ -9,6 +9,8 @@
 /// Backend-agnostic: column type tags are an opaque generic, so the
 /// same widget renders Postgres, SQLite, CSV, or any other tabular
 /// source given an appropriate [CellRenderer] / [CellEditor] pair.
+///
+/// @docImport 'data_grid.dart';
 library;
 
 export 'src/cell_editor.dart';

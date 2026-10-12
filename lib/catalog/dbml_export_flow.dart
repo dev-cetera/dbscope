@@ -76,7 +76,6 @@ class DbmlExportFlow {
     switch (action) {
       case _PostExportAction.saveToFile:
         await _saveToFile(messenger, dbml, profile.database);
-        break;
       case _PostExportAction.copyToClipboard:
         await Clipboard.setData(ClipboardData(text: dbml));
         messenger.showSnackBar(
@@ -84,7 +83,6 @@ class DbmlExportFlow {
             content: Text('DBML copied to clipboard.'),
           ),
         );
-        break;
       case _PostExportAction.viewInBrowser:
         await Clipboard.setData(ClipboardData(text: dbml));
         await _openUrl('https://dbdiagram.io/d');
@@ -93,10 +91,8 @@ class DbmlExportFlow {
             content: Text(
               'DBML copied. Paste it into the dbdiagram.io editor.',
             ),
-            duration: Duration(seconds: 4),
           ),
         );
-        break;
     }
   }
 
@@ -140,8 +136,8 @@ class DbmlExportFlow {
   }
 
   static String _safeProjectName(String s) {
-    final cleaned = s.replaceAll(RegExp(r'[^A-Za-z0-9_]'), '_');
-    if (cleaned.isEmpty || RegExp(r'^[0-9]').hasMatch(cleaned)) {
+    final cleaned = s.replaceAll(RegExp('[^A-Za-z0-9_]'), '_');
+    if (cleaned.isEmpty || RegExp('^[0-9]').hasMatch(cleaned)) {
       return 'db_$cleaned';
     }
     return cleaned;
@@ -183,8 +179,8 @@ class _PostExportDialog extends StatelessWidget {
 }
 
 class _ProgressDialog extends StatelessWidget {
-  final ValueNotifier<DbmlExportProgress?> progress;
   const _ProgressDialog({required this.progress});
+  final ValueNotifier<DbmlExportProgress?> progress;
 
   @override
   Widget build(BuildContext context) {

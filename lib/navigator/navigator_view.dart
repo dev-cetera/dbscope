@@ -9,12 +9,12 @@ import 'package:widgets/widgets.dart';
 import '../ai/regex_inferrer.dart';
 import '../catalog/schema_catalog.dart';
 import '../connection/registry.dart';
-import '../db/executor.dart';
-import '../grid/data_grid.dart';
 import '../db/dml.dart';
 import '../db/edit_policies.dart';
 import '../db/edit_policy.dart';
+import '../db/executor.dart';
 import '../db/write_rules.dart';
+import '../grid/data_grid.dart';
 import '../grid/row_dialog.dart';
 import '../inspector/property_inspector.dart';
 import '../meta/masked_value.dart';
@@ -27,18 +27,17 @@ import '../util/pg_errors.dart';
 import '../util/sql_quote.dart';
 import 'navigator_tab.dart';
 
-part 'parts/table_list_column.dart';
-part 'parts/row_list_column.dart';
 part 'parts/row_detail_column.dart';
+part 'parts/row_list_column.dart';
+part 'parts/table_list_column.dart';
 
 const double _kTableListWidth = 260;
 const double _kRowDetailWidth = 360;
 const double _kRowListMinWidth = 340;
-const int _kPageSize = 500;
 
 class NavigatorTabView extends StatefulWidget {
-  final NavigatorTab tab;
   const NavigatorTabView({super.key, required this.tab});
+  final NavigatorTab tab;
 
   @override
   State<NavigatorTabView> createState() => _NavigatorTabViewState();
@@ -55,7 +54,7 @@ class _NavigatorTabViewState extends State<NavigatorTabView> {
         ? null
         : widget.tab.steps.last.id;
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted) _loadFKsIfNeeded();
+      if (mounted) unawaited(_loadFKsIfNeeded());
     });
   }
 
@@ -76,10 +75,12 @@ class _NavigatorTabViewState extends State<NavigatorTabView> {
         if (!mounted || !_hScroll.hasClients) return;
         final natural = _naturalRightmostScroll;
         if (natural == null) return;
-        _hScroll.animateTo(
-          natural,
-          duration: const Duration(milliseconds: 250),
-          curve: Curves.easeOut,
+        unawaited(
+          _hScroll.animateTo(
+            natural,
+            duration: const Duration(milliseconds: 250),
+            curve: Curves.easeOut,
+          ),
         );
       });
     }
@@ -124,7 +125,7 @@ class _NavigatorTabViewState extends State<NavigatorTabView> {
     final theme = Theme.of(context);
     final tab = widget.tab;
     if (tab.steps.isEmpty) {
-      return Container(
+      return ColoredBox(
         color: theme.colorScheme.surfaceContainerLow,
         child: const EmptyState(
           icon: Icons.view_column_outlined,
@@ -132,7 +133,7 @@ class _NavigatorTabViewState extends State<NavigatorTabView> {
         ),
       );
     }
-    return Container(
+    return ColoredBox(
       color: theme.colorScheme.surfaceContainerLow,
       child: LayoutBuilder(
         builder: (context, constraints) {
@@ -213,8 +214,12 @@ class _NavigatorTabViewState extends State<NavigatorTabView> {
   Widget _widgetFor(NavStep step, int index) {
     return switch (step) {
       TableListStep _ => TableListColumn(tab: widget.tab, index: index),
-      RowListStep s => RowListColumn(tab: widget.tab, index: index, step: s),
-      RowDetailStep s => RowDetailColumn(
+      final RowListStep s => RowListColumn(
+        tab: widget.tab,
+        index: index,
+        step: s,
+      ),
+      final RowDetailStep s => RowDetailColumn(
         tab: widget.tab,
         index: index,
         step: s,

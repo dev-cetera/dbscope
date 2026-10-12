@@ -7,17 +7,17 @@ import 'package:dbscope/db/executor.dart';
 import 'package:dbscope/query/cancel_token.dart';
 
 class ExecuteCall {
+  const ExecuteCall(this.sql, {this.positional, this.named});
   final String sql;
   final List<Object?>? positional;
   final Map<String, Object?>? named;
-  const ExecuteCall(this.sql, {this.positional, this.named});
 }
 
 class FakeDbExecutor implements DbExecutor {
   final List<ExecuteCall> calls = [];
   final List<DbResult> _scripted = [];
-  bool _open = true;
-  bool readOnly = false;
+  var _open = true;
+  var readOnly = false;
 
   @override
   String get kind => 'fake';
@@ -28,7 +28,6 @@ class FakeDbExecutor implements DbExecutor {
   @override
   DbCapabilities get capabilities => const DbCapabilities(
     sessionReadOnly: true,
-    cancelByClose: false,
     dml: true,
     transactions: true,
   );
@@ -69,8 +68,8 @@ class FakeDbExecutor implements DbExecutor {
   }
 
   @override
-  Future<void> setReadOnly(bool value) async {
-    readOnly = value;
+  Future<void> setReadOnly({required bool readOnly}) async {
+    this.readOnly = readOnly;
   }
 
   @override

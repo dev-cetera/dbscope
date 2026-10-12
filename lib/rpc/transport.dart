@@ -23,14 +23,13 @@ abstract class Transport {
 // Used in the host isolate (where the Server runs) and as the fallback
 // when multi-window isn't in play.
 class LocalTransport implements Transport {
+  LocalTransport(this._handler);
   final void Function(Envelope envelope, void Function(Envelope) reply)
   _handler;
   // Single-subscription: BackendClient is the only listener. Broadcast
   // controllers' done future can fail to complete in the flutter_test
   // zone after a sub has been cancelled, deadlocking the test runner.
-  final StreamController<Envelope> _incoming = StreamController<Envelope>();
-
-  LocalTransport(this._handler);
+  final _incoming = StreamController<Envelope>();
 
   @override
   Stream<Envelope> get incoming => _incoming.stream;

@@ -17,7 +17,7 @@ class Footer extends StatelessWidget {
     final running = state.runningTabs().toList();
     final registry = ConnectionRegistry.instance;
 
-    String left = '—';
+    var left = '—';
     if (tab != null) {
       final summary = TabKindRegistry.instance
           .lookupForTab(tab)
@@ -27,7 +27,6 @@ class Footer extends StatelessWidget {
     }
 
     return AppBevel(
-      raised: true,
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 2),
       child: SizedBox(
         height: 22,
@@ -45,7 +44,7 @@ class Footer extends StatelessWidget {
                 ),
               ),
               const SizedBox(width: 6),
-              if (registry.profile?.readOnly == true)
+              if (registry.profile?.readOnly ?? false)
                 AppBevel(
                   raised: false,
                   color: palette.surface,

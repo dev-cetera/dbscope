@@ -1,15 +1,14 @@
 part of '../column_input.dart';
 
 class _BoolInput extends StatelessWidget {
-  final bool? value;
-  final bool enabled;
-  final ValueChanged<Object?> onChanged;
-
   const _BoolInput({
     required this.value,
     required this.enabled,
     required this.onChanged,
   });
+  final bool? value;
+  final bool enabled;
+  final ValueChanged<Object?> onChanged;
 
   @override
   Widget build(BuildContext context) {
@@ -38,7 +37,7 @@ class _BoolInput extends StatelessWidget {
             DropdownMenuItem(value: true, child: Text('true')),
             DropdownMenuItem(value: false, child: Text('false')),
           ],
-          onChanged: enabled ? (v) => onChanged(v) : null,
+          onChanged: enabled ? onChanged : null,
         ),
       ),
     );

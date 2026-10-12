@@ -47,9 +47,9 @@ void main() {
     test(
       'ignores strings, identifiers, comments, dollar quotes, operators',
       () {
-        const sql = '''
+        const sql = r'''
 SELECT '@row_x', "@row_y", data @> '{}', a @@ b -- @row_z
-/* @row_w */ , \$\$ @row_v \$\$, @row_id:int8''';
+/* @row_w */ , $$ @row_v $$, @row_id:int8''';
         expect(findPlaceholders(sql), ['row_id']);
       },
     );

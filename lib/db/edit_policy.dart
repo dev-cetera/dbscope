@@ -1,6 +1,26 @@
 import '../catalog/pg_type.dart';
 
 class EditPolicy {
+  const EditPolicy({
+    required this.schema,
+    required this.table,
+    required this.pkColumns,
+    required this.column,
+    required this.type,
+    required this.typeName,
+    required this.nullable,
+    required this.isGenerated,
+    required this.isIdentity,
+    required this.readOnly,
+    required this.multiLine,
+    required this.nullIfBlank,
+    this.enumValues,
+    this.readOnlyReason,
+    this.pattern,
+    this.min,
+    this.max,
+    this.touchColumns = const [],
+  });
   final String schema;
   final String table;
   final List<String> pkColumns;
@@ -27,27 +47,6 @@ class EditPolicy {
   /// Columns stamped with the current time on every edit of this row
   /// (metadata `policy.touch`, e.g. `updated_at`).
   final List<String> touchColumns;
-
-  const EditPolicy({
-    required this.schema,
-    required this.table,
-    required this.pkColumns,
-    required this.column,
-    required this.type,
-    required this.typeName,
-    required this.nullable,
-    required this.isGenerated,
-    required this.isIdentity,
-    required this.readOnly,
-    required this.multiLine,
-    required this.nullIfBlank,
-    this.enumValues,
-    this.readOnlyReason,
-    this.pattern,
-    this.min,
-    this.max,
-    this.touchColumns = const [],
-  });
 
   /// Null when [raw] passes the metadata validation hints, else a message.
   String? validate(Object? raw) {

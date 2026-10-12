@@ -5,6 +5,24 @@ import '../tabs/tab_model.dart';
 /// prompt strip (collapsible). The same tab handles "ask AI → generate
 /// SQL → edit → run" without spawning a sibling tab.
 class QueryTab extends TabModel {
+  QueryTab({
+    super.id,
+    required super.connectionId,
+    this.sql = '',
+    this.prompt = '',
+    this.focusSchema,
+    this.focusTable,
+    this.historyRailOpen = false,
+    this.data,
+    this.isLoading = false,
+    this.isAsking = false,
+    this.error,
+    this.elapsed,
+    this.truncated = false,
+    this.titleOverride,
+    this.savedName,
+    this.autoRun = false,
+  });
   String sql;
   String prompt;
   String? focusSchema;
@@ -33,25 +51,6 @@ class QueryTab extends TabModel {
   /// Row currently selected in the result grid, surfaced in the
   /// shared right-side inspector. Null when nothing is selected.
   int? selectedRowIndex;
-
-  QueryTab({
-    super.id,
-    required super.connectionId,
-    this.sql = '',
-    this.prompt = '',
-    this.focusSchema,
-    this.focusTable,
-    this.historyRailOpen = false,
-    this.data,
-    this.isLoading = false,
-    this.isAsking = false,
-    this.error,
-    this.elapsed,
-    this.truncated = false,
-    this.titleOverride,
-    this.savedName,
-    this.autoRun = false,
-  });
 
   @override
   String get title {

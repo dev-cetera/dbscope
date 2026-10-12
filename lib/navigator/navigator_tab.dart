@@ -1,16 +1,16 @@
 import 'package:uuid/uuid.dart';
 
 import '../catalog/schema_catalog.dart';
-import '../grid/data_grid.dart';
 import '../db/edit_policy.dart';
+import '../grid/data_grid.dart';
 import '../query/pager.dart';
 import '../shell/app_state.dart';
 
 /// One column of the navigator. Sealed so the view can switch on the
 /// concrete variant.
 sealed class NavStep {
-  final String id;
   NavStep({String? id}) : id = id ?? const Uuid().v4();
+  final String id;
 }
 
 /// Root column: list of every table in the database. State (schemas /
@@ -25,15 +25,15 @@ class TableListStep extends NavStep {
 /// inbound-FK group on a parent row. Maps the FK columns of [source] to
 /// the corresponding values of the parent row.
 class InboundFilter {
+  const InboundFilter({required this.source, required this.values});
+
   /// All [ForeignKey] entries that share a single logical constraint
   /// (composite FKs have one entry per column).
   final List<ForeignKey> source;
 
   /// Values of the parent row's target columns, in the same order as
-  /// [source]. So `source[i].toColumn` in the parent has value [values][i].
+  /// [source]. So `source[i].toColumn` in the parent has value `values[i]`.
   final List<Object?> values;
-
-  const InboundFilter({required this.source, required this.values});
 
   String get constraintKey => source.first.constraintKey;
   String get sourceSchema => source.first.fromSchema;
@@ -45,6 +45,13 @@ class InboundFilter {
 /// from a parent row, plus an optional regex filter on a user-selected
 /// column.
 class RowListStep extends NavStep {
+  RowListStep({
+    super.id,
+    required this.schema,
+    required this.table,
+    this.inboundFilter,
+  });
+
   /// Metadata `display.rowLabel` for this table, when one applies.
   String? rowLabelTemplate;
 
@@ -57,14 +64,14 @@ class RowListStep extends NavStep {
   List<String> pkColumns = const [];
   Set<String> indexedColumns = const {};
   List<EditPolicy> editPolicies = const [];
-  bool catalogLoaded = false;
+  var catalogLoaded = false;
 
   /// Live grid state.
   GridData? data;
   KeysetPager? pager;
-  bool isLoading = false;
-  bool isLoadingMore = false;
-  bool hasNextPage = false;
+  var isLoading = false;
+  var isLoadingMore = false;
+  var hasNextPage = false;
   String? error;
 
   /// Sort applied via the grid header.
@@ -75,25 +82,26 @@ class RowListStep extends NavStep {
   /// dropdown; the actual column to filter on then comes from
   /// [inferredColumn], set by RegexInferrer per-load.
   String? filterColumn;
-  String filterPattern = '';
+  var filterPattern = '';
 
   /// Transient: the column the AI most recently inferred for this step.
   /// Used by `_load` when [filterColumn] is null so the dropdown can
   /// stay parked on `[AI Infer]` while subsequent searches re-infer
   /// against the same target list.
   String? inferredColumn;
-
-  RowListStep({
-    super.id,
-    required this.schema,
-    required this.table,
-    this.inboundFilter,
-  });
 }
 
 /// A column showing one row's `field: value` pairs. Tracks edit metadata
 /// so cells can be edited inline.
 class RowDetailStep extends NavStep {
+  RowDetailStep({
+    super.id,
+    required this.schema,
+    required this.table,
+    required this.pkColumns,
+    required this.pkValues,
+    this.followedFromColumn,
+  });
   final String schema;
   final String table;
   final List<String> pkColumns;
@@ -107,17 +115,8 @@ class RowDetailStep extends NavStep {
   Map<String, Object?>? row;
   List<ColumnInfo> columns = const [];
   List<EditPolicy> editPolicies = const [];
-  bool isLoading = false;
+  var isLoading = false;
   String? error;
-
-  RowDetailStep({
-    super.id,
-    required this.schema,
-    required this.table,
-    required this.pkColumns,
-    required this.pkValues,
-    this.followedFromColumn,
-  });
 
   bool sameRowAs(RowDetailStep other) {
     if (schema != other.schema || table != other.table) return false;
@@ -130,6 +129,11 @@ class RowDetailStep extends NavStep {
 }
 
 class NavigatorTab extends TabModel {
+  NavigatorTab({
+    super.id,
+    required super.connectionId,
+  });
+
   /// The path of columns shown to the right of the sidebar. Empty when
   /// the navigator was just opened and the user hasn't picked a table
   /// from the sidebar yet — the sidebar itself serves as the implicit
@@ -138,19 +142,14 @@ class NavigatorTab extends TabModel {
 
   /// Cached FK catalog for the whole DB. Loaded once when the tab opens
   /// and reused by every column that needs to render FK chips / inbound
-  /// groups. Refreshed via [reloadForeignKeys].
+  /// groups. Refreshed via `reloadForeignKeys`.
   List<ForeignKey> foreignKeys = const [];
-  bool fksLoaded = false;
+  var fksLoaded = false;
   String? fksError;
 
   /// Per-step widths, set when the user drags a column's resize handle.
   /// Step id → width in logical pixels.
   final Map<String, double> stepWidths = {};
-
-  NavigatorTab({
-    super.id,
-    required super.connectionId,
-  });
 
   void setStepWidth(String stepId, double w) {
     stepWidths[stepId] = w;

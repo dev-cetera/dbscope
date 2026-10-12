@@ -47,7 +47,7 @@ class _VsCodeDark {
   static const tokenComment = Color(0xFF6A9955); // comments
 }
 
-const AppPalette vsCodeDarkPalette = AppPalette(
+const vsCodeDarkPalette = AppPalette(
   surface: _VsCodeDark.editorBg,
   surfaceRaised: _VsCodeDark.tabActiveBg,
   surfaceRecessed: _VsCodeDark.sideBarBg,
@@ -86,14 +86,15 @@ const AppPalette vsCodeDarkPalette = AppPalette(
 /// Builds the VS Code Dark Modern [ThemeData]. The optional [fontFamily]
 /// overrides the default `.AppleSystemUIFont`.
 ThemeData buildVsCodeDarkTheme({String? fontFamily}) {
-  final palette = fontFamily == null
-      ? vsCodeDarkPalette
-      : vsCodeDarkPalette.copyWith(uiFontFamily: fontFamily);
+  final palette =
+      fontFamily == null
+          ? vsCodeDarkPalette
+          : vsCodeDarkPalette.copyWith(uiFontFamily: fontFamily);
   final radius = BorderRadius.circular(palette.cornerRadius);
 
   OutlineInputBorder outline(Color color) => OutlineInputBorder(
     borderRadius: radius,
-    borderSide: BorderSide(color: color, width: 1),
+    borderSide: BorderSide(color: color),
   );
 
   final bodyText = palette.bodyText;
@@ -191,7 +192,7 @@ ThemeData buildVsCodeDarkTheme({String? fontFamily}) {
       color: palette.surfaceRaised,
       shape: RoundedRectangleBorder(
         borderRadius: radius,
-        side: BorderSide(color: palette.border, width: 1),
+        side: BorderSide(color: palette.border),
       ),
       textStyle: bodyText,
       elevation: 4,
@@ -202,7 +203,7 @@ ThemeData buildVsCodeDarkTheme({String? fontFamily}) {
         shape: WidgetStatePropertyAll(
           RoundedRectangleBorder(
             borderRadius: radius,
-            side: BorderSide(color: palette.border, width: 1),
+            side: BorderSide(color: palette.border),
           ),
         ),
         elevation: const WidgetStatePropertyAll(4),
@@ -213,7 +214,7 @@ ThemeData buildVsCodeDarkTheme({String? fontFamily}) {
       elevation: 0,
       shape: RoundedRectangleBorder(
         borderRadius: radius,
-        side: BorderSide(color: palette.border, width: 1),
+        side: BorderSide(color: palette.border),
       ),
     ),
     elevatedButtonTheme: ElevatedButtonThemeData(
@@ -280,7 +281,7 @@ ThemeData buildVsCodeDarkTheme({String? fontFamily}) {
       decoration: BoxDecoration(
         color: palette.surfaceRaised,
         borderRadius: radius,
-        border: Border.all(color: palette.border, width: 1),
+        border: Border.all(color: palette.border),
       ),
       textStyle: TextStyle(
         color: palette.text,
@@ -300,7 +301,7 @@ ThemeData buildVsCodeDarkTheme({String? fontFamily}) {
       }),
     ),
     listTileTheme: ListTileThemeData(
-      contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 0),
+      contentPadding: const EdgeInsets.symmetric(horizontal: 10),
       minVerticalPadding: 2,
       dense: true,
       textColor: palette.text,

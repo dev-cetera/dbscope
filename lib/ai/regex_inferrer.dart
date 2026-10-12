@@ -56,7 +56,7 @@ class RegexInferrer {
       model = models.first;
     }
 
-    final system =
+    const system =
         'You decide which column of a database table a regex '
         'pattern is most likely meant to match. Reply with ONLY the '
         'column name — no prose, no quotes, no backticks. If no column '

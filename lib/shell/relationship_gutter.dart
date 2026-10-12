@@ -61,12 +61,20 @@ Set<String> relatedTables(List<ForeignKey> edges, String? selectedKey) {
 }
 
 class GutterItem {
+  const GutterItem({required this.tableKey});
+
   /// `schema.table` for table rows; `null` for schema headers / non-table rows.
   final String? tableKey;
-  const GutterItem({required this.tableKey});
 }
 
 class RelationshipGutterPainter extends CustomPainter {
+  RelationshipGutterPainter({
+    required this.items,
+    required this.edges,
+    required this.selectedKey,
+    required this.scroll,
+    this.tableColors,
+  }) : super(repaint: scroll);
   final List<GutterItem> items;
   final List<ForeignKey> edges;
   final String? selectedKey;
@@ -76,14 +84,6 @@ class RelationshipGutterPainter extends CustomPainter {
   /// adjacent-row collision-avoidance. When present, the painter looks up
   /// colours here so the lines match what the user sees in the row.
   final Map<String, Color>? tableColors;
-
-  RelationshipGutterPainter({
-    required this.items,
-    required this.edges,
-    required this.selectedKey,
-    required this.scroll,
-    this.tableColors,
-  }) : super(repaint: scroll);
 
   Color _colorFor(String key) => tableColors?[key] ?? colorForTable(key);
 
@@ -104,7 +104,7 @@ class RelationshipGutterPainter extends CustomPainter {
 
     final sorted = _stableSorted(edges);
     final anchorX = size.width - 4;
-    final viewportTop = -kGutterRowHeight;
+    const viewportTop = -kGutterRowHeight;
     final viewportBottom = size.height + kGutterRowHeight;
 
     // Two distinct rendering modes:
@@ -128,9 +128,9 @@ class RelationshipGutterPainter extends CustomPainter {
     // runs sit side-by-side. Lane indices are assigned within the *drawn* set
     // so a typical selection (a handful of edges) spreads across distinct
     // lanes instead of stacking in lane 0.
-    const double laneSpacing = 4.0;
-    const double laneMin = 3.0;
-    const double cornerRadius = 5.0;
+    const laneSpacing = 4.0;
+    const laneMin = 3.0;
+    const cornerRadius = 5.0;
     final laneMax = anchorX - cornerRadius;
 
     void drawLine({

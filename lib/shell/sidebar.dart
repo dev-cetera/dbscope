@@ -1,5 +1,7 @@
 library;
 
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:widgets/widgets.dart';
@@ -27,10 +29,12 @@ part 'parts/meta_rows.dart';
 /// node on mount; the shortcut handler calls [requestFilterFocus].
 class SidebarFocusController {
   SidebarFocusController._();
-  static final SidebarFocusController instance = SidebarFocusController._();
+  static final instance = SidebarFocusController._();
 
   FocusNode? _filterFocus;
 
+  // Paired with `detach`; a setter would hide that lifecycle pairing.
+  // ignore: use_setters_to_change_properties
   void attach(FocusNode node) {
     _filterFocus = node;
   }
@@ -72,20 +76,20 @@ class _SidebarState extends State<Sidebar> with ListenableStateMixin {
     if (snapshot == null || snapshot.status != MetaLoadStatus.ready) return;
     if (identical(snapshot, _metaUsed)) return;
     _metaUsed = snapshot;
-    if (_registry.isConnected) _reload(keepExpansion: true);
+    if (_registry.isConnected) unawaited(_reload(keepExpansion: true));
   }
 
-  final _registry = ConnectionRegistry.instance;
+  final ConnectionRegistry _registry = ConnectionRegistry.instance;
   final _filterController = TextEditingController();
   final _filterFocus = FocusNode(debugLabel: 'sidebar-filter');
   final _scrollController = ScrollController();
   List<SchemaInfo> _schemas = [];
   final Map<String, List<TableInfo>> _tablesBySchema = {};
-  final Set<String> _expanded = <String>{};
+  final _expanded = <String>{};
   List<ForeignKey> _fks = const [];
-  bool _loading = false;
+  var _loading = false;
   String? _error;
-  String _filter = '';
+  var _filter = '';
   String? _loadedFor;
 
   @override
@@ -95,7 +99,7 @@ class _SidebarState extends State<Sidebar> with ListenableStateMixin {
     MetadataCache.instance.addListener(_onMetadataChange);
     _metaUsed = MetadataCache.instance.snapshotFor(_registry.activeId);
     SidebarFocusController.instance.attach(_filterFocus);
-    if (_registry.isConnected) _reload();
+    if (_registry.isConnected) unawaited(_reload());
   }
 
   @override
@@ -114,7 +118,7 @@ class _SidebarState extends State<Sidebar> with ListenableStateMixin {
     final activeId = _registry.activeId;
     if (_registry.isConnected) {
       if (activeId != _loadedFor) {
-        _reload();
+        unawaited(_reload());
       }
     } else {
       setState(() {
@@ -204,7 +208,7 @@ class _SidebarState extends State<Sidebar> with ListenableStateMixin {
       } else {
         _expanded.add(schema.name);
         if (!_tablesBySchema.containsKey(schema.name)) {
-          _loadTables(schema.name);
+          unawaited(_loadTables(schema.name));
         }
       }
     });
@@ -213,7 +217,7 @@ class _SidebarState extends State<Sidebar> with ListenableStateMixin {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    return Container(
+    return ColoredBox(
       color: theme.colorScheme.surfaceContainerHigh,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -509,20 +513,6 @@ class _SidebarState extends State<Sidebar> with ListenableStateMixin {
 }
 
 class _FlatRow {
-  final SchemaInfo? schema;
-  final String? tableSchema;
-  final TableInfo? table;
-
-  /// A metadata `display.group` sub-header inside a schema.
-  final String? groupLabel;
-
-  /// The "Queries & dashboards" header.
-  final bool isMetaHeader;
-  final NamedQuerySpec? query;
-  final bool isDashboard;
-  final String? dashboardId;
-  final String? dashboardLabel;
-
   const _FlatRow._({
     this.schema,
     this.tableSchema,
@@ -542,14 +532,27 @@ class _FlatRow {
   const _FlatRow.query(NamedQuerySpec q) : this._(query: q);
   const _FlatRow.dashboard(String? id, String label)
     : this._(isDashboard: true, dashboardId: id, dashboardLabel: label);
+  final SchemaInfo? schema;
+  final String? tableSchema;
+  final TableInfo? table;
+
+  /// A metadata `display.group` sub-header inside a schema.
+  final String? groupLabel;
+
+  /// The "Queries & dashboards" header.
+  final bool isMetaHeader;
+  final NamedQuerySpec? query;
+  final bool isDashboard;
+  final String? dashboardId;
+  final String? dashboardLabel;
 
   String? get tableKey => table == null ? null : '$tableSchema.${table!.name}';
 }
 
 class _ScrollAwarePaint extends StatefulWidget {
+  const _ScrollAwarePaint({required this.controller, required this.builder});
   final ScrollController controller;
   final Widget Function(ScrollPosition position) builder;
-  const _ScrollAwarePaint({required this.controller, required this.builder});
 
   @override
   State<_ScrollAwarePaint> createState() => _ScrollAwarePaintState();

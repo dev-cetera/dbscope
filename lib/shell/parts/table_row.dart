@@ -1,12 +1,6 @@
 part of '../sidebar.dart';
 
 class _TableRow extends StatelessWidget {
-  final String schema;
-  final TableInfo table;
-  final String connectionId;
-  final bool isSelected;
-  final bool isRelated;
-  final Color tableColor;
   const _TableRow({
     required this.schema,
     required this.table,
@@ -15,6 +9,12 @@ class _TableRow extends StatelessWidget {
     this.isSelected = false,
     this.isRelated = false,
   });
+  final String schema;
+  final TableInfo table;
+  final String connectionId;
+  final bool isSelected;
+  final bool isRelated;
+  final Color tableColor;
 
   void _openTable() {
     // If a navigator is currently active, the sidebar IS its column 0 —
@@ -39,7 +39,7 @@ class _TableRow extends StatelessWidget {
     );
   }
 
-  void _showContextMenu(BuildContext context, Offset position) async {
+  Future<void> _showContextMenu(BuildContext context, Offset position) async {
     final ctx = SidebarTableActionContext(
       buildContext: context,
       connectionId: connectionId,

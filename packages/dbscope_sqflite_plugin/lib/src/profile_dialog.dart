@@ -5,8 +5,10 @@
 // loading/error state so partial failures don't block the user from
 // retrying.
 
-import 'package:flutter/material.dart';
+import 'dart:async';
+
 import 'package:dbscope/connection/profile.dart';
+import 'package:flutter/material.dart';
 
 import 'device_picker.dart';
 import 'plugin.dart';
@@ -23,8 +25,8 @@ Future<ConnectionProfile?> showSqfliteRemoteDialog(
 }
 
 class _DeviceSqliteDialog extends StatefulWidget {
-  final ConnectionProfile? initial;
   const _DeviceSqliteDialog({this.initial});
+  final ConnectionProfile? initial;
 
   @override
   State<_DeviceSqliteDialog> createState() => _DeviceSqliteDialogState();
@@ -35,20 +37,20 @@ class _DeviceSqliteDialogState extends State<_DeviceSqliteDialog> {
 
   List<DiscoveredDevice> _devices = const [];
   String? _devicesHint;
-  bool _devicesLoading = true;
+  var _devicesLoading = true;
 
   DiscoveredDevice? _device;
   List<DiscoveredApp> _apps = const [];
-  bool _appsLoading = false;
+  var _appsLoading = false;
   String? _appsError;
 
   String? _appId;
   List<DiscoveredDbFile> _dbs = const [];
-  bool _dbsLoading = false;
+  var _dbsLoading = false;
   String? _dbsError;
 
   String? _dbPath;
-  bool _readOnly = false;
+  var _readOnly = false;
 
   @override
   void initState() {
@@ -60,7 +62,7 @@ class _DeviceSqliteDialogState extends State<_DeviceSqliteDialog> {
       _appId = (i.extra['appId'] as String?)?.trim();
       _dbPath = (i.extra['dbPath'] as String?)?.trim();
     }
-    _refreshDevices(restorePrior: i);
+    unawaited(_refreshDevices(restorePrior: i));
   }
 
   @override
@@ -325,7 +327,7 @@ class _DeviceSqliteDialogState extends State<_DeviceSqliteDialog> {
                       _dbs = const [];
                       _dbPath = null;
                     });
-                    if (v != null) _loadApps(v);
+                    if (v != null) unawaited(_loadApps(v));
                   },
           ),
         ),
@@ -339,7 +341,7 @@ class _DeviceSqliteDialogState extends State<_DeviceSqliteDialog> {
                   child: CircularProgressIndicator(strokeWidth: 2),
                 )
               : const Icon(Icons.refresh),
-          onPressed: _devicesLoading ? null : () => _refreshDevices(),
+          onPressed: _devicesLoading ? null : _refreshDevices,
         ),
       ],
     );
@@ -382,7 +384,9 @@ class _DeviceSqliteDialogState extends State<_DeviceSqliteDialog> {
                       _dbs = const [];
                       _dbPath = null;
                     });
-                    if (v != null && _device != null) _loadDbs(_device!, v);
+                    if (v != null && _device != null) {
+                      unawaited(_loadDbs(_device!, v));
+                    }
                   },
           ),
         ),

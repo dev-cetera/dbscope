@@ -6,7 +6,7 @@ import 'provider.dart';
 /// API keys do not — they're in SecureStore via the keychain.
 class AiSettingsStore {
   AiSettingsStore._();
-  static final AiSettingsStore instance = AiSettingsStore._();
+  static final instance = AiSettingsStore._();
 
   Future<AiSettings> load() async {
     final doc = await ProjectStore.instance.load();

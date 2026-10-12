@@ -1,7 +1,7 @@
 import 'dart:async';
 
 class CancelToken {
-  bool _cancelled = false;
+  var _cancelled = false;
   final _completer = Completer<void>();
 
   bool get isCancelled => _cancelled;

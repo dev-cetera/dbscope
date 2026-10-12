@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 
 import 'package:flutter/material.dart';
@@ -15,15 +16,15 @@ import 'shell/tab_strip.dart';
 import 'tabs/tab_kind.dart';
 
 class DBScopeApp extends StatefulWidget {
-  final BackendClient backend;
-  final int windowId;
-  final String launchPayload;
   const DBScopeApp({
     super.key,
     required this.backend,
     this.windowId = 0,
     this.launchPayload = '',
   });
+  final BackendClient backend;
+  final int windowId;
+  final String launchPayload;
 
   @override
   State<DBScopeApp> createState() => _DBScopeAppState();
@@ -33,7 +34,7 @@ class _DBScopeAppState extends State<DBScopeApp> {
   @override
   void initState() {
     super.initState();
-    _applyLaunchPayload();
+    unawaited(_applyLaunchPayload());
   }
 
   Future<void> _applyLaunchPayload() async {
@@ -163,7 +164,7 @@ class _Shell extends StatelessWidget {
 /// it, which is how a sidebar toggle silently reset the Schema canvas's
 /// one-shot auto-fit latch and re-centred the whole diagram, and how the
 /// Linked canvas lost its per-node auto-width bookkeeping.
-final _mainAreaKey = GlobalKey();
+final GlobalKey<State<StatefulWidget>> _mainAreaKey = GlobalKey();
 
 class _Body extends StatelessWidget {
   @override
@@ -197,14 +198,14 @@ class _Body extends StatelessWidget {
 }
 
 class _MainArea extends StatelessWidget {
-  final TabModel? active;
   const _MainArea({required this.active});
+  final TabModel? active;
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     if (active == null) {
-      return Container(
+      return ColoredBox(
         color: theme.colorScheme.surface,
         child: const EmptyState(
           icon: Icons.lan_outlined,

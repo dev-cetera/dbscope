@@ -3,4 +3,4 @@
 // the web build — can reference the constant without dragging in
 // dart:io- or FFI-bound dependencies.
 
-const String kSqliteKind = 'sqlite';
+const kSqliteKind = 'sqlite';

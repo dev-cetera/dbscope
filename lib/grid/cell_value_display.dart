@@ -12,7 +12,7 @@ import '../shell/app_state.dart';
 import 'json_dialogs.dart';
 import 'typed_value_text.dart';
 
-export 'json_dialogs.dart' show showJsonEditorDialog, jsonSourceOf;
+export 'json_dialogs.dart' show jsonSourceOf, showJsonEditorDialog;
 
 /// "Display a value" used by every place in the app that shows one
 /// row's data: the data grid in display mode, the PropertyInspector
@@ -35,6 +35,18 @@ export 'json_dialogs.dart' show showJsonEditorDialog, jsonSourceOf;
 /// there isn't room (very narrow column), they overlap the text. The
 /// PropertyInspector renders the same affordances in the same order.
 class CellValueDisplay extends StatelessWidget {
+  const CellValueDisplay({
+    super.key,
+    required this.value,
+    required this.pgType,
+    required this.columnName,
+    this.outboundFk,
+    this.inboundRefs = const [],
+    this.onFollowLink,
+    this.colored = true,
+    this.detectUrl = true,
+    this.display,
+  });
   final Object? value;
   final PgType pgType;
   final String columnName;
@@ -54,7 +66,7 @@ class CellValueDisplay extends StatelessWidget {
   /// `incoming = false` means an outbound FK (row this column points
   /// at). The caller decides what "navigate" means (open Navigator,
   /// push step, etc.).
-  final void Function(ForeignKey fk, bool incoming)? onFollowLink;
+  final void Function(ForeignKey fk, {required bool incoming})? onFollowLink;
 
   /// When true the type-derived color is applied. When false the
   /// widget renders in the palette's text color (matches the grid's
@@ -67,19 +79,6 @@ class CellValueDisplay extends StatelessWidget {
 
   /// Metadata `display.renderer` for this column, if any.
   final DisplaySpec? display;
-
-  const CellValueDisplay({
-    super.key,
-    required this.value,
-    required this.pgType,
-    required this.columnName,
-    this.outboundFk,
-    this.inboundRefs = const [],
-    this.onFollowLink,
-    this.colored = true,
-    this.detectUrl = true,
-    this.display,
-  });
 
   bool get _isJson => pgType == PgType.json || pgType == PgType.jsonb;
   bool get _hasLink =>
@@ -128,8 +127,6 @@ class CellValueDisplay extends StatelessWidget {
     }
     if (!_hasLink && !_hasJsonExpand) return text;
     return Row(
-      mainAxisSize: MainAxisSize.max,
-      crossAxisAlignment: CrossAxisAlignment.center,
       children: [
         Expanded(child: text),
         if (_hasLink)
@@ -151,17 +148,16 @@ class CellValueDisplay extends StatelessWidget {
 }
 
 class _LinkButton extends StatelessWidget {
-  final ForeignKey? outboundFk;
-  final List<ForeignKey> inboundRefs;
-  final void Function(ForeignKey fk, bool incoming) onFollow;
-  final Color accent;
-
   const _LinkButton({
     required this.outboundFk,
     required this.inboundRefs,
     required this.onFollow,
     required this.accent,
   });
+  final ForeignKey? outboundFk;
+  final List<ForeignKey> inboundRefs;
+  final void Function(ForeignKey fk, {required bool incoming}) onFollow;
+  final Color accent;
 
   @override
   Widget build(BuildContext context) {
@@ -239,26 +235,25 @@ class _LinkButton extends StatelessWidget {
       ),
       items: items,
     );
-    if (choice != null) onFollow(choice.fk, choice.incoming);
+    if (choice != null) onFollow(choice.fk, incoming: choice.incoming);
   }
 }
 
 class _LinkChoice {
+  const _LinkChoice(this.fk, {required this.incoming});
   final ForeignKey fk;
   final bool incoming;
-  const _LinkChoice(this.fk, {required this.incoming});
 }
 
 class _JsonExpandButton extends StatelessWidget {
-  final Object? value;
-  final String columnName;
-  final Color color;
-
   const _JsonExpandButton({
     required this.value,
     required this.columnName,
     required this.color,
   });
+  final Object? value;
+  final String columnName;
+  final Color color;
 
   @override
   Widget build(BuildContext context) {
@@ -302,16 +297,16 @@ class _JsonExpandButton extends StatelessWidget {
 }
 
 class _IconButton extends StatelessWidget {
-  final String tooltip;
-  final IconData icon;
-  final Color color;
-  final VoidCallback onPressed;
   const _IconButton({
     required this.tooltip,
     required this.icon,
     required this.color,
     required this.onPressed,
   });
+  final String tooltip;
+  final IconData icon;
+  final Color color;
+  final VoidCallback onPressed;
 
   @override
   Widget build(BuildContext context) {

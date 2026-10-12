@@ -6,14 +6,14 @@ import '../util/sql_quote.dart';
 import 'edit_policy.dart';
 
 class UpdateResult {
+  const UpdateResult({required this.affectedRows, required this.newValue});
   final int affectedRows;
   final Object? newValue;
-  const UpdateResult({required this.affectedRows, required this.newValue});
 }
 
 class CellEditor {
-  final DbExecutor conn;
   CellEditor(this.conn);
+  final DbExecutor conn;
 
   Future<UpdateResult> updateCell({
     required EditPolicy policy,
@@ -145,7 +145,18 @@ class CellEditor {
       case PgType.jsonb:
         final decoded = jsonDecode(s);
         return jsonEncode(decoded);
-      default:
+      case PgType.text:
+      case PgType.varchar:
+      case PgType.name:
+      case PgType.date:
+      case PgType.time:
+      case PgType.timestamp:
+      case PgType.timestamptz:
+      case PgType.interval:
+      case PgType.uuid:
+      case PgType.bytea:
+      case PgType.array:
+      case PgType.unknown:
         return s;
     }
   }

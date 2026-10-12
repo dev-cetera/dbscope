@@ -5,13 +5,26 @@ import '../util/sql_quote.dart';
 import 'cancel_token.dart';
 
 class Page {
+  Page({required this.rows, this.lastSortVals, this.lastPkVals});
   final List<List<Object?>> rows;
   final List<Object?>? lastSortVals;
   final List<Object?>? lastPkVals;
-  Page({required this.rows, this.lastSortVals, this.lastPkVals});
 }
 
 class KeysetPager {
+  KeysetPager({
+    required this.conn,
+    required this.schema,
+    required this.table,
+    required this.columns,
+    required this.pkColumns,
+    this.sortColumn,
+    this.descending = false,
+    this.pageSize = 500,
+    this.baseWhere,
+    this.baseWhereParams = const [],
+    this.explicitColumns = false,
+  });
   final DbExecutor conn;
   final String schema;
   final String table;
@@ -35,22 +48,8 @@ class KeysetPager {
 
   List<Object?>? _lastSortVals;
   List<Object?>? _lastPkVals;
-  bool _done = false;
-  bool _started = false;
-
-  KeysetPager({
-    required this.conn,
-    required this.schema,
-    required this.table,
-    required this.columns,
-    required this.pkColumns,
-    this.sortColumn,
-    this.descending = false,
-    this.pageSize = 500,
-    this.baseWhere,
-    this.baseWhereParams = const [],
-    this.explicitColumns = false,
-  });
+  var _done = false;
+  var _started = false;
 
   bool get isDone => _done;
 

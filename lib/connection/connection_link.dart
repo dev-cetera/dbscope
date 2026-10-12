@@ -34,10 +34,10 @@ import 'profile.dart';
 /// Thrown when the passphrase is wrong or the encrypted blob was tampered
 /// with — GCM authentication failed, so we can't tell which.
 class BadPassphraseException implements Exception {
-  final String message;
   const BadPassphraseException([
     this.message = 'Wrong passphrase, or the connection file is corrupt.',
   ]);
+  final String message;
   @override
   String toString() => message;
 }
@@ -46,15 +46,15 @@ class ConnectionLink {
   ConnectionLink._();
 
   /// File extension (no dot) for connection links.
-  static const String fileExtension = 'dbscopeconn';
+  static const fileExtension = 'dbscopeconn';
 
   /// Current on-disk format version.
-  static const int formatVersion = 1;
+  static const formatVersion = 1;
 
-  static const int _defaultIterations = 210000;
-  static const int _saltBytes = 16;
+  static const _defaultIterations = 210000;
+  static const _saltBytes = 16;
 
-  static final Random _rng = Random.secure();
+  static final _rng = Random.secure();
 
   static List<int> _randomBytes(int n) =>
       List<int>.generate(n, (_) => _rng.nextInt(256));

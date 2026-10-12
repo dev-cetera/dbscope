@@ -9,30 +9,30 @@ import 'cloudsql_config.dart';
 /// gcloud failure, proxy never bound its port, …). Carries a message that's
 /// safe to show in a connection-error toast.
 class CloudSqlProxyException implements Exception {
-  final String message;
   const CloudSqlProxyException(this.message);
+  final String message;
   @override
   String toString() => message;
 }
 
 class _ProxyEntry {
   Process? process;
-  int refCount = 0;
+  var refCount = 0;
 
   /// True when dbscope started this proxy (so it owns tearing it down).
   /// False when we found one already listening (an external
   /// `db_proxy.sh` / cloud-sql-proxy) and are only borrowing it.
-  bool owned = false;
+  var owned = false;
 
   /// True when dbscope assigned the instance a public IP (so it must remove
   /// it on teardown).
-  bool assignedIp = false;
+  var assignedIp = false;
 
   /// Completes when the proxy is usable (or with an error if startup failed).
   /// Concurrent acquirers await this instead of racing a second launch.
   Future<void>? ready;
 
-  final StringBuffer log = StringBuffer();
+  final log = StringBuffer();
 }
 
 /// Per-isolate, reference-counted manager for Cloud SQL Auth Proxy tunnels.
@@ -49,7 +49,7 @@ class _ProxyEntry {
 /// never kills it.
 class CloudSqlProxyManager {
   CloudSqlProxyManager._();
-  static final CloudSqlProxyManager instance = CloudSqlProxyManager._();
+  static final instance = CloudSqlProxyManager._();
 
   final Map<String, _ProxyEntry> _entries = {};
 
@@ -65,9 +65,9 @@ class CloudSqlProxyManager {
       existing.refCount++;
       // Await the same startup the first caller kicked off. If it failed,
       // give this caller the error and undo the ref bump.
-      return existing.ready!.catchError((Object e) {
+      return existing.ready!.catchError((Object e, StackTrace st) {
         existing.refCount--;
-        throw e;
+        Error.throwWithStackTrace(e, st);
       });
     }
     final entry = _ProxyEntry()..refCount = 1;
@@ -268,7 +268,7 @@ class CloudSqlProxyManager {
   /// PATH that omits Homebrew / the gcloud SDK).
   static Future<String?> _resolveBinary(String name, String explicit) async {
     if (explicit.isNotEmpty) {
-      return await File(explicit).exists() ? explicit : null;
+      return File(explicit).existsSync() ? explicit : null;
     }
     final sep = Platform.isWindows ? ';' : ':';
     final home =
@@ -300,7 +300,7 @@ class CloudSqlProxyManager {
     for (final dir in dirs) {
       for (final n in names) {
         final candidate = '$dir${Platform.pathSeparator}$n';
-        if (await File(candidate).exists()) return candidate;
+        if (File(candidate).existsSync()) return candidate;
       }
     }
     return null;

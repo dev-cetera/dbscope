@@ -21,19 +21,18 @@ import 'selector.dart';
 
 /// Why a level was decided — shown in "Why can't I see this?".
 class AccessDecision {
-  final AccessLevel level;
-  final bool defaultHidden;
-
-  /// The grant that decided it, or null when the default or a ceiling did.
-  final MetaGrant? grant;
-  final String reason;
-
   const AccessDecision({
     required this.level,
     required this.defaultHidden,
     required this.reason,
     this.grant,
   });
+  final AccessLevel level;
+  final bool defaultHidden;
+
+  /// The grant that decided it, or null when the default or a ceiling did.
+  final MetaGrant? grant;
+  final String reason;
 
   static const unrestricted = AccessDecision(
     level: AccessLevel.full,
@@ -59,14 +58,13 @@ class AccessDecision {
 
 /// Real Postgres privileges of the connected login, used as a ceiling.
 class PrivilegeCeilings {
+  const PrivilegeCeilings({this.tables = const {}, this.columns = const {}});
   final Map<String, ({bool select, bool insert, bool update, bool delete})>
   tables;
 
   /// Only filled for tables where the login has column-level but not
   /// table-level SELECT.
   final Map<String, ({bool select, bool update})> columns;
-
-  const PrivilegeCeilings({this.tables = const {}, this.columns = const {}});
 
   static String tableKey(String schema, String table) => '$schema\u0000$table';
   static String columnKey(String schema, String table, String column) =>
@@ -92,6 +90,8 @@ class PrivilegeCeilings {
 
 /// Identity inputs gathered at connect time.
 class AccessIdentity {
+  const AccessIdentity({this.postgresRoles = const {}, this.claimedUser});
+
   /// The connected Postgres user and every role it is a member of (no
   /// `pg:` prefix). Empty for backends without logins (SQLite).
   final Set<String> postgresRoles;
@@ -99,38 +99,10 @@ class AccessIdentity {
   /// The email typed into dbscope preferences, if any.
   final String? claimedUser;
 
-  const AccessIdentity({this.postgresRoles = const {}, this.claimedUser});
-
   static const anonymous = AccessIdentity();
 }
 
 class AccessPolicy {
-  /// False when the connection has no roles, grants or rbac settings: every
-  /// decision is `full` and every capability is allowed.
-  final bool active;
-
-  /// True when the rules exist but could not be read: everything is capped
-  /// at `read` and every capability is off.
-  final bool failedClosed;
-  final String? failureReason;
-
-  final Set<String> roleIds;
-  final Set<Capability> capabilities;
-  final AccessLevel defaultLevel;
-  final IdentityMode identityMode;
-  final Set<String> principals;
-
-  /// Non-null when a manager is previewing the UI as someone else.
-  final String? viewingAs;
-
-  final List<MetaGrant> _grants;
-  final PrivilegeCeilings? _ceilings;
-
-  /// Hides dbscope's own tables from non-managers.
-  final bool Function(String schema, String table)? _isMetaTable;
-
-  final List<MetaProblem> problems;
-
   const AccessPolicy._({
     required this.active,
     required this.failedClosed,
@@ -148,17 +120,6 @@ class AccessPolicy {
   }) : _grants = grants,
        _ceilings = ceilings,
        _isMetaTable = isMetaTable;
-
-  static const AccessPolicy unrestricted = AccessPolicy._(
-    active: false,
-    failedClosed: false,
-    roleIds: {},
-    capabilities: {...Capability.values},
-    defaultLevel: AccessLevel.full,
-    identityMode: IdentityMode.either,
-    principals: {},
-    grants: [],
-  );
 
   /// The rules exist but can't be read. Read-only, no capabilities.
   factory AccessPolicy.failClosed(String reason) => AccessPolicy._(
@@ -249,6 +210,43 @@ class AccessPolicy {
       problems: problems,
     );
   }
+
+  /// False when the connection has no roles, grants or rbac settings: every
+  /// decision is `full` and every capability is allowed.
+  final bool active;
+
+  /// True when the rules exist but could not be read: everything is capped
+  /// at `read` and every capability is off.
+  final bool failedClosed;
+  final String? failureReason;
+
+  final Set<String> roleIds;
+  final Set<Capability> capabilities;
+  final AccessLevel defaultLevel;
+  final IdentityMode identityMode;
+  final Set<String> principals;
+
+  /// Non-null when a manager is previewing the UI as someone else.
+  final String? viewingAs;
+
+  final List<MetaGrant> _grants;
+  final PrivilegeCeilings? _ceilings;
+
+  /// Hides dbscope's own tables from non-managers.
+  final bool Function(String schema, String table)? _isMetaTable;
+
+  final List<MetaProblem> problems;
+
+  static const unrestricted = AccessPolicy._(
+    active: false,
+    failedClosed: false,
+    roleIds: {},
+    capabilities: {...Capability.values},
+    defaultLevel: AccessLevel.full,
+    identityMode: IdentityMode.either,
+    principals: {},
+    grants: [],
+  );
 
   static bool _principalMatches(String principal, Set<String> principals) {
     if (principal == '*') return true;

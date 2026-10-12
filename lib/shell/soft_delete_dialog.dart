@@ -4,10 +4,10 @@ import 'package:flutter/material.dart';
 /// user wants the override removed entirely; otherwise [column] holds
 /// the new column name (non-empty).
 class SoftDeleteResult {
-  final String? column;
-  final bool clear;
   const SoftDeleteResult.set(this.column) : clear = false;
   const SoftDeleteResult.cleared() : column = null, clear = true;
+  final String? column;
+  final bool clear;
 }
 
 /// Modal dialog letting the user pick or clear the soft-delete column
@@ -29,14 +29,14 @@ Future<SoftDeleteResult?> showSoftDeleteDialog(
 }
 
 class _SoftDeleteDialog extends StatefulWidget {
-  final String schema;
-  final String table;
-  final String? initialColumn;
   const _SoftDeleteDialog({
     required this.schema,
     required this.table,
     required this.initialColumn,
   });
+  final String schema;
+  final String table;
+  final String? initialColumn;
 
   @override
   State<_SoftDeleteDialog> createState() => _SoftDeleteDialogState();

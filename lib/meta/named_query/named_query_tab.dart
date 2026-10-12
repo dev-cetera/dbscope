@@ -10,42 +10,6 @@ import '../meta_models.dart';
 /// (`query:<id>.<column>`), and it runs for users without the `query`
 /// capability, because they can only run what the metadata defines.
 class NamedQueryTab extends TabModel {
-  /// The metadata query id, or null for an action's ad-hoc query.
-  final String? queryId;
-  final String label;
-
-  /// SQL for ad-hoc (action) queries. Named queries re-read their SQL from
-  /// the metadata on every run, so metadata edits apply.
-  final String sql;
-
-  /// Values already bound by the action (row, pk, cell…).
-  final Map<String, Object?> boundParams;
-
-  /// For action queries: the table whose column access applies to result
-  /// columns by name (best effort — free SQL can rename columns).
-  final ({String schema, String table})? accessTable;
-
-  /// Values typed into the query's inputs.
-  final Map<String, String> inputValues = {};
-
-  GridData? data;
-  bool isLoading = false;
-  String? error;
-  Duration? elapsed;
-  bool truncated = false;
-  int? selectedRowIndex;
-  GridViewMode viewMode = GridViewMode.typed;
-  bool showSql = false;
-  bool chartsOpen = true;
-
-  /// One-shot: run after the first frame.
-  bool autoRun;
-
-  /// Whether the SQL came from the metadata (and so needs the user's trust
-  /// and runs read-only). False for SQL dbscope wrote itself, such as the
-  /// inbound-reference lookup.
-  final bool fromMetadata;
-
   NamedQueryTab({
     super.id,
     required super.connectionId,
@@ -66,6 +30,42 @@ class NamedQueryTab extends TabModel {
     this.fromMetadata = true,
   }) : queryId = null,
        autoRun = true;
+
+  /// The metadata query id, or null for an action's ad-hoc query.
+  final String? queryId;
+  final String label;
+
+  /// SQL for ad-hoc (action) queries. Named queries re-read their SQL from
+  /// the metadata on every run, so metadata edits apply.
+  final String sql;
+
+  /// Values already bound by the action (row, pk, cell…).
+  final Map<String, Object?> boundParams;
+
+  /// For action queries: the table whose column access applies to result
+  /// columns by name (best effort — free SQL can rename columns).
+  final ({String schema, String table})? accessTable;
+
+  /// Values typed into the query's inputs.
+  final Map<String, String> inputValues = {};
+
+  GridData? data;
+  var isLoading = false;
+  String? error;
+  Duration? elapsed;
+  var truncated = false;
+  int? selectedRowIndex;
+  GridViewMode viewMode = GridViewMode.typed;
+  var showSql = false;
+  var chartsOpen = true;
+
+  /// One-shot: run after the first frame.
+  bool autoRun;
+
+  /// Whether the SQL came from the metadata (and so needs the user's trust
+  /// and runs read-only). False for SQL dbscope wrote itself, such as the
+  /// inbound-reference lookup.
+  final bool fromMetadata;
 
   @override
   String get title => label;

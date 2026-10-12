@@ -2,8 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:widgets/widgets.dart';
 
 import '../catalog/schema_catalog.dart';
-import '../grid/data_grid.dart';
 import '../db/edit_policy.dart';
+import '../grid/data_grid.dart';
 import '../shell/app_state.dart';
 import 'property_inspector.dart';
 
@@ -16,18 +16,6 @@ import 'property_inspector.dart';
 /// [ColumnInfo] entries from whatever [GridColumnSpec] info the result
 /// already carries.
 class ResultInspectorPanel extends StatelessWidget {
-  final String? schema;
-  final String? table;
-  final GridData? data;
-  final int? selectedRowIndex;
-  final List<ColumnInfo> catalogColumns;
-  final List<EditPolicy> editPolicies;
-  final List<String> pkColumns;
-  final List<ForeignKey> foreignKeys;
-  final String? connectionId;
-  final Future<void> Function(EditPolicy, Object?)? onSave;
-  final void Function(ForeignKey fk, bool incoming)? onFollowLink;
-
   const ResultInspectorPanel({
     super.key,
     required this.data,
@@ -42,6 +30,17 @@ class ResultInspectorPanel extends StatelessWidget {
     this.onSave,
     this.onFollowLink,
   });
+  final String? schema;
+  final String? table;
+  final GridData? data;
+  final int? selectedRowIndex;
+  final List<ColumnInfo> catalogColumns;
+  final List<EditPolicy> editPolicies;
+  final List<String> pkColumns;
+  final List<ForeignKey> foreignKeys;
+  final String? connectionId;
+  final Future<void> Function(EditPolicy, Object?)? onSave;
+  final void Function(ForeignKey fk, {required bool incoming})? onFollowLink;
 
   static Future<void> _noopSave(EditPolicy _, Object? _) async {}
 
@@ -112,10 +111,11 @@ class ResultInspectorPanel extends StatelessWidget {
                 connectionId: connectionId,
                 onSave: onSave ?? _noopSave,
                 onFollowOutbound: onFollowLink != null
-                    ? (col, value, group) => onFollowLink!(group.first, false)
+                    ? (col, value, group) =>
+                          onFollowLink!(group.first, incoming: false)
                     : null,
                 onOpenInbound: onFollowLink != null
-                    ? (group) => onFollowLink!(group.first, true)
+                    ? (group) => onFollowLink!(group.first, incoming: true)
                     : null,
               )
             : const EmptyState(

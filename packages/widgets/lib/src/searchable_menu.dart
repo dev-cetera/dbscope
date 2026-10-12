@@ -6,6 +6,15 @@ import 'package:flutter/services.dart';
 /// [showSearchableMenu] returns on selection. A null [value] makes the
 /// row unselectable (used for headers / unselectable groupings).
 class SearchableMenuItem<T> {
+  const SearchableMenuItem({
+    required this.value,
+    required this.searchKey,
+    required this.child,
+    this.enabled = true,
+    this.onSecondary,
+    this.secondaryIcon,
+    this.secondaryTooltip,
+  });
   final T? value;
   final String searchKey;
   final Widget child;
@@ -19,16 +28,6 @@ class SearchableMenuItem<T> {
   final VoidCallback? onSecondary;
   final IconData? secondaryIcon;
   final String? secondaryTooltip;
-
-  const SearchableMenuItem({
-    required this.value,
-    required this.searchKey,
-    required this.child,
-    this.enabled = true,
-    this.onSecondary,
-    this.secondaryIcon,
-    this.secondaryTooltip,
-  });
 }
 
 /// Opens a popup anchored at [position] (in global coordinates) with a
@@ -77,13 +76,6 @@ Future<T?> showSearchableMenu<T>({
 }
 
 class _SearchablePopup<T> extends StatefulWidget {
-  final Offset anchor;
-  final List<SearchableMenuItem<T>> items;
-  final String hint;
-  final String emptyLabel;
-  final double width;
-  final double maxHeight;
-
   const _SearchablePopup({
     required this.anchor,
     required this.items,
@@ -92,6 +84,12 @@ class _SearchablePopup<T> extends StatefulWidget {
     required this.width,
     required this.maxHeight,
   });
+  final Offset anchor;
+  final List<SearchableMenuItem<T>> items;
+  final String hint;
+  final String emptyLabel;
+  final double width;
+  final double maxHeight;
 
   @override
   State<_SearchablePopup<T>> createState() => _SearchablePopupState<T>();
@@ -100,8 +98,8 @@ class _SearchablePopup<T> extends StatefulWidget {
 class _SearchablePopupState<T> extends State<_SearchablePopup<T>> {
   final _filterCtrl = TextEditingController();
   final _filterFocus = FocusNode();
-  String _filter = '';
-  int _highlight = 0;
+  var _filter = '';
+  var _highlight = 0;
 
   @override
   void initState() {

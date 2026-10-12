@@ -10,21 +10,6 @@ import '../grid_style.dart';
 import 'grid_cell.dart';
 
 class GridBodyRow<TypeTag> extends StatelessWidget {
-  final int rowIdx;
-  final List<Object?> values;
-  final GridData<TypeTag> data;
-  final GridModel model;
-  final GridStyle style;
-  final CellRenderer<TypeTag> renderer;
-  final CellEditor<TypeTag>? editor;
-  final CellOverlayProvider<TypeTag>? overlay;
-  final double rowHeight;
-
-  final void Function(int row, int col, bool extend) onCellTap;
-  final void Function(int row, int col) onCellDoubleTap;
-  final void Function(int row, int col, Object? newValue) onCommit;
-  final void Function() onCancelEdit;
-
   const GridBodyRow({
     super.key,
     required this.rowIdx,
@@ -41,6 +26,20 @@ class GridBodyRow<TypeTag> extends StatelessWidget {
     required this.onCommit,
     required this.onCancelEdit,
   });
+  final int rowIdx;
+  final List<Object?> values;
+  final GridData<TypeTag> data;
+  final GridModel model;
+  final GridStyle style;
+  final CellRenderer<TypeTag> renderer;
+  final CellEditor<TypeTag>? editor;
+  final CellOverlayProvider<TypeTag>? overlay;
+  final double rowHeight;
+
+  final void Function(int row, int col, {required bool extend}) onCellTap;
+  final void Function(int row, int col) onCellDoubleTap;
+  final void Function(int row, int col, Object? newValue) onCommit;
+  final void Function() onCancelEdit;
 
   @override
   Widget build(BuildContext context) {
@@ -73,7 +72,7 @@ class GridBodyRow<TypeTag> extends StatelessWidget {
           isEditing: isEditing,
           width: model.widthAt(v),
           height: rowHeight,
-          onTap: () => onCellTap(rowIdx, v, _isShiftPressed()),
+          onTap: () => onCellTap(rowIdx, v, extend: _isShiftPressed()),
           onDoubleTap: (editor?.canEdit(col) ?? false)
               ? () => onCellDoubleTap(rowIdx, v)
               : null,

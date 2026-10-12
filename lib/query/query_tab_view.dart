@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart' hide Page;
 import 'package:flutter/services.dart';
 import 'package:widgets/widgets.dart';
@@ -10,20 +12,20 @@ import '../grid/data_grid.dart';
 import '../grid/export.dart';
 import '../inspector/grid_with_inspector.dart';
 import '../inspector/result_inspector_panel.dart';
+import '../meta/meta_cache.dart';
+import '../meta/meta_models.dart';
 import '../query/cancel_token.dart';
 import '../query/history_store.dart';
 import '../query/runner.dart';
 import '../query/sql_editor.dart';
-import '../meta/meta_cache.dart';
-import '../meta/meta_models.dart';
 import '../shell/app_state.dart';
 import '../util/pg_errors.dart';
 
 enum _ExportFormat { sql, csv, json, sqlite }
 
 class QueryTabView extends StatefulWidget {
-  final QueryTab tab;
   const QueryTabView({super.key, required this.tab});
+  final QueryTab tab;
 
   @override
   State<QueryTabView> createState() => _QueryTabViewState();
@@ -41,14 +43,14 @@ class _QueryTabViewState extends State<QueryTabView> {
     super.initState();
     _promptCtrl = TextEditingController(text: widget.tab.prompt);
     DbmlCache.instance.addListener(_onCacheChanged);
-    _loadHistoryAndSaved();
+    unawaited(_loadHistoryAndSaved());
     if (widget.tab.autoRun &&
         widget.tab.data == null &&
         !widget.tab.isLoading) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (!mounted) return;
         widget.tab.autoRun = false;
-        _run();
+        unawaited(_run());
       });
     }
   }
@@ -449,16 +451,16 @@ class _QueryTabViewState extends State<QueryTabView> {
 }
 
 class _AiPromptStrip extends StatelessWidget {
-  final QueryTab tab;
-  final TextEditingController controller;
-  final Future<void> Function() onAsk;
-  final VoidCallback onClearFocus;
   const _AiPromptStrip({
     required this.tab,
     required this.controller,
     required this.onAsk,
     required this.onClearFocus,
   });
+  final QueryTab tab;
+  final TextEditingController controller;
+  final Future<void> Function() onAsk;
+  final VoidCallback onClearFocus;
 
   @override
   Widget build(BuildContext context) {
@@ -487,7 +489,7 @@ class _AiPromptStrip extends StatelessWidget {
                       return KeyEventResult.ignored;
                     }
                     if (!ready || tab.isAsking) return KeyEventResult.handled;
-                    onAsk();
+                    unawaited(onAsk());
                     return KeyEventResult.handled;
                   },
                   child: TextField(
@@ -596,12 +598,6 @@ class _AiPromptStrip extends StatelessWidget {
 }
 
 class _HistoryRail extends StatefulWidget {
-  final List<HistoryEntry> history;
-  final List<SavedQuery> saved;
-  final String? activeSavedName;
-  final ValueChanged<String> onSelectHistory;
-  final ValueChanged<SavedQuery> onSelectSaved;
-  final ValueChanged<SavedQuery> onDeleteSaved;
   const _HistoryRail({
     required this.history,
     required this.saved,
@@ -610,13 +606,19 @@ class _HistoryRail extends StatefulWidget {
     required this.onSelectSaved,
     required this.onDeleteSaved,
   });
+  final List<HistoryEntry> history;
+  final List<SavedQuery> saved;
+  final String? activeSavedName;
+  final ValueChanged<String> onSelectHistory;
+  final ValueChanged<SavedQuery> onSelectSaved;
+  final ValueChanged<SavedQuery> onDeleteSaved;
 
   @override
   State<_HistoryRail> createState() => _HistoryRailState();
 }
 
 class _HistoryRailState extends State<_HistoryRail> {
-  String _filter = '';
+  var _filter = '';
 
   @override
   Widget build(BuildContext context) {
@@ -636,7 +638,7 @@ class _HistoryRailState extends State<_HistoryRail> {
         : widget.history
               .where((e) => e.sql.toLowerCase().contains(filter))
               .toList();
-    return Container(
+    return ColoredBox(
       color: palette.surface,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -713,9 +715,9 @@ class _HistoryRailState extends State<_HistoryRail> {
 }
 
 class _RailSection extends StatelessWidget {
+  const _RailSection({required this.label, required this.icon});
   final String label;
   final IconData icon;
-  const _RailSection({required this.label, required this.icon});
 
   @override
   Widget build(BuildContext context) {
@@ -742,16 +744,16 @@ class _RailSection extends StatelessWidget {
 }
 
 class _SavedRow extends StatelessWidget {
-  final SavedQuery q;
-  final bool active;
-  final VoidCallback onTap;
-  final VoidCallback onDelete;
   const _SavedRow({
     required this.q,
     required this.active,
     required this.onTap,
     required this.onDelete,
   });
+  final SavedQuery q;
+  final bool active;
+  final VoidCallback onTap;
+  final VoidCallback onDelete;
 
   @override
   Widget build(BuildContext context) {
@@ -788,9 +790,9 @@ class _SavedRow extends StatelessWidget {
 }
 
 class _HistoryRow extends StatelessWidget {
+  const _HistoryRow({required this.sql, required this.onTap});
   final String sql;
   final VoidCallback onTap;
-  const _HistoryRow({required this.sql, required this.onTap});
 
   @override
   Widget build(BuildContext context) {

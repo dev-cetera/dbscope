@@ -17,14 +17,6 @@ import 'access_policy.dart';
 import 'meta_models.dart';
 
 class EnforcementTable {
-  final String schema;
-  final String table;
-  final List<String> columns;
-  final List<String> primaryKey;
-
-  /// Views (and materialized views) get SELECT only.
-  final bool isView;
-
   const EnforcementTable({
     required this.schema,
     required this.table,
@@ -32,12 +24,27 @@ class EnforcementTable {
     this.primaryKey = const [],
     this.isView = false,
   });
+  final String schema;
+  final String table;
+  final List<String> columns;
+  final List<String> primaryKey;
+
+  /// Views (and materialized views) get SELECT only.
+  final bool isView;
 }
 
 enum Privilege { select, insert, update, delete }
 
 /// One privilege the generated SQL leaves in place (or removes).
 class PrivilegeExpectation {
+  const PrivilegeExpectation({
+    required this.dbRole,
+    required this.schema,
+    required this.table,
+    this.column,
+    required this.privilege,
+    required this.granted,
+  });
   final String dbRole;
   final String schema;
   final String table;
@@ -47,15 +54,6 @@ class PrivilegeExpectation {
   final Privilege privilege;
   final bool granted;
 
-  const PrivilegeExpectation({
-    required this.dbRole,
-    required this.schema,
-    required this.table,
-    this.column,
-    required this.privilege,
-    required this.granted,
-  });
-
   String get describe =>
       '$dbRole ${granted ? 'should' : 'should not'} have '
       '${privilege.name.toUpperCase()} on $schema.$table'
@@ -63,17 +61,16 @@ class PrivilegeExpectation {
 }
 
 class EnforcementPlan {
-  final List<String> statements;
-  final List<PrivilegeExpectation> expectations;
-
-  /// Roles skipped (no db_role) and other notes for the reviewer.
-  final List<String> notes;
-
   const EnforcementPlan({
     required this.statements,
     required this.expectations,
     required this.notes,
   });
+  final List<String> statements;
+  final List<PrivilegeExpectation> expectations;
+
+  /// Roles skipped (no db_role) and other notes for the reviewer.
+  final List<String> notes;
 
   String get script => statements.join('\n');
 }
@@ -130,7 +127,7 @@ EnforcementPlan buildEnforcementPlan({
       // is revoked and every listed relation is re-granted below.
       statements.add('REVOKE ALL ON $qualified FROM $r;');
       final tableLevel = policy.forTable(t.schema, t.table).level;
-      void expect(Privilege p, bool granted, [String? column]) =>
+      void expect(Privilege p, {required bool granted, String? column}) =>
           expectations.add(
             PrivilegeExpectation(
               dbRole: dbRole,
@@ -143,7 +140,7 @@ EnforcementPlan buildEnforcementPlan({
           );
 
       if (tableLevel == AccessLevel.none) {
-        expect(Privilege.select, false);
+        expect(Privilege.select, granted: false);
         continue;
       }
       final readable = <String>[];
@@ -168,44 +165,44 @@ EnforcementPlan buildEnforcementPlan({
         }
       }
       if (readable.isEmpty) {
-        expect(Privilege.select, false);
+        expect(Privilege.select, granted: false);
         continue;
       }
       usageSchemas.add(t.schema);
       final allReadable = readable.length == t.columns.length;
       if (allReadable) {
         statements.add('GRANT SELECT ON $qualified TO $r;');
-        expect(Privilege.select, true);
+        expect(Privilege.select, granted: true);
       } else {
         final cols = readable.map(quoteIdent).join(', ');
         statements.add('GRANT SELECT ($cols) ON $qualified TO $r;');
-        expect(Privilege.select, false);
+        expect(Privilege.select, granted: false);
         for (final c in t.columns) {
-          expect(Privilege.select, readable.contains(c), c);
+          expect(Privilege.select, granted: readable.contains(c), column: c);
         }
       }
       if (t.isView) continue;
       if (editable.isNotEmpty) {
         if (editable.length == t.columns.length) {
           statements.add('GRANT UPDATE ON $qualified TO $r;');
-          expect(Privilege.update, true);
+          expect(Privilege.update, granted: true);
         } else {
           final cols = editable.map(quoteIdent).join(', ');
           statements.add('GRANT UPDATE ($cols) ON $qualified TO $r;');
           for (final c in t.columns) {
-            expect(Privilege.update, editable.contains(c), c);
+            expect(Privilege.update, granted: editable.contains(c), column: c);
           }
         }
       } else {
-        expect(Privilege.update, false);
+        expect(Privilege.update, granted: false);
       }
       final full = tableLevel.atLeast(AccessLevel.full);
       if (full) {
         statements.add('GRANT INSERT, DELETE ON $qualified TO $r;');
         insertSchemas.add(t.schema);
       }
-      expect(Privilege.insert, full);
-      expect(Privilege.delete, full);
+      expect(Privilege.insert, granted: full);
+      expect(Privilege.delete, granted: full);
     }
     for (final schema in usageSchemas.toList()..sort()) {
       statements.add('GRANT USAGE ON SCHEMA ${quoteIdent(schema)} TO $r;');

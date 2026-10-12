@@ -5,17 +5,24 @@ import 'package:flutter/foundation.dart';
 /// considered selected.
 @immutable
 class CellRange {
-  final int anchorRow;
-  final int anchorCol;
-  final int focusRow;
-  final int focusCol;
-
   const CellRange({
     required this.anchorRow,
     required this.anchorCol,
     required this.focusRow,
     required this.focusCol,
   });
+
+  factory CellRange.singleCell(int row, int col) => CellRange(
+        anchorRow: row,
+        anchorCol: col,
+        focusRow: row,
+        focusCol: col,
+      );
+
+  final int anchorRow;
+  final int anchorCol;
+  final int focusRow;
+  final int focusCol;
 
   int get rowMin => anchorRow < focusRow ? anchorRow : focusRow;
   int get rowMax => anchorRow > focusRow ? anchorRow : focusRow;
@@ -32,13 +39,6 @@ class CellRange {
   CellRange withFocus(int row, int col) => CellRange(
         anchorRow: anchorRow,
         anchorCol: anchorCol,
-        focusRow: row,
-        focusCol: col,
-      );
-
-  static CellRange singleCell(int row, int col) => CellRange(
-        anchorRow: row,
-        anchorCol: col,
         focusRow: row,
         focusCol: col,
       );

@@ -20,7 +20,7 @@
 
 import 'dart:convert';
 
-const int kProtocolVersion = 1;
+const kProtocolVersion = 1;
 
 enum EnvelopeKind {
   req('req'),
@@ -32,8 +32,9 @@ enum EnvelopeKind {
   err('err')
   ;
 
-  final String wire;
   const EnvelopeKind(this.wire);
+
+  final String wire;
 
   static EnvelopeKind parse(String s) {
     for (final k in values) {
@@ -44,10 +45,17 @@ enum EnvelopeKind {
 }
 
 class RpcError implements Exception {
+  const RpcError(this.code, this.message, {this.data});
+
+  factory RpcError.fromJson(Map<String, Object?> json) => RpcError(
+    json['code'] as String? ?? 'unknown',
+    json['message'] as String? ?? '',
+    data: json['data'],
+  );
+
   final String code;
   final String message;
   final Object? data;
-  const RpcError(this.code, this.message, {this.data});
 
   Map<String, Object?> toJson() => {
     'code': code,
@@ -55,25 +63,11 @@ class RpcError implements Exception {
     if (data != null) 'data': data,
   };
 
-  static RpcError fromJson(Map<String, Object?> json) => RpcError(
-    json['code'] as String? ?? 'unknown',
-    json['message'] as String? ?? '',
-    data: json['data'],
-  );
-
   @override
   String toString() => 'RpcError($code): $message';
 }
 
 class Envelope {
-  final int v;
-  final String id;
-  final EnvelopeKind kind;
-  final String? method;
-  final Object? params;
-  final Object? result;
-  final RpcError? error;
-
   const Envelope({
     this.v = kProtocolVersion,
     required this.id,
@@ -140,6 +134,29 @@ class Envelope {
       params = null,
       result = null;
 
+  factory Envelope.fromJson(Map<String, Object?> json) => Envelope(
+    v: (json['v'] as num?)?.toInt() ?? kProtocolVersion,
+    id: json['id']! as String,
+    kind: EnvelopeKind.parse(json['kind']! as String),
+    method: json['method'] as String?,
+    params: json['params'],
+    result: json['result'],
+    error: json['error'] is Map<String, Object?>
+        ? RpcError.fromJson(json['error']! as Map<String, Object?>)
+        : null,
+  );
+
+  factory Envelope.decode(String wire) =>
+      Envelope.fromJson(jsonDecode(wire) as Map<String, Object?>);
+
+  final int v;
+  final String id;
+  final EnvelopeKind kind;
+  final String? method;
+  final Object? params;
+  final Object? result;
+  final RpcError? error;
+
   Map<String, Object?> toJson() => {
     'v': v,
     'id': id,
@@ -150,19 +167,5 @@ class Envelope {
     if (error != null) 'error': error!.toJson(),
   };
 
-  static Envelope fromJson(Map<String, Object?> json) => Envelope(
-    v: (json['v'] as num?)?.toInt() ?? kProtocolVersion,
-    id: json['id'] as String,
-    kind: EnvelopeKind.parse(json['kind'] as String),
-    method: json['method'] as String?,
-    params: json['params'],
-    result: json['result'],
-    error: json['error'] is Map<String, Object?>
-        ? RpcError.fromJson(json['error'] as Map<String, Object?>)
-        : null,
-  );
-
   String encode() => jsonEncode(toJson());
-  static Envelope decode(String wire) =>
-      Envelope.fromJson(jsonDecode(wire) as Map<String, Object?>);
 }

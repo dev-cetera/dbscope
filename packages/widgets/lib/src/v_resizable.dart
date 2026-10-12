@@ -5,13 +5,6 @@ enum VResizeSide { top, bottom }
 /// Vertically resizable container. Wraps [child] in a `SizedBox` of
 /// [height] with a thin horizontal drag handle on the [side] edge.
 class VResizable extends StatefulWidget {
-  final double height;
-  final double minHeight;
-  final double maxHeight;
-  final VResizeSide side;
-  final ValueChanged<double> onResized;
-  final Widget child;
-
   const VResizable({
     super.key,
     required this.height,
@@ -21,6 +14,12 @@ class VResizable extends StatefulWidget {
     this.maxHeight = 2000,
     this.side = VResizeSide.bottom,
   });
+  final double height;
+  final double minHeight;
+  final double maxHeight;
+  final VResizeSide side;
+  final ValueChanged<double> onResized;
+  final Widget child;
 
   @override
   State<VResizable> createState() => _VResizableState();

@@ -1,6 +1,6 @@
+import 'package:code_field/material.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:code_field/material.dart';
 
 import 'palette.dart';
 
@@ -99,9 +99,9 @@ class CodeViewer extends StatefulWidget {
   /// re-using the same instance preserves selection across rebuilds.
   final InteractiveTextController? controller;
 
-  /// Language id (one of [CodeLanguages.*] or any string the underlying
-  /// [GrammarRegistry.defaults] knows about). Pass `null` (via the
-  /// override `CodeViewer.plain`) to disable highlighting.
+  /// Language id (one of the [CodeLanguages] ids or any string the
+  /// underlying [GrammarRegistry.defaults] knows about). Pass `null` (via
+  /// the override `CodeViewer.plain`) to disable highlighting.
   final String language;
 
   /// Override the syntax theme. When null, defaults to
@@ -291,7 +291,7 @@ class CodeEditorPanel extends StatefulWidget {
   final bool autofocus;
 
   /// Notified on every text change. The latest text is also accessible
-  /// via [CodeEditorPanelController.text] when an external controller
+  /// via [CodeEditorPanelState.text] when an external controller
   /// is wired up.
   final ValueChanged<String>? onChanged;
 
@@ -375,12 +375,10 @@ class CodeEditorPanelState extends State<CodeEditorPanel> {
   Widget build(BuildContext context) {
     final palette = AppPalette.of(context);
     return Shortcuts(
-      shortcuts: <ShortcutActivator, Intent>{
-        const SingleActivator(LogicalKeyboardKey.escape): const _CancelIntent(),
-        const SingleActivator(LogicalKeyboardKey.keyS, control: true):
-            const _SaveIntent(),
-        const SingleActivator(LogicalKeyboardKey.keyS, meta: true):
-            const _SaveIntent(),
+      shortcuts: const <ShortcutActivator, Intent>{
+        SingleActivator(LogicalKeyboardKey.escape): _CancelIntent(),
+        SingleActivator(LogicalKeyboardKey.keyS, control: true): _SaveIntent(),
+        SingleActivator(LogicalKeyboardKey.keyS, meta: true): _SaveIntent(),
       },
       child: Actions(
         actions: <Type, Action<Intent>>{
@@ -398,7 +396,6 @@ class CodeEditorPanelState extends State<CodeEditorPanel> {
           ),
         },
         child: Focus(
-          autofocus: false,
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
@@ -412,7 +409,6 @@ class CodeEditorPanelState extends State<CodeEditorPanel> {
                   background: widget.background,
                   borderColor: widget.borderColor,
                   borderRadius: widget.borderRadius,
-                  maxLines: null,
                   expands: true,
                   autofocus: widget.autofocus,
                 ),
@@ -513,9 +509,8 @@ class _CodeEditorDialog extends StatefulWidget {
 }
 
 class _CodeEditorDialogState extends State<_CodeEditorDialog> {
-  final GlobalKey<CodeEditorPanelState> _panelKey =
-      GlobalKey<CodeEditorPanelState>();
-  bool _isValid = true;
+  final _panelKey = GlobalKey<CodeEditorPanelState>();
+  var _isValid = true;
 
   void _save() {
     final state = _panelKey.currentState;

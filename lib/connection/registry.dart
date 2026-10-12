@@ -1,3 +1,6 @@
+/// @docImport '../query/runner.dart';
+library;
+
 import 'dart:async';
 
 import 'package:flutter/widgets.dart';
@@ -6,21 +9,20 @@ import '../catalog/dbml_cache.dart';
 import '../db/executor.dart';
 import '../db/plugin.dart';
 import '../meta/meta_cache.dart';
+import '../meta/meta_settings.dart';
 import '../rpc/backend_client.dart';
 import '../rpc/services/bus_client.dart';
 import '../rpc/services/profile_client.dart';
 import '../shell/ui_prefs.dart';
-import '../meta/meta_settings.dart';
 import 'profile.dart';
 
 class _ConnState {
+  _ConnState(this.profile) : isReadOnlyOverride = profile.readOnly;
   ConnectionProfile profile;
   DbExecutor? executor;
-  bool isConnecting = false;
+  var isConnecting = false;
   bool isReadOnlyOverride;
   String? lastError;
-
-  _ConnState(this.profile) : isReadOnlyOverride = profile.readOnly;
 
   bool get isConnected => executor?.isOpen ?? false;
   bool get effectiveReadOnly => isReadOnlyOverride;
@@ -35,7 +37,7 @@ class _ConnState {
 // call.
 class ConnectionRegistry extends ChangeNotifier {
   ConnectionRegistry._();
-  static final ConnectionRegistry instance = ConnectionRegistry._();
+  static final instance = ConnectionRegistry._();
 
   ProfileServiceClient? _profileClient;
   BusClient? _busClient;
@@ -44,7 +46,7 @@ class ConnectionRegistry extends ChangeNotifier {
 
   /// Identifies this window on the bus so it ignores its own
   /// `meta.changed` broadcasts.
-  final String _windowNonce =
+  final _windowNonce =
       '${DateTime.now().microsecondsSinceEpoch}-${identityHashCode(Object())}';
 
   final Map<String, _ConnState> _states = {};
@@ -58,14 +60,13 @@ class ConnectionRegistry extends ChangeNotifier {
   DbExecutor? get connection =>
       _activeId == null ? null : _states[_activeId]?.executor;
   bool get isConnected =>
-      _activeId == null ? false : (_states[_activeId]?.isConnected ?? false);
+      !(_activeId == null) && (_states[_activeId]?.isConnected ?? false);
   bool get isConnecting =>
-      _activeId == null ? false : (_states[_activeId]?.isConnecting ?? false);
+      !(_activeId == null) && (_states[_activeId]?.isConnecting ?? false);
   String? get lastError =>
       _activeId == null ? null : _states[_activeId]?.lastError;
-  bool get isReadOnly => _activeId == null
-      ? false
-      : (_states[_activeId]?.effectiveReadOnly ?? false);
+  bool get isReadOnly =>
+      !(_activeId == null) && (_states[_activeId]?.effectiveReadOnly ?? false);
 
   DbExecutor? connectionFor(String profileId) => _states[profileId]?.executor;
 
@@ -100,11 +101,11 @@ class ConnectionRegistry extends ChangeNotifier {
   void bind({required BackendClient client}) {
     _profileClient = ProfileServiceClient(client);
     _busClient = BusClient(client);
-    _profileSub?.cancel();
+    unawaited(_profileSub?.cancel());
     _profileSub = _busClient!
         .subscribe('profile.changed')
         .listen(_onProfileEvent);
-    _metaSub?.cancel();
+    unawaited(_metaSub?.cancel());
     // BusService wildcards only match a `.*` suffix, so subscribe to
     // `meta.*` and filter for `meta.changed:<profileId>` here.
     _metaSub = _busClient!.subscribe('meta.*').listen(_onMetaEvent);
@@ -196,7 +197,7 @@ class ConnectionRegistry extends ChangeNotifier {
           if (exec != null &&
               exec.isOpen &&
               exec.capabilities.sessionReadOnly) {
-            unawaited(exec.setReadOnly(p.readOnly));
+            unawaited(exec.setReadOnly(readOnly: p.readOnly));
           }
         }
       } else {
@@ -335,8 +336,9 @@ class ConnectionRegistry extends ChangeNotifier {
           state.profile = profile;
         }
       }
-      BuildContext? ctx = context;
+      var ctx = context;
       if (ctx != null && !ctx.mounted) ctx = null;
+      // `ctx` was nulled out just above if it unmounted during the awaits.
       // ignore: use_build_context_synchronously
       final opened = await plugin.open(profile, context: ctx);
       if (opened.updatedProfile != null) {
@@ -348,7 +350,7 @@ class ConnectionRegistry extends ChangeNotifier {
       }
       if (state.effectiveReadOnly &&
           opened.executor.capabilities.sessionReadOnly) {
-        await opened.executor.setReadOnly(true);
+        await opened.executor.setReadOnly(readOnly: true);
       }
       // Schema metadata (descriptions, access control, …) loads before the
       // connection is marked connected: the catalog filters through the
@@ -458,17 +460,17 @@ class ConnectionRegistry extends ChangeNotifier {
     notifyListeners();
   }
 
-  Future<void> setReadOnly(String profileId, bool ro) async {
+  Future<void> setReadOnly(String profileId, {required bool readOnly}) async {
     final state = _states[profileId];
     if (state == null) return;
-    state.isReadOnlyOverride = ro;
+    state.isReadOnlyOverride = readOnly;
     final exec = state.executor;
     if (exec != null && exec.isOpen && exec.capabilities.sessionReadOnly) {
-      await exec.setReadOnly(ro);
+      await exec.setReadOnly(readOnly: readOnly);
     }
     final idx = _profiles.indexWhere((p) => p.id == profileId);
     if (idx >= 0) {
-      final updated = _profiles[idx].copyWith(readOnly: ro);
+      final updated = _profiles[idx].copyWith(readOnly: readOnly);
       _profiles[idx] = updated;
       state.profile = updated;
       // Push back to server so other windows see it.
@@ -486,9 +488,9 @@ class ConnectionRegistry extends ChangeNotifier {
       await _closeState(s);
     }
     _activeId = null;
-    _profileSub?.cancel();
+    unawaited(_profileSub?.cancel());
     _profileSub = null;
-    _metaSub?.cancel();
+    unawaited(_metaSub?.cancel());
     _metaSub = null;
     notifyListeners();
   }

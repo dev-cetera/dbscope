@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:ui' as ui;
 
+import 'package:code_field/code_field.dart';
 // Doom theme wired out — re-enable with the pubspec dep + register line below.
 // import 'package:dbscope_doom_plugin/dbscope_doom_plugin.dart';
 import 'package:dbscope_portal_plugin/dbscope_portal_plugin.dart';
@@ -11,15 +12,14 @@ import 'package:dbscope_win95_plugin/dbscope_win95_plugin.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
-import 'package:code_field/code_field.dart';
 
 import 'app.dart';
 import 'code/code_editor_payload.dart';
 import 'code/code_editor_subwindow.dart';
 import 'connection/registry.dart';
 import 'firebase_options.dart';
-import 'plugins/builtin_plugin.dart';
 import 'meta/meta_plugin.dart';
+import 'plugins/builtin_plugin.dart';
 import 'plugins/dbscope_plugin.dart';
 import 'plugins/platform_plugins.dart';
 import 'rpc/backend_client.dart';
@@ -103,7 +103,7 @@ Future<void> main(List<String> args) async {
     final payload = args.length > 2 ? args[2] : '';
     final windowId = int.tryParse(windowIdRaw) ?? -1;
 
-    final transport = IsolateTransport(targetWindowId: 0);
+    final transport = IsolateTransport();
     final client = BackendClient(transport);
     ConnectionRegistry.instance.bind(client: client);
     await ConnectionRegistry.instance.load();
@@ -148,15 +148,13 @@ Future<void> main(List<String> args) async {
   runApp(
     DBScopeApp(
       backend: host.localClient,
-      windowId: 0,
-      launchPayload: '',
     ),
   );
 }
 
 class _HostQuitHook extends WidgetsBindingObserver {
-  final HostBackend host;
   _HostQuitHook({required this.host});
+  final HostBackend host;
 
   @override
   Future<ui.AppExitResponse> didRequestAppExit() async {
@@ -198,9 +196,7 @@ void _registerPlugins() {
   registry.register(PortalThemePlugin());
 
   // Platform-conditional connection-kind plugins.
-  for (final plugin in platformConnectionPlugins()) {
-    registry.register(plugin);
-  }
+  platformConnectionPlugins().forEach(registry.register);
 }
 
 class _SubwindowQuitHook extends WidgetsBindingObserver {

@@ -16,7 +16,7 @@ class AiKeyResolver {
 
   /// Conventional env var per provider id, following what each vendor's
   /// own SDK documents. Ids match `AiBroker.id`.
-  static const Map<String, String> envVarNames = {
+  static const envVarNames = <String, String>{
     'openai': 'OPENAI_API_KEY',
     'anthropic': 'ANTHROPIC_API_KEY',
     'gemini': 'GEMINI_API_KEY',

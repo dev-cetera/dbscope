@@ -5,9 +5,9 @@ enum ShellEnvStatus { notLoaded, loaded, missing, unreadable, unsupported }
 /// See `shell_env_io.dart` for what this does on desktop.
 class ShellEnv {
   ShellEnv._();
-  static final ShellEnv instance = ShellEnv._();
+  static final instance = ShellEnv._();
 
-  static const bool isSupported = false;
+  static const isSupported = false;
   static String? get defaultPath => null;
 
   String? get resolvedPath => null;

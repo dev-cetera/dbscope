@@ -14,8 +14,8 @@
 
 import 'package:dbscope/meta/access_policy.dart';
 import 'package:dbscope/meta/meta_models.dart';
-import 'package:dbscope/meta/meta_sources.dart';
 import 'package:dbscope/meta/meta_settings.dart';
+import 'package:dbscope/meta/meta_sources.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 MetaDocument worked() {

@@ -3,7 +3,7 @@ import 'package:dbscope/shell/theme_registry.dart';
 
 import 'src/theme.dart';
 
-export 'src/theme.dart' show buildPortalTheme, portalPalette, PortalTheme;
+export 'src/theme.dart' show PortalTheme, buildPortalTheme, portalPalette;
 
 class PortalThemePlugin extends DbscopePlugin {
   @override

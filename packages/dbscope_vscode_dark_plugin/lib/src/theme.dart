@@ -2,4 +2,4 @@
 // outside dbscope (the compledo admin tool) can use it without depending on
 // the dbscope app. Re-exported here so this plugin's API is unchanged.
 export 'package:widgets/widgets.dart'
-    show buildVsCodeDarkTheme, vsCodeDarkPalette, VsCodeDarkTheme;
+    show VsCodeDarkTheme, buildVsCodeDarkTheme, vsCodeDarkPalette;

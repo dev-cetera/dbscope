@@ -9,20 +9,20 @@ import 'package:flutter/widgets.dart';
 /// @override
 /// Widget build(BuildContext context) {
 /// return MouseRegion(
-/// onEnter: (_) => setHovered(true),
-/// onExit: (_) => setHovered(false),
+/// onEnter: (_) => setHovered(hovered: true),
+/// onExit: (_) => setHovered(hovered: false),
 /// child: ...,
 /// );
 /// }
 /// }
 /// ```
 mixin HoverStateMixin<T extends StatefulWidget> on State<T> {
-  bool _hovered = false;
+  var _hovered = false;
 
   bool get isHovered => _hovered;
 
-  void setHovered(bool value) {
-    if (_hovered == value) return;
-    setState(() => _hovered = value);
+  void setHovered({required bool hovered}) {
+    if (_hovered == hovered) return;
+    setState(() => _hovered = hovered);
   }
 }

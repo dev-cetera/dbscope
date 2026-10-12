@@ -4,6 +4,12 @@ part of '../linked_view.dart';
 /// so per-frame drag doesn't trigger an app-wide rebuild. Drag deltas only
 /// commit to LinkedTab + notify AppState on drag-end.
 class _Canvas extends StatefulWidget {
+  const _Canvas({
+    required this.tab,
+    required this.onRowNodeMounted,
+    this.onRowNodeActivate,
+    this.onNodeContextMenu,
+  });
   final LinkedTab tab;
 
   /// Called when a row node first mounts so the view can kick off the
@@ -19,13 +25,6 @@ class _Canvas extends StatefulWidget {
   /// Right-click handler. Called with the node and the global pointer
   /// position so the host can show a context menu anchored to the click.
   final void Function(LinkedNode node, Offset globalPos)? onNodeContextMenu;
-
-  const _Canvas({
-    required this.tab,
-    required this.onRowNodeMounted,
-    this.onRowNodeActivate,
-    this.onNodeContextMenu,
-  });
 
   @override
   State<_Canvas> createState() => _CanvasState();
@@ -49,13 +48,13 @@ class _CanvasState extends State<_Canvas> with SingleTickerProviderStateMixin {
   /// Node ids whose width has already been auto-fitted at least once.
   /// We only auto-grow on first paint; subsequent paints leave the
   /// width alone so a manual resize is sticky.
-  final Set<String> _autoSizedOnce = <String>{};
+  final _autoSizedOnce = <String>{};
 
   /// Drives the chevron animation on edges. 0..1, wraps every cycle.
   late final Ticker _ticker;
   double _tickerValue = 0;
   Duration _lastTick = Duration.zero;
-  static const Duration _kChevronCycle = Duration(milliseconds: 3500);
+  static const _kChevronCycle = Duration(milliseconds: 3500);
 
   /// Where this canvas's top-left sat inside the window on the previous
   /// frame. See [_anchorViewport].
@@ -64,7 +63,8 @@ class _CanvasState extends State<_Canvas> with SingleTickerProviderStateMixin {
   @override
   void initState() {
     super.initState();
-    _ticker = createTicker(_onTick)..start();
+    _ticker = createTicker(_onTick);
+    unawaited(_ticker.start());
   }
 
   @override
@@ -262,7 +262,7 @@ class _CanvasState extends State<_Canvas> with SingleTickerProviderStateMixin {
                     );
                   });
                 },
-                onResizeEnd: () => AppState.instance.notifyChange(),
+                onResizeEnd: AppState.instance.notifyChange,
               ),
             ),
           );
@@ -341,16 +341,16 @@ class _CanvasState extends State<_Canvas> with SingleTickerProviderStateMixin {
 /// size, which causes the scale to compound and the connector
 /// endpoints to drift away from the card edges as you zoom.
 class _ScaledNode extends StatelessWidget {
-  final double scale;
-  final double width;
-  final double height;
-  final Widget child;
   const _ScaledNode({
     required this.scale,
     required this.width,
     required this.height,
     required this.child,
   });
+  final double scale;
+  final double width;
+  final double height;
+  final Widget child;
 
   @override
   Widget build(BuildContext context) {

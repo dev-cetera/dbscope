@@ -10,33 +10,33 @@ import '../tabs/tab_model.dart';
 import 'theme_registry.dart';
 import 'ui_prefs.dart';
 
+export '../jobs/job_tab.dart' show JobTab;
 // Tab kinds live in their feature folders; re-exported here so the
 // existing `import '../shell/app_state.dart'` pattern still resolves
 // every tab type. Each export's underlying file is the source of truth.
 export '../json_viewer/json_tab.dart' show JsonTab;
 export '../query/query_tab.dart' show QueryTab;
 export '../table/table_tab.dart'
-    show TableTab, TableSortState, AutoRefreshInterval;
+    show AutoRefreshInterval, TableSortState, TableTab;
 export '../tabs/tab_model.dart' show TabModel;
-export '../jobs/job_tab.dart' show JobTab;
 
 class AppState extends ChangeNotifier {
   AppState._();
-  static final AppState instance = AppState._();
+  static final instance = AppState._();
 
   /// Hard cap on open tabs. Beyond this, opening a new tab evicts the
   /// least-recently-activated unpinned tab. Pinned tabs and the active
   /// tab are never evicted. If every tab is pinned, the cap is ignored —
   /// the user explicitly opted them in to staying open.
-  static const int maxTabs = 10;
+  static const maxTabs = 10;
 
   final List<TabModel> tabs = [];
   TabModel? _active;
-  int _tabClock = 0;
-  bool _sidebarOnRight = false;
-  bool _sidebarVisible = true;
+  var _tabClock = 0;
+  var _sidebarOnRight = false;
+  var _sidebarVisible = true;
   double _sidebarWidth = 280;
-  bool _propertyInspectorCollapsed = false;
+  var _propertyInspectorCollapsed = false;
   double _propertyInspectorWidth = 340;
   double _rowHeight = 32;
   double _sqlEditorHeight = 220;
@@ -44,7 +44,7 @@ class AppState extends ChangeNotifier {
   /// Persisted theme id. Empty until [loadPersisted] and the
   /// [ThemeRegistry] have both run; resolution is deferred so
   /// pre-registry calls can't pick a stale theme.
-  String _themeId = '';
+  var _themeId = '';
 
   TabModel? get active => _active;
   bool get sidebarOnRight => _sidebarOnRight;
@@ -88,7 +88,7 @@ class AppState extends ChangeNotifier {
     if (tm != null) _themeId = tm;
   }
 
-  bool _persistTabsEnabled = false;
+  var _persistTabsEnabled = false;
 
   /// Enable tab-list persistence. The host window calls this once at
   /// startup; sub-windows don't, so their ephemeral tab state never
@@ -198,13 +198,13 @@ class AppState extends ChangeNotifier {
 
   void toggleSidebar() {
     _sidebarOnRight = !_sidebarOnRight;
-    UiPrefs.instance.setSidebarOnRight(_sidebarOnRight);
+    UiPrefs.instance.setSidebarOnRight(onRight: _sidebarOnRight);
     notifyListeners();
   }
 
   void toggleSidebarVisible() {
     _sidebarVisible = !_sidebarVisible;
-    UiPrefs.instance.setSidebarVisible(_sidebarVisible);
+    UiPrefs.instance.setSidebarVisible(visible: _sidebarVisible);
     notifyListeners();
   }
 
@@ -216,7 +216,9 @@ class AppState extends ChangeNotifier {
 
   void togglePropertyInspector() {
     _propertyInspectorCollapsed = !_propertyInspectorCollapsed;
-    UiPrefs.instance.setInspectorCollapsed(_propertyInspectorCollapsed);
+    UiPrefs.instance.setInspectorCollapsed(
+      collapsed: _propertyInspectorCollapsed,
+    );
     notifyListeners();
   }
 
@@ -367,11 +369,12 @@ class AppState extends ChangeNotifier {
   /// `newIndex -= 1` adjustment for forward moves.
   void moveTab(int oldIndex, int newIndex) {
     if (oldIndex < 0 || oldIndex >= tabs.length) return;
-    if (newIndex < 0) newIndex = 0;
-    if (newIndex > tabs.length - 1) newIndex = tabs.length - 1;
-    if (oldIndex == newIndex) return;
+    var target = newIndex;
+    if (target < 0) target = 0;
+    if (target > tabs.length - 1) target = tabs.length - 1;
+    if (oldIndex == target) return;
     final t = tabs.removeAt(oldIndex);
-    tabs.insert(newIndex, t);
+    tabs.insert(target, t);
     _persistTabs();
     notifyListeners();
   }
@@ -484,7 +487,7 @@ class AppState extends ChangeNotifier {
 
 class _Sentinel extends TabModel {
   _Sentinel() : super(id: '__sentinel__', connectionId: '');
-  static final _Sentinel instance = _Sentinel();
+  static final instance = _Sentinel();
   @override
   String get title => '';
 }

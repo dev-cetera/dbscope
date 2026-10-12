@@ -1,3 +1,6 @@
+/// @docImport '../widgets.dart';
+library;
+
 import 'package:flutter/material.dart';
 
 /// A pluggable look-and-feel that wraps a Flutter [ThemeData] with a stable

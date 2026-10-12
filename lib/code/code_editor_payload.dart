@@ -6,12 +6,15 @@
 // pure Dart file so both isolates can share the same shape without
 // pulling in any UI dependencies.
 
+/// @docImport 'dart:async';
+library;
+
 import 'dart:convert';
 
 /// Discriminator stored at the top of the subwindow launch payload so
 /// the new isolate knows it should run the code-editor UI instead of
 /// the full DBScope shell.
-const String codeEditorPayloadKind = 'code_editor';
+const codeEditorPayloadKind = 'code_editor';
 
 /// Launch payload for a code-editor subwindow.
 class CodeEditorLaunchPayload {
@@ -26,6 +29,24 @@ class CodeEditorLaunchPayload {
     this.formatLabel,
     this.formatJson = false,
   });
+
+  factory CodeEditorLaunchPayload.fromJsonString(String source) {
+    final raw = jsonDecode(source);
+    if (raw is! Map) {
+      throw const FormatException('CodeEditorLaunchPayload: not a JSON object');
+    }
+    return CodeEditorLaunchPayload(
+      requestId: (raw['requestId'] as String?) ?? '',
+      title: (raw['title'] as String?) ?? 'Edit',
+      initialText: (raw['initialText'] as String?) ?? '',
+      language: (raw['language'] as String?) ?? 'json',
+      themeId: (raw['themeId'] as String?) ?? '',
+      saveLabel: (raw['saveLabel'] as String?) ?? 'Save',
+      cancelLabel: (raw['cancelLabel'] as String?) ?? 'Cancel',
+      formatLabel: raw['formatLabel'] as String?,
+      formatJson: raw['formatJson'] == true,
+    );
+  }
 
   /// Unique id matching one [Completer] on the host side. Subwindow
   /// echoes it back in the commit / cancel message.
@@ -68,24 +89,6 @@ class CodeEditorLaunchPayload {
     'formatJson': formatJson,
   };
 
-  factory CodeEditorLaunchPayload.fromJsonString(String source) {
-    final raw = jsonDecode(source);
-    if (raw is! Map) {
-      throw const FormatException('CodeEditorLaunchPayload: not a JSON object');
-    }
-    return CodeEditorLaunchPayload(
-      requestId: (raw['requestId'] as String?) ?? '',
-      title: (raw['title'] as String?) ?? 'Edit',
-      initialText: (raw['initialText'] as String?) ?? '',
-      language: (raw['language'] as String?) ?? 'json',
-      themeId: (raw['themeId'] as String?) ?? '',
-      saveLabel: (raw['saveLabel'] as String?) ?? 'Save',
-      cancelLabel: (raw['cancelLabel'] as String?) ?? 'Cancel',
-      formatLabel: raw['formatLabel'] as String?,
-      formatJson: raw['formatJson'] == true,
-    );
-  }
-
   /// True when [source] is a JSON object whose `kind` field marks it as
   /// a code-editor payload.
   static bool isCodeEditorPayload(String source) {
@@ -102,4 +105,4 @@ class CodeEditorLaunchPayload {
 /// Method name used by the subwindow to ship the saved text back to the
 /// host via `DesktopMultiWindow.invokeMethod`. Wire shape:
 /// `{ requestId: <id>, text: <savedText>?, cancelled: <bool> }`.
-const String codeEditorCommitMethod = 'code_editor.commit';
+const codeEditorCommitMethod = 'code_editor.commit';

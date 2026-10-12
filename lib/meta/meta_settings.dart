@@ -21,12 +21,31 @@ enum MetaTablesMode {
 }
 
 /// Default Postgres schema for the metadata tables.
-const String kDefaultMetaSchema = 'dbscope';
+const kDefaultMetaSchema = 'dbscope';
 
 /// Default SQLite table prefix for the metadata tables.
-const String kDefaultMetaTablePrefix = '_dbscope_';
+const kDefaultMetaTablePrefix = '_dbscope_';
 
 class MetadataSettings {
+  const MetadataSettings({
+    this.tablesMode = MetaTablesMode.auto,
+    this.customName,
+    this.sidecarPath,
+    this.claimedIdentity,
+  });
+
+  factory MetadataSettings.fromJson(Object? raw) {
+    if (raw is! Map) return defaults;
+    String? text(Object? v) =>
+        v is String && v.trim().isNotEmpty ? v.trim() : null;
+    return MetadataSettings(
+      tablesMode: MetaTablesMode.parse(raw['tablesMode']),
+      customName: text(raw['customName']),
+      sidecarPath: text(raw['sidecarPath']),
+      claimedIdentity: text(raw['claimedIdentity']),
+    );
+  }
+
   final MetaTablesMode tablesMode;
 
   /// Postgres schema name, or SQLite table prefix, when [tablesMode] is
@@ -41,13 +60,6 @@ class MetadataSettings {
   /// guardrails — see plan.md "Identity". Stored on the profile (not in
   /// SharedPreferences) so every window resolves the same roles.
   final String? claimedIdentity;
-
-  const MetadataSettings({
-    this.tablesMode = MetaTablesMode.auto,
-    this.customName,
-    this.sidecarPath,
-    this.claimedIdentity,
-  });
 
   static const defaults = MetadataSettings();
 
@@ -93,18 +105,6 @@ class MetadataSettings {
     if (sidecarPath != null) 'sidecarPath': sidecarPath,
     if (claimedIdentity != null) 'claimedIdentity': claimedIdentity,
   };
-
-  static MetadataSettings fromJson(Object? raw) {
-    if (raw is! Map) return defaults;
-    String? text(Object? v) =>
-        v is String && v.trim().isNotEmpty ? v.trim() : null;
-    return MetadataSettings(
-      tablesMode: MetaTablesMode.parse(raw['tablesMode']),
-      customName: text(raw['customName']),
-      sidecarPath: text(raw['sidecarPath']),
-      claimedIdentity: text(raw['claimedIdentity']),
-    );
-  }
 }
 
-const Object _unset = Object();
+const _unset = Object();

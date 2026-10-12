@@ -18,7 +18,7 @@ import 'action_trust.dart';
 import 'description_tooltip.dart';
 import 'meta_menu.dart';
 
-const TextStyle _mono = TextStyle(fontFamily: 'monospace', fontSize: 12);
+const _mono = TextStyle(fontFamily: 'monospace', fontSize: 12);
 
 /// Asks the user to trust the metadata SQL of [scope] on this connection
 /// when it isn't trusted yet (or changed). Returns true when it may run.
@@ -57,7 +57,7 @@ Future<bool> showTrustDialog(
       return AppFormDialog(
         title: scope == TrustScope.exec
             ? 'Trust write actions on this connection?'
-            : 'Trust this connection\'s metadata SQL?',
+            : "Trust this connection's metadata SQL?",
         width: 680,
         height: 540,
         submitLabel: 'Trust',
@@ -71,7 +71,7 @@ Future<bool> showTrustDialog(
                         'the metadata can change them, so read the SQL. You '
                         'will be asked again whenever any of it changes.'
                   : 'Queries, charts, checks, read-only actions and default '
-                        'filters defined in this connection\'s metadata. '
+                        "filters defined in this connection's metadata. "
                         'Anyone who can edit the metadata can change them. '
                         'Where the backend allows it they run in a read-only '
                         'transaction. You will be asked again whenever any of '
@@ -505,16 +505,16 @@ Future<void> showEditDescriptionDialog(
 /// Constraint, index and trigger definitions that mention a column hidden
 /// from the viewer (`none`) are left out — they would reveal its name.
 class _NativeFactsSection extends StatefulWidget {
-  final String connectionId;
-  final String schema;
-  final String table;
-  final Future<NativeFacts> Function(DbExecutor executor) load;
   const _NativeFactsSection({
     required this.connectionId,
     required this.schema,
     required this.table,
     required this.load,
   });
+  final String connectionId;
+  final String schema;
+  final String table;
+  final Future<NativeFacts> Function(DbExecutor executor) load;
 
   @override
   State<_NativeFactsSection> createState() => _NativeFactsSectionState();

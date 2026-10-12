@@ -20,19 +20,19 @@ Widget bevelBox({
     decoration: BoxDecoration(
       color: background,
       border: Border(
-        top: BorderSide(color: outerTopLeft, width: 1),
-        left: BorderSide(color: outerTopLeft, width: 1),
-        right: BorderSide(color: outerBottomRight, width: 1),
-        bottom: BorderSide(color: outerBottomRight, width: 1),
+        top: BorderSide(color: outerTopLeft),
+        left: BorderSide(color: outerTopLeft),
+        right: BorderSide(color: outerBottomRight),
+        bottom: BorderSide(color: outerBottomRight),
       ),
     ),
     child: Container(
       decoration: BoxDecoration(
         border: Border(
-          top: BorderSide(color: innerTopLeft, width: 1),
-          left: BorderSide(color: innerTopLeft, width: 1),
-          right: BorderSide(color: innerBottomRight, width: 1),
-          bottom: BorderSide(color: innerBottomRight, width: 1),
+          top: BorderSide(color: innerTopLeft),
+          left: BorderSide(color: innerTopLeft),
+          right: BorderSide(color: innerBottomRight),
+          bottom: BorderSide(color: innerBottomRight),
         ),
       ),
       padding: padding,
@@ -53,7 +53,7 @@ Widget flatBox({
     decoration: BoxDecoration(
       color: background ?? palette.surfaceRaised,
       borderRadius: BorderRadius.circular(palette.cornerRadius),
-      border: Border.all(color: borderColor ?? palette.border, width: 1),
+      border: Border.all(color: borderColor ?? palette.border),
     ),
     padding: padding,
     child: child,

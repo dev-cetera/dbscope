@@ -14,6 +14,13 @@ import '../util/sql_quote.dart';
 import 'executor.dart';
 
 class TableWriteRules {
+  const TableWriteRules({
+    required this.access,
+    required this.softDeleteColumn,
+    required this.deleteRefusal,
+    required this.hardDeleteRefusal,
+    required this.returningList,
+  });
   final AccessDecision access;
 
   /// Soft-delete column that exists on the table, or null for hard deletes.
@@ -27,14 +34,6 @@ class TableWriteRules {
 
   /// `INSERT … RETURNING` list: no `none` columns, masked ones as NULL.
   final String returningList;
-
-  const TableWriteRules({
-    required this.access,
-    required this.softDeleteColumn,
-    required this.deleteRefusal,
-    required this.hardDeleteRefusal,
-    required this.returningList,
-  });
 
   /// Null when a row with these key values may be deleted; else why not.
   String? whyNoDelete({

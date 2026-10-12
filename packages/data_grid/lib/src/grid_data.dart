@@ -1,5 +1,8 @@
 import 'package:flutter/widgets.dart';
 
+import '../data_grid.dart'
+    show CellEditor, CellRenderer, DataGrid, DataGridController;
+
 /// Spec for one column in a [GridData].
 ///
 /// [TypeTag] is opaque to the grid — it carries whatever metadata the
@@ -8,6 +11,18 @@ import 'package:flutter/widgets.dart';
 /// matter). The grid passes it through to the [CellRenderer] /
 /// [CellEditor] without inspecting it.
 class GridColumnSpec<TypeTag> {
+  const GridColumnSpec({
+    required this.name,
+    this.type,
+    this.typeLabel = '',
+    this.primaryKey = false,
+    this.indexed = false,
+    this.defaultWidth,
+    this.hidden = false,
+    this.tooltip,
+    this.marker,
+  });
+
   /// Column header text + key used for keyed lookups. Must be unique
   /// inside one [GridData].
   final String name;
@@ -41,52 +56,48 @@ class GridColumnSpec<TypeTag> {
   /// Optional short marker after the badges (e.g. a lock for read-only or
   /// an eye-slash for masked columns).
   final String? marker;
-
-  const GridColumnSpec({
-    required this.name,
-    this.type,
-    this.typeLabel = '',
-    this.primaryKey = false,
-    this.indexed = false,
-    this.defaultWidth,
-    this.hidden = false,
-    this.tooltip,
-    this.marker,
-  });
 }
 
 /// The grid's data container: columns + 2D row matrix. Rows are
 /// mutable lists so the [DataGridController] can patch them in place
 /// without rebuilding the matrix.
 class GridData<TypeTag> {
+  const GridData({required this.columns, required this.rows});
   final List<GridColumnSpec<TypeTag>> columns;
   final List<List<Object?>> rows;
-  const GridData({required this.columns, required this.rows});
 }
 
 /// Fired when a cell commit produces a new value different from the
 /// old one. Caller persists it (e.g. via DML) and pushes the
 /// confirmed value back through [DataGridController.updateCell].
 class GridEditEvent {
+  GridEditEvent(this.rowIdx, this.column, this.oldValue, this.newValueRaw);
   final int rowIdx;
   final String column;
   final Object? oldValue;
   final Object? newValueRaw;
-  GridEditEvent(this.rowIdx, this.column, this.oldValue, this.newValueRaw);
 }
 
 /// Fired when a header click flips sort. The grid is purely
 /// view-state; the caller re-fetches data in the new order.
 class GridSortEvent {
+  GridSortEvent(this.column, {required this.descending});
   final String column;
   final bool descending;
-  GridSortEvent(this.column, this.descending);
 }
 
 /// One extra entry a host adds to the grid's right-click menu. Built per
 /// click by [DataGrid.contextMenuExtras], so it can depend on the clicked
 /// row and column.
 class GridMenuEntry {
+  const GridMenuEntry({
+    required this.label,
+    this.icon,
+    this.enabled = true,
+    this.disabledReason,
+    this.onSelected,
+    this.startsGroup = false,
+  });
   final String label;
   final IconData? icon;
   final bool enabled;
@@ -97,13 +108,4 @@ class GridMenuEntry {
 
   /// Draw a divider before this entry.
   final bool startsGroup;
-
-  const GridMenuEntry({
-    required this.label,
-    this.icon,
-    this.enabled = true,
-    this.disabledReason,
-    this.onSelected,
-    this.startsGroup = false,
-  });
 }

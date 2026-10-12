@@ -35,7 +35,7 @@ QueryTab _deserialize(Map<String, Object?> j) {
   )..viewMode = _viewModeFrom(j['viewMode']);
 }
 
-final TabKind queryTabKind = TabKind(
+final queryTabKind = TabKind(
   id: 'query',
   modelType: QueryTab,
   icon: Icons.code,
@@ -79,7 +79,7 @@ final TabKind queryTabKind = TabKind(
 /// Legacy alias so persisted tabs saved with `kind: 'ai'` continue to
 /// restore as the unified [QueryTab]. New tabs always serialize as
 /// `kind: 'query'`, so this is migrate-on-read only.
-final TabKind legacyAiQueryTabKind = TabKind(
+final legacyAiQueryTabKind = TabKind(
   id: 'ai',
   modelType: _LegacyAiSentinel,
   icon: Icons.auto_awesome,

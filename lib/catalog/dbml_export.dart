@@ -4,30 +4,29 @@ import '../meta/meta_index.dart';
 import 'schema_catalog.dart';
 
 class DbmlExportProgress {
-  final int completed;
-  final int total;
-  final String currentTable;
   const DbmlExportProgress({
     required this.completed,
     required this.total,
     required this.currentTable,
   });
+  final int completed;
+  final int total;
+  final String currentTable;
 }
 
 typedef DbmlProgressCallback = void Function(DbmlExportProgress);
 
 class DbmlEnum {
+  const DbmlEnum(this.schema, this.name, this.values);
   final String schema;
   final String name;
   final List<String> values;
-  const DbmlEnum(this.schema, this.name, this.values);
 }
 
 class DbmlExporter {
+  DbmlExporter(this.conn, {this.databaseName = 'dbscope'});
   final DbExecutor conn;
   final String databaseName;
-
-  DbmlExporter(this.conn, {this.databaseName = 'dbscope'});
 
   /// Schema metadata for this connection, when loaded: descriptions become
   /// DBML notes, which is how the AI features learn what columns mean.
@@ -111,8 +110,8 @@ class DbmlExporter {
     final result = await conn.execute(sql, positional: params);
     final grouped = <(String, String), List<String>>{};
     for (final row in result.rows) {
-      final key = (row[0] as String, row[1] as String);
-      (grouped[key] ??= <String>[]).add(row[2] as String);
+      final key = (row[0]! as String, row[1]! as String);
+      (grouped[key] ??= <String>[]).add(row[2]! as String);
     }
     return [
       for (final entry in grouped.entries)
@@ -206,7 +205,7 @@ class DbmlExporter {
 
   String _quoteIfNeeded(String s) {
     if (_isSimpleIdent(s)) return s;
-    return '"${s.replaceAll('"', '\\"')}"';
+    return '"${s.replaceAll('"', r'\"')}"';
   }
 
   String _escapeBacktick(String s) => s.replaceAll('`', r'\`');

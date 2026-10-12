@@ -4,15 +4,6 @@ import '../../tabs/tab_model.dart';
 /// so the user can watch progress without losing their place. JobTabs
 /// don't belong to any connection — `connectionId` is empty.
 class JobTab extends TabModel {
-  final String jobId;
-  final String kind;
-  String summary;
-  String phase;
-  int processed;
-  int? total;
-  bool finished;
-  String? error;
-
   JobTab({
     super.id,
     required this.jobId,
@@ -24,6 +15,14 @@ class JobTab extends TabModel {
     this.finished = false,
     this.error,
   }) : super(connectionId: '');
+  final String jobId;
+  final String kind;
+  String summary;
+  String phase;
+  int processed;
+  int? total;
+  bool finished;
+  String? error;
 
   @override
   String get title => 'Job: $summary';

@@ -8,8 +8,8 @@ import 'json_tab.dart';
 /// as syntax-highlighted, scrollable text. The content is final — the
 /// tab is read-only.
 class JsonTabView extends StatelessWidget {
-  final JsonTab tab;
   const JsonTabView({super.key, required this.tab});
+  final JsonTab tab;
 
   @override
   Widget build(BuildContext context) {

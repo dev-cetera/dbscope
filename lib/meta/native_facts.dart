@@ -17,6 +17,8 @@ import '../db/executor.dart';
 import 'meta_sources.dart';
 
 class NativeFact {
+  const NativeFact(this.label, this.detail, {this.comment});
+
   /// Short heading, e.g. "check_items_name" or "default".
   final String label;
 
@@ -25,18 +27,9 @@ class NativeFact {
 
   /// COMMENT ON the object, when there is one.
   final String? comment;
-
-  const NativeFact(this.label, this.detail, {this.comment});
 }
 
 class NativeFacts {
-  final String? comment;
-  final List<NativeFact> attributes;
-  final List<NativeFact> constraints;
-  final List<NativeFact> indexes;
-  final List<NativeFact> triggers;
-  final List<NativeFact> policies;
-
   const NativeFacts({
     this.comment,
     this.attributes = const [],
@@ -45,6 +38,12 @@ class NativeFacts {
     this.triggers = const [],
     this.policies = const [],
   });
+  final String? comment;
+  final List<NativeFact> attributes;
+  final List<NativeFact> constraints;
+  final List<NativeFact> indexes;
+  final List<NativeFact> triggers;
+  final List<NativeFact> policies;
 
   bool get isEmpty =>
       comment == null &&

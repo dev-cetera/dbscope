@@ -4,7 +4,7 @@ import '../tabs/tab_kind.dart';
 import 'linked_tab.dart';
 import 'linked_view.dart';
 
-final TabKind linkedTabKind = TabKind(
+final linkedTabKind = TabKind(
   id: 'linked',
   modelType: LinkedTab,
   icon: Icons.hub_outlined,

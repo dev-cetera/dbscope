@@ -10,24 +10,23 @@
 
 import '../catalog/dbml_cache.dart';
 import '../catalog/schema_catalog.dart';
+import '../db/executor.dart';
 import '../meta/meta_cache.dart';
 import '../meta/meta_models.dart';
 import '../meta/selector.dart';
-import '../db/executor.dart';
 import '../util/sql_parse.dart';
 import 'ai_key_resolver.dart';
 import 'provider.dart';
 import 'settings_store.dart';
 
 class SqlAssistant {
+  SqlAssistant(this.conn, {this.profileId});
   final DbExecutor conn;
 
   /// Profile id used to look up the cached DBML schema. Optional —
   /// callers without a profile context fall back to the naive
   /// catalog-walk in [_fallbackSchemaContext].
   final String? profileId;
-
-  SqlAssistant(this.conn, {this.profileId});
 
   /// Asks the LLM for a query. Returns the cleaned SQL on success; raises
   /// [AssistantException] on configuration / safety problems.
@@ -266,13 +265,13 @@ void enforceReadOnly(String sql) {
 }
 
 String _firstWord(String sql) {
-  final m = RegExp(r'^[A-Za-z_]+').firstMatch(sql);
+  final m = RegExp('^[A-Za-z_]+').firstMatch(sql);
   return m?.group(0) ?? '';
 }
 
 class AssistantException implements Exception {
-  final String message;
   const AssistantException(this.message);
+  final String message;
   @override
   String toString() => message;
 }

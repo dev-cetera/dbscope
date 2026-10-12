@@ -10,13 +10,6 @@ enum ResizeSide { left, right }
 /// widget never animates or stores width locally so it survives
 /// rebuilds without state-loss surprises.
 class Resizable extends StatefulWidget {
-  final double width;
-  final double minWidth;
-  final double maxWidth;
-  final ResizeSide side;
-  final ValueChanged<double> onResized;
-  final Widget child;
-
   const Resizable({
     super.key,
     required this.width,
@@ -26,6 +19,12 @@ class Resizable extends StatefulWidget {
     this.maxWidth = 2000,
     this.side = ResizeSide.right,
   });
+  final double width;
+  final double minWidth;
+  final double maxWidth;
+  final ResizeSide side;
+  final ValueChanged<double> onResized;
+  final Widget child;
 
   @override
   State<Resizable> createState() => _ResizableState();

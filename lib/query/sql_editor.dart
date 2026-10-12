@@ -4,11 +4,6 @@ import 'package:flutter_code_editor/flutter_code_editor.dart';
 import 'package:highlight/languages/sql.dart';
 
 class SqlEditor extends StatefulWidget {
-  final String initialText;
-  final ValueChanged<String> onChanged;
-  final VoidCallback? onRun;
-  final bool readOnly;
-
   const SqlEditor({
     super.key,
     required this.initialText,
@@ -16,6 +11,10 @@ class SqlEditor extends StatefulWidget {
     this.onRun,
     this.readOnly = false,
   });
+  final String initialText;
+  final ValueChanged<String> onChanged;
+  final VoidCallback? onRun;
+  final bool readOnly;
 
   @override
   State<SqlEditor> createState() => _SqlEditorState();
@@ -70,11 +69,9 @@ class _SqlEditorState extends State<SqlEditor> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     return Shortcuts(
-      shortcuts: {
-        const SingleActivator(LogicalKeyboardKey.enter, meta: true):
-            const _RunIntent(),
-        const SingleActivator(LogicalKeyboardKey.enter, control: true):
-            const _RunIntent(),
+      shortcuts: const {
+        SingleActivator(LogicalKeyboardKey.enter, meta: true): _RunIntent(),
+        SingleActivator(LogicalKeyboardKey.enter, control: true): _RunIntent(),
       },
       child: Actions(
         actions: {
@@ -96,7 +93,6 @@ class _SqlEditorState extends State<SqlEditor> {
             textStyle: const TextStyle(fontFamily: 'Menlo', fontSize: 13),
             background: theme.colorScheme.surfaceContainerLow,
             gutterStyle: GutterStyle(
-              showLineNumbers: true,
               textStyle: TextStyle(
                 fontFamily: 'Menlo',
                 fontSize: 12,

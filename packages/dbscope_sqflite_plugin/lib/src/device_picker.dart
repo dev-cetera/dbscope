@@ -10,16 +10,16 @@ import 'package:app_data_explorer/app_data_explorer.dart';
 
 /// Lightweight summary of a connected device, regardless of platform.
 class DiscoveredDevice {
-  final String kind; // 'android' | 'ios'
-  final String id;
-  final String label;
-  final String? model;
   DiscoveredDevice({
     required this.kind,
     required this.id,
     required this.label,
     this.model,
   });
+  final String kind; // 'android' | 'ios'
+  final String id;
+  final String label;
+  final String? model;
 }
 
 /// Lightweight summary of an app installed on a device. For Android this
@@ -27,29 +27,29 @@ class DiscoveredDevice {
 /// always true on iOS (devicectl reaches both Xcode-installed and
 /// App-Store apps); on Android it reflects `run-as` reachability.
 class DiscoveredApp {
-  final String id;
-  final String? displayName;
-  final bool debuggable;
   DiscoveredApp({
     required this.id,
     this.displayName,
     required this.debuggable,
   });
+  final String id;
+  final String? displayName;
+  final bool debuggable;
 }
 
 /// One on-device file that looks like a SQLite database.
 class DiscoveredDbFile {
+  DiscoveredDbFile({required this.relativePath, this.sizeBytes});
   final String relativePath;
   final int? sizeBytes;
-  DiscoveredDbFile({required this.relativePath, this.sizeBytes});
 }
 
 /// Errors / surfacing hints from device discovery. Non-fatal; the dialog
 /// shows these inline so the user can act on them.
 class DeviceDiscovery {
+  DeviceDiscovery({required this.devices, this.hint});
   final List<DiscoveredDevice> devices;
   final String? hint;
-  DeviceDiscovery({required this.devices, this.hint});
 }
 
 Future<DeviceDiscovery> discoverDevices() async {

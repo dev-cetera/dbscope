@@ -4,13 +4,6 @@ import 'package:flutter/material.dart';
 /// insert a separator between groups. A null [value] also acts as
 /// non-selectable.
 class AppMenuEntry<T> {
-  final T? value;
-  final String? label;
-  final IconData? icon;
-  final bool enabled;
-  final bool destructive;
-  final bool divider;
-
   const AppMenuEntry({
     this.value,
     this.label,
@@ -26,6 +19,12 @@ class AppMenuEntry<T> {
       enabled = false,
       destructive = false,
       divider = true;
+  final T? value;
+  final String? label;
+  final IconData? icon;
+  final bool enabled;
+  final bool destructive;
+  final bool divider;
 }
 
 /// Shared right-click / long-press context menu. Pass [globalPosition]

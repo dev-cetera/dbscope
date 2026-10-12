@@ -5,15 +5,15 @@ part of '../navigator_view.dart';
 // ---------------------------------------------------------------------------
 
 class RowDetailColumn extends StatefulWidget {
-  final NavigatorTab tab;
-  final int index;
-  final RowDetailStep step;
   const RowDetailColumn({
     super.key,
     required this.tab,
     required this.index,
     required this.step,
   });
+  final NavigatorTab tab;
+  final int index;
+  final RowDetailStep step;
 
   @override
   State<RowDetailColumn> createState() => _RowDetailColumnState();
@@ -24,7 +24,7 @@ class _RowDetailColumnState extends State<RowDetailColumn> {
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted) _load();
+      if (mounted) unawaited(_load());
     });
   }
 
@@ -33,7 +33,7 @@ class _RowDetailColumnState extends State<RowDetailColumn> {
     super.didUpdateWidget(old);
     if (old.step.id != widget.step.id) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (mounted) _load();
+        if (mounted) unawaited(_load());
       });
     }
   }

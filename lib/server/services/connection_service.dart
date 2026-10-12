@@ -19,21 +19,20 @@ import 'profile_service.dart';
 enum ConnectionState { disconnected, connecting, connected, error }
 
 class _ConnEntry {
+  _ConnEntry({required this.readOnly});
   ConnectionState state = ConnectionState.disconnected;
   DbExecutor? exec;
   String? lastError;
   bool readOnly;
-  _ConnEntry({required this.readOnly});
 }
 
 class ConnectionService {
-  final ProfileService _profiles;
-  final BusService _bus;
-  final Map<String, _ConnEntry> _entries = {};
-
   ConnectionService({required ProfileService profiles, required BusService bus})
     : _profiles = profiles,
       _bus = bus;
+  final ProfileService _profiles;
+  final BusService _bus;
+  final Map<String, _ConnEntry> _entries = {};
 
   void register(Server server) {
     server.onRequest('connection.open', (p) async {
@@ -52,7 +51,7 @@ class ConnectionService {
     });
     server.onRequest('connection.setReadOnly', (p) async {
       _ensureMap(p);
-      final params = p as Map<String, Object?>;
+      final params = p! as Map<String, Object?>;
       final id = params['id'] as String?;
       final ro = params['readOnly'] as bool?;
       if (id == null || ro == null) {
@@ -104,7 +103,7 @@ class ConnectionService {
         await _profiles.upsertFromPlugin(opened.updatedProfile!);
       }
       if (entry.readOnly && opened.executor.capabilities.sessionReadOnly) {
-        await opened.executor.setReadOnly(true);
+        await opened.executor.setReadOnly(readOnly: true);
       }
       entry.exec = opened.executor;
       entry.state = ConnectionState.connected;
@@ -143,7 +142,7 @@ class ConnectionService {
     entry.readOnly = ro;
     final c = entry.exec;
     if (c != null && c.isOpen && c.capabilities.sessionReadOnly) {
-      await c.setReadOnly(ro);
+      await c.setReadOnly(readOnly: ro);
     }
   }
 
@@ -169,7 +168,7 @@ class ConnectionService {
 
   String _idFrom(Object? p) {
     _ensureMap(p);
-    final id = (p as Map<String, Object?>)['id'] as String?;
+    final id = (p! as Map<String, Object?>)['id'] as String?;
     if (id == null) {
       throw const RpcError('bad_params', 'id required');
     }

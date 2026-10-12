@@ -4,8 +4,8 @@ import 'package:widgets/widgets.dart';
 import 'profile.dart';
 
 class ConnectionDialog extends StatefulWidget {
-  final ConnectionProfile? initial;
   const ConnectionDialog({super.key, this.initial});
+  final ConnectionProfile? initial;
 
   @override
   State<ConnectionDialog> createState() => _ConnectionDialogState();
@@ -22,8 +22,8 @@ class _ConnectionDialogState extends State<ConnectionDialog> {
   late final TextEditingController _tenantColumn;
   late final TextEditingController _tenantValue;
   SslMode _sslMode = SslMode.disable;
-  bool _readOnly = true;
-  bool _passwordVisible = false;
+  var _readOnly = true;
+  var _passwordVisible = false;
 
   @override
   void initState() {

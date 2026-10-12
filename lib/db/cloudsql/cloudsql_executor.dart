@@ -8,10 +8,9 @@ import 'cloudsql_proxy_manager.dart';
 /// downcast — keep working) but releases the proxy reference when closed, so
 /// the tunnel is torn down once no executor needs it.
 class CloudSqlExecutor extends PostgresExecutor {
-  final CloudSqlConfig _config;
-  bool _released = false;
-
   CloudSqlExecutor(super.conn, this._config);
+  final CloudSqlConfig _config;
+  var _released = false;
 
   @override
   Future<void> close({bool force = false}) async {

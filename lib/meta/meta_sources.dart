@@ -34,8 +34,8 @@ class NativeCommentSource {
  AND n.nspname NOT IN ('pg_catalog', 'information_schema')
  ''');
       for (final row in result.rows) {
-        final schema = row[0] as String;
-        final table = row[1] as String;
+        final schema = row[0]! as String;
+        final table = row[1]! as String;
         final column = row[2] as String?;
         final description = row[3] as String?;
         if (description == null || description.trim().isEmpty) continue;
@@ -53,14 +53,14 @@ class NativeCommentSource {
         );
       }
       // Schema comments describe the schema row in the sidebar.
-      final schemas = await executor.execute('''
+      final schemas = await executor.execute(r'''
  SELECT n.nspname, obj_description(n.oid, 'pg_namespace')
  FROM pg_namespace n
  WHERE obj_description(n.oid, 'pg_namespace') IS NOT NULL
- AND n.nspname NOT LIKE 'pg\\_%' AND n.nspname <> 'information_schema'
+ AND n.nspname NOT LIKE 'pg\_%' AND n.nspname <> 'information_schema'
  ''');
       for (final row in schemas.rows) {
-        final schema = row[0] as String;
+        final schema = row[0]! as String;
         final description = (row[1] as String?)?.trim();
         if (description == null || description.isEmpty) continue;
         builder.rows.add(
@@ -89,16 +89,16 @@ class NativeCommentSource {
  ''');
       for (final row in types.rows) {
         final target = Selector.forColumn(
-          row[0] as String,
-          row[1] as String,
-          row[2] as String,
+          row[0]! as String,
+          row[1]! as String,
+          row[2]! as String,
         );
         builder.rows.add(
           MetaRow(
             id: 'native-type:${target.raw}',
             target: target,
             kind: MetaKinds.describe,
-            spec: {'description': '${row[3]}: ${(row[4] as String).trim()}'},
+            spec: {'description': '${row[3]}: ${(row[4]! as String).trim()}'},
             priority: -1,
             source: MetaSourceKind.native,
           ),
@@ -122,22 +122,14 @@ class NativeCommentSource {
 enum MetaTablesOutcome { off, absent, loaded, unreadable }
 
 class MetaTablesResult {
+  const MetaTablesResult(this.outcome, this.data, {this.error});
   final MetaTablesOutcome outcome;
   final MetaSourceData data;
   final String? error;
-  const MetaTablesResult(this.outcome, this.data, {this.error});
 }
 
 /// Physical names of the four metadata tables for one connection.
 class MetaTableNames {
-  final String meta;
-  final String roles;
-  final String members;
-  final String grants;
-
-  /// Postgres schema holding them (null on SQLite).
-  final String? schema;
-
   const MetaTableNames({
     required this.meta,
     required this.roles,
@@ -170,6 +162,13 @@ class MetaTableNames {
       schema: schema,
     );
   }
+  final String meta;
+  final String roles;
+  final String members;
+  final String grants;
+
+  /// Postgres schema holding them (null on SQLite).
+  final String? schema;
 
   static const metadata = 'metadata';
   static const accessRoles = 'access_roles';
@@ -177,7 +176,7 @@ class MetaTableNames {
   static const accessGrants = 'access_grants';
 
   /// The four logical table names, in creation order.
-  static const logical = [
+  static const List<String> logical = [
     metadata,
     accessRoles,
     accessRoleMembers,
@@ -338,7 +337,7 @@ class DbTableSource {
         '(?1, ?2, ?3, ?4)',
         positional: byPhysical.keys.toList(),
       );
-      return {for (final row in res.rows) ?byPhysical[row[0] as String]};
+      return {for (final row in res.rows) ?byPhysical[row[0]! as String]};
     }
     // The names are our own constants, so listing them inline is safe.
     final inList = byPhysical.keys.map((n) => "'$n'").join(', ');
@@ -353,14 +352,14 @@ class DbTableSource {
  ''',
       named: {'schema': settings.postgresSchema},
     );
-    return {for (final row in res.rows) ?byPhysical[row[0] as String]};
+    return {for (final row in res.rows) ?byPhysical[row[0]! as String]};
   }
 }
 
 /// The sidecar YAML/JSON file, with `include:` resolved relative to the
 /// including file. Includes load first, so the including file wins.
 class FileSource {
-  static const int _maxIncludeDepth = 8;
+  static const _maxIncludeDepth = 8;
 
   static Future<MetaSourceData> load(String path) async {
     final builder = MetaSourceBuilder(MetaSourceKind.file);

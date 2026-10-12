@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 
 import '../connection/secure_store.dart';
@@ -23,11 +25,11 @@ class _AiSettingsDialogState extends State<AiSettingsDialog> {
   final Map<String, TextEditingController> _keyControllers = {};
   final Map<String, List<String>> _availableModels = {};
   final Map<String, String?> _providerError = {};
-  bool _initialised = false;
-  bool _saving = false;
+  var _initialised = false;
+  var _saving = false;
   String? _activeProviderId;
   String? _activeModel;
-  bool _allowSampleRows = false;
+  var _allowSampleRows = false;
 
   @override
   void initState() {
@@ -35,7 +37,7 @@ class _AiSettingsDialogState extends State<AiSettingsDialog> {
     for (final p in AiBrokerRegistry.instance.all) {
       _keyControllers[p.id] = TextEditingController();
     }
-    _hydrate();
+    unawaited(_hydrate());
   }
 
   Future<void> _hydrate() async {
@@ -171,7 +173,6 @@ class _AiSettingsDialogState extends State<AiSettingsDialog> {
                       ),
                       items: [
                         const DropdownMenuItem(
-                          value: null,
                           child: Text('(none)'),
                         ),
                         for (final p in providers)
@@ -197,7 +198,7 @@ class _AiSettingsDialogState extends State<AiSettingsDialog> {
                           if (provider != null &&
                               key.isNotEmpty &&
                               !alreadyFetched) {
-                            _verify(provider);
+                            unawaited(_verify(provider));
                           }
                         }
                       },
@@ -227,7 +228,6 @@ class _AiSettingsDialogState extends State<AiSettingsDialog> {
                           ),
                           items: [
                             const DropdownMenuItem(
-                              value: null,
                               child: Text('(auto)'),
                             ),
                             for (final m in all)
@@ -285,11 +285,6 @@ class _AiSettingsDialogState extends State<AiSettingsDialog> {
 }
 
 class _ProviderSection extends StatefulWidget {
-  final AiBroker provider;
-  final TextEditingController keyController;
-  final List<String>? availableModels;
-  final String? error;
-  final VoidCallback onVerify;
   const _ProviderSection({
     required this.provider,
     required this.keyController,
@@ -297,6 +292,11 @@ class _ProviderSection extends StatefulWidget {
     required this.error,
     required this.onVerify,
   });
+  final AiBroker provider;
+  final TextEditingController keyController;
+  final List<String>? availableModels;
+  final String? error;
+  final VoidCallback onVerify;
 
   @override
   State<_ProviderSection> createState() => _ProviderSectionState();

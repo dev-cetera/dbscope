@@ -14,13 +14,6 @@ import '../server.dart';
 import 'bus_service.dart';
 
 class ProfileService {
-  final ProfileStore _store;
-  final SecureStore _secure;
-  final BusService _bus;
-
-  List<ConnectionProfile> _profiles = const [];
-  bool _loaded = false;
-
   ProfileService({
     ProfileStore? store,
     SecureStore? secure,
@@ -28,24 +21,30 @@ class ProfileService {
   }) : _store = store ?? ProfileStore.instance,
        _secure = secure ?? SecureStore.instance,
        _bus = bus;
+  final ProfileStore _store;
+  final SecureStore _secure;
+  final BusService _bus;
+
+  List<ConnectionProfile> _profiles = const [];
+  var _loaded = false;
 
   void register(Server server) {
     server.onRequest('profile.list', (_) async => _listJson());
     server.onRequest('profile.add', (p) async {
       _ensureMap(p);
-      final profile = _fromParams(p as Map<String, Object?>);
+      final profile = _fromParams(p! as Map<String, Object?>);
       await _upsert(profile);
       return _toJson(profile);
     });
     server.onRequest('profile.update', (p) async {
       _ensureMap(p);
-      final profile = _fromParams(p as Map<String, Object?>);
+      final profile = _fromParams(p! as Map<String, Object?>);
       await _upsert(profile);
       return _toJson(profile);
     });
     server.onRequest('profile.remove', (p) async {
       _ensureMap(p);
-      final id = (p as Map<String, Object?>)['id'] as String?;
+      final id = (p! as Map<String, Object?>)['id'] as String?;
       if (id == null) {
         throw const RpcError('bad_params', 'id required');
       }
@@ -54,7 +53,7 @@ class ProfileService {
     });
     server.onRequest('profile.password', (p) async {
       _ensureMap(p);
-      final id = (p as Map<String, Object?>)['id'] as String?;
+      final id = (p! as Map<String, Object?>)['id'] as String?;
       if (id == null) {
         throw const RpcError('bad_params', 'id required');
       }

@@ -18,7 +18,7 @@ final List<Color> kRelationshipPalette = List.unmodifiable(
 /// don't land in the same bucket from a shared prefix — their reverses
 /// diverge at the very first byte of the hash input.
 int colorIndexForTable(String tableKey) {
-  int h = 2166136261;
+  var h = 2166136261;
   for (var i = tableKey.length - 1; i >= 0; i--) {
     h = ((h ^ tableKey.codeUnitAt(i)) * 16777619) & 0xFFFFFFFF;
   }

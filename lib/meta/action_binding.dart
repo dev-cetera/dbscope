@@ -20,19 +20,9 @@
 import 'meta_models.dart';
 
 /// Upper bound on a selection expanded into `IN (...)`.
-const int kMaxSelectionBind = 1000;
+const kMaxSelectionBind = 1000;
 
 class BindingContext {
-  final String? schema;
-  final String? table;
-  final String? column;
-  final Map<String, Object?> row;
-  final Map<String, Object?> primaryKey;
-  final Object? cell;
-  final List<Map<String, Object?>> selection;
-  final Map<String, Object?> inputs;
-  final String? mePrincipal;
-
   const BindingContext({
     this.schema,
     this.table,
@@ -44,24 +34,32 @@ class BindingContext {
     this.inputs = const {},
     this.mePrincipal,
   });
+  final String? schema;
+  final String? table;
+  final String? column;
+  final Map<String, Object?> row;
+  final Map<String, Object?> primaryKey;
+  final Object? cell;
+  final List<Map<String, Object?>> selection;
+  final Map<String, Object?> inputs;
+  final String? mePrincipal;
 }
 
 class BoundSql {
+  const BoundSql(this.sql, this.named, this.missing);
   final String sql;
   final Map<String, Object?> named;
 
   /// Placeholders the context could not satisfy. Non-empty → don't run.
   final List<String> missing;
 
-  const BoundSql(this.sql, this.named, this.missing);
-
   bool get isComplete => missing.isEmpty;
 }
 
-const String _rowPrefix = 'row_';
-const String _pkPrefix = 'pk_';
-const String _inputPrefix = 'input_';
-const String _rowsPrefix = 'rows_';
+const _rowPrefix = 'row_';
+const _pkPrefix = 'pk_';
+const _inputPrefix = 'input_';
+const _rowsPrefix = 'rows_';
 
 /// Every `@name` placeholder in [sql], in order of first appearance,
 /// skipping string literals, quoted identifiers, comments and dollar-quoted

@@ -7,18 +7,6 @@ import '../grid_style.dart';
 /// Column-header row. Each header is a draggable handle for reorder
 /// and has a resize handle on its right edge. Click toggles sort.
 class GridHeader<TypeTag> extends StatelessWidget {
-  final GridData<TypeTag> data;
-  final GridModel model;
-  final GridStyle style;
-  final double height;
-  final String? sortColumn;
-  final bool sortDescending;
-  final void Function(int originalIdx)? onSortToggle;
-  final void Function(int originalIdx, double width) onWidthChanged;
-  final void Function(int fromView, int toView) onReorder;
-  final Widget Function(BuildContext context, int columnIdx, Widget header)?
-      headerBuilder;
-
   const GridHeader({
     super.key,
     required this.data,
@@ -32,6 +20,17 @@ class GridHeader<TypeTag> extends StatelessWidget {
     required this.onReorder,
     this.headerBuilder,
   });
+  final GridData<TypeTag> data;
+  final GridModel model;
+  final GridStyle style;
+  final double height;
+  final String? sortColumn;
+  final bool sortDescending;
+  final void Function(int originalIdx)? onSortToggle;
+  final void Function(int originalIdx, double width) onWidthChanged;
+  final void Function(int fromView, int toView) onReorder;
+  final Widget Function(BuildContext context, int columnIdx, Widget header)?
+      headerBuilder;
 
   @override
   Widget build(BuildContext context) {
@@ -68,20 +67,6 @@ class GridHeader<TypeTag> extends StatelessWidget {
 }
 
 class _HeaderCell<TypeTag> extends StatelessWidget {
-  final int viewIdx;
-  final int originalIdx;
-  final GridColumnSpec<TypeTag> spec;
-  final double width;
-  final double height;
-  final GridStyle style;
-  final bool isSorted;
-  final bool sortDescending;
-  final void Function(int originalIdx)? onSortToggle;
-  final void Function(int originalIdx, double width) onWidthChanged;
-  final void Function(int fromView, int toView) onReorder;
-  final Widget Function(BuildContext context, int columnIdx, Widget header)?
-      headerBuilder;
-
   const _HeaderCell({
     required this.viewIdx,
     required this.originalIdx,
@@ -96,6 +81,19 @@ class _HeaderCell<TypeTag> extends StatelessWidget {
     required this.onReorder,
     required this.headerBuilder,
   });
+  final int viewIdx;
+  final int originalIdx;
+  final GridColumnSpec<TypeTag> spec;
+  final double width;
+  final double height;
+  final GridStyle style;
+  final bool isSorted;
+  final bool sortDescending;
+  final void Function(int originalIdx)? onSortToggle;
+  final void Function(int originalIdx, double width) onWidthChanged;
+  final void Function(int fromView, int toView) onReorder;
+  final Widget Function(BuildContext context, int columnIdx, Widget header)?
+      headerBuilder;
 
   @override
   Widget build(BuildContext context) {

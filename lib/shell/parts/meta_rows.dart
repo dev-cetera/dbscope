@@ -3,9 +3,9 @@ part of '../sidebar.dart';
 /// A non-interactive sub-header: a metadata `display.group` inside a
 /// schema, or the "Queries & dashboards" section.
 class _GroupHeaderRow extends StatelessWidget {
+  const _GroupHeaderRow({required this.label, this.indent = 24});
   final String label;
   final double indent;
-  const _GroupHeaderRow({required this.label, this.indent = 24});
 
   @override
   Widget build(BuildContext context) {
@@ -26,9 +26,9 @@ class _GroupHeaderRow extends StatelessWidget {
 }
 
 class _QueryRow extends StatelessWidget {
+  const _QueryRow({required this.query, required this.connectionId});
   final NamedQuerySpec query;
   final String connectionId;
-  const _QueryRow({required this.query, required this.connectionId});
 
   void _open() {
     final existing = AppState.instance.tabs.whereType<NamedQueryTab>().where(
@@ -78,14 +78,14 @@ class _QueryRow extends StatelessWidget {
 }
 
 class _DashboardRow extends StatelessWidget {
-  final String? dashboardId;
-  final String label;
-  final String connectionId;
   const _DashboardRow({
     required this.dashboardId,
     required this.label,
     required this.connectionId,
   });
+  final String? dashboardId;
+  final String label;
+  final String connectionId;
 
   void _open() {
     final existing = AppState.instance.tabs.whereType<DashboardTab>().where(

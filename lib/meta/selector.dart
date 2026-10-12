@@ -31,12 +31,11 @@ enum SelectorScope {
 }
 
 class _Segment {
+  _Segment(this.text, {required this.quoted})
+    : glob = (!quoted && text.contains('*')) ? _globToRegExp(text) : null;
   final String text;
   final bool quoted;
   final RegExp? glob;
-
-  _Segment(this.text, {required this.quoted})
-    : glob = (!quoted && text.contains('*')) ? _globToRegExp(text) : null;
 
   bool get isWildcard => !quoted && text == '*';
   bool get isPartialGlob => glob != null && !isWildcard;
@@ -63,19 +62,18 @@ class _Segment {
 /// A parsed selector. Build with [Selector.tryParse]; a malformed string
 /// returns null so callers can report a problem instead of throwing.
 class Selector {
+  const Selector._(this.raw, this.scope, this._segments);
   final String raw;
   final SelectorScope scope;
   final List<_Segment> _segments;
 
-  const Selector._(this.raw, this.scope, this._segments);
-
-  static const Selector everything = Selector._(
+  static const everything = Selector._(
     '*',
     SelectorScope.everything,
     [],
   );
 
-  static const String queryPrefix = 'query:';
+  static const queryPrefix = 'query:';
 
   /// Parses [raw]. Returns null on syntax errors (unbalanced quotes, empty
   /// segments, too many segments).
@@ -252,9 +250,14 @@ class Selector {
   String toString() => raw;
 
   @override
+  // Every field is final. `@immutable` needs package:meta or Flutter, and
+  // tool/meta_to_sql.dart runs this file under plain Dart.
+  // ignore: avoid_equals_and_hash_code_on_mutable_classes
   bool operator ==(Object other) => other is Selector && other.raw == raw;
 
   @override
+  // Same as `==` above: immutable in fact, unannotated by necessity.
+  // ignore: avoid_equals_and_hash_code_on_mutable_classes
   int get hashCode => raw.hashCode;
 
   /// Splits on dots outside double quotes. Returns null on unbalanced

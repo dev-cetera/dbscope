@@ -3,9 +3,8 @@
 // must escape correctly for every shape we expect — embedded quotes,
 // schema-qualified names, mixed-type literals.
 
-import 'package:flutter_test/flutter_test.dart';
-
 import 'package:dbscope/util/sql_quote.dart';
+import 'package:flutter_test/flutter_test.dart';
 
 void main() {
   group('quoteIdent', () {
@@ -94,7 +93,7 @@ void main() {
 
     test('unknown object falls back to toString', () {
       const value = Duration(seconds: 5);
-      expect(quoteLiteral(value), "'${value.toString()}'");
+      expect(quoteLiteral(value), "'$value'");
     });
   });
 }

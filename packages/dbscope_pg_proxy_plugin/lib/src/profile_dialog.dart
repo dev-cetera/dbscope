@@ -14,8 +14,8 @@ Future<ConnectionProfile?> showPgProxyDialog(
 }
 
 class _PgProxyDialog extends StatefulWidget {
-  final ConnectionProfile? initial;
   const _PgProxyDialog({this.initial});
+  final ConnectionProfile? initial;
 
   @override
   State<_PgProxyDialog> createState() => _PgProxyDialogState();
@@ -32,7 +32,7 @@ class _PgProxyDialogState extends State<_PgProxyDialog> {
   late final TextEditingController _username;
   late final TextEditingController _password;
   SslMode _ssl = SslMode.require;
-  bool _readOnly = false;
+  var _readOnly = false;
 
   @override
   void initState() {
@@ -132,7 +132,7 @@ class _PgProxyDialogState extends State<_PgProxyDialog> {
                   controller: _sharedSecret,
                   decoration: const InputDecoration(
                     labelText: 'Shared secret (optional)',
-                    hintText: 'Matches the proxy\'s --shared-secret',
+                    hintText: "Matches the proxy's --shared-secret",
                   ),
                   obscureText: true,
                 ),

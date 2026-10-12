@@ -26,8 +26,8 @@ import 'window_actions.dart';
 // duplication between the two paths.
 
 class AppMenuBar extends StatelessWidget {
-  final Widget child;
   const AppMenuBar({super.key, required this.child});
+  final Widget child;
 
   bool get _useNativeMacMenu =>
       !kIsWeb && defaultTargetPlatform == TargetPlatform.macOS;
@@ -55,8 +55,8 @@ class AppMenuBar extends StatelessWidget {
 // the live AppState / ConnectionRegistry singletons at click time, so
 // the menu data itself can be rebuilt per frame without losing wiring.
 class _MenuActions {
-  final BuildContext context;
   _MenuActions(this.context);
+  final BuildContext context;
 
   String? get _activeConnId => ConnectionRegistry.instance.activeId;
 
@@ -105,7 +105,7 @@ class _MenuActions {
     if (id == null) return;
     await ConnectionRegistry.instance.setReadOnly(
       id,
-      !ConnectionRegistry.instance.isReadOnly,
+      readOnly: !ConnectionRegistry.instance.isReadOnly,
     );
   }
 
@@ -153,14 +153,14 @@ class _MenuActions {
             onSelected: _newNavigator,
           ),
           MenuItemSpec(label: 'New linked view', onSelected: _newLinked),
-          MenuItemSpec(
+          const MenuItemSpec(
             label: 'New window',
-            shortcut: const SingleActivator(
+            shortcut: SingleActivator(
               LogicalKeyboardKey.keyN,
               meta: true,
               shift: true,
             ),
-            onSelected: () => WindowActions.spawnWindow(),
+            onSelected: WindowActions.spawnWindow,
           ),
           MenuItemSpec(
             label: 'New connection…',
@@ -347,14 +347,13 @@ PlatformMenuItem _itemToPlatform(MenuItemSpec item) {
 // In-app fallback renderer (non-mac and web).
 
 class _FallbackMenuBar extends StatelessWidget {
-  final List<MenuSpec> menus;
   const _FallbackMenuBar({required this.menus});
+  final List<MenuSpec> menus;
 
   @override
   Widget build(BuildContext context) {
     final palette = AppPalette.of(context);
     return Material(
-      type: MaterialType.canvas,
       color: palette.surfaceRaised,
       child: SizedBox(
         height: 28,
@@ -369,11 +368,12 @@ class _FallbackMenuBar extends StatelessWidget {
 }
 
 class _MenuButton extends StatelessWidget {
-  final MenuSpec menu;
   const _MenuButton({required this.menu});
+  final MenuSpec menu;
 
   Future<void> _show(BuildContext context, Offset globalPos) async {
-    final overlay = Overlay.of(context).context.findRenderObject() as RenderBox;
+    final overlay =
+        Overlay.of(context).context.findRenderObject()! as RenderBox;
     final flattened = _flattenForPopup(menu.items);
     final picked = await showMenu<MenuItemSpec>(
       context: context,

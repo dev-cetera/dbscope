@@ -10,25 +10,37 @@ import '../util/sql_quote.dart';
 import 'pg_type.dart';
 
 class SchemaInfo {
+  const SchemaInfo(this.name, {required this.isSystem});
   final String name;
   final bool isSystem;
-  const SchemaInfo(this.name, this.isSystem);
 }
 
 class TableInfo {
-  final String schema;
-  final String name;
-  final String kind;
-  final int estimatedRows;
   const TableInfo({
     required this.schema,
     required this.name,
     required this.kind,
     required this.estimatedRows,
   });
+  final String schema;
+  final String name;
+  final String kind;
+  final int estimatedRows;
 }
 
 class ColumnInfo {
+  const ColumnInfo({
+    required this.name,
+    required this.type,
+    required this.typeName,
+    required this.nullable,
+    required this.defaultExpr,
+    required this.isGenerated,
+    required this.isIdentity,
+    this.enumValues,
+    this.accessLevel = AccessLevel.full,
+    this.defaultHidden = false,
+  });
   final String name;
   final PgType type;
   final String typeName;
@@ -45,19 +57,6 @@ class ColumnInfo {
 
   /// Collapsed when a table opens (access-control `default_hidden`).
   final bool defaultHidden;
-
-  const ColumnInfo({
-    required this.name,
-    required this.type,
-    required this.typeName,
-    required this.nullable,
-    required this.defaultExpr,
-    required this.isGenerated,
-    required this.isIdentity,
-    this.enumValues,
-    this.accessLevel = AccessLevel.full,
-    this.defaultHidden = false,
-  });
 
   bool get isMasked => accessLevel == AccessLevel.masked;
 
@@ -77,6 +76,16 @@ class ColumnInfo {
 }
 
 class ForeignKey {
+  const ForeignKey({
+    required this.constraintName,
+    required this.fromSchema,
+    required this.fromTable,
+    required this.fromColumn,
+    required this.toSchema,
+    required this.toTable,
+    required this.toColumn,
+    this.isVirtual = false,
+  });
   final String constraintName;
   final String fromSchema;
   final String fromTable;
@@ -89,17 +98,6 @@ class ForeignKey {
   /// rather than by a real constraint. Drawn dashed in the Schema view.
   final bool isVirtual;
 
-  const ForeignKey({
-    required this.constraintName,
-    required this.fromSchema,
-    required this.fromTable,
-    required this.fromColumn,
-    required this.toSchema,
-    required this.toTable,
-    required this.toColumn,
-    this.isVirtual = false,
-  });
-
   String get fromKey => '$fromSchema.$fromTable';
   String get toKey => '$toSchema.$toTable';
 
@@ -108,21 +106,20 @@ class ForeignKey {
 }
 
 class TableSchema {
-  final List<ColumnInfo> columns;
-  final List<String> pkColumns;
-  final Set<String> indexedColumns;
-
   const TableSchema({
     required this.columns,
     required this.pkColumns,
     required this.indexedColumns,
   });
+  final List<ColumnInfo> columns;
+  final List<String> pkColumns;
+  final Set<String> indexedColumns;
 }
 
 // SQLite has no schemas in the Postgres sense; everything is in 'main'.
 // Catalog methods that take a `schema` accept 'main' and route through
 // pragma_* table-valued functions and sqlite_master.
-const String _kSqliteMainSchema = 'main';
+const _kSqliteMainSchema = 'main';
 
 /// Reads the database catalog. The default constructor filters every
 /// answer through the connection's access policy (schema metadata): tables
@@ -134,11 +131,10 @@ const String _kSqliteMainSchema = 'main';
 /// [SchemaCatalog.unfiltered] is for DML and internals that must see the
 /// real shape (e.g. primary keys of a table whose PK is hidden).
 class SchemaCatalog {
-  final DbExecutor conn;
-  final bool _applyPolicy;
-
   SchemaCatalog(this.conn) : _applyPolicy = true;
   SchemaCatalog.unfiltered(this.conn) : _applyPolicy = false;
+  final DbExecutor conn;
+  final bool _applyPolicy;
 
   bool get _isSqlite => conn.kind == kSqliteKind;
 
@@ -166,16 +162,16 @@ class SchemaCatalog {
       // Only the default database is exposed. ATTACH DATABASE is a real
       // SQLite feature but out of scope for v1 — users with attached
       // DBs can still query them via fully-qualified SQL in a Query tab.
-      return const [SchemaInfo(_kSqliteMainSchema, false)];
+      return const [SchemaInfo(_kSqliteMainSchema, isSystem: false)];
     }
     final result = await conn.execute(
       'SELECT schema_name FROM information_schema.schemata ORDER BY schema_name',
     );
     final out = <SchemaInfo>[];
     for (final row in result.rows) {
-      final name = row[0] as String;
+      final name = row[0]! as String;
       final isSystem = name.startsWith('pg_') || name == 'information_schema';
-      out.add(SchemaInfo(name, isSystem));
+      out.add(SchemaInfo(name, isSystem: isSystem));
     }
     out.sort((a, b) {
       if (a.isSystem != b.isSystem) return a.isSystem ? 1 : -1;
@@ -217,8 +213,8 @@ class SchemaCatalog {
       for (final row in result.rows)
         TableInfo(
           schema: schema,
-          name: row[0] as String,
-          kind: row[1] as String,
+          name: row[0]! as String,
+          kind: row[1]! as String,
           estimatedRows: toInt(row[2]) ?? -1,
         ),
     ];
@@ -242,8 +238,8 @@ class SchemaCatalog {
       for (final row in result.rows)
         TableInfo(
           schema: schema,
-          name: row[0] as String,
-          kind: row[1] as String,
+          name: row[0]! as String,
+          kind: row[1]! as String,
           estimatedRows: -1,
         ),
     ];
@@ -305,12 +301,12 @@ class SchemaCatalog {
     final enumLookups = <(String udtSchema, String udtName), int>{};
     final raw = <_ColumnRaw>[];
     for (final row in result.rows) {
-      final udtName = row[2] as String;
+      final udtName = row[2]! as String;
       final udtSchema = row[8] as String?;
       final udtKind = row[7] as String?;
       raw.add(
         _ColumnRaw(
-          name: row[0] as String,
+          name: row[0]! as String,
           udtName: udtName,
           nullable: toBool(row[3]),
           defaultExpr: row[4] as String?,
@@ -358,7 +354,7 @@ class SchemaCatalog {
     return [
       for (final row in result.rows)
         ColumnInfo(
-          name: row[0] as String,
+          name: row[0]! as String,
           type: pgTypeFromSqlite((row[1] as String?) ?? ''),
           typeName: (row[1] as String?) ?? '',
           nullable: toInt(row[2]) == 0,
@@ -398,8 +394,8 @@ class SchemaCatalog {
     final result = await conn.execute(sql, positional: params);
     final out = <(String, String), List<String>>{};
     for (final row in result.rows) {
-      final k = (row[0] as String, row[1] as String);
-      (out[k] ??= <String>[]).add(row[2] as String);
+      final k = (row[0]! as String, row[1]! as String);
+      (out[k] ??= <String>[]).add(row[2]! as String);
     }
     return out;
   }
@@ -413,7 +409,7 @@ class SchemaCatalog {
         'WHERE pk > 0 ORDER BY pk',
         positional: [table],
       );
-      return [for (final row in result.rows) row[0] as String];
+      return [for (final row in result.rows) row[0]! as String];
     }
     final result = await conn.execute(
       '''
@@ -428,7 +424,7 @@ class SchemaCatalog {
  ''',
       named: {'schema': schema, 'table': table},
     );
-    return [for (final row in result.rows) row[0] as String];
+    return [for (final row in result.rows) row[0]! as String];
   }
 
   Future<Set<String>> indexedColumns(String schema, String table) async {
@@ -444,7 +440,7 @@ class SchemaCatalog {
       );
       final cols = <String>{};
       for (final r in indexes.rows) {
-        final idxName = r[0] as String;
+        final idxName = r[0]! as String;
         final info = await conn.execute(
           'SELECT name FROM pragma_index_info(?)',
           positional: [idxName],
@@ -467,7 +463,7 @@ class SchemaCatalog {
  ''',
       named: {'schema': schema, 'table': table},
     );
-    return {for (final row in result.rows) row[0] as String};
+    return {for (final row in result.rows) row[0]! as String};
   }
 
   Future<List<ForeignKey>> listForeignKeys() async {
@@ -501,7 +497,7 @@ class SchemaCatalog {
     if (links.isEmpty) return const [];
     final out = <ForeignKey>[];
     final needsExpansion = links.any((l) => l.target.exactColumn == null);
-    List<(String, String, String)> allColumns = const [];
+    var allColumns = const <(String, String, String)>[];
     if (needsExpansion) allColumns = await _allColumnTriples();
     for (final link in links) {
       final to = link.to!.exactColumn!;
@@ -539,7 +535,7 @@ class SchemaCatalog {
           positional: [t.name],
         );
         for (final r in cols.rows) {
-          out.add((_kSqliteMainSchema, t.name, r[0] as String));
+          out.add((_kSqliteMainSchema, t.name, r[0]! as String));
         }
       }
       return out;
@@ -551,7 +547,7 @@ class SchemaCatalog {
  ''');
     return [
       for (final r in res.rows)
-        (r[0] as String, r[1] as String, r[2] as String),
+        (r[0]! as String, r[1]! as String, r[2]! as String),
     ];
   }
 
@@ -587,13 +583,13 @@ class SchemaCatalog {
     return [
       for (final row in result.rows)
         ForeignKey(
-          constraintName: row[0] as String,
-          fromSchema: row[1] as String,
-          fromTable: row[2] as String,
-          fromColumn: row[3] as String,
-          toSchema: row[4] as String,
-          toTable: row[5] as String,
-          toColumn: row[6] as String,
+          constraintName: row[0]! as String,
+          fromSchema: row[1]! as String,
+          fromTable: row[2]! as String,
+          fromColumn: row[3]! as String,
+          toSchema: row[4]! as String,
+          toTable: row[5]! as String,
+          toColumn: row[6]! as String,
         ),
     ];
   }
@@ -615,12 +611,12 @@ class SchemaCatalog {
       for (final r in res.rows) {
         final id = toInt(r[0]) ?? 0;
         final seq = toInt(r[1]) ?? 0;
-        final refTable = r[2] as String;
-        final fromCol = r[3] as String;
+        final refTable = r[2]! as String;
+        final fromCol = r[3]! as String;
         // `to` is null when the FK targets the PK implicitly. In that
         // case we resolve via the target table's PK column at position
         // [seq]. Falling back to empty produces a still-readable edge.
-        var toCol = (r[4] as String?);
+        var toCol = r[4] as String?;
         if (toCol == null || toCol.isEmpty) {
           final pk = await primaryKey(_kSqliteMainSchema, refTable);
           toCol = (seq >= 0 && seq < pk.length) ? pk[seq] : '';
@@ -726,15 +722,6 @@ class SchemaCatalog {
 }
 
 class _ColumnRaw {
-  final String name;
-  final String udtName;
-  final bool nullable;
-  final String? defaultExpr;
-  final bool isGenerated;
-  final bool isIdentity;
-  final String? udtSchema;
-  final bool isEnum;
-
   _ColumnRaw({
     required this.name,
     required this.udtName,
@@ -745,4 +732,12 @@ class _ColumnRaw {
     required this.udtSchema,
     required this.isEnum,
   });
+  final String name;
+  final String udtName;
+  final bool nullable;
+  final String? defaultExpr;
+  final bool isGenerated;
+  final bool isIdentity;
+  final String? udtSchema;
+  final bool isEnum;
 }

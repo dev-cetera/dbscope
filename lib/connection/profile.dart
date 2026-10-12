@@ -4,14 +4,14 @@ import '../meta/meta_settings.dart';
 
 enum SslMode { disable, require, verifyFull }
 
-final RegExp readOnlyHeuristic = RegExp(
-  r'prod|live|main',
+final readOnlyHeuristic = RegExp(
+  'prod|live|main',
   caseSensitive: false,
 );
 
 /// Built-in kind id for the direct-Postgres backend. External plugins
 /// pick their own.
-const String kPostgresKind = 'postgres';
+const kPostgresKind = 'postgres';
 
 /// Per-profile default WHERE applied to every table that has the named
 /// column. The canonical use is a multi-tenant `account_id = $X` scope:
@@ -21,9 +21,9 @@ const String kPostgresKind = 'postgres';
 /// Tables that don't have [column] are not filtered (they're treated as
 /// non-tenant-scoped). No exclude list — bypass is "use a Query tab".
 class TenantFilter {
+  const TenantFilter({required this.column, required this.value});
   final String column;
   final Object? value;
-  const TenantFilter({required this.column, required this.value});
 
   Map<String, Object?> toJson() => {'column': column, 'value': value};
 
@@ -40,11 +40,12 @@ class TenantFilter {
 /// the soft-delete column — but the type exists so adding (e.g.) a label
 /// column or a hidden-column list later is a non-breaking change.
 class TableOverrides {
+  const TableOverrides({this.softDeleteColumn});
+
   /// Column the app should write `now()` into instead of issuing a
   /// hard DELETE. The "Show deleted" toggle in the table view also keys
   /// off this — rows are filtered to `<col> IS NULL` by default when set.
   final String? softDeleteColumn;
-  const TableOverrides({this.softDeleteColumn});
 
   bool get isEmpty => softDeleteColumn == null;
 
@@ -69,9 +70,71 @@ class TableOverrides {
   }
 }
 
-const Object _sentinel = Object();
+const _sentinel = Object();
 
 class ConnectionProfile {
+  ConnectionProfile({
+    String? id,
+    this.kind = kPostgresKind,
+    required this.name,
+    this.host = '',
+    this.port = 5432,
+    this.database = '',
+    this.username = '',
+    this.password = '',
+    this.sslMode = SslMode.disable,
+    bool? readOnly,
+    Map<String, Object?>? extra,
+    this.tenantFilter,
+    Map<String, TableOverrides>? tableOverrides,
+    this.metadata = MetadataSettings.defaults,
+  }) : id = id ?? const Uuid().v4(),
+       readOnly = readOnly ?? readOnlyHeuristic.hasMatch(name),
+       extra = Map<String, Object?>.unmodifiable(extra ?? const {}),
+       tableOverrides = Map<String, TableOverrides>.unmodifiable(
+         tableOverrides ?? const {},
+       );
+
+  factory ConnectionProfile.fromJson(
+    Map<String, Object?> json,
+    String password,
+  ) {
+    final extraRaw = json['extra'];
+    final overridesRaw = json['tableOverrides'];
+    final overrides = <String, TableOverrides>{};
+    if (overridesRaw is Map) {
+      for (final entry in overridesRaw.entries) {
+        final parsed = TableOverrides.fromJson(entry.value);
+        if (parsed != null) {
+          overrides[entry.key.toString()] = parsed;
+        }
+      }
+    }
+    return ConnectionProfile(
+      id: json['id']! as String,
+      kind: (json['kind'] as String?) ?? kPostgresKind,
+      name: json['name']! as String,
+      host: (json['host'] as String?) ?? '',
+      port: (json['port'] as num?)?.toInt() ?? 5432,
+      database: (json['database'] as String?) ?? '',
+      username: (json['username'] as String?) ?? '',
+      password: password,
+      sslMode: SslMode.values.firstWhere(
+        (s) => s.name == (json['sslMode'] as String? ?? 'disable'),
+        orElse: () => SslMode.disable,
+      ),
+      readOnly: json['readOnly'] as bool? ?? false,
+      extra: extraRaw is Map<String, Object?>
+          ? Map<String, Object?>.from(extraRaw)
+          : extraRaw is Map
+          ? extraRaw.map((k, v) => MapEntry(k.toString(), v as Object?))
+          : const <String, Object?>{},
+      tenantFilter: TenantFilter.fromJson(json['tenantFilter']),
+      tableOverrides: overrides,
+      metadata: MetadataSettings.fromJson(json['metadata']),
+    );
+  }
+
   final String id;
 
   /// Which ConnectionKindPlugin owns this profile.
@@ -101,28 +164,6 @@ class ConnectionProfile {
 
   /// Where dbscope looks for schema metadata (tables and sidecar file).
   final MetadataSettings metadata;
-
-  ConnectionProfile({
-    String? id,
-    this.kind = kPostgresKind,
-    required this.name,
-    this.host = '',
-    this.port = 5432,
-    this.database = '',
-    this.username = '',
-    this.password = '',
-    this.sslMode = SslMode.disable,
-    bool? readOnly,
-    Map<String, Object?>? extra,
-    this.tenantFilter,
-    Map<String, TableOverrides>? tableOverrides,
-    this.metadata = MetadataSettings.defaults,
-  }) : id = id ?? const Uuid().v4(),
-       readOnly = readOnly ?? readOnlyHeuristic.hasMatch(name),
-       extra = Map<String, Object?>.unmodifiable(extra ?? const {}),
-       tableOverrides = Map<String, TableOverrides>.unmodifiable(
-         tableOverrides ?? const {},
-       );
 
   /// Lookup overrides for a specific table. Returns an empty
   /// [TableOverrides] (all fields null) when none are set so callers
@@ -199,44 +240,4 @@ class ConnectionProfile {
       },
     if (!metadata.isDefault) 'metadata': metadata.toJson(),
   };
-
-  static ConnectionProfile fromJson(
-    Map<String, Object?> json,
-    String password,
-  ) {
-    final extraRaw = json['extra'];
-    final overridesRaw = json['tableOverrides'];
-    final overrides = <String, TableOverrides>{};
-    if (overridesRaw is Map) {
-      for (final entry in overridesRaw.entries) {
-        final parsed = TableOverrides.fromJson(entry.value);
-        if (parsed != null) {
-          overrides[entry.key.toString()] = parsed;
-        }
-      }
-    }
-    return ConnectionProfile(
-      id: json['id'] as String,
-      kind: (json['kind'] as String?) ?? kPostgresKind,
-      name: json['name'] as String,
-      host: (json['host'] as String?) ?? '',
-      port: (json['port'] as num?)?.toInt() ?? 5432,
-      database: (json['database'] as String?) ?? '',
-      username: (json['username'] as String?) ?? '',
-      password: password,
-      sslMode: SslMode.values.firstWhere(
-        (s) => s.name == (json['sslMode'] as String? ?? 'disable'),
-        orElse: () => SslMode.disable,
-      ),
-      readOnly: json['readOnly'] as bool? ?? false,
-      extra: extraRaw is Map<String, Object?>
-          ? Map<String, Object?>.from(extraRaw)
-          : extraRaw is Map
-          ? extraRaw.map((k, v) => MapEntry(k.toString(), v as Object?))
-          : const <String, Object?>{},
-      tenantFilter: TenantFilter.fromJson(json['tenantFilter']),
-      tableOverrides: overrides,
-      metadata: MetadataSettings.fromJson(json['metadata']),
-    );
-  }
 }

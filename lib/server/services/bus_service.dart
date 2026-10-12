@@ -53,7 +53,7 @@ class BusService {
     _events.add(_BusEvent(topic, data));
   }
 
-  bool _disposed = false;
+  var _disposed = false;
 
   Future<void> dispose() async {
     if (_disposed) return;
@@ -77,7 +77,7 @@ class BusService {
 }
 
 class _BusEvent {
+  _BusEvent(this.topic, this.data);
   final String topic;
   final Object? data;
-  _BusEvent(this.topic, this.data);
 }

@@ -16,7 +16,7 @@ import 'package:app_data_explorer/app_data_explorer.dart';
 
 Future<void> main(List<String> argv) async {
   stdout.writeln('Flutter App Data Explorer');
-  stdout.writeln('');
+  stdout.writeln();
 
   final backend = await pickBackend();
   if (backend == null) return;
@@ -76,7 +76,7 @@ Future<Backend?> pickBackend() async {
     );
   }
 
-  int idx = 0;
+  var idx = 0;
   if (options.length > 1) {
     stdout.writeln('\nConnected devices:');
     for (var i = 0; i < options.length; i++) {
@@ -136,7 +136,7 @@ int? _pickIndexFromList(String prompt, List<String> options) {
     stdout.writeln('$prompt: ${options[0]}');
     return 0;
   }
-  stdout.writeln('');
+  stdout.writeln();
   for (var i = 0; i < options.length; i++) {
     stdout.writeln(' [$i] ${options[i]}');
   }
@@ -189,7 +189,7 @@ Future<int> dropIntoAdbShell(String serial, String pkg) async {
     stdout.writeln('NOTE: $pkg is not debuggable - run-as is refused.');
     stdout.writeln('To access /data/data/$pkg/ you need a debug install:');
     stdout.writeln(' flutter run --flavor dev -t lib/main_dev.dart');
-    stdout.writeln('');
+    stdout.writeln();
     stdout.writeln(
       'Opening a plain device shell instead (no run-as). You can still reach',
     );
@@ -197,7 +197,7 @@ Future<int> dropIntoAdbShell(String serial, String pkg) async {
       '/sdcard, /data/local/tmp, /system, and apps with world-readable files.',
     );
   }
-  stdout.writeln('');
+  stdout.writeln();
   final proc =
       await Process.start(adb, args, mode: ProcessStartMode.inheritStdio);
   return proc.exitCode;
@@ -211,7 +211,7 @@ class IosRepl {
   IosRepl(this.backend);
 
   final IosBackend backend;
-  String cwd = '';
+  var cwd = '';
 
   Future<void> run() async {
     stdout.writeln(
@@ -223,12 +223,12 @@ class IosRepl {
     stdout.writeln(
       'Paths are relative to the app data container root. `help` for commands.',
     );
-    stdout.writeln('');
+    stdout.writeln();
     while (true) {
       stdout.write('${cwd.isEmpty ? '/' : '/$cwd'}> ');
       final raw = stdin.readLineSync();
       if (raw == null) {
-        stdout.writeln('');
+        stdout.writeln();
         return;
       }
       final line = raw.trim();
@@ -333,7 +333,7 @@ class IosRepl {
     }
     final local = args.length >= 2 ? args[1] : remote.split('/').last;
     final localFile = File(local);
-    if (await localFile.exists()) {
+    if (localFile.existsSync()) {
       if (!_confirm('Overwrite local $local ?')) return;
     } else {
       await localFile.parent.create(recursive: true);

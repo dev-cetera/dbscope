@@ -7,7 +7,7 @@ import 'job_tab_view.dart';
 /// JobTabs aren't persisted — the underlying server-side job is part
 /// of the server's state, not the window's, and reattaching a tab to
 /// a job that may have finished is more confusing than helpful.
-final TabKind jobTabKind = TabKind(
+final jobTabKind = TabKind(
   id: 'job',
   modelType: JobTab,
   icon: Icons.task_alt,

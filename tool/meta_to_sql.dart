@@ -67,7 +67,7 @@ class _SqlRecorder implements DbExecutor {
   }
 
   @override
-  Future<void> setReadOnly(bool readOnly) async {}
+  Future<void> setReadOnly({required bool readOnly}) async {}
 
   @override
   Future<void> close({bool force = false}) async {}
@@ -120,9 +120,7 @@ Future<void> main(List<String> args) async {
     ...MetaIndex.build(mergeMetaSources([data])).problems,
   ];
   if (problems.isNotEmpty) {
-    for (final p in problems) {
-      stderr.writeln(p);
-    }
+    problems.forEach(stderr.writeln);
     exit(1);
   }
 
@@ -161,9 +159,7 @@ Future<void> main(List<String> args) async {
     );
   }
   await writer.importSource(data);
-  for (final s in recorder.statements) {
-    out.writeln(s);
-  }
+  recorder.statements.forEach(out.writeln);
   out.writeln('COMMIT;');
   if (outPath == null) {
     stdout.write(out);

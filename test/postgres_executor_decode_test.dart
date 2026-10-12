@@ -11,10 +11,9 @@
 import 'dart:convert';
 import 'dart:typed_data';
 
+import 'package:dbscope/db/postgres_executor.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:postgres/postgres.dart' as pg;
-
-import 'package:dbscope/db/postgres_executor.dart';
 
 void main() {
   group('PostgresExecutor.decodeValue', () {
@@ -49,7 +48,7 @@ void main() {
       expect(PostgresExecutor.decodeValue(undecoded), 'robmllze@gmail.com');
     });
 
-    test('bytea (OID 17) → PG-canonical \\x hex string', () {
+    test(r'bytea (OID 17) → PG-canonical \x hex string', () {
       final bytes = Uint8List.fromList([0xDE, 0xAD, 0xBE, 0xEF, 0x00, 0x01]);
       final undecoded = pg.UndecodedBytes(
         typeOid: 17,

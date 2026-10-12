@@ -79,7 +79,7 @@ class ResultExporter {
     );
     if (location == null) return null;
     final outFile = File(location.path);
-    if (await outFile.exists()) {
+    if (outFile.existsSync()) {
       // Overwrite — leaving the previous file behind would silently mix
       // schemas in append mode and surprise users.
       await outFile.delete();
@@ -135,7 +135,21 @@ class ResultExporter {
         return 'REAL';
       case PgType.bytea:
         return 'BLOB';
-      default:
+      case PgType.text:
+      case PgType.varchar:
+      case PgType.name:
+      case PgType.bool_:
+      case PgType.date:
+      case PgType.time:
+      case PgType.timestamp:
+      case PgType.timestamptz:
+      case PgType.interval:
+      case PgType.uuid:
+      case PgType.json:
+      case PgType.jsonb:
+      case PgType.array:
+      case PgType.unknown:
+      case null:
         return 'TEXT';
     }
   }

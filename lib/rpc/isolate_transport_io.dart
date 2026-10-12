@@ -26,9 +26,9 @@ typedef WindowRoute =
 // Singleton router. Set up once per isolate.
 class WindowRouter {
   WindowRouter._();
-  static final WindowRouter instance = WindowRouter._();
+  static final instance = WindowRouter._();
 
-  bool _installed = false;
+  var _installed = false;
   final Map<String, WindowRoute> _routes = {};
 
   void ensureInstalled() {
@@ -37,7 +37,7 @@ class WindowRouter {
     DesktopMultiWindow.setMethodHandler((call, fromWindowId) async {
       final route = _routes[call.method];
       if (route == null) return null;
-      return await route(call, fromWindowId);
+      return route(call, fromWindowId);
     });
   }
 
@@ -48,16 +48,15 @@ class WindowRouter {
 }
 
 class IsolateTransport implements Transport {
+  IsolateTransport({this.targetWindowId = 0}) {
+    WindowRouter.instance.addRoute('rpc.recv', _onRecv);
+  }
   // The window id we send envelopes to. Subwindows send to 0 (host).
   final int targetWindowId;
   // Single-subscription: BackendClient is the only listener. See note
   // on the matching field in LocalTransport for why broadcast is
   // avoided.
-  final StreamController<Envelope> _incoming = StreamController<Envelope>();
-
-  IsolateTransport({this.targetWindowId = 0}) {
-    WindowRouter.instance.addRoute('rpc.recv', _onRecv);
-  }
+  final _incoming = StreamController<Envelope>();
 
   Future<dynamic> _onRecv(MethodCall call, int fromWindowId) async {
     if (_incoming.isClosed) return null;
@@ -78,10 +77,12 @@ class IsolateTransport implements Transport {
   void send(Envelope envelope) {
     // Fire and forget; replies arrive on rpc.recv. Errors are dropped
     // because we have no envelope id to fail-respond against here.
-    DesktopMultiWindow.invokeMethod(
-      targetWindowId,
-      'rpc.send',
-      envelope.encode(),
+    unawaited(
+      DesktopMultiWindow.invokeMethod(
+        targetWindowId,
+        'rpc.send',
+        envelope.encode(),
+      ),
     );
   }
 
@@ -115,10 +116,12 @@ class HostWindowRouter {
     try {
       final env = Envelope.decode(raw);
       dispatch(env, fromWindowId, (reply) {
-        DesktopMultiWindow.invokeMethod(
-          fromWindowId,
-          'rpc.recv',
-          reply.encode(),
+        unawaited(
+          DesktopMultiWindow.invokeMethod(
+            fromWindowId,
+            'rpc.recv',
+            reply.encode(),
+          ),
         );
       });
     } catch (_) {

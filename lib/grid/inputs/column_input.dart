@@ -26,17 +26,6 @@ part 'parts/smart_text_input.dart';
 /// user toggles the NULL button on a nullable column) or a String/bool that
 /// `CellEditor.parseValue` accepts.
 class ColumnInput extends StatefulWidget {
-  final EditPolicy policy;
-  final Object? value;
-  final ValueChanged<Object?> onChanged;
-  final bool enabled;
-
-  /// When true, drops the column-name / type / NULL header row and the
-  /// trailing padding. Used for in-grid cell editing where the parent
-  /// already shows the column name in the header and the row height
-  /// is fixed.
-  final bool compact;
-
   const ColumnInput({
     super.key,
     required this.policy,
@@ -63,13 +52,23 @@ class ColumnInput extends StatefulWidget {
       compact: compact,
     );
   }
+  final EditPolicy policy;
+  final Object? value;
+  final ValueChanged<Object?> onChanged;
+  final bool enabled;
+
+  /// When true, drops the column-name / type / NULL header row and the
+  /// trailing padding. Used for in-grid cell editing where the parent
+  /// already shows the column name in the header and the row height
+  /// is fixed.
+  final bool compact;
 
   @override
   State<ColumnInput> createState() => _ColumnInputState();
 }
 
 class _ColumnInputState extends State<ColumnInput> {
-  bool _isNull = false;
+  var _isNull = false;
   Object? _lastNonNullValue;
 
   @override
@@ -104,7 +103,6 @@ class _ColumnInputState extends State<ColumnInput> {
       final input = _isNull ? const _NullPlaceholder() : _buildChild(disabled);
       if (!p.nullable) return input;
       return Row(
-        crossAxisAlignment: CrossAxisAlignment.center,
         children: [
           Expanded(child: input),
           const SizedBox(width: 4),
@@ -151,7 +149,7 @@ class _ColumnInputState extends State<ColumnInput> {
             ],
           ),
           const SizedBox(height: 3),
-          _isNull ? const _NullPlaceholder() : _buildChild(disabled),
+          if (_isNull) const _NullPlaceholder() else _buildChild(disabled),
         ],
       ),
     );
@@ -242,7 +240,10 @@ class _ColumnInputState extends State<ColumnInput> {
           monospace: true,
           onChanged: widget.onChanged,
         );
-      default:
+      case PgType.interval:
+      case PgType.bytea:
+      case PgType.array:
+      case PgType.unknown:
         return _RawTextInput(
           value: asString,
           enabled: !disabled,

@@ -17,12 +17,11 @@
 // The third covers the other half of "the cards moved": `pan` is
 // canvas-local, so a pane opening to the LEFT slides the whole diagram
 // sideways with the viewport's edge unless the canvas compensates.
+import 'package:dbscope/inspector/grid_with_inspector.dart';
+import 'package:dbscope/shell/app_state.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:schema_viewer/schema_viewer.dart';
-
-import 'package:dbscope/inspector/grid_with_inspector.dart';
-import 'package:dbscope/shell/app_state.dart';
 
 /// Stand-in for a canvas: counts how many times its State was created.
 class _StateProbe extends StatefulWidget {
@@ -32,7 +31,7 @@ class _StateProbe extends StatefulWidget {
 }
 
 class _StateProbeState extends State<_StateProbe> {
-  static int mounts = 0;
+  static var mounts = 0;
 
   @override
   void initState() {
@@ -64,6 +63,7 @@ void main() {
     // so Flutter skips the rebuild and the branch under test never runs
     // — the test would then pass even with the bug present.
     Widget build() => _host(
+      // Must stay non-const; see the comment above `build`.
       // ignore: prefer_const_constructors
       GridWithInspector(
         grid: const _StateProbe(),
@@ -105,7 +105,7 @@ void main() {
         schema: 'public',
         tableName: 'a',
         fields: const [SchemaFieldSpec(name: 'id', typeLabel: 'int', pk: true)],
-        position: const Offset(0, 0),
+        position: Offset.zero,
       ),
       SchemaNodeData(
         id: 'public.b',

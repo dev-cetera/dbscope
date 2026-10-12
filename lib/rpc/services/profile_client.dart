@@ -4,8 +4,8 @@ import '../../connection/profile.dart';
 import '../backend_client.dart';
 
 class ProfileServiceClient {
-  final BackendClient _client;
   ProfileServiceClient(this._client);
+  final BackendClient _client;
 
   Future<List<ConnectionProfile>> list() async {
     final result = await _client.request('profile.list');
@@ -24,7 +24,7 @@ class ProfileServiceClient {
     final payload = profile.toJson();
     payload['password'] = profile.password;
     final result = await _client.request('profile.update', payload);
-    final map = result as Map<String, Object?>;
+    final map = result! as Map<String, Object?>;
     return ConnectionProfile.fromJson(map, profile.password);
   }
 
@@ -34,7 +34,7 @@ class ProfileServiceClient {
 
   Future<String> password(String id) async {
     final result = await _client.request('profile.password', {'id': id});
-    final map = result as Map<String, Object?>;
+    final map = result! as Map<String, Object?>;
     return map['password'] as String? ?? '';
   }
 }

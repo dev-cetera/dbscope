@@ -5,15 +5,15 @@ part of '../navigator_view.dart';
 // ---------------------------------------------------------------------------
 
 class RowListColumn extends StatefulWidget {
-  final NavigatorTab tab;
-  final int index;
-  final RowListStep step;
   const RowListColumn({
     super.key,
     required this.tab,
     required this.index,
     required this.step,
   });
+  final NavigatorTab tab;
+  final int index;
+  final RowListStep step;
 
   @override
   State<RowListColumn> createState() => _RowListColumnState();
@@ -30,7 +30,7 @@ class _RowListColumnState extends State<RowListColumn> {
     _filterController = TextEditingController(text: widget.step.filterPattern);
     _vScroll.addListener(_onScroll);
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted) _loadIfNeeded();
+      if (mounted) unawaited(_loadIfNeeded());
     });
   }
 
@@ -40,7 +40,7 @@ class _RowListColumnState extends State<RowListColumn> {
     if (old.step.id != widget.step.id) {
       _filterController.text = widget.step.filterPattern;
       WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (mounted) _loadIfNeeded();
+        if (mounted) unawaited(_loadIfNeeded());
       });
     }
   }
@@ -60,7 +60,7 @@ class _RowListColumnState extends State<RowListColumn> {
   void _onScroll() {
     if (!_vScroll.hasClients) return;
     final pos = _vScroll.position;
-    if (pos.pixels > pos.maxScrollExtent - 200) _loadMore();
+    if (pos.pixels > pos.maxScrollExtent - 200) unawaited(_loadMore());
   }
 
   /// Builds the base WHERE clause from inbound-FK filter and regex filter.
@@ -176,7 +176,6 @@ class _RowListColumnState extends State<RowListColumn> {
         table: step.table,
         columns: pkInfos.isEmpty ? allCols : pkInfos,
         pkColumns: pkCols,
-        pageSize: _kPageSize,
         baseWhere: base.where,
         baseWhereParams: base.params,
         explicitColumns: MetadataCache.instance.policyForExecutor(conn).active,
@@ -254,7 +253,7 @@ class _RowListColumnState extends State<RowListColumn> {
     // fallback in _buildBaseWhere doesn't accidentally use a stale
     // target. A new Enter in AI Infer mode re-infers.
     widget.step.inferredColumn = null;
-    if (widget.step.filterPattern.isNotEmpty && col != null) _load();
+    if (widget.step.filterPattern.isNotEmpty && col != null) unawaited(_load());
   }
 
   void _onFilterPatternChanged(String pat) {
@@ -269,7 +268,7 @@ class _RowListColumnState extends State<RowListColumn> {
     _filterDebounce = Timer(const Duration(milliseconds: 300), () {
       if (!mounted) return;
       widget.step.filterPattern = pat.trim();
-      _load();
+      unawaited(_load());
     });
   }
 
@@ -389,7 +388,7 @@ class _RowListColumnState extends State<RowListColumn> {
     if (pkValues.any((v) => v is MaskedValue)) {
       showToast(
         context,
-        'The primary key is masked for you, so this row can\'t be opened.',
+        "The primary key is masked for you, so this row can't be opened.",
       );
       return;
     }
@@ -489,7 +488,6 @@ class _RowListColumnState extends State<RowListColumn> {
                       )
                       ? step.filterColumn
                       : null,
-                  isDense: true,
                   isExpanded: true,
                   decoration: const InputDecoration(
                     isDense: true,
@@ -501,7 +499,6 @@ class _RowListColumnState extends State<RowListColumn> {
                   ),
                   items: [
                     const DropdownMenuItem<String?>(
-                      value: null,
                       child: Text(
                         '[AI Infer]',
                         style: TextStyle(
@@ -556,9 +553,9 @@ class _RowListColumnState extends State<RowListColumn> {
                         onChanged: _onFilterPatternChanged,
                         onSubmitted: (_) {
                           if (widget.step.filterColumn == null) {
-                            _runAiInfer();
+                            unawaited(_runAiInfer());
                           } else {
-                            _load();
+                            unawaited(_load());
                           }
                         },
                       ),

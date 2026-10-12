@@ -6,9 +6,8 @@
 // else rather than guess. Getting a value subtly wrong here means an
 // API key that looks present and fails at the provider.
 
-import 'package:flutter_test/flutter_test.dart';
-
 import 'package:dbscope/util/shell_env_io.dart';
+import 'package:flutter_test/flutter_test.dart';
 
 void main() {
   group('parseShellEnv', () {
@@ -31,10 +30,10 @@ export SINGLE='another value'
     });
 
     test('ignores comments and non-assignment lines', () async {
-      final vars = await parseShellEnv('''
+      final vars = await parseShellEnv(r'''
 # a comment
 if [[ -f ~/.x ]]; then
-  eval "\$(rbenv init -)"
+  eval "$(rbenv init -)"
 fi
 export KEPT=yes # trailing note
 ''');
@@ -47,11 +46,11 @@ export KEPT=yes # trailing note
       expect(vars['COLOR'], '#ff0000');
     });
 
-    test('expands \$VAR and \${VAR} from earlier lines', () async {
-      final vars = await parseShellEnv('''
+    test(r'expands $VAR and ${VAR} from earlier lines', () async {
+      final vars = await parseShellEnv(r'''
 export BASE=/opt/tools
-export BIN=\$BASE/bin
-export LIB=\${BASE}/lib
+export BIN=$BASE/bin
+export LIB=${BASE}/lib
 ''');
       expect(vars['BIN'], '/opt/tools/bin');
       expect(vars['LIB'], '/opt/tools/lib');
@@ -83,9 +82,9 @@ export LIB=\${BASE}/lib
 
     test('follows source and . includes, in order', () async {
       final vars = await parseShellEnv(
-        '''
+        r'''
 export FIRST=1
-. "\$HOME/.cargo/env"
+. "$HOME/.cargo/env"
 source /etc/other
 export LAST=3
 ''',

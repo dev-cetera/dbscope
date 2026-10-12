@@ -1,7 +1,7 @@
-import 'package:flutter/material.dart';
 import 'package:dbscope/connection/profile.dart';
 import 'package:dbscope/db/plugin.dart';
 import 'package:dbscope/plugins/dbscope_plugin.dart';
+import 'package:flutter/material.dart';
 
 import 'device_picker.dart';
 import 'executor.dart';
@@ -11,7 +11,7 @@ import 'profile_dialog.dart';
 /// from the original VM-service implementation so existing profiles still
 /// resolve, but they need to be re-saved through the new dialog (the
 /// `extra` shape changed).
-const String kSqfliteRemoteKind = 'sqflite_remote';
+const kSqfliteRemoteKind = 'sqflite_remote';
 
 class SqfliteRemoteKindPlugin implements ConnectionKindPlugin {
   const SqfliteRemoteKindPlugin();

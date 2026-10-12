@@ -49,10 +49,7 @@ class _AppMenuBarState extends State<AppMenuBar> {
     return Container(
       decoration: BoxDecoration(
         color: p.surface,
-        border:
-            p.isBevel
-                ? null
-                : Border(bottom: BorderSide(color: p.border, width: 1)),
+        border: p.isBevel ? null : Border(bottom: BorderSide(color: p.border)),
       ),
       height: 20,
       padding: const EdgeInsets.symmetric(horizontal: 2),
@@ -92,7 +89,8 @@ class _AppMenuBarState extends State<AppMenuBar> {
   Future<void> _show(int idx, Offset where, AppMenu m) async {
     final p = AppPalette.of(context);
     setState(() => _open = idx);
-    final overlay = Overlay.of(context).context.findRenderObject() as RenderBox;
+    final overlay =
+        Overlay.of(context).context.findRenderObject()! as RenderBox;
     final radius = BorderRadius.circular(p.cornerRadius);
     final selected = await showMenu<int>(
       context: context,

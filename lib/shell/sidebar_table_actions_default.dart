@@ -2,17 +2,17 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:widgets/widgets.dart';
 
+import '../catalog/schema_catalog.dart';
 import '../connection/profile.dart';
 import '../connection/registry.dart';
+import '../jobs/copy_table_dialog.dart';
 import '../linked/linked_tab.dart';
+import '../meta/meta_cache.dart';
+import '../meta/meta_models.dart';
 import '../navigator/navigator_tab.dart';
 import '../rpc/scope.dart';
 import '../rpc/services/job_client.dart';
 import 'app_state.dart';
-import '../catalog/schema_catalog.dart';
-import '../jobs/copy_table_dialog.dart';
-import '../meta/meta_cache.dart';
-import '../meta/meta_models.dart';
 import 'sidebar_table_actions.dart';
 import 'soft_delete_dialog.dart';
 
@@ -30,7 +30,7 @@ void registerDefaultSidebarTableActions() {
   r.register(_copyToAnother);
 }
 
-final SidebarTableAction _openAsTable = SidebarTableAction(
+final _openAsTable = SidebarTableAction(
   id: 'table',
   label: 'Open as Table',
   icon: Icons.table_chart_outlined,
@@ -44,7 +44,7 @@ final SidebarTableAction _openAsTable = SidebarTableAction(
   },
 );
 
-final SidebarTableAction _openAsNavigator = SidebarTableAction(
+final _openAsNavigator = SidebarTableAction(
   id: 'navigator',
   label: 'Open as Navigator',
   icon: Icons.view_column_outlined,
@@ -55,7 +55,7 @@ final SidebarTableAction _openAsNavigator = SidebarTableAction(
   },
 );
 
-final SidebarTableAction _openAsLinked = SidebarTableAction(
+final _openAsLinked = SidebarTableAction(
   id: 'linked',
   label: 'Open as Linked',
   icon: Icons.hub_outlined,
@@ -70,7 +70,7 @@ final SidebarTableAction _openAsLinked = SidebarTableAction(
   },
 );
 
-final SidebarTableAction _copyName = SidebarTableAction(
+final _copyName = SidebarTableAction(
   id: 'copyname',
   label: 'Copy table name',
   icon: Icons.copy,
@@ -83,7 +83,7 @@ final SidebarTableAction _copyName = SidebarTableAction(
   },
 );
 
-final SidebarTableAction _copyQualified = SidebarTableAction(
+final _copyQualified = SidebarTableAction(
   id: 'copyqual',
   label: 'Copy schema.table',
   icon: Icons.copy_all,
@@ -111,7 +111,7 @@ bool _backendSupportsDml(SidebarTableActionContext ctx) {
   return conn.capabilities.dml;
 }
 
-final SidebarTableAction _configureSoftDelete = SidebarTableAction(
+final _configureSoftDelete = SidebarTableAction(
   id: 'softdel',
   label: 'Configure soft-delete column…',
   icon: Icons.auto_delete_outlined,
@@ -150,7 +150,7 @@ final SidebarTableAction _configureSoftDelete = SidebarTableAction(
   },
 );
 
-final SidebarTableAction _copyToAnother = SidebarTableAction(
+final _copyToAnother = SidebarTableAction(
   id: 'copy',
   label: 'Copy to another DB…',
   icon: Icons.cloud_sync_outlined,

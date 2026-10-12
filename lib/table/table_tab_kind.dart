@@ -14,7 +14,7 @@ GridViewMode _viewModeFrom(Object? v) {
   return GridViewMode.typed;
 }
 
-final TabKind tableTabKind = TabKind(
+final tableTabKind = TabKind(
   id: 'table',
   modelType: TableTab,
   icon: Icons.table_chart_outlined,

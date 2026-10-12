@@ -6,6 +6,14 @@ import 'grid_data.dart';
 /// a cell. The editor is expected to render an inline input sized to
 /// the cell; [onCommit] runs on Enter/Tab/blur, [onCancel] on Esc.
 class CellEditContext<TypeTag> {
+  const CellEditContext({
+    required this.value,
+    required this.column,
+    required this.onCommit,
+    required this.onCancel,
+    required this.focusNode,
+    required this.compact,
+  });
   final Object? value;
   final GridColumnSpec<TypeTag> column;
 
@@ -22,15 +30,6 @@ class CellEditContext<TypeTag> {
   /// Whether the grid will render in a one-row-tall slot. Editors
   /// should hide multi-line affordances if true.
   final bool compact;
-
-  const CellEditContext({
-    required this.value,
-    required this.column,
-    required this.onCommit,
-    required this.onCancel,
-    required this.focusNode,
-    required this.compact,
-  });
 }
 
 /// Hook for editing one cell. Returning null means this cell is not

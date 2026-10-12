@@ -20,14 +20,6 @@ import 'inputs/column_input.dart';
 /// widget — same code path the property inspector uses, so the email
 /// column shows the same thing in both surfaces.
 class PgTypeCellRenderer extends g.CellRenderer<PgType> {
-  final Map<String, ForeignKey> outboundByColumn;
-  final Map<String, List<ForeignKey>> inboundByColumn;
-  final void Function(ForeignKey fk, bool incoming)? onFollowLink;
-  final GridViewMode viewMode;
-
-  /// Metadata display (renderers) by column name.
-  final Map<String, DisplaySpec> displayByColumn;
-
   const PgTypeCellRenderer({
     this.outboundByColumn = const {},
     this.inboundByColumn = const {},
@@ -35,6 +27,13 @@ class PgTypeCellRenderer extends g.CellRenderer<PgType> {
     this.viewMode = GridViewMode.typed,
     this.displayByColumn = const {},
   });
+  final Map<String, ForeignKey> outboundByColumn;
+  final Map<String, List<ForeignKey>> inboundByColumn;
+  final void Function(ForeignKey fk, {required bool incoming})? onFollowLink;
+  final GridViewMode viewMode;
+
+  /// Metadata display (renderers) by column name.
+  final Map<String, DisplaySpec> displayByColumn;
 
   @override
   Widget build(BuildContext context, g.CellRenderContext<PgType> ctx) {
@@ -57,9 +56,8 @@ class PgTypeCellRenderer extends g.CellRenderer<PgType> {
 /// read-only. JSON columns route through a dialog rather than the
 /// inline editor (a multi-line JSON editor would not fit a 32 px row).
 class EditPolicyCellEditor extends g.CellEditor<PgType> {
-  final Map<String, EditPolicy> policiesByColumn;
-
   const EditPolicyCellEditor(this.policiesByColumn);
+  final Map<String, EditPolicy> policiesByColumn;
 
   EditPolicy? _policyFor(String column) => policiesByColumn[column];
 
@@ -174,7 +172,12 @@ double defaultWidthForPgType(PgType t) {
       return 280;
     case PgType.bytea:
       return 160;
-    default:
+    case PgType.text:
+    case PgType.varchar:
+    case PgType.name:
+    case PgType.interval:
+    case PgType.array:
+    case PgType.unknown:
       return 220;
   }
 }

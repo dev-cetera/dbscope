@@ -8,12 +8,11 @@
 // * Descending sort flips both the ORDER BY direction and the
 // tuple-compare operator (`<` vs `>`).
 
-import 'package:flutter_test/flutter_test.dart';
-
 import 'package:dbscope/catalog/pg_type.dart';
 import 'package:dbscope/catalog/schema_catalog.dart';
 import 'package:dbscope/db/executor.dart';
 import 'package:dbscope/query/pager.dart';
+import 'package:flutter_test/flutter_test.dart';
 
 import 'support/fake_executor.dart';
 
@@ -91,7 +90,7 @@ void main() {
       final secondCall = exec.calls[1];
       expect(
         secondCall.sql,
-        'SELECT "id" FROM "public"."users" WHERE ("id") > (\$1) ORDER BY "id" ASC LIMIT 2',
+        r'SELECT "id" FROM "public"."users" WHERE ("id") > ($1) ORDER BY "id" ASC LIMIT 2',
       );
       expect(secondCall.positional, [2]);
     });
@@ -127,7 +126,7 @@ void main() {
 
         final second = exec.calls[1];
         expect(second.sql, contains('ORDER BY "id" DESC'));
-        expect(second.sql, contains('WHERE ("id") < (\$1)'));
+        expect(second.sql, contains(r'WHERE ("id") < ($1)'));
         expect(second.positional, [9]);
       },
     );
@@ -163,7 +162,7 @@ void main() {
       expect(
         second.sql,
         contains(
-          'WHERE ("name", "id") > (\$1, \$2) ORDER BY "name" ASC, "id" ASC',
+          r'WHERE ("name", "id") > ($1, $2) ORDER BY "name" ASC, "id" ASC',
         ),
       );
       expect(second.positional, ['Bob', 2]);
@@ -197,7 +196,7 @@ void main() {
   });
 
   group('KeysetPager — baseWhere placeholder numbering', () {
-    test('baseWhere params take \$1..\$N, cursor params follow', () async {
+    test(r'baseWhere params take $1..$N, cursor params follow', () async {
       final exec = FakeDbExecutor();
       exec.enqueue(
         _rows([
@@ -218,7 +217,7 @@ void main() {
         columns: [_col('id')],
         pkColumns: const ['id'],
         pageSize: 2,
-        baseWhere: '"group_id" = \$1 AND "deleted_at" IS NULL',
+        baseWhere: r'"group_id" = $1 AND "deleted_at" IS NULL',
         baseWhereParams: const ['g123'],
       );
 
@@ -228,7 +227,7 @@ void main() {
       expect(
         first.sql,
         contains(
-          'WHERE "group_id" = \$1 AND "deleted_at" IS NULL ORDER BY "id" ASC',
+          r'WHERE "group_id" = $1 AND "deleted_at" IS NULL ORDER BY "id" ASC',
         ),
       );
       expect(first.positional, ['g123']);
@@ -239,7 +238,7 @@ void main() {
       expect(
         second.sql,
         contains(
-          'WHERE "group_id" = \$1 AND "deleted_at" IS NULL AND ("id") > (\$2)',
+          r'WHERE "group_id" = $1 AND "deleted_at" IS NULL AND ("id") > ($2)',
         ),
       );
       expect(second.positional, ['g123', 2]);
@@ -293,7 +292,7 @@ void main() {
         columns: [_col('id')],
         pkColumns: const [],
         pageSize: 100,
-        baseWhere: '"flag" = \$1',
+        baseWhere: r'"flag" = $1',
         baseWhereParams: const [true],
       );
 
@@ -302,7 +301,7 @@ void main() {
       final call = exec.calls.single;
       expect(
         call.sql,
-        'SELECT * FROM "public"."view_x" WHERE "flag" = \$1 LIMIT 100',
+        r'SELECT * FROM "public"."view_x" WHERE "flag" = $1 LIMIT 100',
       );
       expect(call.positional, [true]);
     });

@@ -3,7 +3,7 @@ import 'package:dbscope/shell/theme_registry.dart';
 
 import 'src/theme.dart';
 
-export 'src/theme.dart' show buildWin95Theme, win95Palette, Win95Theme;
+export 'src/theme.dart' show Win95Theme, buildWin95Theme, win95Palette;
 
 class Win95ThemePlugin extends DbscopePlugin {
   @override

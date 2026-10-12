@@ -2,6 +2,9 @@
 // both the dart:io-backed desktop store and the SharedPreferences-backed
 // web store share identical model types.
 
+/// @docImport 'project_store.dart';
+library;
+
 import '../ai/provider.dart';
 import '../query/history_models.dart';
 
@@ -10,13 +13,6 @@ import '../query/history_models.dart';
 /// layer. Mutators on [ProjectStore] are the only sanctioned way to
 /// change a document — direct field writes here will not persist.
 class ProjectDocument {
-  int version;
-  String name;
-  List<Map<String, Object?>> profiles;
-  Map<String, List<SavedQuery>> savedQueries;
-  Map<String, List<SavedAiQuery>> savedAiQueries;
-  AiSettings ai;
-
   ProjectDocument({
     this.version = 1,
     this.name = 'Default Project',
@@ -29,22 +25,7 @@ class ProjectDocument {
        savedAiQueries = savedAiQueries ?? {},
        ai = ai ?? const AiSettings();
 
-  Map<String, Object?> toJson() => {
-    'version': version,
-    'name': name,
-    'profiles': profiles,
-    'savedQueries': {
-      for (final e in savedQueries.entries)
-        e.key: [for (final q in e.value) q.toJson()],
-    },
-    'savedAiQueries': {
-      for (final e in savedAiQueries.entries)
-        e.key: [for (final q in e.value) q.toJson()],
-    },
-    'ai': ai.toJson(),
-  };
-
-  static ProjectDocument fromJson(Map<String, Object?> json) {
+  factory ProjectDocument.fromJson(Map<String, Object?> json) {
     Map<String, List<T>> mapOf<T>(
       Object? raw,
       T Function(Map<String, Object?>) fromJson,
@@ -72,8 +53,30 @@ class ProjectDocument {
       savedQueries: mapOf(json['savedQueries'], SavedQuery.fromJson),
       savedAiQueries: mapOf(json['savedAiQueries'], SavedAiQuery.fromJson),
       ai: json['ai'] is Map<String, Object?>
-          ? AiSettings.fromJson(json['ai'] as Map<String, Object?>)
+          ? AiSettings.fromJson(json['ai']! as Map<String, Object?>)
           : const AiSettings(),
     );
   }
+
+  int version;
+  String name;
+  List<Map<String, Object?>> profiles;
+  Map<String, List<SavedQuery>> savedQueries;
+  Map<String, List<SavedAiQuery>> savedAiQueries;
+  AiSettings ai;
+
+  Map<String, Object?> toJson() => {
+    'version': version,
+    'name': name,
+    'profiles': profiles,
+    'savedQueries': {
+      for (final e in savedQueries.entries)
+        e.key: [for (final q in e.value) q.toJson()],
+    },
+    'savedAiQueries': {
+      for (final e in savedAiQueries.entries)
+        e.key: [for (final q in e.value) q.toJson()],
+    },
+    'ai': ai.toJson(),
+  };
 }

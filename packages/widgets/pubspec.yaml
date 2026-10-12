@@ -13,12 +13,12 @@ environment:
   flutter: ">=3.24.0"
 
 dependencies:
-  flutter:
-    sdk: flutter
   code_field:
     git:
       url: https://github.com/dev-cetera/code_field.git
       ref: f280438c4709a874e73fb5825580389dc4a9e63e
+  flutter:
+    sdk: flutter
 
 dev_dependencies:
   flutter_lints: ^6.0.0

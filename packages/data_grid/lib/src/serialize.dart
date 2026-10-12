@@ -34,10 +34,10 @@ String _tsvEscape(Object? value) {
   if (value == null) return '';
   return value
       .toString()
-      .replaceAll('\\', '\\\\')
-      .replaceAll('\t', '\\t')
-      .replaceAll('\n', '\\n')
-      .replaceAll('\r', '\\r');
+      .replaceAll(r'\', r'\\')
+      .replaceAll('\t', r'\t')
+      .replaceAll('\n', r'\n')
+      .replaceAll('\r', r'\r');
 }
 
 /// RFC 4180 CSV serialisation of the selected range. Fields

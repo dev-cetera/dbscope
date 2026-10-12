@@ -5,7 +5,7 @@ import '../tabs/tab_kind.dart';
 import 'schema_tab.dart';
 import 'schema_view.dart';
 
-final TabKind schemaTabKind = TabKind(
+final schemaTabKind = TabKind(
   id: 'schema',
   modelType: SchemaTab,
   icon: Icons.schema_outlined,

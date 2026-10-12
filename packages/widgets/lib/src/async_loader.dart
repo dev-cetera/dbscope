@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 
 import 'states.dart';
@@ -25,8 +27,8 @@ import 'states.dart';
 mixin AsyncLoaderMixin<W extends StatefulWidget, T> on State<W> {
   T? _data;
   Object? _error;
-  bool _loading = true;
-  int _loadId = 0;
+  var _loading = true;
+  var _loadId = 0;
 
   T? get data => _data;
   Object? get error => _error;
@@ -35,7 +37,7 @@ mixin AsyncLoaderMixin<W extends StatefulWidget, T> on State<W> {
   @override
   void initState() {
     super.initState();
-    reload();
+    unawaited(reload());
   }
 
   /// Subclass hook. Called from [initState] and [reload].

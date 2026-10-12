@@ -13,6 +13,15 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
+/// A device or tool failure; [message] is what the caller shows the user.
+final class AppDataExplorerException implements Exception {
+  const AppDataExplorerException(this.message);
+  final String message;
+
+  @override
+  String toString() => message;
+}
+
 // ---------------------------------------------------------------------------
 // adb discovery
 // ---------------------------------------------------------------------------
@@ -116,7 +125,7 @@ class AndroidBackend extends Backend {
   Future<List<Entry>> ls(String relPath) async {
     final target = relPath.isEmpty ? '.' : relPath;
     final r = await _adbShell(_runAs('ls -lAp ${_q(target)}'));
-    if (r.exitCode != 0) throw _adbError('ls', r);
+    if (r.exitCode != 0) throw AppDataExplorerException(_adbError('ls', r));
     return _parseLsLap(r.stdout as String);
   }
 
@@ -133,7 +142,9 @@ class AndroidBackend extends Backend {
         "find ${_q(base)} -mindepth 1 -exec stat -c '%F|%s|%n' {} +",
       ),
     );
-    if (r.exitCode != 0) throw _adbError('lsRecursive', r);
+    if (r.exitCode != 0) {
+      throw AppDataExplorerException(_adbError('lsRecursive', r));
+    }
     final basePrefix = base == '.' ? './' : '$base/';
     final entries = <Entry>[];
     for (final line in (r.stdout as String).split('\n')) {
@@ -159,16 +170,20 @@ class AndroidBackend extends Backend {
 
   @override
   Future<void> rm(String relPath) async {
-    if (relPath.isEmpty) throw 'refuse to rm empty path';
+    if (relPath.isEmpty) {
+      throw const AppDataExplorerException('refuse to rm empty path');
+    }
     final r = await _adbShell(_runAs('rm -f ${_q(relPath)}'));
-    if (r.exitCode != 0) throw _adbError('rm', r);
+    if (r.exitCode != 0) throw AppDataExplorerException(_adbError('rm', r));
   }
 
   @override
   Future<void> clearDir(String relDir) async {
-    if (relDir.isEmpty) throw 'refuse to clear container root';
+    if (relDir.isEmpty) {
+      throw const AppDataExplorerException('refuse to clear container root');
+    }
     final r = await _adbShell(_runAs('find ${_q(relDir)} -mindepth 1 -delete'));
-    if (r.exitCode != 0) throw _adbError('clear', r);
+    if (r.exitCode != 0) throw AppDataExplorerException(_adbError('clear', r));
   }
 
   @override
@@ -185,12 +200,18 @@ class AndroidBackend extends Backend {
     await proc.stdout.pipe(sink);
     final ec = await proc.exitCode;
     await stderrFut;
-    if (ec != 0) throw 'pull failed: ${stderrBuf.toString().trim()}';
+    if (ec != 0) {
+      throw AppDataExplorerException(
+        'pull failed: ${stderrBuf.toString().trim()}',
+      );
+    }
   }
 
   @override
   Future<void> push(String localPath, String remoteRelPath) async {
-    if (remoteRelPath.isEmpty) throw 'refuse to push to empty path';
+    if (remoteRelPath.isEmpty) {
+      throw const AppDataExplorerException('refuse to push to empty path');
+    }
     // adb push can't write directly into /data/data/<pkg>/. Hand off
     // through /data/local/tmp/ (world-readable so the app user can read
     // it via run-as), then cp into place, then clean up.
@@ -201,12 +222,16 @@ class AndroidBackend extends Backend {
     final r1 =
         await Process.run(adb, ['-s', serial, 'push', localPath, tmpRemote]);
     if (r1.exitCode != 0) {
-      throw 'adb push failed (exit ${r1.exitCode}): ${(r1.stderr as String).trim()}';
+      throw AppDataExplorerException(
+        'adb push failed (exit ${r1.exitCode}): ${(r1.stderr as String).trim()}',
+      );
     }
     try {
       final r2 =
           await _adbShell(_runAs('cp ${_q(tmpRemote)} ${_q(remoteRelPath)}'));
-      if (r2.exitCode != 0) throw _adbError('push-cp', r2);
+      if (r2.exitCode != 0) {
+        throw AppDataExplorerException(_adbError('push-cp', r2));
+      }
     } finally {
       await Process.run(adb, ['-s', serial, 'shell', 'rm', '-f', tmpRemote]);
     }
@@ -273,7 +298,7 @@ Future<AndroidDetectionResult> detectAndroidDevices() async {
       hint:
           'adb not found on PATH or in standard SDK locations. Install Android '
           'platform-tools or set ANDROID_HOME. Try: `brew install android-platform-tools` '
-          'or symlink \$HOME/Library/Android/sdk/platform-tools/adb into PATH.',
+          r'or symlink $HOME/Library/Android/sdk/platform-tools/adb into PATH.',
     );
   }
   ProcessResult r;
@@ -377,20 +402,22 @@ class IosBackend extends Backend {
   String get appLabel => bundleId;
 
   Future<Map<String, dynamic>> _devicectlJson(List<String> args) async {
-    Object? lastErr;
+    Object lastErr = const AppDataExplorerException('devicectl failed');
+    var lastStack = StackTrace.current;
     for (var attempt = 0; attempt < 2; attempt++) {
       try {
         return await _devicectlJsonOnce(args);
-      } catch (e) {
+      } catch (e, st) {
         lastErr = e;
+        lastStack = st;
         final msg = e.toString();
         final transient = msg.contains('device disconnected') ||
             msg.contains('StreamingAction') ||
-            msg.contains('Couldn\'t get the message');
+            msg.contains("Couldn't get the message");
         if (!transient) rethrow;
       }
     }
-    throw lastErr ?? 'devicectl failed';
+    Error.throwWithStackTrace(lastErr, lastStack);
   }
 
   Future<Map<String, dynamic>> _devicectlJsonOnce(List<String> args) async {
@@ -404,18 +431,24 @@ class IosBackend extends Backend {
         '--json-output',
         tmp.path,
       ]);
-      if (!await tmp.exists()) {
-        throw 'devicectl produced no JSON. stderr: ${(r.stderr as String).trim()}';
+      if (!tmp.existsSync()) {
+        throw AppDataExplorerException(
+          'devicectl produced no JSON. stderr: ${(r.stderr as String).trim()}',
+        );
       }
       final body = await tmp.readAsString();
       if (body.isEmpty) {
-        throw 'devicectl wrote empty JSON. exit=${r.exitCode} stderr=${(r.stderr as String).trim()}';
+        throw AppDataExplorerException(
+          'devicectl wrote empty JSON. exit=${r.exitCode} stderr=${(r.stderr as String).trim()}',
+        );
       }
       final json = jsonDecode(body) as Map<String, dynamic>;
       final outcome = (json['info'] as Map?)?['outcome'];
       if (outcome != 'success') {
         final errs = json['error'] ?? json['result'] ?? body;
-        throw 'devicectl failed (${outcome ?? 'no outcome'}): $errs';
+        throw AppDataExplorerException(
+          'devicectl failed (${outcome ?? 'no outcome'}): $errs',
+        );
       }
       return json;
     } finally {
@@ -440,7 +473,7 @@ class IosBackend extends Backend {
     ];
     if (relPath.isNotEmpty) args.addAll(['--subdirectory', relPath]);
     final json = await _devicectlJson(args);
-    return _parseFiles(json, directChildrenOnly: true);
+    return _parseFiles(json);
   }
 
   @override
@@ -464,9 +497,11 @@ class IosBackend extends Backend {
 
   @override
   Future<void> rm(String relPath) async {
-    if (relPath.isEmpty) throw 'refuse to rm empty path';
+    if (relPath.isEmpty) {
+      throw const AppDataExplorerException('refuse to rm empty path');
+    }
     final segments = _splitPath(relPath);
-    if (segments.isEmpty) throw 'invalid path';
+    if (segments.isEmpty) throw const AppDataExplorerException('invalid path');
     final fileName = segments.last;
     final parentRel = segments.length == 1
         ? ''
@@ -490,7 +525,7 @@ class IosBackend extends Backend {
         '--domain-identifier',
         bundleId,
         '--source',
-        parentRel.isEmpty ? '.' : parentRel,
+        if (parentRel.isEmpty) '.' else parentRel,
         '--destination',
         localCopy.path,
       ]);
@@ -499,14 +534,16 @@ class IosBackend extends Backend {
         expectedName: parentRel.isEmpty ? null : segments[segments.length - 2],
       );
       final target = File('${pulled.path}/$fileName');
-      if (await target.exists()) {
+      if (target.existsSync()) {
         await target.delete();
       } else {
         final dirTarget = Directory('${pulled.path}/$fileName');
-        if (await dirTarget.exists()) {
+        if (dirTarget.existsSync()) {
           await dirTarget.delete(recursive: true);
         } else {
-          throw 'rm: $relPath not found in pulled snapshot';
+          throw AppDataExplorerException(
+            'rm: $relPath not found in pulled snapshot',
+          );
         }
       }
       await _devicectlJson([
@@ -522,7 +559,7 @@ class IosBackend extends Backend {
         '--source',
         pulled.path,
         '--destination',
-        parentRel.isEmpty ? '.' : parentRel,
+        if (parentRel.isEmpty) '.' else parentRel,
         '--remove-existing-content',
         'true',
       ]);
@@ -535,7 +572,9 @@ class IosBackend extends Backend {
 
   @override
   Future<void> clearDir(String relDir) async {
-    if (relDir.isEmpty) throw 'refuse to clear container root';
+    if (relDir.isEmpty) {
+      throw const AppDataExplorerException('refuse to clear container root');
+    }
     final tmp = await Directory.systemTemp.createTemp('explorer_clear_');
     try {
       await _devicectlJson([
@@ -583,7 +622,9 @@ class IosBackend extends Backend {
 
   @override
   Future<void> push(String localPath, String remoteRelPath) async {
-    if (remoteRelPath.isEmpty) throw 'refuse to push to empty path';
+    if (remoteRelPath.isEmpty) {
+      throw const AppDataExplorerException('refuse to push to empty path');
+    }
     await _devicectlJson([
       'device',
       'copy',
@@ -641,8 +682,8 @@ class IosBackend extends Backend {
       if (relPath == null || relPath.isEmpty) continue;
       if (directChildrenOnly && relPath.contains('/')) continue;
       final resources = f['resources'];
-      final isDir = (resources is Map && resources['isDirectory'] == true);
-      final isLink = (resources is Map && resources['isSymbolicLink'] == true);
+      final isDir = resources is Map && resources['isDirectory'] == true;
+      final isLink = resources is Map && resources['isSymbolicLink'] == true;
       final metadata = f['metadata'];
       final sizeRaw = (metadata is Map) ? metadata['size'] : null;
       final size = sizeRaw is num ? sizeRaw.toInt() : null;
@@ -673,7 +714,7 @@ Future<List<IosDeviceInfo>> detectIosDevices() async {
       'xcrun',
       ['devicectl', 'list', 'devices', '--json-output', tmp.path],
     );
-    if (!await tmp.exists()) return const [];
+    if (!tmp.existsSync()) return const [];
     final body = await tmp.readAsString();
     if (body.isEmpty) return const [];
     final json = jsonDecode(body) as Map<String, dynamic>;
@@ -734,15 +775,19 @@ Future<List<IosApp>> listIosApps(
     ];
     if (includeSystem) args.add('--include-all-apps');
     final r = await Process.run('xcrun', args);
-    if (!await tmp.exists() || (await tmp.length()) == 0) {
-      throw 'devicectl produced no JSON (exit ${r.exitCode}). stderr: ${(r.stderr as String).trim()}';
+    if (!tmp.existsSync() || tmp.lengthSync() == 0) {
+      throw AppDataExplorerException(
+        'devicectl produced no JSON (exit ${r.exitCode}). stderr: ${(r.stderr as String).trim()}',
+      );
     }
     final body = await tmp.readAsString();
     final json = jsonDecode(body) as Map<String, dynamic>;
     final outcome = (json['info'] as Map?)?['outcome'];
     if (outcome != 'success') {
       final err = json['error'] ?? body;
-      throw 'devicectl failed (${outcome ?? 'no outcome'}): $err';
+      throw AppDataExplorerException(
+        'devicectl failed (${outcome ?? 'no outcome'}): $err',
+      );
     }
     final apps = (json['result'] as Map?)?['apps'];
     if (apps is! List) return const [];

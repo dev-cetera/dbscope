@@ -1,3 +1,6 @@
+/// @docImport '../db/plugin.dart';
+library;
+
 import 'package:flutter/widgets.dart';
 
 import 'tab_model.dart';
@@ -18,8 +21,19 @@ typedef TabSummaryBuilder = String? Function(TabModel tab);
 /// 1. Implement a [TabModel] subclass for the persistent state.
 /// 2. Implement the view widget.
 /// 3. Build a [TabKind] that wires them together.
-/// 4. Call [TabKindRegistry.instance.register] from `main.dart`.
+/// 4. Call `TabKindRegistry.instance.register` from `main.dart`.
 class TabKind {
+  const TabKind({
+    required this.id,
+    required this.modelType,
+    required this.icon,
+    required this.buildView,
+    this.serialize,
+    this.deserialize,
+    this.isRunning,
+    this.footerSummary,
+  });
+
   /// Stable string id used in persisted tab JSON. Never rename — old
   /// serialised tabs would stop deserialising.
   final String id;
@@ -50,17 +64,6 @@ class TabKind {
   /// Returning null defers to the default placeholder.
   final TabSummaryBuilder? footerSummary;
 
-  const TabKind({
-    required this.id,
-    required this.modelType,
-    required this.icon,
-    required this.buildView,
-    this.serialize,
-    this.deserialize,
-    this.isRunning,
-    this.footerSummary,
-  });
-
   bool get persistent => serialize != null && deserialize != null;
 }
 
@@ -69,7 +72,7 @@ class TabKind {
 /// a concrete tab subtype.
 class TabKindRegistry {
   TabKindRegistry._();
-  static final TabKindRegistry instance = TabKindRegistry._();
+  static final instance = TabKindRegistry._();
 
   final List<TabKind> _all = [];
   final Map<String, TabKind> _byId = {};

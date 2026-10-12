@@ -10,8 +10,8 @@
 // strings, etc. nothing is rewritten.
 
 class _DollarTag {
-  final String full;
   _DollarTag(this.full);
+  final String full;
 }
 
 /// Translate Postgres-style `$N` placeholders to SQLite `?N`.

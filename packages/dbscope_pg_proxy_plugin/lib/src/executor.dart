@@ -24,25 +24,24 @@ import 'package:web_socket_channel/web_socket_channel.dart';
 import 'plugin.dart' show kPgProxyKind;
 
 class PgProxyException implements Exception {
+  PgProxyException(this.message, {this.code, this.constraintName});
   final String? code;
   final String message;
   final String? constraintName;
-  PgProxyException(this.message, {this.code, this.constraintName});
   @override
   String toString() => message;
 }
 
 class PgProxyExecutor implements DbExecutor {
-  final WebSocketChannel _channel;
-  final _Uuid _ids = _Uuid();
-  final Map<String, Completer<Map<String, Object?>>> _pending = {};
-  StreamSubscription<dynamic>? _sub;
-  bool _closed = false;
-  bool _readOnly = false;
-
   PgProxyExecutor._(this._channel) {
     _sub = _channel.stream.listen(_onFrame, onError: _onError, onDone: _onDone);
   }
+  final WebSocketChannel _channel;
+  final _ids = _Uuid();
+  final Map<String, Completer<Map<String, Object?>>> _pending = {};
+  StreamSubscription<dynamic>? _sub;
+  var _closed = false;
+  var _readOnly = false;
 
   static Future<PgProxyExecutor> open(ConnectionProfile profile) async {
     final extra = profile.extra;
@@ -86,10 +85,8 @@ class PgProxyExecutor implements DbExecutor {
 
   @override
   DbCapabilities get capabilities => const DbCapabilities(
-    sessionReadOnly: false,
     cancelByClose: true,
     dml: true,
-    transactions: false,
   );
 
   @override
@@ -142,7 +139,7 @@ class PgProxyExecutor implements DbExecutor {
   }
 
   @override
-  Future<void> setReadOnly(bool readOnly) async {
+  Future<void> setReadOnly({required bool readOnly}) async {
     // Proxy doesn't currently expose a session-toggle. Pretend it
     // worked so the UI can reflect the requested state, but
     // capabilities.sessionReadOnly is false so callers know not to
@@ -252,6 +249,6 @@ String _sslName(SslMode m) {
 }
 
 class _Uuid {
-  final Uuid _u = const Uuid();
+  final _u = const Uuid();
   String next() => _u.v4();
 }

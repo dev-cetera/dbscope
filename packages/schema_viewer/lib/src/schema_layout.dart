@@ -81,7 +81,7 @@ Size _layoutGrid(
   double x = 0;
   double y = 0;
   double rowHMax = 0;
-  int col = 0;
+  var col = 0;
   double maxX = 0;
   double maxY = 0;
   for (final n in nodes) {
@@ -131,9 +131,9 @@ Size _layoutRanked(
   final rank = <String, int>{};
   final visited = <String, bool>{};
   void assignRank(String id) {
-    if (visited[id] == true) return;
+    if (visited[id] ?? false) return;
     visited[id] = true;
-    int best = 0;
+    var best = 0;
     for (final p in inAdj[id]!) {
       // Ignore back-edges (DFS cycle): if we'd recurse into a node already
       // on the stack, skip it. visited[..]==null means not seen; ==true
@@ -145,13 +145,11 @@ Size _layoutRanked(
     rank[id] = best;
   }
 
-  for (final id in ids) {
-    assignRank(id);
-  }
+  ids.forEach(assignRank);
 
   // Bucket nodes by rank.
   final buckets = <int, List<String>>{};
-  int maxRank = 0;
+  var maxRank = 0;
   for (final entry in rank.entries) {
     buckets.putIfAbsent(entry.value, () => []).add(entry.key);
     if (entry.value > maxRank) maxRank = entry.value;
@@ -173,7 +171,7 @@ Size _layoutRanked(
     double barycentre(String id) {
       final parents = inAdj[id]!;
       double sum = 0;
-      int count = 0;
+      var count = 0;
       for (final p in parents) {
         final i = prevIdx[p];
         if (i != null) {
@@ -261,7 +259,7 @@ Set<String> cascadeSeparate({
   int maxPasses = 8,
 }) {
   final changed = <String>{};
-  Set<String> work = Set<String>.of(movedIds);
+  var work = Set<String>.of(movedIds);
   for (var pass = 0; pass < maxPasses; pass++) {
     final next = <String>{};
     for (final id in work) {

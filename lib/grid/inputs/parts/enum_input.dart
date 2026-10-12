@@ -1,17 +1,16 @@
 part of '../column_input.dart';
 
 class _EnumInput extends StatelessWidget {
-  final List<String> values;
-  final String? value;
-  final bool enabled;
-  final ValueChanged<Object?> onChanged;
-
   const _EnumInput({
     required this.values,
     required this.value,
     required this.enabled,
     required this.onChanged,
   });
+  final List<String> values;
+  final String? value;
+  final bool enabled;
+  final ValueChanged<Object?> onChanged;
 
   @override
   Widget build(BuildContext context) {
@@ -40,7 +39,7 @@ class _EnumInput extends StatelessWidget {
           items: [
             for (final v in values) DropdownMenuItem(value: v, child: Text(v)),
           ],
-          onChanged: enabled ? (v) => onChanged(v) : null,
+          onChanged: enabled ? onChanged : null,
         ),
       ),
     );

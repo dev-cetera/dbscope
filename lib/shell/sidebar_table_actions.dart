@@ -3,12 +3,6 @@ import 'package:flutter/material.dart';
 /// Context passed to a sidebar table action when the user triggers it
 /// from a table row's right-click / long-press menu.
 class SidebarTableActionContext {
-  final BuildContext buildContext;
-  final String connectionId;
-  final String schema;
-  final String table;
-  final int estimatedRows;
-
   const SidebarTableActionContext({
     required this.buildContext,
     required this.connectionId,
@@ -16,12 +10,26 @@ class SidebarTableActionContext {
     required this.table,
     required this.estimatedRows,
   });
+  final BuildContext buildContext;
+  final String connectionId;
+  final String schema;
+  final String table;
+  final int estimatedRows;
 }
 
 /// One entry in the table-row context menu. Built-in actions ("Open as
 /// Table", "Open as Navigator", etc.) live in `sidebar_table_actions_default.dart`;
 /// plugins / features can register their own.
 class SidebarTableAction {
+  const SidebarTableAction({
+    required this.id,
+    required this.label,
+    required this.onSelected,
+    this.icon,
+    this.startsGroup = false,
+    this.visibleWhen,
+  });
+
   /// Stable id, used as the popup-menu return value.
   final String id;
   final String label;
@@ -37,23 +45,13 @@ class SidebarTableAction {
 
   /// What to do when the user picks the action.
   final Future<void> Function(SidebarTableActionContext ctx) onSelected;
-
-  const SidebarTableAction({
-    required this.id,
-    required this.label,
-    required this.onSelected,
-    this.icon,
-    this.startsGroup = false,
-    this.visibleWhen,
-  });
 }
 
 /// Process-wide registry. Built-ins register from `main.dart`; plugins
 /// register from their own `register*()` entry points.
 class SidebarTableActionRegistry {
   SidebarTableActionRegistry._();
-  static final SidebarTableActionRegistry instance =
-      SidebarTableActionRegistry._();
+  static final instance = SidebarTableActionRegistry._();
 
   final List<SidebarTableAction> _actions = [];
 
@@ -73,7 +71,7 @@ class SidebarTableActionRegistry {
     _actions.add(action);
   }
 
-  /// All actions, in registration order, filtered by [visibleWhen].
+  /// All actions, in registration order, filtered by [SidebarTableAction.visibleWhen].
   List<SidebarTableAction> visibleFor(SidebarTableActionContext ctx) {
     return [
       ..._actions.where((a) => a.visibleWhen?.call(ctx) ?? true),

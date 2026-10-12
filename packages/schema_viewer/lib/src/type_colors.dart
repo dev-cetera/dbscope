@@ -21,9 +21,9 @@ enum SchemaTypeFamily {
 }
 
 class _Hue {
+  const _Hue(this.h, this.s);
   final double h;
   final double s;
-  const _Hue(this.h, this.s);
 }
 
 const Map<SchemaTypeFamily, _Hue> _familyHue = {
@@ -70,7 +70,7 @@ SchemaTypeFamily classifyTypeName(String? rawTypeLabel) {
     return SchemaTypeFamily.textFamily;
   }
   if (RegExp(
-    r'^(timestamp|timestamptz|date|time|timetz|interval)',
+    '^(timestamp|timestamptz|date|time|timetz|interval)',
     caseSensitive: false,
   ).hasMatch(s)) {
     return SchemaTypeFamily.timeFamily;
@@ -81,7 +81,7 @@ SchemaTypeFamily classifyTypeName(String? rawTypeLabel) {
   }
   if (s.toLowerCase() == 'bytea') return SchemaTypeFamily.binaryFamily;
   if (RegExp(
-    r'^(geometry|geography|point|polygon|line|box|circle|path|lseg)',
+    '^(geometry|geography|point|polygon|line|box|circle|path|lseg)',
     caseSensitive: false,
   ).hasMatch(s)) {
     return SchemaTypeFamily.geoFamily;

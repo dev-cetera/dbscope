@@ -19,18 +19,17 @@ enum BannerSeverity {
 /// for any "info bar" strip below a header instead of an ad-hoc
 /// `Container(color: ..., child: Text(...))`.
 class AppBanner extends StatelessWidget {
-  final String message;
-  final BannerSeverity severity;
-
-  /// Smaller padding + smaller font, for secondary advisories.
-  final bool dense;
-
   const AppBanner({
     super.key,
     required this.message,
     this.severity = BannerSeverity.hint,
     this.dense = false,
   });
+  final String message;
+  final BannerSeverity severity;
+
+  /// Smaller padding + smaller font, for secondary advisories.
+  final bool dense;
 
   @override
   Widget build(BuildContext context) {

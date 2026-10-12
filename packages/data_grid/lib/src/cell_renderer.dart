@@ -1,3 +1,6 @@
+/// @docImport '../data_grid.dart';
+library;
+
 import 'package:flutter/widgets.dart';
 
 import 'grid_data.dart';
@@ -6,6 +9,16 @@ import 'grid_data.dart';
 /// a non-editing cell. [value] is `data.rows[rowIdx][originalIdx]` —
 /// the renderer decides how to format it.
 class CellRenderContext<TypeTag> {
+  const CellRenderContext({
+    required this.value,
+    required this.column,
+    required this.isSelected,
+    required this.isFocused,
+    required this.isEditable,
+    required this.rowIdx,
+    required this.originalIdx,
+  });
+
   /// Raw cell value, exactly as the caller put it in `GridData.rows`.
   final Object? value;
 
@@ -29,16 +42,6 @@ class CellRenderContext<TypeTag> {
 
   /// Cached original column index in the underlying matrix.
   final int originalIdx;
-
-  const CellRenderContext({
-    required this.value,
-    required this.column,
-    required this.isSelected,
-    required this.isFocused,
-    required this.isEditable,
-    required this.rowIdx,
-    required this.originalIdx,
-  });
 }
 
 /// Hook for rendering one cell's content. The grid handles selection
@@ -49,7 +52,7 @@ abstract class CellRenderer<TypeTag> {
   Widget build(BuildContext context, CellRenderContext<TypeTag> ctx);
 }
 
-/// Boring default: renders [value]`.toString()` as plain text. Useful
+/// Boring default: renders `value.toString()` as plain text. Useful
 /// as a fallback when no type-specific renderer is needed.
 class DefaultCellRenderer<TypeTag> extends CellRenderer<TypeTag> {
   const DefaultCellRenderer();

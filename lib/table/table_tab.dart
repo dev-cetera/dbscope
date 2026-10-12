@@ -8,22 +8,22 @@ import '../tabs/tab_model.dart';
 /// (e.g. "Find account by email…"). Positional `$n` placeholders numbered
 /// from 1, values in [params]. Transient: not persisted with the tab.
 class MetaTableFilter {
-  final String label;
-  final String where;
-  final List<Object?> params;
   const MetaTableFilter({
     required this.label,
     required this.where,
     required this.params,
   });
+  final String label;
+  final String where;
+  final List<Object?> params;
 }
 
 /// Sort state for a [TableTab]. Persisted with the tab so a refresh
 /// keeps the user's chosen sort.
 class TableSortState {
+  const TableSortState(this.column, {required this.descending});
   final String column;
   final bool descending;
-  const TableSortState(this.column, this.descending);
 }
 
 /// Polling interval for the table view's optional auto-refresh. The
@@ -37,12 +37,25 @@ enum AutoRefreshInterval {
   m5(Duration(minutes: 5), '5m')
   ;
 
+  const AutoRefreshInterval(this.duration, this.label);
+
   final Duration? duration;
   final String label;
-  const AutoRefreshInterval(this.duration, this.label);
 }
 
 class TableTab extends TabModel {
+  TableTab({
+    super.id,
+    required super.connectionId,
+    required this.schema,
+    required this.table,
+    this.estimatedRows = -1,
+    this.data,
+    this.isLoading = false,
+    this.error,
+    this.elapsed,
+    this.metaFilter,
+  });
   final String schema;
   final String table;
   int estimatedRows;
@@ -54,20 +67,20 @@ class TableTab extends TabModel {
   Duration? elapsed;
   TableSortState? sort;
   List<String> pkColumns = const [];
-  Set<String> indexedColumns = <String>{};
+  var indexedColumns = <String>{};
   List<ColumnInfo> catalogColumns = const [];
   List<EditPolicy> editPolicies = const [];
   List<ForeignKey> foreignKeys = const [];
   AutoRefreshInterval autoRefresh = AutoRefreshInterval.off;
   GridViewMode viewMode = GridViewMode.typed;
-  bool hasNextPage = false;
-  bool isLoadingMore = false;
+  var hasNextPage = false;
+  var isLoadingMore = false;
 
   /// When the table has a configured soft-delete column, include
   /// already-deleted rows in the result. Off by default — turning it on
   /// strips the `<col> IS NULL` filter; the Delete button still issues
   /// an UPDATE so users can soft-delete rows they explicitly want gone.
-  bool showDeleted = false;
+  var showDeleted = false;
 
   /// Soft-delete column that actually exists on this table (post-load).
   /// Null when no override is configured OR the override references a
@@ -78,7 +91,7 @@ class TableTab extends TabModel {
   /// True when the connection profile's tenant filter applies to this
   /// table (the table has the configured column). Drives the "Tenant"
   /// badge in the header so users aren't surprised by reduced rows.
-  bool tenantFilterApplied = false;
+  var tenantFilterApplied = false;
 
   /// Index of the row currently selected in the grid. The right-side
   /// property inspector renders this row's fields. Null when nothing
@@ -100,7 +113,7 @@ class TableTab extends TabModel {
 
   /// A metadata default filter exists but waits for the user to trust the
   /// connection's metadata SQL.
-  bool defaultFilterPending = false;
+  var defaultFilterPending = false;
 
   /// Message shown instead of a hard delete (metadata `danger: hardDelete`).
   String? hardDeleteRefusal;
@@ -109,28 +122,15 @@ class TableTab extends TabModel {
   String? deleteRefusal;
 
   /// `INSERT … RETURNING` list matching the loaded columns.
-  String returningList = '*';
+  var returningList = '*';
 
   /// Whether the metadata Charts strip is expanded.
-  bool chartsOpen = false;
+  var chartsOpen = false;
 
   /// The metadata snapshot (access policy) [data] was loaded under. A view
   /// that finds a different current snapshot reloads, so rows fetched under
   /// an older policy (before "View as…", a reload) never stay on screen.
   Object? loadedUnder;
-
-  TableTab({
-    super.id,
-    required super.connectionId,
-    required this.schema,
-    required this.table,
-    this.estimatedRows = -1,
-    this.data,
-    this.isLoading = false,
-    this.error,
-    this.elapsed,
-    this.metaFilter,
-  });
 
   @override
   String get title =>

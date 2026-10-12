@@ -7,11 +7,6 @@ import 'palette.dart';
 /// [ChromeKind.bevel] palettes and as a rounded card with a 1px border under
 /// [ChromeKind.flat] palettes.
 class AppBevel extends StatelessWidget {
-  final Widget child;
-  final bool raised;
-  final EdgeInsetsGeometry padding;
-  final Color? color;
-
   const AppBevel({
     super.key,
     required this.child,
@@ -19,6 +14,10 @@ class AppBevel extends StatelessWidget {
     this.padding = EdgeInsets.zero,
     this.color,
   });
+  final Widget child;
+  final bool raised;
+  final EdgeInsetsGeometry padding;
+  final Color? color;
 
   @override
   Widget build(BuildContext context) {

@@ -9,24 +9,19 @@ import '../../connection/profile.dart';
 import '../../connection/registry.dart';
 
 class CopyTableTarget {
-  final ConnectionProfile target;
-  final String targetSchema;
-  final String targetTable;
-  final String mode;
   const CopyTableTarget({
     required this.target,
     required this.targetSchema,
     required this.targetTable,
     required this.mode,
   });
+  final ConnectionProfile target;
+  final String targetSchema;
+  final String targetTable;
+  final String mode;
 }
 
 class CopyTableDialog extends StatefulWidget {
-  final String sourceConnectionId;
-  final String sourceSchema;
-  final String sourceTable;
-  final List<ConnectionProfile> profiles;
-
   const CopyTableDialog({
     super.key,
     required this.sourceConnectionId,
@@ -34,6 +29,10 @@ class CopyTableDialog extends StatefulWidget {
     required this.sourceTable,
     required this.profiles,
   });
+  final String sourceConnectionId;
+  final String sourceSchema;
+  final String sourceTable;
+  final List<ConnectionProfile> profiles;
 
   @override
   State<CopyTableDialog> createState() => _CopyTableDialogState();
@@ -43,7 +42,7 @@ class _CopyTableDialogState extends State<CopyTableDialog> {
   late TextEditingController _schemaCtrl;
   late TextEditingController _tableCtrl;
   String? _targetId;
-  String _mode = 'append';
+  var _mode = 'append';
 
   @override
   void initState() {
@@ -70,9 +69,9 @@ class _CopyTableDialogState extends State<CopyTableDialog> {
     final source = ConnectionRegistry.instance.profileById(
       widget.sourceConnectionId,
     );
-    final targetReadOnly = _targetId != null
-        ? widget.profiles.firstWhere((p) => p.id == _targetId).readOnly
-        : false;
+    final targetReadOnly =
+        _targetId != null &&
+        widget.profiles.firstWhere((p) => p.id == _targetId).readOnly;
     return AppFormDialog(
       title: 'Copy table to…',
       submitLabel: 'Run',

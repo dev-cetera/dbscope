@@ -5,9 +5,9 @@ part of '../navigator_view.dart';
 // ---------------------------------------------------------------------------
 
 class TableListColumn extends StatefulWidget {
+  const TableListColumn({super.key, required this.tab, required this.index});
   final NavigatorTab tab;
   final int index;
-  const TableListColumn({super.key, required this.tab, required this.index});
 
   @override
   State<TableListColumn> createState() => _TableListColumnState();
@@ -16,15 +16,15 @@ class TableListColumn extends StatefulWidget {
 class _TableListColumnState extends State<TableListColumn> {
   List<SchemaInfo> _schemas = const [];
   final Map<String, List<TableInfo>> _tables = {};
-  final Set<String> _expanded = <String>{};
-  bool _loading = false;
+  final _expanded = <String>{};
+  var _loading = false;
   String? _error;
-  String _filter = '';
+  var _filter = '';
 
   @override
   void initState() {
     super.initState();
-    _load();
+    unawaited(_load());
   }
 
   DbExecutor? _conn() =>
@@ -203,12 +203,6 @@ class _TableListColumnState extends State<TableListColumn> {
 }
 
 class _TableEntry extends StatelessWidget {
-  final String schemaName;
-  final TableInfo table;
-  final bool isSelected;
-  final bool isRelated;
-  final VoidCallback onTap;
-
   const _TableEntry({
     required this.schemaName,
     required this.table,
@@ -216,6 +210,11 @@ class _TableEntry extends StatelessWidget {
     required this.isRelated,
     required this.onTap,
   });
+  final String schemaName;
+  final TableInfo table;
+  final bool isSelected;
+  final bool isRelated;
+  final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {

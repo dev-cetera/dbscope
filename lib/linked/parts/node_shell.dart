@@ -138,13 +138,26 @@ SchemaNodeData _toSchemaNode(
     subtitle: _nodeSubtitle(node),
     headerLeadingIcon: node.isSeed ? Icons.flag : null,
     position: node.position,
-    compact: true,
     widthOverridden: true,
     widthOverride: node.width,
   );
 }
 
 class _NodeShell extends StatefulWidget {
+  const _NodeShell({
+    required this.node,
+    required this.tab,
+    required this.isSelected,
+    required this.onDragStart,
+    required this.onDragUpdate,
+    required this.onDragEnd,
+    required this.onTap,
+    required this.onMount,
+    required this.onResizeUpdate,
+    required this.onResizeEnd,
+    this.onActivate,
+    this.onSecondaryTapDown,
+  });
   final LinkedRowNode node;
   final LinkedTab tab;
   final bool isSelected;
@@ -164,20 +177,6 @@ class _NodeShell extends StatefulWidget {
   /// (unscaled) pixels.
   final void Function(double deltaCanvas) onResizeUpdate;
   final VoidCallback onResizeEnd;
-  const _NodeShell({
-    required this.node,
-    required this.tab,
-    required this.isSelected,
-    required this.onDragStart,
-    required this.onDragUpdate,
-    required this.onDragEnd,
-    required this.onTap,
-    required this.onMount,
-    required this.onResizeUpdate,
-    required this.onResizeEnd,
-    this.onActivate,
-    this.onSecondaryTapDown,
-  });
 
   @override
   State<_NodeShell> createState() => _NodeShellState();
@@ -215,7 +214,6 @@ class _NodeShellState extends State<_NodeShell> {
           node: schemaNode,
           isSelected: widget.isSelected,
           isHighlighted: widget.isSelected,
-          hasSelection: false,
           onTap: widget.onTap,
           onHeaderPanStart: widget.onDragStart,
           onHeaderPanUpdate: widget.onDragUpdate,

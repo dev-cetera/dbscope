@@ -2,11 +2,10 @@
 // but UI-visible: '*' matches every topic, 'foo.*' matches by prefix
 // (including the dot), and an exact string matches exactly that topic.
 
-import 'package:flutter_test/flutter_test.dart';
-
 import 'package:dbscope/rpc/envelope.dart';
 import 'package:dbscope/server/server.dart';
 import 'package:dbscope/server/services/bus_service.dart';
+import 'package:flutter_test/flutter_test.dart';
 
 Future<List<Object?>> _collectFromSubscribe(
   Server server,
@@ -77,7 +76,7 @@ void main() {
 
       expect(events, hasLength(2));
       final topics = events
-          .map((e) => (e as Map<String, Object?>)['topic'])
+          .map((e) => (e! as Map<String, Object?>)['topic'])
           .toList();
       expect(topics, ['job.created', 'job.progress:abc']);
     });
@@ -90,16 +89,16 @@ void main() {
         server,
         {'topic': 'profile.changed'},
         () {
-          bus.publish('profile.changed', {'profiles': []});
+          bus.publish('profile.changed', {'profiles': <Object?>[]});
           bus.publish('profile.added', {'id': 'x'});
           bus.publish('profile', {});
         },
       );
 
       expect(events, hasLength(1));
-      final payload = events.single as Map<String, Object?>;
+      final payload = events.single! as Map<String, Object?>;
       expect(payload['topic'], 'profile.changed');
-      expect(payload['data'], {'profiles': []});
+      expect(payload['data'], {'profiles': <Object?>[]});
     });
 
     test(

@@ -17,9 +17,9 @@ class ConnectionLinkFlow {
 
   /// Env var checked before prompting on import — lets a saved link connect
   /// with zero interaction in a scripted/kiosk setup.
-  static const String passphraseEnvVar = 'DBSCOPE_CONN_PASSPHRASE';
+  static const passphraseEnvVar = 'DBSCOPE_CONN_PASSPHRASE';
 
-  static const XTypeGroup _typeGroup = XTypeGroup(
+  static const _typeGroup = XTypeGroup(
     label: 'dbscope connection',
     extensions: [ConnectionLink.fileExtension],
   );
@@ -153,16 +153,16 @@ class ConnectionLinkFlow {
   }
 
   static String _safeName(String name) {
-    final cleaned = name.trim().replaceAll(RegExp(r'[^A-Za-z0-9._-]+'), '-');
+    final cleaned = name.trim().replaceAll(RegExp('[^A-Za-z0-9._-]+'), '-');
     final trimmed = cleaned.replaceAll(RegExp(r'^-+|-+$'), '');
     return trimmed.isEmpty ? 'connection' : trimmed;
   }
 }
 
 class _PassphraseDialog extends StatefulWidget {
+  const _PassphraseDialog({required this.confirm, required this.showError});
   final bool confirm;
   final bool showError;
-  const _PassphraseDialog({required this.confirm, required this.showError});
 
   @override
   State<_PassphraseDialog> createState() => _PassphraseDialogState();
@@ -172,7 +172,7 @@ class _PassphraseDialogState extends State<_PassphraseDialog> {
   final _formKey = GlobalKey<FormState>();
   final _pass = TextEditingController();
   final _confirm = TextEditingController();
-  bool _visible = false;
+  var _visible = false;
 
   @override
   void dispose() {

@@ -6,7 +6,7 @@ import 'named_query_view.dart';
 
 /// Named queries persist across restarts (by id — the SQL is re-read from
 /// the metadata); ad-hoc action results are transient.
-final TabKind namedQueryTabKind = TabKind(
+final namedQueryTabKind = TabKind(
   id: 'named_query',
   modelType: NamedQueryTab,
   icon: Icons.manage_search,

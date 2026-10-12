@@ -19,21 +19,21 @@ export 'project_models.dart';
 /// to avoid interleaving reads-before-writes.
 class ProjectStore {
   ProjectStore._();
-  static final ProjectStore instance = ProjectStore._();
+  static final instance = ProjectStore._();
 
-  static const String fileName = 'default.dbscopeproj';
-  static const String _appDirName = 'dbscopeproj';
+  static const fileName = 'default.dbscopeproj';
+  static const _appDirName = 'dbscopeproj';
 
   File? _file;
-  ProjectDocument _doc = ProjectDocument();
-  bool _loaded = false;
+  var _doc = ProjectDocument();
+  var _loaded = false;
   Future<void>? _writeQueue;
 
   Future<File> _resolveFile() async {
     if (_file != null) return _file!;
     final base = await getApplicationSupportDirectory();
     final dir = Directory('${base.path}/$_appDirName');
-    if (!await dir.exists()) await dir.create(recursive: true);
+    if (!dir.existsSync()) await dir.create(recursive: true);
     _file = File('${dir.path}/$fileName');
     return _file!;
   }
@@ -46,7 +46,7 @@ class ProjectStore {
   Future<ProjectDocument> load() async {
     if (_loaded) return _doc;
     final file = await _resolveFile();
-    if (!await file.exists()) {
+    if (!file.existsSync()) {
       _doc = ProjectDocument();
       await _writeNow();
     } else {
@@ -84,7 +84,7 @@ class ProjectStore {
       // is preserved.
       await _resolveFile();
       try {
-        if (await _file!.exists()) {
+        if (_file!.existsSync()) {
           final raw = await _file!.readAsString();
           if (raw.trim().isNotEmpty) {
             _doc = ProjectDocument.fromJson(

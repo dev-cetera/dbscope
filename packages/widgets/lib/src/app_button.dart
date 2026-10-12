@@ -25,8 +25,8 @@ class AppButton extends StatefulWidget {
 }
 
 class _AppButtonState extends State<AppButton> {
-  bool _down = false;
-  bool _hover = false;
+  var _down = false;
+  var _hover = false;
 
   @override
   Widget build(BuildContext context) {
@@ -111,7 +111,7 @@ class AppToggleButton extends StatefulWidget {
 }
 
 class _AppToggleButtonState extends State<AppToggleButton> {
-  bool _hover = false;
+  var _hover = false;
 
   @override
   Widget build(BuildContext context) {

@@ -1,25 +1,24 @@
 part of '../column_input.dart';
 
 class _DateInput extends StatefulWidget {
-  final String? value;
-  final bool enabled;
-  final CupertinoDatePickerMode mode;
-  final ValueChanged<Object?> onChanged;
-
   const _DateInput({
     required this.value,
     required this.enabled,
     required this.mode,
     required this.onChanged,
   });
+  final String? value;
+  final bool enabled;
+  final CupertinoDatePickerMode mode;
+  final ValueChanged<Object?> onChanged;
 
   @override
   State<_DateInput> createState() => _DateInputState();
 }
 
 class _DateInputState extends State<_DateInput> {
-  static final DateTime _firstDate = DateTime(1, 1, 1);
-  static final DateTime _lastDate = DateTime(9999, 12, 31);
+  static final _firstDate = DateTime(1);
+  static final _lastDate = DateTime(9999, 12, 31);
 
   String _format(DateTime dt) {
     final y = dt.year.toString().padLeft(4, '0');
@@ -61,7 +60,6 @@ class _DateInputState extends State<_DateInput> {
       initialDate: _clampToRange(seed),
       firstDate: _firstDate,
       lastDate: _lastDate,
-      initialEntryMode: DatePickerEntryMode.calendar,
     );
   }
 
@@ -69,7 +67,6 @@ class _DateInputState extends State<_DateInput> {
     return showTimePicker(
       context: context,
       initialTime: TimeOfDay(hour: seed.hour, minute: seed.minute),
-      initialEntryMode: TimePickerEntryMode.dial,
       builder: (ctx, child) => MediaQuery(
         data: MediaQuery.of(ctx).copyWith(alwaysUse24HourFormat: true),
         child: child ?? const SizedBox.shrink(),

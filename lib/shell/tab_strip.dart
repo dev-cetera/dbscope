@@ -56,8 +56,8 @@ class TabStrip extends StatelessWidget {
                       child: child,
                     ),
                     onReorder: (oldIdx, newIdx) {
-                      if (newIdx > oldIdx) newIdx -= 1;
-                      state.moveTab(oldIdx, newIdx);
+                      final target = newIdx > oldIdx ? newIdx - 1 : newIdx;
+                      state.moveTab(oldIdx, target);
                     },
                     itemCount: state.tabs.length,
                     itemBuilder: (_, i) {
@@ -82,9 +82,9 @@ class TabStrip extends StatelessWidget {
 }
 
 class _Tab extends StatefulWidget {
+  const _Tab({required this.tab, required this.state});
   final TabModel tab;
   final AppState state;
-  const _Tab({required this.tab, required this.state});
 
   @override
   State<_Tab> createState() => _TabState();
@@ -172,8 +172,8 @@ class _TabState extends State<_Tab> with HoverStateMixin {
 
     return MouseRegion(
       cursor: SystemMouseCursors.basic,
-      onEnter: (_) => setHovered(true),
-      onExit: (_) => setHovered(false),
+      onEnter: (_) => setHovered(hovered: true),
+      onExit: (_) => setHovered(hovered: false),
       child: Listener(
         onPointerDown: (event) {
           if (event.kind == PointerDeviceKind.mouse &&
@@ -247,7 +247,6 @@ class _TabState extends State<_Tab> with HoverStateMixin {
                               ),
                         child: Row(
                           mainAxisSize: MainAxisSize.min,
-                          crossAxisAlignment: CrossAxisAlignment.center,
                           children: [
                             Icon(
                               isPinned ? Icons.push_pin : _iconFor(widget.tab),
@@ -298,9 +297,9 @@ class _TabState extends State<_Tab> with HoverStateMixin {
 }
 
 class _CloseDot extends StatefulWidget {
+  const _CloseDot({required this.color, required this.onTap});
   final Color color;
   final VoidCallback onTap;
-  const _CloseDot({required this.color, required this.onTap});
 
   @override
   State<_CloseDot> createState() => _CloseDotState();
@@ -311,8 +310,8 @@ class _CloseDotState extends State<_CloseDot> with HoverStateMixin {
   Widget build(BuildContext context) {
     return MouseRegion(
       cursor: SystemMouseCursors.click,
-      onEnter: (_) => setHovered(true),
-      onExit: (_) => setHovered(false),
+      onEnter: (_) => setHovered(hovered: true),
+      onExit: (_) => setHovered(hovered: false),
       child: GestureDetector(
         onTap: widget.onTap,
         child: Container(
@@ -330,9 +329,9 @@ class _CloseDotState extends State<_CloseDot> with HoverStateMixin {
 }
 
 class _NewTabButton extends StatefulWidget {
+  const _NewTabButton({required this.enabled, required this.onTap});
   final bool enabled;
   final VoidCallback onTap;
-  const _NewTabButton({required this.enabled, required this.onTap});
 
   @override
   State<_NewTabButton> createState() => _NewTabButtonState();
@@ -348,8 +347,8 @@ class _NewTabButtonState extends State<_NewTabButton> with HoverStateMixin {
         cursor: widget.enabled
             ? SystemMouseCursors.click
             : SystemMouseCursors.basic,
-        onEnter: (_) => setHovered(true),
-        onExit: (_) => setHovered(false),
+        onEnter: (_) => setHovered(hovered: true),
+        onExit: (_) => setHovered(hovered: false),
         child: GestureDetector(
           onTap: widget.enabled ? widget.onTap : null,
           child: Container(

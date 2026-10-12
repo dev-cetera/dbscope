@@ -3,6 +3,7 @@
 // come from the theme's AppPalette and the schema viewer's relationship
 // palette, so charts follow every theme plugin.
 
+import 'dart:async';
 import 'dart:math' as math;
 
 import 'package:fl_chart/fl_chart.dart';
@@ -13,24 +14,16 @@ import 'package:widgets/widgets.dart';
 import '../../db/executor.dart';
 import '../action_binding.dart';
 import '../meta_cache.dart';
+import '../meta_models.dart';
 import '../ui/action_trust.dart';
 import '../ui/meta_dialogs.dart';
-import '../meta_models.dart';
 import 'chart_data.dart';
 
 /// Tables above this estimated size wait for an explicit "Run" instead of
 /// charting on open.
-const int kAutoRunChartRowLimit = 2000000;
+const kAutoRunChartRowLimit = 2000000;
 
 class MetaChartCard extends StatefulWidget {
-  final ChartSpec chart;
-  final DbExecutor executor;
-  final BindingContext row;
-
-  /// When false, the chart waits for the user to press Run.
-  final bool autoRun;
-  final double height;
-
   const MetaChartCard({
     super.key,
     required this.chart,
@@ -39,6 +32,13 @@ class MetaChartCard extends StatefulWidget {
     this.autoRun = true,
     this.height = 220,
   });
+  final ChartSpec chart;
+  final DbExecutor executor;
+  final BindingContext row;
+
+  /// When false, the chart waits for the user to press Run.
+  final bool autoRun;
+  final double height;
 
   @override
   State<MetaChartCard> createState() => _MetaChartCardState();
@@ -47,7 +47,7 @@ class MetaChartCard extends StatefulWidget {
 class _MetaChartCardState extends State<MetaChartCard> {
   ChartData? _data;
   String? _error;
-  bool _loading = false;
+  var _loading = false;
 
   @override
   void initState() {
@@ -72,7 +72,7 @@ class _MetaChartCardState extends State<MetaChartCard> {
         return;
       }
     }
-    _load();
+    unawaited(_load());
   }
 
   @override
@@ -97,7 +97,7 @@ class _MetaChartCardState extends State<MetaChartCard> {
       // Fail closed: metadata SQL with no identifiable connection can't be
       // checked for trust, so it doesn't run.
       if (connectionId == null) {
-        setState(() => _error = 'This chart\'s connection has no metadata.');
+        setState(() => _error = "This chart's connection has no metadata.");
         return;
       }
       final snapshot = MetadataCache.instance.snapshotFor(connectionId)!;
@@ -106,7 +106,7 @@ class _MetaChartCardState extends State<MetaChartCard> {
         if (!mounted) return;
         if (!ok) {
           setState(() {
-            _error = 'Trust this connection\'s metadata SQL to run the chart.';
+            _error = "Trust this connection's metadata SQL to run the chart.";
           });
           return;
         }
@@ -217,9 +217,9 @@ Color _seriesColor(int i) =>
     kRelationshipPalette[i % kRelationshipPalette.length];
 
 class MetaChartPlot extends StatelessWidget {
+  const MetaChartPlot({super.key, required this.type, required this.data});
   final ChartType type;
   final ChartData data;
-  const MetaChartPlot({super.key, required this.type, required this.data});
 
   @override
   Widget build(BuildContext context) {
@@ -273,7 +273,6 @@ FlTitlesData _titles(BuildContext context, List<String> xLabels) {
     bottomTitles: AxisTitles(
       sideTitles: SideTitles(
         showTitles: true,
-        reservedSize: 22,
         interval: 1,
         getTitlesWidget: (value, meta) {
           final i = value.round();
@@ -303,8 +302,8 @@ FlGridData _grid(BuildContext context) => FlGridData(
 );
 
 class _Legend extends StatelessWidget {
-  final List<ChartSeriesData> series;
   const _Legend({required this.series});
+  final List<ChartSeriesData> series;
 
   @override
   Widget build(BuildContext context) {
@@ -327,9 +326,9 @@ class _Legend extends StatelessWidget {
 }
 
 class _LinePlot extends StatelessWidget {
+  const _LinePlot({required this.data, required this.filled});
   final ChartData data;
   final bool filled;
-  const _LinePlot({required this.data, required this.filled});
 
   @override
   Widget build(BuildContext context) {
@@ -344,7 +343,6 @@ class _LinePlot extends StatelessWidget {
               if (values[i] != null) FlSpot(i.toDouble(), values[i]!),
           ],
           color: color,
-          barWidth: 2,
           dotData: FlDotData(show: values.length <= 40),
           belowBarData: BarAreaData(
             show: filled,
@@ -372,9 +370,9 @@ class _LinePlot extends StatelessWidget {
 }
 
 class _BarPlot extends StatelessWidget {
+  const _BarPlot({required this.data, required this.stacked});
   final ChartData data;
   final bool stacked;
-  const _BarPlot({required this.data, required this.stacked});
 
   @override
   Widget build(BuildContext context) {
@@ -449,8 +447,8 @@ class _BarPlot extends StatelessWidget {
 }
 
 class _PiePlot extends StatelessWidget {
-  final ChartData data;
   const _PiePlot({required this.data});
+  final ChartData data;
 
   @override
   Widget build(BuildContext context) {
@@ -507,8 +505,8 @@ class _PiePlot extends StatelessWidget {
 }
 
 class _ScatterPlot extends StatelessWidget {
-  final ChartData data;
   const _ScatterPlot({required this.data});
+  final ChartData data;
 
   @override
   Widget build(BuildContext context) {
@@ -545,8 +543,8 @@ class _ScatterPlot extends StatelessWidget {
 }
 
 class _StatPlot extends StatelessWidget {
-  final ChartData data;
   const _StatPlot({required this.data});
+  final ChartData data;
 
   @override
   Widget build(BuildContext context) {
