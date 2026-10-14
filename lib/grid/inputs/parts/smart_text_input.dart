@@ -25,11 +25,11 @@ class _SmartTextInputState extends State<_SmartTextInput> {
 
   _SmartKind _override = _SmartKind.auto;
 
-  _SmartKind _detect(String s) {
-    if (s.isEmpty) return _SmartKind.plain;
-    if (_email.hasMatch(s)) return _SmartKind.email;
-    if (_url.hasMatch(s)) return _SmartKind.url;
-    if (_phone.hasMatch(s)) return _SmartKind.phone;
+  _SmartKind _detect(String text) {
+    if (text.isEmpty) return _SmartKind.plain;
+    if (_email.hasMatch(text)) return _SmartKind.email;
+    if (_url.hasMatch(text)) return _SmartKind.url;
+    if (_phone.hasMatch(text)) return _SmartKind.phone;
     return _SmartKind.plain;
   }
 
@@ -41,11 +41,11 @@ class _SmartTextInputState extends State<_SmartTextInput> {
   Widget? _iconFor(_SmartKind kind) {
     switch (kind) {
       case _SmartKind.email:
-        return const Icon(Icons.alternate_email, size: 14);
+        return const Icon(Icons.alternate_email, size: 14.0);
       case _SmartKind.phone:
-        return const Icon(Icons.call, size: 14);
+        return const Icon(Icons.call, size: 14.0);
       case _SmartKind.url:
-        return const Icon(Icons.link, size: 14);
+        return const Icon(Icons.link, size: 14.0);
       case _SmartKind.plain:
       case _SmartKind.auto:
         return null;
@@ -93,7 +93,8 @@ class _SmartTextInputState extends State<_SmartTextInput> {
               current: _override,
               detected: _detect(widget.value ?? ''),
               labelFor: _labelFor,
-              onSelected: (k) => setState(() => _override = k),
+              onSelected: (selectedKind) =>
+                  setState(() => _override = selectedKind),
             )
           : null,
       onChanged: widget.onChanged,
@@ -118,27 +119,27 @@ class _SmartKindMenu extends StatelessWidget {
     final palette = AppPalette.of(context);
     return PopupMenuButton<_SmartKind>(
       tooltip: 'Field kind',
-      icon: Icon(Icons.tune, size: 14, color: palette.text),
+      icon: Icon(Icons.tune, size: 14.0, color: palette.text),
       padding: EdgeInsets.zero,
-      iconSize: 14,
+      iconSize: 14.0,
       onSelected: onSelected,
-      itemBuilder: (ctx) => [
-        for (final k in _SmartKind.values)
+      itemBuilder: (menuContext) => [
+        for (final kind in _SmartKind.values)
           PopupMenuItem(
-            value: k,
-            height: 26,
+            value: kind,
+            height: 26.0,
             child: Row(
               children: [
                 Icon(
-                  k == current ? Icons.check : Icons.circle_outlined,
-                  size: 12,
-                  color: k == current ? palette.accent : palette.border,
+                  kind == current ? Icons.check : Icons.circle_outlined,
+                  size: 12.0,
+                  color: kind == current ? palette.accent : palette.border,
                 ),
-                const SizedBox(width: 6),
-                Text(labelFor(k)),
-                if (k == _SmartKind.auto)
+                const SizedBox(width: 6.0),
+                Text(labelFor(kind)),
+                if (kind == _SmartKind.auto)
                   Padding(
-                    padding: const EdgeInsets.only(left: 6),
+                    padding: const EdgeInsets.only(left: 6.0),
                     child: Text(
                       '(${labelFor(detected)})',
                       style: TextStyle(

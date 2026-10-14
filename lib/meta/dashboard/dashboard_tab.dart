@@ -53,11 +53,13 @@ class _DashboardViewState extends State<DashboardView>
     final index = snapshot.index;
     final spec = tab.dashboardId == null
         ? null
-        : index.dashboards.where((d) => d.id == tab.dashboardId).firstOrNull;
+        : index.dashboards
+              .where((dashboard) => dashboard.id == tab.dashboardId)
+              .firstOrNull;
     final charts = spec == null
         ? [
-            for (final c in index.charts)
-              if (!c.rowScoped) c,
+            for (final chart in index.charts)
+              if (!chart.rowScoped) chart,
           ]
         : [
             for (final id in spec.chartIds) ?index.chartById(id),
@@ -74,12 +76,12 @@ class _DashboardViewState extends State<DashboardView>
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         PanelHeader(
-          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+          padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 4.0),
           titleIcon: Icons.dashboard_outlined,
           title: spec?.label ?? tab.label,
           trailing: IconButton(
             tooltip: 'Refresh all charts',
-            icon: const Icon(Icons.refresh, size: 18),
+            icon: const Icon(Icons.refresh, size: 18.0),
             onPressed: () => setState(() => _generation++),
           ),
         ),
@@ -100,14 +102,14 @@ class _DashboardViewState extends State<DashboardView>
                         spacing: gap,
                         runSpacing: gap,
                         children: [
-                          for (final c in charts)
+                          for (final chart in charts)
                             SizedBox(
                               width: width,
                               child: MetaChartCard(
-                                key: ValueKey('${c.id}#$_generation'),
-                                chart: c,
+                                key: ValueKey('${chart.id}#$_generation'),
+                                chart: chart,
                                 executor: executor,
-                                height: 260,
+                                height: 260.0,
                               ),
                             ),
                         ],
@@ -128,14 +130,14 @@ final dashboardTabKind = TabKind(
   buildView: (tab) =>
       DashboardView(key: ValueKey(tab.id), tab: tab as DashboardTab),
   serialize: (tab) {
-    final t = tab as DashboardTab;
+    final dashboardTab = tab as DashboardTab;
     return {
       'kind': 'dashboard',
-      'id': t.id,
-      'connectionId': t.connectionId,
-      'dashboardId': t.dashboardId,
-      'label': t.label,
-      'pinned': t.pinned,
+      'id': dashboardTab.id,
+      'connectionId': dashboardTab.connectionId,
+      'dashboardId': dashboardTab.dashboardId,
+      'label': dashboardTab.label,
+      'pinned': dashboardTab.pinned,
     };
   },
   deserialize: (j) => DashboardTab(

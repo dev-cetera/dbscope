@@ -136,13 +136,13 @@ Future<void> main(List<String> args) async {
   // persisted session.
   AppState.instance.enableTabPersistence();
   AppState.instance.restorePersistedTabs();
-  final lastConnId = UiPrefs.instance.lastConnectionId;
-  if (lastConnId != null &&
-      ConnectionRegistry.instance.profileById(lastConnId) != null) {
+  final lastConnectionId = UiPrefs.instance.lastConnectionId;
+  if (lastConnectionId != null &&
+      ConnectionRegistry.instance.profileById(lastConnectionId) != null) {
     // Don't await: auto-connect must not block the first frame, and
     // backends that prompt for credentials (e.g. TOTP) need a
     // BuildContext that doesn't exist yet.
-    unawaited(ConnectionRegistry.instance.setActive(lastConnId));
+    unawaited(ConnectionRegistry.instance.setActive(lastConnectionId));
   }
   WidgetsBinding.instance.addObserver(_HostQuitHook(host: host));
   runApp(

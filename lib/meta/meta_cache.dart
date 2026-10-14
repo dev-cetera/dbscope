@@ -249,18 +249,18 @@ class MetadataCache extends ChangeNotifier {
     final databaseHasAccessControl =
         tables.data.roles.isNotEmpty ||
         tables.data.grants.isNotEmpty ||
-        tables.data.rows.any((r) => r.kind == MetaKinds.rbac);
+        tables.data.rows.any((metaRow) => metaRow.kind == MetaKinds.rbac);
     final fileHasAccessControl =
         file.roles.isNotEmpty ||
         file.grants.isNotEmpty ||
         file.members.isNotEmpty ||
-        file.rows.any((r) => r.kind == MetaKinds.rbac);
+        file.rows.any((metaRow) => metaRow.kind == MetaKinds.rbac);
     if (databaseHasAccessControl && fileHasAccessControl) {
       fileData = MetaSourceData(
         source: MetaSourceKind.file,
         rows: [
-          for (final r in file.rows)
-            if (r.kind != MetaKinds.rbac) r,
+          for (final metaRow in file.rows)
+            if (metaRow.kind != MetaKinds.rbac) metaRow,
         ],
         problems: [
           ...file.problems,
@@ -360,11 +360,11 @@ class MetadataCache extends ChangeNotifier {
   /// The connected login plus every role it belongs to.
   static Future<Set<String>> _postgresRoles(DbExecutor executor) async {
     try {
-      final res = await executor.execute(
+      final result = await executor.execute(
         'SELECT r.rolname::text FROM pg_roles r '
         "WHERE pg_has_role(current_user, r.oid, 'member')",
       );
-      return {for (final row in res.rows) row[0]! as String};
+      return {for (final row in result.rows) row[0]! as String};
     } catch (_) {
       // No role info → no pg: principals. The policy degrades to claimed
       // identity and `everyone`, which only ever narrows access.
@@ -379,7 +379,7 @@ class MetadataCache extends ChangeNotifier {
     DbExecutor executor,
   ) async {
     try {
-      final tableRes = await executor.execute('''
+      final tableResult = await executor.execute('''
  SELECT n.nspname::text, c.relname::text,
  has_any_column_privilege(c.oid, 'SELECT'),
  has_table_privilege(c.oid, 'INSERT'),
@@ -393,7 +393,7 @@ class MetadataCache extends ChangeNotifier {
  ''');
       final tables =
           <String, ({bool select, bool insert, bool update, bool delete})>{};
-      for (final row in tableRes.rows) {
+      for (final row in tableResult.rows) {
         tables[PrivilegeCeilings.tableKey(
           row[0]! as String,
           row[1]! as String,
@@ -404,7 +404,7 @@ class MetadataCache extends ChangeNotifier {
           delete: row[5] == true,
         );
       }
-      final columnRes = await executor.execute('''
+      final columnResult = await executor.execute('''
  SELECT n.nspname::text, c.relname::text, a.attname::text,
  has_column_privilege(c.oid, a.attnum, 'SELECT'),
  has_column_privilege(c.oid, a.attnum, 'UPDATE')
@@ -422,7 +422,7 @@ class MetadataCache extends ChangeNotifier {
  )
  ''');
       final columns = <String, ({bool select, bool update})>{};
-      for (final row in columnRes.rows) {
+      for (final row in columnResult.rows) {
         columns[PrivilegeCeilings.columnKey(
           row[0]! as String,
           row[1]! as String,

@@ -12,11 +12,11 @@ class CellRange {
     required this.focusCol,
   });
 
-  factory CellRange.singleCell(int row, int col) => CellRange(
+  factory CellRange.singleCell(int row, int column) => CellRange(
         anchorRow: row,
-        anchorCol: col,
+        anchorCol: column,
         focusRow: row,
-        focusCol: col,
+        focusCol: column,
       );
 
   final int anchorRow;
@@ -29,17 +29,17 @@ class CellRange {
   int get colMin => anchorCol < focusCol ? anchorCol : focusCol;
   int get colMax => anchorCol > focusCol ? anchorCol : focusCol;
 
-  bool contains(int row, int col) =>
-      row >= rowMin && row <= rowMax && col >= colMin && col <= colMax;
+  bool contains(int row, int column) =>
+      row >= rowMin && row <= rowMax && column >= colMin && column <= colMax;
 
   bool get isSingleCell => anchorRow == focusRow && anchorCol == focusCol;
   int get rowCount => rowMax - rowMin + 1;
   int get colCount => colMax - colMin + 1;
 
-  CellRange withFocus(int row, int col) => CellRange(
+  CellRange withFocus(int row, int column) => CellRange(
         anchorRow: anchorRow,
         anchorCol: anchorCol,
         focusRow: row,
-        focusCol: col,
+        focusCol: column,
       );
 }

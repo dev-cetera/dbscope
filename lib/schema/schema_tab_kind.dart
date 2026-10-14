@@ -12,21 +12,23 @@ final schemaTabKind = TabKind(
   buildView: (tab) =>
       SchemaTabView(key: ValueKey(tab.id), tab: tab as SchemaTab),
   serialize: (tab) {
-    final t = tab as SchemaTab;
+    final schemaTab = tab as SchemaTab;
     return {
       'kind': 'schema',
-      'id': t.id,
-      'connectionId': t.connectionId,
-      'layoutMode': t.layoutMode == SchemaLayoutMode.lr ? 'lr' : 'tb',
-      'pinned': t.pinned,
+      'id': schemaTab.id,
+      'connectionId': schemaTab.connectionId,
+      'layoutMode': schemaTab.layoutMode == SchemaLayoutMode.lr ? 'lr' : 'tb',
+      'pinned': schemaTab.pinned,
     };
   },
   deserialize: (j) {
-    final modeStr = j['layoutMode'] as String? ?? 'lr';
+    final layoutModeName = j['layoutMode'] as String? ?? 'lr';
     return SchemaTab(
       id: j['id'] as String?,
       connectionId: j['connectionId'] as String? ?? '',
-      layoutMode: modeStr == 'tb' ? SchemaLayoutMode.tb : SchemaLayoutMode.lr,
+      layoutMode: layoutModeName == 'tb'
+          ? SchemaLayoutMode.tb
+          : SchemaLayoutMode.lr,
     );
   },
 );

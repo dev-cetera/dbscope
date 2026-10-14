@@ -19,7 +19,7 @@ class EmptyState extends StatelessWidget {
     final theme = Theme.of(context);
     return Center(
       child: Padding(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.all(16.0),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
@@ -28,7 +28,7 @@ class EmptyState extends StatelessWidget {
               size: iconSize,
               color: theme.hintColor.withValues(alpha: 0.45),
             ),
-            const SizedBox(height: 10),
+            const SizedBox(height: 10.0),
             Text(
               message,
               textAlign: TextAlign.center,
@@ -61,7 +61,7 @@ class ErrorView extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     return Padding(
-      padding: const EdgeInsets.all(12),
+      padding: const EdgeInsets.all(12.0),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         mainAxisSize: MainAxisSize.min,
@@ -71,10 +71,10 @@ class ErrorView extends StatelessWidget {
             style: TextStyle(color: theme.colorScheme.error),
           ),
           if (onRetry != null) ...[
-            const SizedBox(height: 8),
+            const SizedBox(height: 8.0),
             TextButton.icon(
               onPressed: onRetry,
-              icon: const Icon(Icons.refresh, size: 14),
+              icon: const Icon(Icons.refresh, size: 14.0),
               label: Text(retryLabel),
             ),
           ],
@@ -83,6 +83,9 @@ class ErrorView extends StatelessWidget {
     );
   }
 }
+
+/// Spinners up to this size get the thinner stroke so they don't look heavy.
+const _kSmallSpinnerMaxSize = 18.0;
 
 /// Centered indeterminate spinner with consistent padding. Use this
 /// instead of bare `CircularProgressIndicator()` so loading states look
@@ -100,7 +103,9 @@ class LoadingView extends StatelessWidget {
         child: SizedBox(
           width: size,
           height: size,
-          child: CircularProgressIndicator(strokeWidth: size <= 18 ? 2 : 3),
+          child: CircularProgressIndicator(
+            strokeWidth: size <= _kSmallSpinnerMaxSize ? 2 : 3,
+          ),
         ),
       ),
     );

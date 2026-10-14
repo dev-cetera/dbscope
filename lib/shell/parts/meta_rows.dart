@@ -11,13 +11,13 @@ class _GroupHeaderRow extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     return Padding(
-      padding: EdgeInsets.fromLTRB(indent, 6, 4, 0),
+      padding: EdgeInsets.fromLTRB(indent, 6.0, 4.0, 0.0),
       child: Text(
         label.toUpperCase(),
         style: theme.textTheme.labelSmall?.copyWith(
           color: theme.hintColor,
           letterSpacing: 0.5,
-          fontSize: 10,
+          fontSize: 10.0,
         ),
         overflow: TextOverflow.ellipsis,
       ),
@@ -32,7 +32,7 @@ class _QueryRow extends StatelessWidget {
 
   void _open() {
     final existing = AppState.instance.tabs.whereType<NamedQueryTab>().where(
-      (t) => t.connectionId == connectionId && t.queryId == query.id,
+      (tab) => tab.connectionId == connectionId && tab.queryId == query.id,
     );
     if (existing.isNotEmpty) {
       AppState.instance.selectTab(existing.first.id);
@@ -55,11 +55,11 @@ class _QueryRow extends StatelessWidget {
       child: InkWell(
         onTap: _open,
         child: Padding(
-          padding: const EdgeInsets.fromLTRB(20, 3, 4, 3),
+          padding: const EdgeInsets.fromLTRB(20.0, 3.0, 4.0, 3.0),
           child: Row(
             children: [
-              Icon(Icons.manage_search, size: 13, color: theme.hintColor),
-              const SizedBox(width: 6),
+              Icon(Icons.manage_search, size: 13.0, color: theme.hintColor),
+              const SizedBox(width: 6.0),
               Expanded(
                 child: Text(
                   query.group == null
@@ -89,7 +89,8 @@ class _DashboardRow extends StatelessWidget {
 
   void _open() {
     final existing = AppState.instance.tabs.whereType<DashboardTab>().where(
-      (t) => t.connectionId == connectionId && t.dashboardId == dashboardId,
+      (tab) =>
+          tab.connectionId == connectionId && tab.dashboardId == dashboardId,
     );
     if (existing.isNotEmpty) {
       AppState.instance.selectTab(existing.first.id);
@@ -110,11 +111,11 @@ class _DashboardRow extends StatelessWidget {
     return InkWell(
       onTap: _open,
       child: Padding(
-        padding: const EdgeInsets.fromLTRB(20, 3, 4, 3),
+        padding: const EdgeInsets.fromLTRB(20.0, 3.0, 4.0, 3.0),
         child: Row(
           children: [
-            Icon(Icons.dashboard_outlined, size: 13, color: theme.hintColor),
-            const SizedBox(width: 6),
+            Icon(Icons.dashboard_outlined, size: 13.0, color: theme.hintColor),
+            const SizedBox(width: 6.0),
             Expanded(
               child: Text(
                 label,

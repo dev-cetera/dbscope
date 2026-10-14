@@ -24,7 +24,7 @@ ChartSpec _chart() => ChartSpec(
 );
 
 Future<ChartData> _run(List<List<Object?>> rows) {
-  final exec = FakeDbExecutor()
+  final executor = FakeDbExecutor()
     // The fence's two open-transaction probes, BEGIN and statement_timeout.
     ..enqueue(const DbResult(columns: [], rows: []))
     ..enqueue(const DbResult(columns: [], rows: []))
@@ -39,7 +39,7 @@ Future<ChartData> _run(List<List<Object?>> rows) {
         rows: rows,
       ),
     );
-  return runChart(_chart(), executor: exec);
+  return runChart(_chart(), executor: executor);
 }
 
 void main() {

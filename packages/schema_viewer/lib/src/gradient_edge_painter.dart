@@ -24,10 +24,10 @@ extension on _Side {
   /// `offset × direction` away from the anchor point so the curve
   /// always heads outward first.
   Offset get direction => switch (this) {
-        _Side.left => const Offset(-1, 0),
-        _Side.right => const Offset(1, 0),
-        _Side.top => const Offset(0, -1),
-        _Side.bottom => const Offset(0, 1),
+        _Side.left => const Offset(-1.0, 0.0),
+        _Side.right => const Offset(1.0, 0.0),
+        _Side.top => const Offset(0.0, -1.0),
+        _Side.bottom => const Offset(0.0, 1.0),
       };
 }
 
@@ -91,15 +91,15 @@ class SchemaEdgePainter extends CustomPainter {
   final String? dragNodeId;
   final Offset dragDelta;
 
-  Rect _screenRect(SchemaNodeData n) {
-    final r = rectForNode(n);
-    final dx = n.id == dragNodeId ? dragDelta.dx : 0.0;
-    final dy = n.id == dragNodeId ? dragDelta.dy : 0.0;
+  Rect _screenRect(SchemaNodeData node) {
+    final rect = rectForNode(node);
+    final dx = node.id == dragNodeId ? dragDelta.dx : 0.0;
+    final dy = node.id == dragNodeId ? dragDelta.dy : 0.0;
     return Rect.fromLTWH(
-      pan.dx + (r.left + dx) * scale,
-      pan.dy + (r.top + dy) * scale,
-      r.width * scale,
-      r.height * scale,
+      pan.dx + (rect.left + dx) * scale,
+      pan.dy + (rect.top + dy) * scale,
+      rect.width * scale,
+      rect.height * scale,
     );
   }
 
@@ -147,35 +147,35 @@ class SchemaEdgePainter extends CustomPainter {
   /// e.g. two side-by-side cards could pick (top, top) just because
   /// the corners are slightly closer than the rim midpoints, producing
   /// a bezier that loops back into the card body.
-  ({_Side aSide, _Side bSide, Offset a, Offset b}) _pickBestPair({
-    required SchemaNodeData src,
-    required Rect srcRect,
-    required SchemaNodeData tgt,
-    required Rect tgtRect,
+  ({_Side aSide, _Side bSide, Offset aAnchor, Offset bAnchor}) _pickBestPair({
+    required SchemaNodeData source,
+    required Rect sourceRect,
+    required SchemaNodeData target,
+    required Rect targetRect,
     required String? sourceField,
     required String? targetField,
   }) {
     _Side? bestASide;
     _Side? bestBSide;
-    var bestA = srcRect.center;
-    var bestB = tgtRect.center;
+    var bestA = sourceRect.center;
+    var bestB = targetRect.center;
     var bestDist = double.infinity;
 
     for (final aSide in _Side.values) {
-      final aPt = _anchorOn(src, srcRect, aSide, sourceField);
-      final aDir = aSide.direction;
+      final aPoint = _anchorOn(source, sourceRect, aSide, sourceField);
+      final aDirection = aSide.direction;
       for (final bSide in _Side.values) {
-        final bPt = _anchorOn(tgt, tgtRect, bSide, targetField);
-        final ab = bPt - aPt;
+        final bPoint = _anchorOn(target, targetRect, bSide, targetField);
+        final ab = bPoint - aPoint;
 
         // Source anchor must face toward the target (positive
         // projection onto its outward direction).
-        final aForward = aDir.dx * ab.dx + aDir.dy * ab.dy;
+        final aForward = aDirection.dx * ab.dx + aDirection.dy * ab.dy;
         if (aForward < 0) continue;
 
         // Target anchor must face back toward the source.
-        final bDir = bSide.direction;
-        final bForward = bDir.dx * (-ab.dx) + bDir.dy * (-ab.dy);
+        final bDirection = bSide.direction;
+        final bForward = bDirection.dx * (-ab.dx) + bDirection.dy * (-ab.dy);
         if (bForward < 0) continue;
 
         final dist = ab.distance;
@@ -183,8 +183,8 @@ class SchemaEdgePainter extends CustomPainter {
           bestDist = dist;
           bestASide = aSide;
           bestBSide = bSide;
-          bestA = aPt;
-          bestB = bPt;
+          bestA = aPoint;
+          bestB = bPoint;
         }
       }
     }
@@ -193,37 +193,42 @@ class SchemaEdgePainter extends CustomPainter {
     // horizontal side faces the other so we never emit a degenerate
     // edge. This mirrors React Flow's right/left default handles.
     if (bestASide == null || bestBSide == null) {
-      final sourceOnRight = srcRect.center.dx <= tgtRect.center.dx;
+      final sourceOnRight = sourceRect.center.dx <= targetRect.center.dx;
       bestASide = sourceOnRight ? _Side.right : _Side.left;
       bestBSide = sourceOnRight ? _Side.left : _Side.right;
-      bestA = _anchorOn(src, srcRect, bestASide, sourceField);
-      bestB = _anchorOn(tgt, tgtRect, bestBSide, targetField);
+      bestA = _anchorOn(source, sourceRect, bestASide, sourceField);
+      bestB = _anchorOn(target, targetRect, bestBSide, targetField);
     }
 
-    return (aSide: bestASide, bSide: bestBSide, a: bestA, b: bestB);
+    return (
+      aSide: bestASide,
+      bSide: bestBSide,
+      aAnchor: bestA,
+      bAnchor: bestB,
+    );
   }
 
   @override
   void paint(Canvas canvas, Size size) {
-    final nodeById = {for (final n in nodes) n.id: n};
+    final nodeById = {for (final node in nodes) node.id: node};
     final geoms = <_EdgeGeom>[];
     final hasSel = selectedId != null;
     for (final e in edges) {
-      final src = nodeById[e.sourceId];
-      final tgt = nodeById[e.targetId];
-      if (src == null || tgt == null) continue;
-      final srcRect = _screenRect(src);
-      final tgtRect = _screenRect(tgt);
+      final source = nodeById[e.sourceId];
+      final target = nodeById[e.targetId];
+      if (source == null || target == null) continue;
+      final sourceRect = _screenRect(source);
+      final targetRect = _screenRect(target);
       final pick = _pickBestPair(
-        src: src,
-        srcRect: srcRect,
-        tgt: tgt,
-        tgtRect: tgtRect,
+        source: source,
+        sourceRect: sourceRect,
+        target: target,
+        targetRect: targetRect,
         sourceField: e.sourceField,
         targetField: e.targetField,
       );
-      final fromColor = colorForTable('${src.schema}.${src.tableName}');
-      final toColor = colorForTable('${tgt.schema}.${tgt.tableName}');
+      final fromColor = colorForTable('${source.schema}.${source.tableName}');
+      final toColor = colorForTable('${target.schema}.${target.tableName}');
       final highlighted = hasSel &&
           highlightedNodeIds.contains(e.sourceId) &&
           highlightedNodeIds.contains(e.targetId);
@@ -231,8 +236,8 @@ class SchemaEdgePainter extends CustomPainter {
       geoms.add(
         _EdgeGeom(
           edge: e,
-          start: pick.a,
-          end: pick.b,
+          start: pick.aAnchor,
+          end: pick.bAnchor,
           startSide: pick.aSide,
           endSide: pick.bSide,
           fromColor: fromColor,
@@ -243,29 +248,34 @@ class SchemaEdgePainter extends CustomPainter {
       );
     }
 
-    for (final g in geoms) {
-      _drawEdge(canvas, g);
+    for (final geometry in geoms) {
+      _drawEdge(canvas, geometry);
     }
-    for (final g in geoms) {
-      _drawChevrons(canvas, g);
+    for (final geometry in geoms) {
+      _drawChevrons(canvas, geometry);
     }
   }
 
-  void _drawEdge(Canvas canvas, _EdgeGeom g) {
-    final path = _bezierPath(g.start, g.startSide, g.end, g.endSide);
-    final alpha = g.dimmed ? 0.18 : 1.0;
+  void _drawEdge(Canvas canvas, _EdgeGeom geometry) {
+    final path = _bezierPath(
+      geometry.start,
+      geometry.startSide,
+      geometry.end,
+      geometry.endSide,
+    );
+    final alpha = geometry.dimmed ? 0.18 : 1.0;
     final shader = LinearGradient(
       colors: [
-        g.fromColor.withValues(alpha: alpha),
-        g.toColor.withValues(alpha: alpha),
+        geometry.fromColor.withValues(alpha: alpha),
+        geometry.toColor.withValues(alpha: alpha),
       ],
-    ).createShader(Rect.fromPoints(g.start, g.end));
+    ).createShader(Rect.fromPoints(geometry.start, geometry.end));
     final paint = Paint()
       ..shader = shader
       ..style = PaintingStyle.stroke
-      ..strokeWidth = (g.highlighted ? 2.6 : 1.8) * scale
+      ..strokeWidth = (geometry.highlighted ? 2.6 : 1.8) * scale
       ..strokeCap = StrokeCap.round;
-    if (!g.edge.dashed) {
+    if (!geometry.edge.dashed) {
       canvas.drawPath(path, paint);
       return;
     }
@@ -282,42 +292,47 @@ class SchemaEdgePainter extends CustomPainter {
     }
   }
 
-  void _drawChevrons(Canvas canvas, _EdgeGeom g) {
-    final path = _bezierPath(g.start, g.startSide, g.end, g.endSide);
+  void _drawChevrons(Canvas canvas, _EdgeGeom geometry) {
+    final path = _bezierPath(
+      geometry.start,
+      geometry.startSide,
+      geometry.end,
+      geometry.endSide,
+    );
     final metrics = path.computeMetrics().toList();
     if (metrics.isEmpty) return;
     final total = metrics.fold<double>(0, (a, b) => a + b.length);
     if (total < 1) return;
-    final alpha = g.dimmed ? 0.19 : 0.95;
+    final alpha = geometry.dimmed ? 0.19 : 0.95;
     for (var i = 0; i < _kChevronCount; i++) {
       final phase = (tickerValue + i / _kChevronCount) % 1.0;
       final at = phase * total;
       var remaining = at;
-      Offset? pos;
+      Offset? position;
       double tangentAngle = 0;
-      for (final m in metrics) {
-        if (remaining <= m.length) {
-          final t = m.getTangentForOffset(remaining);
-          if (t != null) {
-            pos = t.position;
-            tangentAngle = math.atan2(t.vector.dy, t.vector.dx);
+      for (final metric in metrics) {
+        if (remaining <= metric.length) {
+          final tangent = metric.getTangentForOffset(remaining);
+          if (tangent != null) {
+            position = tangent.position;
+            tangentAngle = math.atan2(tangent.vector.dy, tangent.vector.dx);
           }
           break;
         }
-        remaining -= m.length;
+        remaining -= metric.length;
       }
-      if (pos == null) continue;
+      if (position == null) continue;
       canvas.save();
-      canvas.translate(pos.dx, pos.dy);
+      canvas.translate(position.dx, position.dy);
       canvas.rotate(tangentAngle);
-      final paint = Paint()..color = g.toColor.withValues(alpha: alpha);
-      final s = _kChevronSize * scale;
-      final p = Path()
-        ..moveTo(-s, -s * 0.7)
+      final paint = Paint()..color = geometry.toColor.withValues(alpha: alpha);
+      final chevronSize = _kChevronSize * scale;
+      final chevronPath = Path()
+        ..moveTo(-chevronSize, -chevronSize * 0.7)
         ..lineTo(0, 0)
-        ..lineTo(-s, s * 0.7)
+        ..lineTo(-chevronSize, chevronSize * 0.7)
         ..close();
-      canvas.drawPath(p, paint);
+      canvas.drawPath(chevronPath, paint);
       canvas.restore();
     }
   }
@@ -331,30 +346,32 @@ class SchemaEdgePainter extends CustomPainter {
   /// curvature = 0.35, the same value admin_site passes to
   /// `getBezierPath`. For horizontal sides (left/right) the offset
   /// lives on x; for vertical sides (top/bottom) on y.
-  Path _bezierPath(Offset a, _Side aSide, Offset b, _Side bSide) {
+  Path _bezierPath(Offset aPoint, _Side aSide, Offset bPoint, _Side bSide) {
     const curvature = 0.35;
-    final aDir = aSide.direction;
-    final bDir = bSide.direction;
+    final aDirection = aSide.direction;
+    final bDirection = bSide.direction;
     // Signed distance: how far the target sits along the anchor's
     // outward direction. Positive = forward, negative = backward.
-    final aDist = (b.dx - a.dx) * aDir.dx + (b.dy - a.dy) * aDir.dy;
-    final bDist = (a.dx - b.dx) * bDir.dx + (a.dy - b.dy) * bDir.dy;
+    final aDist = (bPoint.dx - aPoint.dx) * aDirection.dx +
+        (bPoint.dy - aPoint.dy) * aDirection.dy;
+    final bDist = (aPoint.dx - bPoint.dx) * bDirection.dx +
+        (aPoint.dy - bPoint.dy) * bDirection.dy;
     double offsetFor(double dist) {
       if (dist >= 0) return 0.5 * dist;
       return curvature * 25 * math.sqrt(-dist);
     }
 
     final c1 = Offset(
-      a.dx + aDir.dx * offsetFor(aDist),
-      a.dy + aDir.dy * offsetFor(aDist),
+      aPoint.dx + aDirection.dx * offsetFor(aDist),
+      aPoint.dy + aDirection.dy * offsetFor(aDist),
     );
     final c2 = Offset(
-      b.dx + bDir.dx * offsetFor(bDist),
-      b.dy + bDir.dy * offsetFor(bDist),
+      bPoint.dx + bDirection.dx * offsetFor(bDist),
+      bPoint.dy + bDirection.dy * offsetFor(bDist),
     );
     return Path()
-      ..moveTo(a.dx, a.dy)
-      ..cubicTo(c1.dx, c1.dy, c2.dx, c2.dy, b.dx, b.dy);
+      ..moveTo(aPoint.dx, aPoint.dy)
+      ..cubicTo(c1.dx, c1.dy, c2.dx, c2.dy, bPoint.dx, bPoint.dy);
   }
 
   @override

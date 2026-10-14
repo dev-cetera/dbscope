@@ -40,7 +40,8 @@ class ResultInspectorPanel extends StatelessWidget {
   final List<ForeignKey> foreignKeys;
   final String? connectionId;
   final Future<void> Function(EditPolicy, Object?)? onSave;
-  final void Function(ForeignKey fk, {required bool incoming})? onFollowLink;
+  final void Function(ForeignKey foreignKey, {required bool incoming})?
+  onFollowLink;
 
   static Future<void> _noopSave(EditPolicy _, Object? _) async {}
 
@@ -48,20 +49,20 @@ class ResultInspectorPanel extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final data = this.data;
-    final idx = selectedRowIndex;
+    final rowIndex = selectedRowIndex;
 
     // Use the catalog metadata when present; otherwise synthesise a
     // minimal ColumnInfo per grid column so PropertyInspector can render.
-    final cols = catalogColumns.isNotEmpty
+    final columns = catalogColumns.isNotEmpty
         ? catalogColumns
         : (data == null
               ? const <ColumnInfo>[]
               : [
-                  for (final c in data.columns)
+                  for (final column in data.columns)
                     ColumnInfo(
-                      name: c.name,
-                      type: c.pgType,
-                      typeName: c.typeName,
+                      name: column.name,
+                      type: column.pgType,
+                      typeName: column.typeName,
                       nullable: true,
                       defaultExpr: null,
                       isGenerated: false,
@@ -71,16 +72,16 @@ class ResultInspectorPanel extends StatelessWidget {
 
     final hasRow =
         data != null &&
-        idx != null &&
-        idx >= 0 &&
-        idx < data.rows.length &&
-        cols.isNotEmpty;
+        rowIndex != null &&
+        rowIndex >= 0 &&
+        rowIndex < data.rows.length &&
+        columns.isNotEmpty;
 
     Map<String, Object?>? row;
     if (hasRow) {
       row = {
         for (var i = 0; i < data.columns.length; i++)
-          data.columns[i].name: data.rows[idx][i],
+          data.columns[i].name: data.rows[rowIndex][i],
       };
     }
 
@@ -93,9 +94,9 @@ class ResultInspectorPanel extends StatelessWidget {
         titleIcon: Icons.article_outlined,
         trailing: IconButton(
           tooltip: 'Hide inspector',
-          icon: const Icon(Icons.close, size: 14),
+          icon: const Icon(Icons.close, size: 14.0),
           visualDensity: VisualDensity.compact,
-          padding: const EdgeInsets.all(2),
+          padding: const EdgeInsets.all(2.0),
           constraints: const BoxConstraints(),
           onPressed: AppState.instance.togglePropertyInspector,
         ),
@@ -103,7 +104,7 @@ class ResultInspectorPanel extends StatelessWidget {
             ? PropertyInspector(
                 schema: schema ?? '',
                 table: table ?? '',
-                columns: cols,
+                columns: columns,
                 row: row!,
                 editPolicies: editPolicies,
                 pkColumns: pkColumns,
@@ -111,7 +112,7 @@ class ResultInspectorPanel extends StatelessWidget {
                 connectionId: connectionId,
                 onSave: onSave ?? _noopSave,
                 onFollowOutbound: onFollowLink != null
-                    ? (col, value, group) =>
+                    ? (column, value, group) =>
                           onFollowLink!(group.first, incoming: false)
                     : null,
                 onOpenInbound: onFollowLink != null
@@ -120,7 +121,7 @@ class ResultInspectorPanel extends StatelessWidget {
               )
             : const EmptyState(
                 icon: Icons.article_outlined,
-                iconSize: 36,
+                iconSize: 36.0,
                 message: 'Click a row in the grid to view its fields here.',
               ),
       ),

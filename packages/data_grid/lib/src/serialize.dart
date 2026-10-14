@@ -10,20 +10,21 @@ String serializeRangeAsTsv<T>(
   GridModel model,
   CellRange range,
 ) {
-  final originalCols = <int>[
-    for (var v = range.colMin; v <= range.colMax; v++) model.viewToOriginal(v),
+  final originalColumns = <int>[
+    for (var viewIndex = range.colMin; viewIndex <= range.colMax; viewIndex++)
+      model.viewToOriginal(viewIndex),
   ];
   final lines = <String>[];
-  for (var r = range.rowMin; r <= range.rowMax; r++) {
-    if (r < 0 || r >= data.rows.length) continue;
+  for (var rowIndex = range.rowMin; rowIndex <= range.rowMax; rowIndex++) {
+    if (rowIndex < 0 || rowIndex >= data.rows.length) continue;
     final cells = <String>[];
-    final row = data.rows[r];
-    for (final c in originalCols) {
-      if (c < 0 || c >= row.length) {
+    final row = data.rows[rowIndex];
+    for (final originalColumn in originalColumns) {
+      if (originalColumn < 0 || originalColumn >= row.length) {
         cells.add('');
         continue;
       }
-      cells.add(_tsvEscape(row[c]));
+      cells.add(_tsvEscape(row[originalColumn]));
     }
     lines.add(cells.join('\t'));
   }
@@ -49,20 +50,21 @@ String serializeRangeAsCsv<T>(
   GridModel model,
   CellRange range,
 ) {
-  final originalCols = <int>[
-    for (var v = range.colMin; v <= range.colMax; v++) model.viewToOriginal(v),
+  final originalColumns = <int>[
+    for (var viewIndex = range.colMin; viewIndex <= range.colMax; viewIndex++)
+      model.viewToOriginal(viewIndex),
   ];
   final lines = <String>[];
-  for (var r = range.rowMin; r <= range.rowMax; r++) {
-    if (r < 0 || r >= data.rows.length) continue;
+  for (var rowIndex = range.rowMin; rowIndex <= range.rowMax; rowIndex++) {
+    if (rowIndex < 0 || rowIndex >= data.rows.length) continue;
     final cells = <String>[];
-    final row = data.rows[r];
-    for (final c in originalCols) {
-      if (c < 0 || c >= row.length) {
+    final row = data.rows[rowIndex];
+    for (final originalColumn in originalColumns) {
+      if (originalColumn < 0 || originalColumn >= row.length) {
         cells.add('');
         continue;
       }
-      cells.add(_csvField(row[c]));
+      cells.add(_csvField(row[originalColumn]));
     }
     lines.add(cells.join(','));
   }
@@ -71,11 +73,11 @@ String serializeRangeAsCsv<T>(
 
 String _csvField(Object? value) {
   if (value == null) return '';
-  final s = value.toString();
-  final needsQuote = s.contains(',') ||
-      s.contains('"') ||
-      s.contains('\n') ||
-      s.contains('\r');
-  if (!needsQuote) return s;
-  return '"${s.replaceAll('"', '""')}"';
+  final text = value.toString();
+  final needsQuote = text.contains(',') ||
+      text.contains('"') ||
+      text.contains('\n') ||
+      text.contains('\r');
+  if (!needsQuote) return text;
+  return '"${text.replaceAll('"', '""')}"';
 }

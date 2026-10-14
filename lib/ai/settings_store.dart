@@ -9,8 +9,8 @@ class AiSettingsStore {
   static final instance = AiSettingsStore._();
 
   Future<AiSettings> load() async {
-    final doc = await ProjectStore.instance.load();
-    return doc.ai;
+    final projectDocument = await ProjectStore.instance.load();
+    return projectDocument.ai;
   }
 
   Future<void> save(AiSettings settings) =>

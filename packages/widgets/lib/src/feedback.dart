@@ -1,9 +1,12 @@
 import 'package:flutter/material.dart';
 
+/// How long a toast message stays on screen before it disappears.
+const _kToastDuration = Duration(seconds: 3);
+
 /// Show a transient message in the bottom snack bar.
 void showToast(BuildContext context, String message) {
   ScaffoldMessenger.of(context).showSnackBar(
-    SnackBar(content: Text(message), duration: const Duration(seconds: 3)),
+    SnackBar(content: Text(message), duration: _kToastDuration),
   );
 }
 
@@ -23,8 +26,8 @@ Future<bool> confirmDialog(
 }) async {
   final ok = await showDialog<bool>(
     context: context,
-    builder: (ctx) {
-      final theme = Theme.of(ctx);
+    builder: (dialogContext) {
+      final theme = Theme.of(dialogContext);
       final confirm =
           destructive
               ? FilledButton(
@@ -32,11 +35,11 @@ Future<bool> confirmDialog(
                   foregroundColor: theme.colorScheme.onErrorContainer,
                   backgroundColor: theme.colorScheme.errorContainer,
                 ),
-                onPressed: () => Navigator.of(ctx).pop(true),
+                onPressed: () => Navigator.of(dialogContext).pop(true),
                 child: Text(confirmLabel),
               )
               : FilledButton(
-                onPressed: () => Navigator.of(ctx).pop(true),
+                onPressed: () => Navigator.of(dialogContext).pop(true),
                 child: Text(confirmLabel),
               );
       return AlertDialog(
@@ -44,7 +47,7 @@ Future<bool> confirmDialog(
         content: Text(message),
         actions: [
           TextButton(
-            onPressed: () => Navigator.of(ctx).pop(false),
+            onPressed: () => Navigator.of(dialogContext).pop(false),
             child: Text(cancelLabel),
           ),
           confirm,

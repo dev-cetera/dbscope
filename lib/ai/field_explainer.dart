@@ -90,11 +90,15 @@ class FieldExplainer {
     return raw.trim();
   }
 
-  static String _previewValue(Object? v) {
-    if (v == null) return 'NULL';
-    var s = v is String ? v : v.toString();
-    if (s.length > 200) s = '${s.substring(0, 200)}…';
-    return s;
+  static const _kMaxPreviewLength = 200;
+
+  static String _previewValue(Object? value) {
+    if (value == null) return 'NULL';
+    var text = value is String ? value : value.toString();
+    if (text.length > _kMaxPreviewLength) {
+      text = '${text.substring(0, _kMaxPreviewLength)}…';
+    }
+    return text;
   }
 
   static Future<String> _autoPickModel(

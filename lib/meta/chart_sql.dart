@@ -58,8 +58,8 @@ ChartSql buildTableChartSql({
   requireReadable(chart.x, 'x');
   requireReadable(chart.series, 'series');
   requireReadable(chart.rangeColumn, 'range');
-  for (final m in chart.y) {
-    requireReadable(m.column, 'y');
+  for (final measure in chart.y) {
+    requireReadable(measure.column, 'y');
   }
 
   final from = quoteQualified(schema, table);
@@ -68,11 +68,11 @@ ChartSql buildTableChartSql({
   if (rangeClause != null) where.add(rangeClause);
 
   if (chart.type == ChartType.histogram) {
-    final x = chart.x;
-    if (x == null) {
+    final xColumn = chart.x;
+    if (xColumn == null) {
       throw ChartSqlError('Chart "${chart.label}": a histogram needs x.');
     }
-    final xIdent = quoteIdent(x);
+    final xIdent = quoteIdent(xColumn);
     where.add('$xIdent IS NOT NULL');
     return ChartSql(
       'SELECT $xIdent AS x FROM $from WHERE ${where.join(' AND ')} '

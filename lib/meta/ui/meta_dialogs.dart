@@ -52,16 +52,16 @@ Future<bool> showTrustDialog(
   final changed = MetaTrust.changedSince(connectionId, snapshot.index, scope);
   final result = await showDialog<bool>(
     context: context,
-    builder: (ctx) {
-      final theme = Theme.of(ctx);
+    builder: (dialogContext) {
+      final theme = Theme.of(dialogContext);
       return AppFormDialog(
         title: scope == TrustScope.exec
             ? 'Trust write actions on this connection?'
             : "Trust this connection's metadata SQL?",
-        width: 680,
-        height: 540,
+        width: 680.0,
+        height: 540.0,
         submitLabel: 'Trust',
-        onSubmit: () => Navigator.of(ctx).pop(true),
+        onSubmit: () => Navigator.of(dialogContext).pop(true),
         content: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -78,10 +78,10 @@ Future<bool> showTrustDialog(
                         'it changes.',
               style: theme.textTheme.bodySmall,
             ),
-            const SizedBox(height: 12),
+            const SizedBox(height: 12.0),
             for (final item in items)
               Padding(
-                padding: const EdgeInsets.only(bottom: 10),
+                padding: const EdgeInsets.only(bottom: 10.0),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -125,12 +125,12 @@ Future<Map<String, Object?>?> showInputsDialog(
     for (final i in inputs) {
       final text = controllers[i.name]!.text.trim();
       if (i.type == 'number') {
-        final n = num.tryParse(text);
-        if (n == null) {
+        final number = num.tryParse(text);
+        if (number == null) {
           error = '"${i.prompt}" must be a number.';
           return null;
         }
-        out[i.name] = n;
+        out[i.name] = number;
       } else {
         out[i.name] = controllers[i.name]!.text;
       }
@@ -143,15 +143,15 @@ Future<Map<String, Object?>?> showInputsDialog(
   // no listeners left they are simply garbage-collected.
   return showDialog<Map<String, Object?>>(
     context: context,
-    builder: (ctx) => StatefulBuilder(
-      builder: (ctx, setState) {
+    builder: (_) => StatefulBuilder(
+      builder: (dialogContext, setState) {
         void submit() {
-          final v = values();
-          if (v == null) {
+          final inputValues = values();
+          if (inputValues == null) {
             setState(() {});
             return;
           }
-          Navigator.of(ctx).pop(v);
+          Navigator.of(dialogContext).pop(inputValues);
         }
 
         return AppFormDialog(
@@ -162,7 +162,7 @@ Future<Map<String, Object?>?> showInputsDialog(
             children: [
               for (final i in inputs)
                 Padding(
-                  padding: const EdgeInsets.only(bottom: 8),
+                  padding: const EdgeInsets.only(bottom: 8.0),
                   child: TextField(
                     controller: controllers[i.name],
                     autofocus: i == inputs.first,
@@ -180,7 +180,9 @@ Future<Map<String, Object?>?> showInputsDialog(
               if (error != null)
                 Text(
                   error!,
-                  style: TextStyle(color: Theme.of(ctx).colorScheme.error),
+                  style: TextStyle(
+                    color: Theme.of(dialogContext).colorScheme.error,
+                  ),
                 ),
             ],
           ),
@@ -201,26 +203,26 @@ Future<bool> showExecConfirmDialog(
 }) async {
   final result = await showDialog<bool>(
     context: context,
-    builder: (ctx) {
-      final theme = Theme.of(ctx);
+    builder: (dialogContext) {
+      final theme = Theme.of(dialogContext);
       return AppFormDialog(
         title: title,
-        width: 620,
+        width: 620.0,
         submitLabel: 'Run',
         submitIcon: Icons.bolt,
-        onSubmit: () => Navigator.of(ctx).pop(true),
+        onSubmit: () => Navigator.of(dialogContext).pop(true),
         content: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             if (message != null) ...[
               Text(message, style: theme.textTheme.bodyMedium),
-              const SizedBox(height: 12),
+              const SizedBox(height: 12.0),
             ],
             SelectableText(sql, style: _mono),
-            const SizedBox(height: 12),
+            const SizedBox(height: 12.0),
             for (final e in values.entries)
               Text('@${e.key} = ${e.value}', style: _mono),
-            const SizedBox(height: 12),
+            const SizedBox(height: 12.0),
             Text(
               expectRows == null
                   ? 'Runs immediately and cannot be undone from here.'
@@ -247,19 +249,19 @@ Future<void> showRowChartsDialog(
   if (executor == null) return;
   await showDialog<void>(
     context: context,
-    builder: (ctx) => AppFormDialog(
+    builder: (dialogContext) => AppFormDialog(
       title: 'Charts for this ${click.table} row',
-      width: 760,
-      height: 560,
+      width: 760.0,
+      height: 560.0,
       submitLabel: null,
       cancelLabel: 'Close',
       content: Column(
         children: [
-          for (final c in charts)
+          for (final chart in charts)
             Padding(
-              padding: const EdgeInsets.only(bottom: 12),
+              padding: const EdgeInsets.only(bottom: 12.0),
               child: MetaChartCard(
-                chart: c,
+                chart: chart,
                 executor: executor,
                 row: click.binding(),
               ),
@@ -310,15 +312,15 @@ Future<void> showAboutColumnDialog(
 
   await showDialog<void>(
     context: context,
-    builder: (ctx) {
-      final theme = Theme.of(ctx);
+    builder: (dialogContext) {
+      final theme = Theme.of(dialogContext);
       Widget section(String title, List<Widget> children) => Padding(
-        padding: const EdgeInsets.only(bottom: 12),
+        padding: const EdgeInsets.only(bottom: 12.0),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(title, style: theme.textTheme.labelLarge),
-            const SizedBox(height: 4),
+            const SizedBox(height: 4.0),
             ...children,
           ],
         ),
@@ -327,14 +329,14 @@ Future<void> showAboutColumnDialog(
         title: click.isTable
             ? '${click.table}.$column'
             : '${click.queryId}.$column',
-        width: 560,
+        width: 560.0,
         submitLabel: null,
         cancelLabel: 'Close',
         extraActions: [
           if (canEditDescription)
             TextButton(
               onPressed: () async {
-                Navigator.of(ctx).pop();
+                Navigator.of(dialogContext).pop();
                 await showEditDescriptionDialog(
                   context,
                   connectionId: click.connectionId,
@@ -358,7 +360,7 @@ Future<void> showAboutColumnDialog(
                   descriptionSpan(context, describe.toMarkdown()),
                 ),
               if (describe.values.isNotEmpty) ...[
-                const SizedBox(height: 6),
+                const SizedBox(height: 6.0),
                 for (final e in describe.values.entries)
                   Text(
                     '${e.key} — ${e.value}',
@@ -397,13 +399,13 @@ Future<void> showAboutColumnDialog(
               ]),
             if (links.isNotEmpty)
               section('Links', [
-                for (final l in links)
+                for (final link in links)
                   Text(
-                    l.isUrl
-                        ? '${l.urlLabel ?? 'URL'}: ${l.urlTemplate}'
-                        : l.isPolymorphic
-                        ? 'Polymorphic by ${l.polymorphicBy}'
-                        : '→ ${l.to?.raw}',
+                    link.isUrl
+                        ? '${link.urlLabel ?? 'URL'}: ${link.urlTemplate}'
+                        : link.isPolymorphic
+                        ? 'Polymorphic by ${link.polymorphicBy}'
+                        : '→ ${link.to?.raw}',
                     style: theme.textTheme.bodySmall,
                   ),
               ]),
@@ -432,12 +434,12 @@ Future<void> showEditDescriptionDialog(
   var alsoComment = !snapshot.isSqlite && !tablesExist;
   final saved = await showDialog<bool>(
     context: context,
-    builder: (ctx) => StatefulBuilder(
-      builder: (ctx, setState) => AppFormDialog(
+    builder: (_) => StatefulBuilder(
+      builder: (dialogContext, setState) => AppFormDialog(
         title: 'Description of ${column ?? table}',
-        width: 560,
+        width: 560.0,
         submitLabel: 'Save',
-        onSubmit: () => Navigator.of(ctx).pop(true),
+        onSubmit: () => Navigator.of(dialogContext).pop(true),
         content: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -448,7 +450,7 @@ Future<void> showEditDescriptionDialog(
               maxLines: 8,
               decoration: const InputDecoration(border: OutlineInputBorder()),
             ),
-            const SizedBox(height: 8),
+            const SizedBox(height: 8.0),
             if (!tablesExist)
               const Text(
                 'This connection has no metadata tables, so the description '
@@ -462,7 +464,8 @@ Future<void> showEditDescriptionDialog(
                 title: const Text(
                   'Also write COMMENT ON (psql, pg_dump see it)',
                 ),
-                onChanged: (v) => setState(() => alsoComment = v ?? false),
+                onChanged: (checked) =>
+                    setState(() => alsoComment = checked ?? false),
               ),
           ],
         ),
@@ -540,22 +543,23 @@ class _NativeFactsSectionState extends State<_NativeFactsSection> {
       executor,
     ).listColumns(widget.schema, widget.table);
     final visible = {
-      for (final c in await SchemaCatalog(
+      for (final column in await SchemaCatalog(
         executor,
       ).listColumns(widget.schema, widget.table))
-        c.name,
+        column.name,
     };
     final hidden = [
-      for (final c in all)
-        if (!visible.contains(c.name)) c.name,
+      for (final column in all)
+        if (!visible.contains(column.name)) column.name,
     ];
     if (hidden.isEmpty) return facts;
     final pattern = RegExp(
       '\\b(${hidden.map(RegExp.escape).join('|')})\\b',
     );
     List<NativeFact> keep(List<NativeFact> list) => [
-      for (final f in list)
-        if (!pattern.hasMatch(f.label) && !pattern.hasMatch(f.detail)) f,
+      for (final fact in list)
+        if (!pattern.hasMatch(fact.label) && !pattern.hasMatch(fact.detail))
+          fact,
     ];
     return NativeFacts(
       comment: facts.comment,
@@ -577,7 +581,7 @@ class _NativeFactsSectionState extends State<_NativeFactsSection> {
       builder: (context, snap) {
         if (snap.hasError) {
           return Padding(
-            padding: const EdgeInsets.only(bottom: 12),
+            padding: const EdgeInsets.only(bottom: 12.0),
             child: Text(
               'Could not read the catalog: ${snap.error}',
               style: theme.textTheme.bodySmall,
@@ -587,33 +591,33 @@ class _NativeFactsSectionState extends State<_NativeFactsSection> {
         final facts = snap.data;
         if (facts == null) {
           return const Padding(
-            padding: EdgeInsets.only(bottom: 12),
-            child: LinearProgressIndicator(minHeight: 2),
+            padding: EdgeInsets.only(bottom: 12.0),
+            child: LinearProgressIndicator(minHeight: 2.0),
           );
         }
         Widget group(String title, List<NativeFact> items) {
           if (items.isEmpty) return const SizedBox.shrink();
           return Padding(
-            padding: const EdgeInsets.only(top: 6),
+            padding: const EdgeInsets.only(top: 6.0),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(title, style: theme.textTheme.labelMedium),
-                for (final f in items)
+                for (final fact in items)
                   Padding(
-                    padding: const EdgeInsets.only(left: 8, top: 2),
+                    padding: const EdgeInsets.only(left: 8.0, top: 2.0),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         SelectableText(
-                          f.detail.isEmpty
-                              ? f.label
-                              : '${f.label}: ${f.detail}',
+                          fact.detail.isEmpty
+                              ? fact.label
+                              : '${fact.label}: ${fact.detail}',
                           style: _mono,
                         ),
-                        if (f.comment != null)
+                        if (fact.comment != null)
                           Text(
-                            f.comment!,
+                            fact.comment!,
                             style: theme.textTheme.bodySmall?.copyWith(
                               fontStyle: FontStyle.italic,
                             ),
@@ -627,13 +631,13 @@ class _NativeFactsSectionState extends State<_NativeFactsSection> {
         }
 
         return Padding(
-          padding: const EdgeInsets.only(bottom: 12),
+          padding: const EdgeInsets.only(bottom: 12.0),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text('What the database says', style: theme.textTheme.labelLarge),
               if (facts.comment != null) ...[
-                const SizedBox(height: 4),
+                const SizedBox(height: 4.0),
                 SelectableText(facts.comment!),
               ],
               group('Definition', facts.attributes),
@@ -667,19 +671,19 @@ Future<void> showAboutTableDialog(
       !ConnectionRegistry.instance.isReadOnlyFor(connectionId);
   await showDialog<void>(
     context: context,
-    builder: (ctx) {
-      final theme = Theme.of(ctx);
+    builder: (dialogContext) {
+      final theme = Theme.of(dialogContext);
       return AppFormDialog(
         title: '$schema.$table',
-        width: 640,
-        height: 600,
+        width: 640.0,
+        height: 600.0,
         submitLabel: null,
         cancelLabel: 'Close',
         extraActions: [
           if (canEditDescription)
             TextButton(
               onPressed: () async {
-                Navigator.of(ctx).pop();
+                Navigator.of(dialogContext).pop();
                 await showEditDescriptionDialog(
                   context,
                   connectionId: connectionId,
@@ -699,7 +703,7 @@ Future<void> showAboutTableDialog(
               SelectableText.rich(
                 descriptionSpan(context, describe.toMarkdown()),
               ),
-              const SizedBox(height: 12),
+              const SizedBox(height: 12.0),
             ],
             _NativeFactsSection(
               connectionId: connectionId,
@@ -718,7 +722,7 @@ Future<void> showAboutTableDialog(
                 policy.danger != null ||
                 display.rowLabel != null ||
                 display.group != null) ...[
-              const SizedBox(height: 12),
+              const SizedBox(height: 12.0),
               Text('Metadata', style: theme.textTheme.labelLarge),
               if (display.group != null) Text('Group: ${display.group}'),
               if (display.rowLabel != null)

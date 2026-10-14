@@ -26,8 +26,12 @@ class SchemaTab extends TabModel {
   final Map<String, List<ColumnInfo>> _columnCache = {};
   List<ColumnInfo>? cachedColumns(String schema, String table) =>
       _columnCache['$schema.$table'];
-  void setCachedColumns(String schema, String table, List<ColumnInfo> cols) {
-    _columnCache['$schema.$table'] = cols;
+  void setCachedColumns(
+    String schema,
+    String table,
+    List<ColumnInfo> columns,
+  ) {
+    _columnCache['$schema.$table'] = columns;
   }
 
   Offset pan = Offset.zero;

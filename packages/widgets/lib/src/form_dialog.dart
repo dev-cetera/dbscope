@@ -75,7 +75,7 @@ class AppFormDialog extends StatelessWidget {
                 ? FilledButton(onPressed: onSubmit, child: Text(submitLabel!))
                 : FilledButton.icon(
                   onPressed: onSubmit,
-                  icon: Icon(submitIcon, size: 16),
+                  icon: Icon(submitIcon, size: 16.0),
                   label: Text(submitLabel!),
                 ));
     return AlertDialog(

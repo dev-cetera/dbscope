@@ -39,7 +39,7 @@ class MetaActionRunner {
     // the current one. If the action changed in between (a reload while the
     // menu was open), refuse rather than run SQL the user never saw.
     final current = snapshot.index.actions
-        .where((a) => a.id == action.id)
+        .where((candidate) => candidate.id == action.id)
         .firstOrNull;
     if (current == null ||
         current.sql != action.sql ||
@@ -112,11 +112,11 @@ class MetaActionRunner {
     if (!bound.isComplete) {
       showToast(
         context,
-        '"$label" needs ${bound.missing.map((m) => '@$m').join(', ')}.',
+        '"$label" needs ${bound.missing.map((name) => '@$name').join(', ')}.',
       );
       return null;
     }
-    if (bound.named.values.any((v) => v is MaskedValue)) {
+    if (bound.named.values.any((value) => value is MaskedValue)) {
       showToast(
         context,
         '"$label" uses a value that is masked for you, so it cannot run.',

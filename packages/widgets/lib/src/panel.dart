@@ -48,10 +48,10 @@ class AppPanel extends StatelessWidget {
           ),
           if (filter != null)
             Padding(
-              padding: const EdgeInsets.fromLTRB(6, 4, 6, 4),
+              padding: const EdgeInsets.fromLTRB(6.0, 4.0, 6.0, 4.0),
               child: filter,
             ),
-          const Divider(height: 1),
+          const Divider(height: 1.0),
           Expanded(child: child),
         ],
       ),
@@ -68,7 +68,7 @@ class PanelHeader extends StatelessWidget {
     this.subtitle,
     this.titleIcon,
     this.trailing,
-    this.padding = const EdgeInsets.fromLTRB(8, 4, 4, 4),
+    this.padding = const EdgeInsets.fromLTRB(8.0, 4.0, 4.0, 4.0),
   });
   final String? title;
   final String? subtitle;
@@ -88,8 +88,8 @@ class PanelHeader extends StatelessWidget {
       child: Row(
         children: [
           if (titleIcon != null) ...[
-            Icon(titleIcon, size: 14, color: theme.colorScheme.secondary),
-            const SizedBox(width: 6),
+            Icon(titleIcon, size: 14.0, color: theme.colorScheme.secondary),
+            const SizedBox(width: 6.0),
           ],
           Expanded(
             child: Column(

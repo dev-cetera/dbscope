@@ -11,12 +11,12 @@ final navigatorTabKind = TabKind(
   buildView: (tab) =>
       NavigatorTabView(key: ValueKey(tab.id), tab: tab as NavigatorTab),
   serialize: (tab) {
-    final t = tab as NavigatorTab;
+    final navigatorTab = tab as NavigatorTab;
     return {
       'kind': 'navigator',
-      'id': t.id,
-      'connectionId': t.connectionId,
-      'pinned': t.pinned,
+      'id': navigatorTab.id,
+      'connectionId': navigatorTab.connectionId,
+      'pinned': navigatorTab.pinned,
     };
   },
   deserialize: (j) => NavigatorTab(

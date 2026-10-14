@@ -92,11 +92,11 @@ class UiPrefs {
   void setMetaTrust(String profileId, String? v) =>
       _setOrRemove('$_kMetaTrustPrefix$profileId', v);
 
-  /// Stores [v] trimmed, or drops the key when there is nothing to store.
+  /// Stores [value] trimmed, or drops the key when there is nothing to store.
   /// Removing rather than writing `''` is what lets a reader tell "never set"
   /// from "set to empty" — the whole point of the nullable getters.
-  void _setOrRemove(String key, String? v) {
-    final trimmed = v?.trim();
+  void _setOrRemove(String key, String? value) {
+    final trimmed = value?.trim();
     if (trimmed == null || trimmed.isEmpty) {
       unawaited(_prefs?.remove(key));
     } else {

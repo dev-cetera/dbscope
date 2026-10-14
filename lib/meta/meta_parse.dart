@@ -72,23 +72,23 @@ List<String> decodeStringListCell(Object? cell) {
   return const [];
 }
 
-bool _bool(Object? v, {required bool fallback}) {
-  if (v == null) return fallback;
-  if (v is bool) return v;
-  if (v is num) return v != 0;
-  if (v is String) return v == 'true' || v == '1' || v == 't';
+bool _bool(Object? value, {required bool fallback}) {
+  if (value == null) return fallback;
+  if (value is bool) return value;
+  if (value is num) return value != 0;
+  if (value is String) return value == 'true' || value == '1' || value == 't';
   return fallback;
 }
 
-int _int(Object? v) {
-  if (v is int) return v;
-  if (v is num) return v.toInt();
-  if (v is String) return int.tryParse(v) ?? 0;
+int _int(Object? value) {
+  if (value is int) return value;
+  if (value is num) return value.toInt();
+  if (value is String) return int.tryParse(value) ?? 0;
   return 0;
 }
 
-String? _str(Object? v) {
-  if (v is String && v.trim().isNotEmpty) return v.trim();
+String? _trimmedStringOrNull(Object? value) {
+  if (value is String && value.trim().isNotEmpty) return value.trim();
   return null;
 }
 
@@ -117,9 +117,9 @@ class MetaSourceBuilder {
 
   /// One metadata row. [where] labels problems (file path, table name).
   void addMetaEntry(Map<String, Object?> entry, {required String where}) {
-    final id = _str(entry['id']);
-    final kind = _str(entry['kind']);
-    final targetRaw = _str(entry['target']) ?? '*';
+    final id = _trimmedStringOrNull(entry['id']);
+    final kind = _trimmedStringOrNull(entry['kind']);
+    final targetRaw = _trimmedStringOrNull(entry['target']) ?? '*';
     if (id == null) {
       problems.add(MetaProblem(source, where, 'A meta row needs an id.'));
       return;
@@ -128,7 +128,7 @@ class MetaSourceBuilder {
     // file, say) removes an id defined earlier in this same source, and
     // every lower source.
     if (!_bool(entry['enabled'], fallback: true)) {
-      rows.removeWhere((r) => r.id == id);
+      rows.removeWhere((row) => row.id == id);
       disabledRowIds.add(id);
       return;
     }
@@ -161,7 +161,7 @@ class MetaSourceBuilder {
       };
     }
     disabledRowIds.remove(id);
-    rows.removeWhere((r) => r.id == id);
+    rows.removeWhere((row) => row.id == id);
     rows.add(
       MetaRow(
         id: id,
@@ -175,7 +175,7 @@ class MetaSourceBuilder {
   }
 
   void addRole(Map<String, Object?> entry, {required String where}) {
-    final id = _str(entry['id']);
+    final id = _trimmedStringOrNull(entry['id']);
     if (id == null) {
       problems.add(MetaProblem(source, where, 'A role needs an id.'));
       return;
@@ -193,22 +193,24 @@ class MetaSourceBuilder {
     }
     final capabilities = <Capability>{};
     for (final raw in capabilityNames) {
-      final c = Capability.tryParse(raw);
-      if (c == null) {
+      final capability = Capability.tryParse(raw);
+      if (capability == null) {
         problems.add(MetaProblem(source, id, 'Unknown capability "$raw".'));
       } else {
-        capabilities.add(c);
+        capabilities.add(capability);
       }
     }
-    roles.removeWhere((r) => r.id == id);
+    roles.removeWhere((role) => role.id == id);
     roles.add(
       MetaRole(
         id: id,
-        label: _str(entry['label']) ?? id,
-        description: _str(entry['description']),
+        label: _trimmedStringOrNull(entry['label']) ?? id,
+        description: _trimmedStringOrNull(entry['description']),
         inherits: inherits,
         capabilities: capabilities,
-        dbRole: _str(entry['db_role']) ?? _str(entry['dbRole']),
+        dbRole:
+            _trimmedStringOrNull(entry['db_role']) ??
+            _trimmedStringOrNull(entry['dbRole']),
         spec: spec,
         source: source,
       ),
@@ -216,8 +218,10 @@ class MetaSourceBuilder {
   }
 
   void addMember(Map<String, Object?> entry, {required String where}) {
-    final roleId = _str(entry['role_id']) ?? _str(entry['role']);
-    final principal = _str(entry['principal']);
+    final roleId =
+        _trimmedStringOrNull(entry['role_id']) ??
+        _trimmedStringOrNull(entry['role']);
+    final principal = _trimmedStringOrNull(entry['principal']);
     if (roleId == null || principal == null) {
       problems.add(
         MetaProblem(source, where, 'A role member needs role and principal.'),
@@ -244,15 +248,17 @@ class MetaSourceBuilder {
   }
 
   void addGrant(Map<String, Object?> entry, {required String where}) {
-    final id = _str(entry['id']);
-    final roleId = _str(entry['role_id']) ?? _str(entry['role']);
-    final targetRaw = _str(entry['target']);
+    final id = _trimmedStringOrNull(entry['id']);
+    final roleId =
+        _trimmedStringOrNull(entry['role_id']) ??
+        _trimmedStringOrNull(entry['role']);
+    final targetRaw = _trimmedStringOrNull(entry['target']);
     if (id == null) {
       problems.add(MetaProblem(source, where, 'A grant needs an id.'));
       return;
     }
     if (!_bool(entry['enabled'], fallback: true)) {
-      grants.removeWhere((g) => g.id == id);
+      grants.removeWhere((grant) => grant.id == id);
       disabledGrantIds.add(id);
       return;
     }
@@ -286,7 +292,7 @@ class MetaSourceBuilder {
       return;
     }
     disabledGrantIds.remove(id);
-    grants.removeWhere((g) => g.id == id);
+    grants.removeWhere((grant) => grant.id == id);
     grants.add(
       MetaGrant(
         id: id,
@@ -297,7 +303,7 @@ class MetaSourceBuilder {
           entry['default_hidden'] ?? entry['defaultHidden'],
           fallback: false,
         ),
-        note: _str(entry['note']),
+        note: _trimmedStringOrNull(entry['note']),
         spec: spec,
         source: source,
       ),

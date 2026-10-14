@@ -22,8 +22,8 @@ class PgProxyKindPlugin implements ConnectionKindPlugin {
     ConnectionProfile profile, {
     BuildContext? context,
   }) async {
-    final exec = await PgProxyExecutor.open(profile);
-    return OpenResult(executor: exec);
+    final executor = await PgProxyExecutor.open(profile);
+    return OpenResult(executor: executor);
   }
 
   @override

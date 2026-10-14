@@ -19,22 +19,23 @@ class _InsertRowDialogState extends State<InsertRowDialog> {
   void initState() {
     super.initState();
     _values = {
-      for (final p in widget.policies.where((p) => !p.readOnly)) p.column: null,
+      for (final policy in widget.policies.where((policy) => !policy.readOnly))
+        policy.column: null,
     };
     _touched = <String>{};
   }
 
   void _submit() {
     final out = <String, Object?>{};
-    for (final p in widget.policies.where((p) => !p.readOnly)) {
-      final v = _values[p.column];
+    for (final policy in widget.policies.where((policy) => !policy.readOnly)) {
+      final value = _values[policy.column];
       // Skip columns the user never touched and that ended up empty,
       // so column defaults / sequences kick in.
-      if (!_touched.contains(p.column)) {
-        if (v == null) continue;
-        if (v is String && v.isEmpty) continue;
+      if (!_touched.contains(policy.column)) {
+        if (value == null) continue;
+        if (value is String && value.isEmpty) continue;
       }
-      out[p.column] = v;
+      out[policy.column] = value;
     }
     Navigator.of(context).pop(out);
   }
@@ -42,24 +43,26 @@ class _InsertRowDialogState extends State<InsertRowDialog> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final editable = widget.policies.where((p) => !p.readOnly).toList();
+    final editable = widget.policies
+        .where((policy) => !policy.readOnly)
+        .toList();
     return AlertDialog(
       title: const Text('Insert row'),
       content: SizedBox(
-        width: 520,
+        width: 520.0,
         child: SingleChildScrollView(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             mainAxisSize: MainAxisSize.min,
             children: [
-              for (final p in editable)
+              for (final policy in editable)
                 ColumnInput.forPolicy(
-                  policy: p,
-                  value: _values[p.column],
-                  onChanged: (v) {
+                  policy: policy,
+                  value: _values[policy.column],
+                  onChanged: (value) {
                     setState(() {
-                      _values[p.column] = v;
-                      _touched.add(p.column);
+                      _values[policy.column] = value;
+                      _touched.add(policy.column);
                     });
                   },
                 ),

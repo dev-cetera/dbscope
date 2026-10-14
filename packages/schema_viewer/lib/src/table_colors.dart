@@ -7,9 +7,9 @@ import 'package:flutter/material.dart';
 final List<Color> kRelationshipPalette = List.unmodifiable(
   List.generate(32, (i) {
     final hue = (i * 137.508) % 360;
-    final s = 0.55 + (i % 3) * 0.05;
-    final l = 0.50 + ((i ~/ 5) % 2) * 0.10;
-    return HSLColor.fromAHSL(1.0, hue, s, l).toColor();
+    final saturation = 0.55 + (i % 3) * 0.05;
+    final lightness = 0.50 + ((i ~/ 5) % 2) * 0.10;
+    return HSLColor.fromAHSL(1.0, hue, saturation, lightness).toColor();
   }),
 );
 
@@ -18,11 +18,11 @@ final List<Color> kRelationshipPalette = List.unmodifiable(
 /// don't land in the same bucket from a shared prefix — their reverses
 /// diverge at the very first byte of the hash input.
 int colorIndexForTable(String tableKey) {
-  var h = 2166136261;
+  var hash = 2166136261;
   for (var i = tableKey.length - 1; i >= 0; i--) {
-    h = ((h ^ tableKey.codeUnitAt(i)) * 16777619) & 0xFFFFFFFF;
+    hash = ((hash ^ tableKey.codeUnitAt(i)) * 16777619) & 0xFFFFFFFF;
   }
-  return h % kRelationshipPalette.length;
+  return hash % kRelationshipPalette.length;
 }
 
 /// Stable per-name colour. Used to tint card headers, FK row text, and
@@ -39,12 +39,12 @@ Map<String, Color> buildTableColorMap(Iterable<String> tableKeysInOrder) {
   final out = <String, Color>{};
   int? prevIdx;
   for (final key in tableKeysInOrder) {
-    var idx = colorIndexForTable(key);
-    if (prevIdx != null && idx == prevIdx) {
-      idx = (idx + 17) % kRelationshipPalette.length;
+    var index = colorIndexForTable(key);
+    if (prevIdx != null && index == prevIdx) {
+      index = (index + 17) % kRelationshipPalette.length;
     }
-    out[key] = kRelationshipPalette[idx];
-    prevIdx = idx;
+    out[key] = kRelationshipPalette[index];
+    prevIdx = index;
   }
   return out;
 }

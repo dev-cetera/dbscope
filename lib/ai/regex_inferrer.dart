@@ -14,6 +14,9 @@ import 'settings_store.dart';
 import 'sql_assistant.dart' show AssistantException;
 
 class RegexInferrer {
+  /// Longest sample cell value (in characters) sent to the model.
+  static const _kMaxSampleValueLength = 60;
+
   /// Returns the inferred column name, or null when the model declined.
   static Future<String?> infer({
     required String term,
@@ -71,13 +74,13 @@ class RegexInferrer {
     final picked = raw.trim().replaceAll(RegExp(r'^[`"\s]+|[`"\s]+$'), '');
     if (picked.isEmpty || picked.toUpperCase() == 'NONE') return null;
     // Defence in depth: only trust names that exist.
-    for (final c in columns) {
-      if (c.name == picked) return c.name;
+    for (final column in columns) {
+      if (column.name == picked) return column.name;
     }
     // LLM may have lowercased / camelised; do a case-insensitive lookup.
     final lower = picked.toLowerCase();
-    for (final c in columns) {
-      if (c.name.toLowerCase() == lower) return c.name;
+    for (final column in columns) {
+      if (column.name.toLowerCase() == lower) return column.name;
     }
     return null;
   }
@@ -87,28 +90,30 @@ class RegexInferrer {
     List<ColumnInfo> columns,
     List<List<Object?>> sampleRows,
   ) {
-    final buf = StringBuffer();
-    buf.writeln('Pattern: $term');
-    buf.writeln('Columns:');
-    for (final c in columns) {
-      final type = c.typeName.isEmpty ? 'unknown' : c.typeName;
-      buf.writeln(' - ${c.name} ($type)');
+    final buffer = StringBuffer();
+    buffer.writeln('Pattern: $term');
+    buffer.writeln('Columns:');
+    for (final column in columns) {
+      final type = column.typeName.isEmpty ? 'unknown' : column.typeName;
+      buffer.writeln(' - ${column.name} ($type)');
     }
     if (sampleRows.isNotEmpty) {
-      buf.writeln();
-      buf.writeln('Sample rows:');
+      buffer.writeln();
+      buffer.writeln('Sample rows:');
       for (final row in sampleRows) {
         final parts = <String>[];
         for (var i = 0; i < columns.length && i < row.length; i++) {
-          final v = row[i];
-          if (v == null) continue;
-          var s = v.toString();
-          if (s.length > 60) s = '${s.substring(0, 57)}…';
-          parts.add('${columns[i].name}=$s');
+          final value = row[i];
+          if (value == null) continue;
+          var text = value.toString();
+          if (text.length > _kMaxSampleValueLength) {
+            text = '${text.substring(0, _kMaxSampleValueLength - 3)}…';
+          }
+          parts.add('${columns[i].name}=$text');
         }
-        if (parts.isNotEmpty) buf.writeln(' - ${parts.join(', ')}');
+        if (parts.isNotEmpty) buffer.writeln(' - ${parts.join(', ')}');
       }
     }
-    return buf.toString();
+    return buffer.toString();
   }
 }

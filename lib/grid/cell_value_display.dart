@@ -66,7 +66,8 @@ class CellValueDisplay extends StatelessWidget {
   /// `incoming = false` means an outbound FK (row this column points
   /// at). The caller decides what "navigate" means (open Navigator,
   /// push step, etc.).
-  final void Function(ForeignKey fk, {required bool incoming})? onFollowLink;
+  final void Function(ForeignKey foreignKey, {required bool incoming})?
+  onFollowLink;
 
   /// When true the type-derived color is applied. When false the
   /// widget renders in the palette's text color (matches the grid's
@@ -112,12 +113,12 @@ class CellValueDisplay extends StatelessWidget {
       text = Row(
         children: [
           Container(
-            width: 12,
-            height: 12,
-            margin: const EdgeInsets.only(right: 6),
+            width: 12.0,
+            height: 12.0,
+            margin: const EdgeInsets.only(right: 6.0),
             decoration: BoxDecoration(
               color: Color(swatch),
-              borderRadius: BorderRadius.circular(2),
+              borderRadius: BorderRadius.circular(2.0),
               border: Border.all(color: palette.text.withValues(alpha: 0.3)),
             ),
           ),
@@ -131,7 +132,7 @@ class CellValueDisplay extends StatelessWidget {
         Expanded(child: text),
         if (_hasLink)
           _LinkButton(
-            outboundFk: outboundFk,
+            outboundForeignKey: outboundFk,
             inboundRefs: inboundRefs,
             onFollow: onFollowLink!,
             accent: palette.accent,
@@ -149,14 +150,14 @@ class CellValueDisplay extends StatelessWidget {
 
 class _LinkButton extends StatelessWidget {
   const _LinkButton({
-    required this.outboundFk,
+    required this.outboundForeignKey,
     required this.inboundRefs,
     required this.onFollow,
     required this.accent,
   });
-  final ForeignKey? outboundFk;
+  final ForeignKey? outboundForeignKey;
   final List<ForeignKey> inboundRefs;
-  final void Function(ForeignKey fk, {required bool incoming}) onFollow;
+  final void Function(ForeignKey foreignKey, {required bool incoming}) onFollow;
   final Color accent;
 
   @override
@@ -174,19 +175,19 @@ class _LinkButton extends StatelessWidget {
     final overlay =
         Overlay.of(context).context.findRenderObject() as RenderBox?;
     if (box == null || overlay == null) return;
-    final pos = box.localToGlobal(Offset.zero, ancestor: overlay);
+    final position = box.localToGlobal(Offset.zero, ancestor: overlay);
     final size = box.size;
     final items = <PopupMenuEntry<_LinkChoice>>[];
-    if (outboundFk != null) {
+    if (outboundForeignKey != null) {
       items.add(
         PopupMenuItem(
-          value: _LinkChoice(outboundFk!, incoming: false),
+          value: _LinkChoice(outboundForeignKey!, incoming: false),
           child: Row(
             children: [
-              const Icon(Icons.east, size: 14),
-              const SizedBox(width: 6),
+              const Icon(Icons.east, size: 14.0),
+              const SizedBox(width: 6.0),
               Text(
-                'Open row in ${outboundFk!.toSchema}.${outboundFk!.toTable}',
+                'Open row in ${outboundForeignKey!.toSchema}.${outboundForeignKey!.toTable}',
               ),
             ],
           ),
@@ -198,24 +199,24 @@ class _LinkButton extends StatelessWidget {
       items.add(
         const PopupMenuItem(
           enabled: false,
-          height: 24,
+          height: 24.0,
           child: Text(
             'REFERENCED BY',
-            style: TextStyle(fontSize: 10, fontWeight: FontWeight.w600),
+            style: TextStyle(fontSize: 10.0, fontWeight: FontWeight.w600),
           ),
         ),
       );
-      for (final fk in inboundRefs) {
+      for (final foreignKey in inboundRefs) {
         items.add(
           PopupMenuItem(
-            value: _LinkChoice(fk, incoming: true),
+            value: _LinkChoice(foreignKey, incoming: true),
             child: Row(
               children: [
-                const Icon(Icons.subdirectory_arrow_right, size: 14),
-                const SizedBox(width: 6),
+                const Icon(Icons.subdirectory_arrow_right, size: 14.0),
+                const SizedBox(width: 6.0),
                 Expanded(
                   child: Text(
-                    '${fk.fromSchema}.${fk.fromTable}.${fk.fromColumn}',
+                    '${foreignKey.fromSchema}.${foreignKey.fromTable}.${foreignKey.fromColumn}',
                   ),
                 ),
               ],
@@ -228,20 +229,22 @@ class _LinkButton extends StatelessWidget {
     final choice = await showMenu<_LinkChoice>(
       context: context,
       position: RelativeRect.fromLTRB(
-        pos.dx,
-        pos.dy + size.height,
-        pos.dx + size.width,
-        pos.dy + size.height + 1,
+        position.dx,
+        position.dy + size.height,
+        position.dx + size.width,
+        position.dy + size.height + 1,
       ),
       items: items,
     );
-    if (choice != null) onFollow(choice.fk, incoming: choice.incoming);
+    if (choice != null) {
+      onFollow(choice.foreignKey, incoming: choice.incoming);
+    }
   }
 }
 
 class _LinkChoice {
-  const _LinkChoice(this.fk, {required this.incoming});
-  final ForeignKey fk;
+  const _LinkChoice(this.foreignKey, {required this.incoming});
+  final ForeignKey foreignKey;
   final bool incoming;
 }
 
@@ -314,10 +317,10 @@ class _IconButton extends StatelessWidget {
       message: tooltip,
       child: InkResponse(
         onTap: onPressed,
-        radius: 12,
+        radius: 12.0,
         child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 2),
-          child: Icon(icon, size: 12, color: color),
+          padding: const EdgeInsets.symmetric(horizontal: 2.0),
+          child: Icon(icon, size: 12.0, color: color),
         ),
       ),
     );

@@ -118,9 +118,9 @@ class _SqliteConnectionDialogState extends State<SqliteConnectionDialog> {
     });
   }
 
-  String _basenameNoExt(String p) {
-    final sep = p.contains(r'\') ? r'\' : '/';
-    final base = p.split(sep).last;
+  String _basenameNoExt(String filePath) {
+    final sep = filePath.contains(r'\') ? r'\' : '/';
+    final base = filePath.split(sep).last;
     final dot = base.lastIndexOf('.');
     return dot <= 0 ? base : base.substring(0, dot);
   }
@@ -150,7 +150,7 @@ class _SqliteConnectionDialogState extends State<SqliteConnectionDialog> {
             : 'Edit SQLite connection',
       ),
       content: SizedBox(
-        width: 480,
+        width: 480.0,
         child: Form(
           key: _formKey,
           child: Column(
@@ -160,9 +160,9 @@ class _SqliteConnectionDialogState extends State<SqliteConnectionDialog> {
               TextFormField(
                 controller: _name,
                 decoration: const InputDecoration(labelText: 'Name'),
-                validator: _req,
+                validator: _requiredValidator,
               ),
-              const SizedBox(height: 12),
+              const SizedBox(height: 12.0),
               Row(
                 children: [
                   Expanded(
@@ -172,10 +172,10 @@ class _SqliteConnectionDialogState extends State<SqliteConnectionDialog> {
                         labelText: 'Database file',
                         hintText: '/path/to/your.db',
                       ),
-                      validator: _req,
+                      validator: _requiredValidator,
                     ),
                   ),
-                  const SizedBox(width: 8),
+                  const SizedBox(width: 8.0),
                   IconButton(
                     tooltip: 'Browse',
                     icon: const Icon(Icons.folder_open),
@@ -183,10 +183,10 @@ class _SqliteConnectionDialogState extends State<SqliteConnectionDialog> {
                   ),
                 ],
               ),
-              const SizedBox(height: 12),
+              const SizedBox(height: 12.0),
               SwitchListTile(
                 value: _readOnly,
-                onChanged: (v) => setState(() => _readOnly = v),
+                onChanged: (value) => setState(() => _readOnly = value),
                 title: const Text('Read-only'),
                 subtitle: const Text(
                   'Enforced via PRAGMA query_only',
@@ -207,6 +207,6 @@ class _SqliteConnectionDialogState extends State<SqliteConnectionDialog> {
     );
   }
 
-  String? _req(String? v) =>
-      (v == null || v.trim().isEmpty) ? 'required' : null;
+  String? _requiredValidator(String? value) =>
+      (value == null || value.trim().isEmpty) ? 'required' : null;
 }

@@ -23,7 +23,7 @@ class SchemaTabView extends StatefulWidget {
 }
 
 class _SchemaTabViewState extends State<SchemaTabView> {
-  late final _canvasCtrl = SchemaCanvasController();
+  late final _canvasController = SchemaCanvasController();
 
   @override
   void initState() {
@@ -34,7 +34,7 @@ class _SchemaTabViewState extends State<SchemaTabView> {
     });
   }
 
-  DbExecutor? _conn() =>
+  DbExecutor? _executor() =>
       ConnectionRegistry.instance.connectionFor(widget.tab.connectionId);
 
   Future<void> _loadSchema({bool force = false}) async {
@@ -44,16 +44,16 @@ class _SchemaTabViewState extends State<SchemaTabView> {
     tab.error = null;
     AppState.instance.notifyChange();
     try {
-      final conn = _conn();
-      if (conn == null) {
+      final executor = _executor();
+      if (executor == null) {
         tab.error = 'No connection.';
         return;
       }
-      final cat = SchemaCatalog(conn);
-      final schemas = await cat.listSchemas();
+      final catalog = SchemaCatalog(executor);
+      final schemas = await catalog.listSchemas();
       final userSchemas = schemas
-          .where((s) => !s.isSystem)
-          .map((s) => s.name)
+          .where((schema) => !schema.isSystem)
+          .map((schema) => schema.name)
           .toList();
       // Gather diagrammable tables across every user schema first, so we
       // can spot table names that collide across schemas. A table living
@@ -62,79 +62,86 @@ class _SchemaTabViewState extends State<SchemaTabView> {
       // since the card header shows only the bare table name.
       final diagramTables = <(String schema, TableInfo table)>[];
       for (final schemaName in userSchemas) {
-        final tables = await cat.listTables(schemaName);
-        for (final t in tables) {
-          if (t.kind != 'BASE TABLE' && t.kind != 'VIEW') continue;
-          diagramTables.add((schemaName, t));
+        final tables = await catalog.listTables(schemaName);
+        for (final table in tables) {
+          if (table.kind != 'BASE TABLE' && table.kind != 'VIEW') continue;
+          diagramTables.add((schemaName, table));
         }
       }
       final nameCounts = <String, int>{};
-      for (final (_, t) in diagramTables) {
-        nameCounts[t.name] = (nameCounts[t.name] ?? 0) + 1;
+      for (final (_, table) in diagramTables) {
+        nameCounts[table.name] = (nameCounts[table.name] ?? 0) + 1;
       }
 
       final nodes = <SchemaNodeData>[];
-      for (final (schemaName, t) in diagramTables) {
-        final cols = force
-            ? await cat.listColumns(schemaName, t.name)
-            : (tab.cachedColumns(schemaName, t.name) ??
-                  await cat.listColumns(schemaName, t.name));
-        tab.setCachedColumns(schemaName, t.name, cols);
-        final pkCols = (await cat.primaryKey(schemaName, t.name)).toSet();
+      for (final (schemaName, table) in diagramTables) {
+        final columns = force
+            ? await catalog.listColumns(schemaName, table.name)
+            : (tab.cachedColumns(schemaName, table.name) ??
+                  await catalog.listColumns(schemaName, table.name));
+        tab.setCachedColumns(schemaName, table.name, columns);
+        final primaryKeyColumns = (await catalog.primaryKey(
+          schemaName,
+          table.name,
+        )).toSet();
         nodes.add(
           SchemaNodeData(
-            id: '$schemaName.${t.name}',
+            id: '$schemaName.${table.name}',
             schema: schemaName,
-            tableName: t.name,
+            tableName: table.name,
             // Disambiguate cards when the same table name exists in more
             // than one schema; single-schema names stay uncluttered.
-            subtitle: (nameCounts[t.name] ?? 0) > 1 ? schemaName : null,
+            subtitle: (nameCounts[table.name] ?? 0) > 1 ? schemaName : null,
             fields: [
-              for (final c in cols)
+              for (final column in columns)
                 SchemaFieldSpec(
-                  name: c.name,
-                  typeLabel: c.typeName,
-                  pk: pkCols.contains(c.name),
+                  name: column.name,
+                  typeLabel: column.typeName,
+                  pk: primaryKeyColumns.contains(column.name),
                 ),
             ],
           ),
         );
       }
 
-      final fks = await cat.listForeignKeys();
-      final byId = {for (final n in nodes) n.id: n};
+      final foreignKeys = await catalog.listForeignKeys();
+      final byId = {for (final node in nodes) node.id: node};
       final edges = <SchemaEdgeData>[];
       var edgeId = 0;
-      for (final fk in fks) {
-        final srcId = '${fk.fromSchema}.${fk.fromTable}';
-        final tgtId = '${fk.toSchema}.${fk.toTable}';
+      for (final foreignKey in foreignKeys) {
+        final srcId = '${foreignKey.fromSchema}.${foreignKey.fromTable}';
+        final tgtId = '${foreignKey.toSchema}.${foreignKey.toTable}';
         final srcNode = byId[srcId];
         final tgtNode = byId[tgtId];
         if (srcNode != null) {
-          final idx = srcNode.fields.indexWhere((f) => f.name == fk.fromColumn);
-          if (idx >= 0) {
-            final orig = srcNode.fields[idx];
-            srcNode.fields[idx] = SchemaFieldSpec(
+          final fieldIndex = srcNode.fields.indexWhere(
+            (field) => field.name == foreignKey.fromColumn,
+          );
+          if (fieldIndex >= 0) {
+            final orig = srcNode.fields[fieldIndex];
+            srcNode.fields[fieldIndex] = SchemaFieldSpec(
               name: orig.name,
               typeLabel: orig.typeLabel,
               pk: orig.pk,
               fk: true,
               isRefTarget: orig.isRefTarget,
-              linkedTable: fk.toTable,
+              linkedTable: foreignKey.toTable,
             );
           }
         }
         if (tgtNode != null) {
-          final idx = tgtNode.fields.indexWhere((f) => f.name == fk.toColumn);
-          if (idx >= 0) {
-            final orig = tgtNode.fields[idx];
-            tgtNode.fields[idx] = SchemaFieldSpec(
+          final fieldIndex = tgtNode.fields.indexWhere(
+            (field) => field.name == foreignKey.toColumn,
+          );
+          if (fieldIndex >= 0) {
+            final orig = tgtNode.fields[fieldIndex];
+            tgtNode.fields[fieldIndex] = SchemaFieldSpec(
               name: orig.name,
               typeLabel: orig.typeLabel,
               pk: orig.pk,
               fk: orig.fk,
               isRefTarget: true,
-              linkedTable: orig.linkedTable ?? fk.fromTable,
+              linkedTable: orig.linkedTable ?? foreignKey.fromTable,
             );
           }
         }
@@ -145,9 +152,9 @@ class _SchemaTabViewState extends State<SchemaTabView> {
             id: 'e${edgeId++}',
             sourceId: srcId,
             targetId: tgtId,
-            sourceField: fk.fromColumn,
-            targetField: fk.toColumn,
-            dashed: fk.isVirtual,
+            sourceField: foreignKey.fromColumn,
+            targetField: foreignKey.toColumn,
+            dashed: foreignKey.isVirtual,
           ),
         );
       }
@@ -170,11 +177,11 @@ class _SchemaTabViewState extends State<SchemaTabView> {
     }
   }
 
-  void _setLayoutMode(SchemaLayoutMode m) {
+  void _setLayoutMode(SchemaLayoutMode mode) {
     final tab = widget.tab;
-    if (tab.layoutMode == m) return;
-    tab.layoutMode = m;
-    layoutSchemaNodes(tab.nodes, tab.edges, mode: m);
+    if (tab.layoutMode == mode) return;
+    tab.layoutMode = mode;
+    layoutSchemaNodes(tab.nodes, tab.edges, mode: mode);
     AppState.instance.notifyChange();
     setState(() {});
   }
@@ -206,8 +213,8 @@ class _SchemaTabViewState extends State<SchemaTabView> {
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         Container(
-          height: 36,
-          padding: const EdgeInsets.symmetric(horizontal: 10),
+          height: 36.0,
+          padding: const EdgeInsets.symmetric(horizontal: 10.0),
           decoration: BoxDecoration(
             color: palette.surfaceRaised,
             border: Border(bottom: BorderSide(color: palette.border)),
@@ -223,14 +230,14 @@ class _SchemaTabViewState extends State<SchemaTabView> {
                   fontSize: palette.bodyFontSize,
                 ),
               ),
-              const SizedBox(width: 12),
+              const SizedBox(width: 12.0),
               _LayoutModeButton(
                 label: 'LR',
                 tooltip: 'Left to right (roots on left, leaves on right)',
                 isSelected: tab.layoutMode == SchemaLayoutMode.lr,
                 onPressed: () => _setLayoutMode(SchemaLayoutMode.lr),
               ),
-              const SizedBox(width: 4),
+              const SizedBox(width: 4.0),
               _LayoutModeButton(
                 label: 'TB',
                 tooltip: 'Top to bottom',
@@ -240,31 +247,38 @@ class _SchemaTabViewState extends State<SchemaTabView> {
               const Spacer(),
               IconButton(
                 tooltip: 'Zoom out',
-                icon: const Icon(Icons.remove, size: 18),
+                icon: const Icon(Icons.remove, size: 18.0),
                 onPressed: tab.isLoaded
-                    ? () => _canvasCtrl.zoomBy(1 / 1.5)
+                    ? () => _canvasController.zoomBy(1 / 1.5)
                     : null,
               ),
               IconButton(
                 tooltip: 'Fit to view',
-                icon: const Icon(Icons.center_focus_strong_outlined, size: 18),
-                onPressed: tab.isLoaded ? () => _canvasCtrl.fitView() : null,
+                icon: const Icon(
+                  Icons.center_focus_strong_outlined,
+                  size: 18.0,
+                ),
+                onPressed: tab.isLoaded
+                    ? () => _canvasController.fitView()
+                    : null,
               ),
               IconButton(
                 tooltip: 'Zoom in',
-                icon: const Icon(Icons.add, size: 18),
-                onPressed: tab.isLoaded ? () => _canvasCtrl.zoomBy(1.5) : null,
+                icon: const Icon(Icons.add, size: 18.0),
+                onPressed: tab.isLoaded
+                    ? () => _canvasController.zoomBy(1.5)
+                    : null,
               ),
-              const SizedBox(width: 8),
+              const SizedBox(width: 8.0),
               IconButton(
                 tooltip: 'Refresh schema',
                 icon: tab.isLoading
                     ? const SizedBox(
-                        width: 14,
-                        height: 14,
-                        child: CircularProgressIndicator(strokeWidth: 2),
+                        width: 14.0,
+                        height: 14.0,
+                        child: CircularProgressIndicator(strokeWidth: 2.0),
                       )
-                    : const Icon(Icons.refresh, size: 18),
+                    : const Icon(Icons.refresh, size: 18.0),
                 onPressed: tab.isLoading
                     ? null
                     : () => _loadSchema(force: true),
@@ -276,7 +290,7 @@ class _SchemaTabViewState extends State<SchemaTabView> {
           child: tab.error != null
               ? Center(
                   child: Padding(
-                    padding: const EdgeInsets.all(16),
+                    padding: const EdgeInsets.all(16.0),
                     child: Text(
                       tab.error!,
                       style: TextStyle(color: theme.colorScheme.error),
@@ -290,25 +304,25 @@ class _SchemaTabViewState extends State<SchemaTabView> {
                           mainAxisSize: MainAxisSize.min,
                           children: [
                             CircularProgressIndicator(),
-                            SizedBox(height: 12),
+                            SizedBox(height: 12.0),
                             Text('Loading schema...'),
                           ],
                         )
                       : const Text('Loading schema...'),
                 )
               : SchemaCanvas(
-                  controller: _canvasCtrl,
+                  controller: _canvasController,
                   nodes: tab.nodes,
                   edges: tab.edges,
                   pan: tab.pan,
                   scale: tab.scale,
-                  onPanChanged: (p) {
-                    tab.pan = p;
+                  onPanChanged: (pan) {
+                    tab.pan = pan;
                     AppState.instance.notifyChange();
                     setState(() {});
                   },
-                  onScaleChanged: (s) {
-                    tab.scale = s;
+                  onScaleChanged: (scale) {
+                    tab.scale = scale;
                     AppState.instance.notifyChange();
                     setState(() {});
                   },
@@ -351,17 +365,17 @@ class _LayoutModeButton extends StatelessWidget {
       child: InkWell(
         onTap: onPressed,
         child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+          padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 3.0),
           decoration: BoxDecoration(
             color: isSelected ? theme.colorScheme.primary : palette.field,
-            borderRadius: BorderRadius.circular(3),
+            borderRadius: BorderRadius.circular(3.0),
             border: Border.all(color: palette.border),
           ),
           child: Text(
             label,
             style: TextStyle(
               color: isSelected ? theme.colorScheme.onPrimary : palette.text,
-              fontSize: 11,
+              fontSize: 11.0,
               fontWeight: FontWeight.w600,
             ),
           ),

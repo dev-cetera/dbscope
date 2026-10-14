@@ -100,8 +100,8 @@ String translatePositionalToSqlite(String sql) {
       while (j < sql.length && _isDigit(sql.codeUnitAt(j))) {
         j++;
       }
-      final n = sql.substring(i + 1, j);
-      out.write('?$n');
+      final index = sql.substring(i + 1, j);
+      out.write('?$index');
       i = j;
       continue;
     }
@@ -213,17 +213,19 @@ _DollarTag? _readDollarTag(String sql, int i) {
   if (i >= sql.length || sql[i] != r'$') return null;
   var j = i + 1;
   while (j < sql.length) {
-    final c = sql.codeUnitAt(j);
-    if (c == 0x24) {
+    final codeUnit = sql.codeUnitAt(j);
+    if (codeUnit == 0x24) {
       return _DollarTag(sql.substring(i, j + 1));
     }
-    if (!_isNamePart(c)) return null;
+    if (!_isNamePart(codeUnit)) return null;
     j++;
   }
   return null;
 }
 
-bool _isDigit(int c) => c >= 0x30 && c <= 0x39;
-bool _isNameStart(int c) =>
-    (c >= 0x41 && c <= 0x5a) || (c >= 0x61 && c <= 0x7a) || c == 0x5f;
-bool _isNamePart(int c) => _isNameStart(c) || _isDigit(c);
+bool _isDigit(int codeUnit) => codeUnit >= 0x30 && codeUnit <= 0x39;
+bool _isNameStart(int codeUnit) =>
+    (codeUnit >= 0x41 && codeUnit <= 0x5a) ||
+    (codeUnit >= 0x61 && codeUnit <= 0x7a) ||
+    codeUnit == 0x5f;
+bool _isNamePart(int codeUnit) => _isNameStart(codeUnit) || _isDigit(codeUnit);

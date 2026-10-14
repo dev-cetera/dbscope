@@ -95,7 +95,7 @@ class _SqlEditorState extends State<SqlEditor> {
             gutterStyle: GutterStyle(
               textStyle: TextStyle(
                 fontFamily: 'Menlo',
-                fontSize: 12,
+                fontSize: 12.0,
                 color: theme.hintColor,
               ),
               background: theme.colorScheme.surfaceContainer,

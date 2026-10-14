@@ -191,7 +191,7 @@ class _DataGridState<TypeTag> extends State<DataGrid<TypeTag>> {
   final _hScroll = ScrollController();
   final _gridFocus = FocusNode(debugLabel: 'DataGrid');
   final _gutterScroll = ScrollController();
-  late final _fallbackRowHeight = ValueNotifier<double>(32);
+  late final _fallbackRowHeight = ValueNotifier<double>(_kDefaultRowHeight);
   String? _sortColumn;
   var _sortDescending = false;
   int? _lastReportedRowIdx;
@@ -206,10 +206,13 @@ class _DataGridState<TypeTag> extends State<DataGrid<TypeTag>> {
   /// replace; shifted when rows are inserted/removed at the top.
   final Map<int, double> _rowHeightOverrides = {};
 
-  /// Effective height for the row at [rowIdx]: override if set,
+  /// Effective height for the row at [rowIndex]: override if set,
   /// otherwise the default `rowHeight`.
-  double _heightFor(int rowIdx) => _rowHeightOverrides[rowIdx] ?? _rowHeight;
+  double _heightFor(int rowIndex) =>
+      _rowHeightOverrides[rowIndex] ?? _rowHeight;
 
+  /// Row height used when the host supplies no `rowHeight` notifier.
+  static const double _kDefaultRowHeight = 32;
   static const double _kMinRowHeight = 12;
   static const double _kMaxRowHeight = 1200;
 
@@ -262,8 +265,8 @@ class _DataGridState<TypeTag> extends State<DataGrid<TypeTag>> {
     _model.resetColumns(
       _currentData.columns.length,
       [
-        for (final c in _currentData.columns)
-          c.defaultWidth ?? widget.defaultColumnWidth,
+        for (final column in _currentData.columns)
+          column.defaultWidth ?? widget.defaultColumnWidth,
       ],
       hidden: {
         for (var i = 0; i < _currentData.columns.length; i++)
@@ -274,19 +277,19 @@ class _DataGridState<TypeTag> extends State<DataGrid<TypeTag>> {
   }
 
   @override
-  void didUpdateWidget(covariant DataGrid<TypeTag> old) {
-    super.didUpdateWidget(old);
-    if (!identical(old.controller, widget.controller)) {
-      old.controller?._detach(this);
+  void didUpdateWidget(covariant DataGrid<TypeTag> oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (!identical(oldWidget.controller, widget.controller)) {
+      oldWidget.controller?._detach(this);
       widget.controller?._attach(this);
     }
-    final oldListenable = old.rowHeight ?? _fallbackRowHeight;
+    final oldListenable = oldWidget.rowHeight ?? _fallbackRowHeight;
     final newListenable = widget.rowHeight ?? _fallbackRowHeight;
     if (!identical(oldListenable, newListenable)) {
       oldListenable.removeListener(_onRowHeightChanged);
       newListenable.addListener(_onRowHeightChanged);
     }
-    if (widget.controller == null && !identical(old.data, widget.data)) {
+    if (widget.controller == null && !identical(oldWidget.data, widget.data)) {
       _applyReplaceAll(widget.data);
     }
   }
@@ -311,11 +314,11 @@ class _DataGridState<TypeTag> extends State<DataGrid<TypeTag>> {
   void _onModelChange() {
     if (!mounted) return;
     setState(() {});
-    final s = _model.selection;
-    final idx = s?.focusRow;
-    if (idx != _lastReportedRowIdx) {
-      _lastReportedRowIdx = idx;
-      widget.onRowSelected?.call(idx);
+    final selection = _model.selection;
+    final index = selection?.focusRow;
+    if (index != _lastReportedRowIdx) {
+      _lastReportedRowIdx = index;
+      widget.onRowSelected?.call(index);
     }
   }
 
@@ -323,8 +326,8 @@ class _DataGridState<TypeTag> extends State<DataGrid<TypeTag>> {
     if (widget.onLoadMore == null || !widget.hasMore || widget.isLoading) {
       return;
     }
-    final p = _vScroll.position;
-    if (p.pixels >= p.maxScrollExtent - 200) {
+    final position = _vScroll.position;
+    if (position.pixels >= position.maxScrollExtent - 200) {
       widget.onLoadMore!();
     }
   }
@@ -364,10 +367,10 @@ class _DataGridState<TypeTag> extends State<DataGrid<TypeTag>> {
     _currentData.rows.removeRange(0, actual);
     final scroll = _vScroll;
     if (scroll.hasClients) {
-      final prev = scroll.position.pixels;
-      final target =
-          (prev - removedExtent).clamp(0.0, scroll.position.maxScrollExtent);
-      if (target != prev) scroll.jumpTo(target);
+      final previous = scroll.position.pixels;
+      final target = (previous - removedExtent)
+          .clamp(0.0, scroll.position.maxScrollExtent);
+      if (target != previous) scroll.jumpTo(target);
     }
     _model.setRowCount(_currentData.rows.length);
   }
@@ -420,17 +423,17 @@ class _DataGridState<TypeTag> extends State<DataGrid<TypeTag>> {
       ..addAll(shifted);
   }
 
-  void _applySetRowHeight(int rowIdx, double? height) {
-    if (rowIdx < 0 || rowIdx >= _currentData.rows.length) return;
+  void _applySetRowHeight(int rowIndex, double? height) {
+    if (rowIndex < 0 || rowIndex >= _currentData.rows.length) return;
     if (height == null) {
-      if (_rowHeightOverrides.remove(rowIdx) != null && mounted) {
+      if (_rowHeightOverrides.remove(rowIndex) != null && mounted) {
         setState(() {});
       }
       return;
     }
     final clamped = height.clamp(_kMinRowHeight, _kMaxRowHeight);
-    if (_rowHeightOverrides[rowIdx] == clamped) return;
-    _rowHeightOverrides[rowIdx] = clamped;
+    if (_rowHeightOverrides[rowIndex] == clamped) return;
+    _rowHeightOverrides[rowIndex] = clamped;
     if (mounted) setState(() {});
   }
 
@@ -440,72 +443,74 @@ class _DataGridState<TypeTag> extends State<DataGrid<TypeTag>> {
     if (mounted) setState(() {});
   }
 
-  void _onGutterResize(int rowIdx, double delta) {
-    final current = _heightFor(rowIdx);
+  void _onGutterResize(int rowIndex, double delta) {
+    final current = _heightFor(rowIndex);
     final next = (current + delta).clamp(_kMinRowHeight, _kMaxRowHeight);
-    _applySetRowHeight(rowIdx, next);
-    widget.onRowHeightChanged?.call(rowIdx, next);
+    _applySetRowHeight(rowIndex, next);
+    widget.onRowHeightChanged?.call(rowIndex, next);
   }
 
-  void _applyUpdateCell(int rowIdx, String column, Object? value) {
-    if (rowIdx < 0 || rowIdx >= _currentData.rows.length) return;
-    final colIdx = _currentData.columns.indexWhere((c) => c.name == column);
-    if (colIdx < 0) return;
-    _currentData.rows[rowIdx][colIdx] = value;
+  void _applyUpdateCell(int rowIndex, String column, Object? value) {
+    if (rowIndex < 0 || rowIndex >= _currentData.rows.length) return;
+    final columnIndex = _currentData.columns.indexWhere(
+      (spec) => spec.name == column,
+    );
+    if (columnIndex < 0) return;
+    _currentData.rows[rowIndex][columnIndex] = value;
     if (mounted) setState(() {});
   }
 
   // --- Sort / reorder / resize ------------------------------------------
 
-  void _onSortToggle(int originalIdx) {
+  void _onSortToggle(int originalIndex) {
     if (widget.onSort == null) return;
-    final col = _currentData.columns[originalIdx];
-    final desc = _sortColumn == col.name && !_sortDescending;
+    final column = _currentData.columns[originalIndex];
+    final descending = _sortColumn == column.name && !_sortDescending;
     setState(() {
-      _sortColumn = col.name;
-      _sortDescending = desc;
+      _sortColumn = column.name;
+      _sortDescending = descending;
     });
-    widget.onSort!(GridSortEvent(col.name, descending: desc));
+    widget.onSort!(GridSortEvent(column.name, descending: descending));
   }
 
-  void _onWidthChanged(int originalIdx, double width) =>
-      _model.setColumnWidth(originalIdx, width);
+  void _onWidthChanged(int originalIndex, double width) =>
+      _model.setColumnWidth(originalIndex, width);
 
   void _onReorder(int fromView, int toView) =>
       _model.reorderColumn(fromView, toView);
 
   // --- Cell interaction --------------------------------------------------
 
-  void _onCellTap(int row, int col, {required bool extend}) {
+  void _onCellTap(int row, int column, {required bool extend}) {
     if (extend) {
-      _model.extendSelection(row, col);
+      _model.extendSelection(row, column);
     } else {
-      _model.selectSingle(row, col);
+      _model.selectSingle(row, column);
     }
     _gridFocus.requestFocus();
   }
 
-  void _onCellDoubleTap(int row, int col) {
+  void _onCellDoubleTap(int row, int column) {
     final editor = widget.cellEditor;
     if (editor == null) return;
-    final originalIdx = _model.viewToOriginal(col);
-    final spec = _currentData.columns[originalIdx];
+    final originalIndex = _model.viewToOriginal(column);
+    final spec = _currentData.columns[originalIndex];
     if (!editor.canEdit(spec)) return;
     if (widget.onCellEdit == null) return;
     if (editor.requiresDialog(spec)) {
-      unawaited(_editViaDialog(row, originalIdx, spec));
+      unawaited(_editViaDialog(row, originalIndex, spec));
       return;
     }
-    _model.beginEdit(row, col);
+    _model.beginEdit(row, column);
   }
 
   Future<void> _editViaDialog(
     int row,
-    int originalIdx,
+    int originalIndex,
     GridColumnSpec<TypeTag> spec,
   ) async {
     final editor = widget.cellEditor!;
-    final oldValue = _currentData.rows[row][originalIdx];
+    final oldValue = _currentData.rows[row][originalIndex];
     final result = await editor.openDialog(context, oldValue, spec);
     if (result == null) return;
     if (result == oldValue) return;
@@ -514,11 +519,11 @@ class _DataGridState<TypeTag> extends State<DataGrid<TypeTag>> {
     );
   }
 
-  ({int row, int col})? _hitTest(Offset localPos) {
-    if (localPos.dy < 0 || localPos.dx < 0) return null;
+  ({int row, int col})? _hitTest(Offset localPosition) {
+    if (localPosition.dy < 0 || localPosition.dx < 0) return null;
     if (_currentData.rows.isEmpty || _model.order.isEmpty) return null;
     final vOffset = _vScroll.hasClients ? _vScroll.offset : 0.0;
-    final targetY = vOffset + localPos.dy;
+    final targetY = vOffset + localPosition.dy;
     final int absRow;
     if (_rowHeightOverrides.isEmpty) {
       // Fast path: every row has the default height.
@@ -530,12 +535,12 @@ class _DataGridState<TypeTag> extends State<DataGrid<TypeTag>> {
       var acc = 0.0;
       var found = -1;
       for (var i = 0; i < _currentData.rows.length; i++) {
-        final h = _heightFor(i);
-        if (targetY < acc + h) {
+        final height = _heightFor(i);
+        if (targetY < acc + height) {
           found = i;
           break;
         }
-        acc += h;
+        acc += height;
       }
       if (found < 0) return null;
       absRow = found;
@@ -543,19 +548,19 @@ class _DataGridState<TypeTag> extends State<DataGrid<TypeTag>> {
     if (absRow < 0 || absRow >= _currentData.rows.length) return null;
     var acc = 0.0;
     for (var v = 0; v < _model.order.length; v++) {
-      final w = _model.widthAt(v);
-      if (localPos.dx >= acc && localPos.dx < acc + w) {
+      final width = _model.widthAt(v);
+      if (localPosition.dx >= acc && localPosition.dx < acc + width) {
         return (row: absRow, col: v);
       }
-      acc += w;
+      acc += width;
     }
     return null;
   }
 
-  void _onBodyPointerDown(PointerDownEvent e, Offset localPos) {
+  void _onBodyPointerDown(PointerDownEvent e, Offset localPosition) {
     if (e.buttons != kPrimaryButton) return;
     if (_model.isEditing) return;
-    final hit = _hitTest(localPos);
+    final hit = _hitTest(localPosition);
     if (hit == null) return;
     _isDragging = true;
     final keys = HardwareKeyboard.instance.logicalKeysPressed;
@@ -570,13 +575,13 @@ class _DataGridState<TypeTag> extends State<DataGrid<TypeTag>> {
     _gridFocus.requestFocus();
   }
 
-  void _onBodyPointerMove(PointerMoveEvent e, Offset localPos) {
+  void _onBodyPointerMove(PointerMoveEvent e, Offset localPosition) {
     if (!_isDragging) return;
     if (e.buttons != kPrimaryButton) {
       _isDragging = false;
       return;
     }
-    final hit = _hitTest(localPos);
+    final hit = _hitTest(localPosition);
     if (hit == null) return;
     _model.extendSelection(hit.row, hit.col);
   }
@@ -585,10 +590,10 @@ class _DataGridState<TypeTag> extends State<DataGrid<TypeTag>> {
     _isDragging = false;
   }
 
-  void _onCommit(int row, int col, Object? newValue) {
-    final originalIdx = _model.viewToOriginal(col);
-    final spec = _currentData.columns[originalIdx];
-    final oldValue = _currentData.rows[row][originalIdx];
+  void _onCommit(int row, int column, Object? newValue) {
+    final originalIndex = _model.viewToOriginal(column);
+    final spec = _currentData.columns[originalIndex];
+    final oldValue = _currentData.rows[row][originalIndex];
     _model.endEdit();
     if (widget.onCellEdit == null) return;
     if (newValue == oldValue) return;
@@ -597,27 +602,29 @@ class _DataGridState<TypeTag> extends State<DataGrid<TypeTag>> {
 
   void _onCancelEdit() => _model.endEdit();
 
-  void _onKeyMove(int dRow, int dCol) {
-    final s = _model.selection;
-    if (s == null) {
+  void _onKeyMove(int deltaRow, int deltaColumn) {
+    final selection = _model.selection;
+    if (selection == null) {
       if (_currentData.rows.isNotEmpty && _model.order.isNotEmpty) {
         _model.selectSingle(0, 0);
       }
       return;
     }
-    final nextRow = (s.focusRow + dRow).clamp(0, _currentData.rows.length - 1);
-    final nextCol = (s.focusCol + dCol).clamp(0, _model.order.length - 1);
-    _model.selectSingle(nextRow, nextCol);
+    final nextRow =
+        (selection.focusRow + deltaRow).clamp(0, _currentData.rows.length - 1);
+    final nextColumn =
+        (selection.focusCol + deltaColumn).clamp(0, _model.order.length - 1);
+    _model.selectSingle(nextRow, nextColumn);
   }
 
   Future<void> _onCopyRequest() => _copyAs(_CopyFormat.tsv);
 
   Future<void> _copyAs(_CopyFormat format) async {
-    final s = _model.selection;
-    if (s == null) return;
+    final selection = _model.selection;
+    if (selection == null) return;
     final text = switch (format) {
-      _CopyFormat.tsv => serializeRangeAsTsv(_currentData, _model, s),
-      _CopyFormat.csv => serializeRangeAsCsv(_currentData, _model, s),
+      _CopyFormat.tsv => serializeRangeAsTsv(_currentData, _model, selection),
+      _CopyFormat.csv => serializeRangeAsCsv(_currentData, _model, selection),
     };
     await Clipboard.setData(ClipboardData(text: text));
   }
@@ -637,7 +644,7 @@ class _DataGridState<TypeTag> extends State<DataGrid<TypeTag>> {
     if (widget.error != null) {
       return Container(
         color: Theme.of(context).colorScheme.errorContainer,
-        padding: const EdgeInsets.all(12),
+        padding: const EdgeInsets.all(12.0),
         alignment: Alignment.topLeft,
         child: SingleChildScrollView(
           child: SelectableText(
@@ -682,7 +689,9 @@ class _DataGridState<TypeTag> extends State<DataGrid<TypeTag>> {
     final actions = <Type, Action<Intent>>{
       _MoveIntent: CallbackAction<_MoveIntent>(
         onInvoke: (intent) {
-          if (!_model.isEditing) _onKeyMove(intent.dRow, intent.dCol);
+          if (!_model.isEditing) {
+            _onKeyMove(intent.deltaRow, intent.deltaColumn);
+          }
           return null;
         },
       ),
@@ -700,9 +709,9 @@ class _DataGridState<TypeTag> extends State<DataGrid<TypeTag>> {
       ),
       _EditIntent: CallbackAction<_EditIntent>(
         onInvoke: (_) {
-          final s = _model.selection;
-          if (s != null && !_model.isEditing) {
-            _onCellDoubleTap(s.focusRow, s.focusCol);
+          final selection = _model.selection;
+          if (selection != null && !_model.isEditing) {
+            _onCellDoubleTap(selection.focusRow, selection.focusCol);
           }
           return null;
         },
@@ -728,7 +737,8 @@ class _DataGridState<TypeTag> extends State<DataGrid<TypeTag>> {
         Scrollbar(
           controller: _hScroll,
           thumbVisibility: true,
-          notificationPredicate: (n) => n.metrics.axis == Axis.horizontal,
+          notificationPredicate: (notification) =>
+              notification.metrics.axis == Axis.horizontal,
           child: SingleChildScrollView(
             controller: _hScroll,
             scrollDirection: Axis.horizontal,
@@ -751,8 +761,10 @@ class _DataGridState<TypeTag> extends State<DataGrid<TypeTag>> {
                   ),
                   Expanded(
                     child: GestureDetector(
-                      onSecondaryTapDown: (d) =>
-                          _showContextMenu(d.globalPosition, d.localPosition),
+                      onSecondaryTapDown: (details) => _showContextMenu(
+                        details.globalPosition,
+                        details.localPosition,
+                      ),
                       child: Listener(
                         behavior: HitTestBehavior.translucent,
                         onPointerDown: (e) =>
@@ -763,13 +775,13 @@ class _DataGridState<TypeTag> extends State<DataGrid<TypeTag>> {
                         child: Scrollbar(
                           controller: _vScroll,
                           thumbVisibility: true,
-                          notificationPredicate: (n) =>
-                              n.metrics.axis == Axis.vertical,
+                          notificationPredicate: (notification) =>
+                              notification.metrics.axis == Axis.vertical,
                           child: ListView.builder(
                             controller: _vScroll,
                             itemExtentBuilder: (i, _) => _heightFor(i),
                             itemCount: _currentData.rows.length,
-                            itemBuilder: (ctx, i) {
+                            itemBuilder: (_, i) {
                               return GridBodyRow<TypeTag>(
                                 rowIdx: i,
                                 values: _currentData.rows[i],
@@ -838,15 +850,20 @@ class _DataGridState<TypeTag> extends State<DataGrid<TypeTag>> {
       if (!inside) _model.selectSingle(hit.row, hit.col);
     }
     final selection = _model.selection;
-    final rowIdx = selection?.focusRow;
+    final rowIndex = selection?.focusRow;
     final hasSel = selection != null;
     final extras = <GridMenuEntry>[];
     final builder = widget.contextMenuExtras;
     if (builder != null && hit != null) {
-      final s = _model.selection;
-      final selectedRows = s == null
+      final currentSelection = _model.selection;
+      final selectedRows = currentSelection == null
           ? [hit.row]
-          : [for (var r = s.rowMin; r <= s.rowMax; r++) r];
+          : [
+              for (var r = currentSelection.rowMin;
+                  r <= currentSelection.rowMax;
+                  r++)
+                r,
+            ];
       extras.addAll(
         builder(hit.row, _model.viewToOriginal(hit.col), selectedRows),
       );
@@ -862,11 +879,11 @@ class _DataGridState<TypeTag> extends State<DataGrid<TypeTag>> {
         enabled: hasSel,
         child: const Text('Copy as CSV'),
       ),
-      if (widget.onOpenDetail != null && rowIdx != null) ...[
+      if (widget.onOpenDetail != null && rowIndex != null) ...[
         const PopupMenuDivider(),
         const PopupMenuItem(value: 'detail', child: Text('Open detail')),
       ],
-      if (widget.onDeleteRow != null && rowIdx != null)
+      if (widget.onDeleteRow != null && rowIndex != null)
         const PopupMenuItem(value: 'delete', child: Text('Delete row…')),
       for (var i = 0; i < extras.length; i++) ...[
         if (i == 0 || extras[i].startsGroup) const PopupMenuDivider(),
@@ -878,8 +895,8 @@ class _DataGridState<TypeTag> extends State<DataGrid<TypeTag>> {
             child: Row(
               children: [
                 if (extras[i].icon != null) ...[
-                  Icon(extras[i].icon, size: 16),
-                  const SizedBox(width: 8),
+                  Icon(extras[i].icon, size: 16.0),
+                  const SizedBox(width: 8.0),
                 ],
                 Flexible(child: Text(extras[i].label)),
               ],
@@ -900,11 +917,11 @@ class _DataGridState<TypeTag> extends State<DataGrid<TypeTag>> {
     );
     if (selected == 'copy_tsv') await _copyAs(_CopyFormat.tsv);
     if (selected == 'copy_csv') await _copyAs(_CopyFormat.csv);
-    if (selected == 'detail' && rowIdx != null) {
-      widget.onOpenDetail?.call(rowIdx);
+    if (selected == 'detail' && rowIndex != null) {
+      widget.onOpenDetail?.call(rowIndex);
     }
-    if (selected == 'delete' && rowIdx != null) {
-      widget.onDeleteRow?.call(rowIdx);
+    if (selected == 'delete' && rowIndex != null) {
+      widget.onDeleteRow?.call(rowIndex);
     }
     if (selected != null && selected.startsWith('extra:')) {
       final index = int.parse(selected.substring('extra:'.length));
@@ -916,9 +933,9 @@ class _DataGridState<TypeTag> extends State<DataGrid<TypeTag>> {
 enum _CopyFormat { tsv, csv }
 
 class _MoveIntent extends Intent {
-  const _MoveIntent(this.dRow, this.dCol);
-  final int dRow;
-  final int dCol;
+  const _MoveIntent(this.deltaRow, this.deltaColumn);
+  final int deltaRow;
+  final int deltaColumn;
 }
 
 class _CopyIntent extends Intent {
@@ -943,11 +960,11 @@ class _LoadingOverlay extends StatelessWidget {
         child: Container(
           color: Colors.black.withValues(alpha: 0.05),
           alignment: Alignment.topCenter,
-          padding: const EdgeInsets.only(top: 8),
+          padding: const EdgeInsets.only(top: 8.0),
           child: const SizedBox(
-            width: 28,
-            height: 28,
-            child: CircularProgressIndicator(strokeWidth: 2),
+            width: 28.0,
+            height: 28.0,
+            child: CircularProgressIndicator(strokeWidth: 2.0),
           ),
         ),
       ),
@@ -1015,7 +1032,7 @@ class _GutterColumn extends StatelessWidget {
                       i >= selection!.rowMin &&
                       i <= selection!.rowMax;
                   return _GutterCell(
-                    rowIdx: i,
+                    rowIndex: i,
                     height: rowHeightFor(i),
                     style: style,
                     isSelected: isSelected,
@@ -1035,14 +1052,14 @@ class _GutterColumn extends StatelessWidget {
 
 class _GutterCell extends StatelessWidget {
   const _GutterCell({
-    required this.rowIdx,
+    required this.rowIndex,
     required this.height,
     required this.style,
     required this.isSelected,
     required this.onTap,
     required this.onResizeDelta,
   });
-  final int rowIdx;
+  final int rowIndex;
   final double height;
   final GridStyle style;
   final bool isSelected;
@@ -1051,8 +1068,8 @@ class _GutterCell extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final bg = isSelected ? style.accentSoft : style.headerBackground;
-    final fg = isSelected ? style.textColor : style.mutedTextColor;
+    final background = isSelected ? style.accentSoft : style.headerBackground;
+    final foreground = isSelected ? style.textColor : style.mutedTextColor;
     return Stack(
       children: [
         GestureDetector(
@@ -1064,7 +1081,7 @@ class _GutterCell extends StatelessWidget {
           child: Container(
             height: height,
             decoration: BoxDecoration(
-              color: bg,
+              color: background,
               border: Border(
                 right: BorderSide(color: style.cellBorder),
                 bottom: BorderSide(color: style.cellBorder, width: 0.5),
@@ -1072,21 +1089,22 @@ class _GutterCell extends StatelessWidget {
             ),
             alignment: Alignment.center,
             child: Text(
-              '${rowIdx + 1}',
-              style: style.headerSubtitleStyle.copyWith(color: fg),
+              '${rowIndex + 1}',
+              style: style.headerSubtitleStyle.copyWith(color: foreground),
             ),
           ),
         ),
         Positioned(
-          left: 0,
-          right: 0,
-          bottom: 0,
+          left: 0.0,
+          right: 0.0,
+          bottom: 0.0,
           height: _kResizeHotZone,
           child: MouseRegion(
             cursor: SystemMouseCursors.resizeRow,
             child: GestureDetector(
               behavior: HitTestBehavior.translucent,
-              onVerticalDragUpdate: (d) => onResizeDelta(d.delta.dy),
+              onVerticalDragUpdate: (details) =>
+                  onResizeDelta(details.delta.dy),
             ),
           ),
         ),

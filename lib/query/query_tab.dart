@@ -1,6 +1,9 @@
 import '../grid/data_grid.dart';
 import '../tabs/tab_model.dart';
 
+/// Longest tab title (in characters) before it is cut with an ellipsis.
+const _kTitleMaxLength = 40;
+
 /// Unified query tab. Hosts both the SQL editor (manual) and the AI
 /// prompt strip (collapsible). The same tab handles "ask AI → generate
 /// SQL → edit → run" without spawning a sibling tab.
@@ -58,13 +61,15 @@ class QueryTab extends TabModel {
     if (titleOverride != null && titleOverride!.isNotEmpty) {
       return titleOverride!;
     }
-    final p = prompt.trim();
-    if (p.isNotEmpty) {
-      return p.length <= 40 ? 'AI: $p' : 'AI: ${p.substring(0, 40)}…';
+    final trimmedPrompt = prompt.trim();
+    if (trimmedPrompt.isNotEmpty) {
+      return trimmedPrompt.length <= _kTitleMaxLength
+          ? 'AI: $trimmedPrompt'
+          : 'AI: ${trimmedPrompt.substring(0, _kTitleMaxLength)}…';
     }
     final trimmed = sql.trim();
     if (trimmed.isEmpty) return 'New query';
-    if (trimmed.length <= 40) return trimmed;
-    return '${trimmed.substring(0, 40)}…';
+    if (trimmed.length <= _kTitleMaxLength) return trimmed;
+    return '${trimmed.substring(0, _kTitleMaxLength)}…';
   }
 }

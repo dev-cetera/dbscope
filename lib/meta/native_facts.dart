@@ -54,10 +54,10 @@ class NativeFacts {
       policies.isEmpty;
 }
 
-String? _text(Object? v) {
-  if (v == null) return null;
-  final s = v.toString().trim();
-  return s.isEmpty ? null : s;
+String? _text(Object? value) {
+  if (value == null) return null;
+  final text = value.toString().trim();
+  return text.isEmpty ? null : text;
 }
 
 Future<NativeFacts> loadColumnFacts(
@@ -88,7 +88,7 @@ Future<NativeFacts> _postgresColumnFacts(
   String column,
 ) async {
   final named = {'schema': schema, 'table': table, 'column': column};
-  final columnRes = await executor.execute('''
+  final columnResult = await executor.execute('''
  SELECT
  col_description(c.oid, a.attnum) AS comment,
  format_type(a.atttypid, a.atttypmod) AS type,
@@ -108,8 +108,8 @@ Future<NativeFacts> _postgresColumnFacts(
  WHERE n.nspname = @schema AND c.relname = @table AND a.attname = @column
  AND NOT a.attisdropped
  ''', named: named);
-  if (columnRes.isEmpty) return const NativeFacts();
-  final row = columnRes.first;
+  if (columnResult.isEmpty) return const NativeFacts();
+  final row = columnResult.first;
   final generated = _text(row[4]);
   final identity = _text(row[5]);
   final attributes = <NativeFact>[
@@ -129,7 +129,7 @@ Future<NativeFacts> _postgresColumnFacts(
       NativeFact('enum ${row[8]}', _text(row[7])!, comment: _text(row[6])),
   ];
 
-  final constraintRes = await executor.execute('''
+  final constraintResult = await executor.execute('''
  SELECT con.conname::text, pg_get_constraintdef(con.oid, true),
  obj_description(con.oid, 'pg_constraint')
  FROM pg_constraint con
@@ -141,7 +141,7 @@ Future<NativeFacts> _postgresColumnFacts(
  ORDER BY con.contype, con.conname
  ''', named: named);
 
-  final indexRes = await executor.execute('''
+  final indexResult = await executor.execute('''
  SELECT i.relname::text, pg_get_indexdef(i.oid),
  obj_description(i.oid, 'pg_class')
  FROM pg_index x
@@ -160,12 +160,20 @@ Future<NativeFacts> _postgresColumnFacts(
     comment: _text(row[0]),
     attributes: attributes,
     constraints: [
-      for (final r in constraintRes.rows)
-        NativeFact(r[0].toString(), r[1].toString(), comment: _text(r[2])),
+      for (final factRow in constraintResult.rows)
+        NativeFact(
+          factRow[0].toString(),
+          factRow[1].toString(),
+          comment: _text(factRow[2]),
+        ),
     ],
     indexes: [
-      for (final r in indexRes.rows)
-        NativeFact(r[0].toString(), r[1].toString(), comment: _text(r[2])),
+      for (final factRow in indexResult.rows)
+        NativeFact(
+          factRow[0].toString(),
+          factRow[1].toString(),
+          comment: _text(factRow[2]),
+        ),
     ],
   );
 }
@@ -176,7 +184,7 @@ Future<NativeFacts> _postgresTableFacts(
   String table,
 ) async {
   final named = {'schema': schema, 'table': table};
-  final tableRes = await executor.execute('''
+  final tableResult = await executor.execute('''
  SELECT obj_description(c.oid, 'pg_class'),
  CASE c.relkind WHEN 'r' THEN 'table' WHEN 'p' THEN 'partitioned table'
  WHEN 'v' THEN 'view' WHEN 'm' THEN 'materialized view'
@@ -191,8 +199,8 @@ Future<NativeFacts> _postgresTableFacts(
  JOIN pg_namespace n ON n.oid = c.relnamespace
  WHERE n.nspname = @schema AND c.relname = @table
  ''', named: named);
-  if (tableRes.isEmpty) return const NativeFacts();
-  final row = tableRes.first;
+  if (tableResult.isEmpty) return const NativeFacts();
+  final row = tableResult.first;
   final attributes = <NativeFact>[
     NativeFact('kind', row[1].toString()),
     NativeFact('owner', row[2].toString()),
@@ -203,7 +211,7 @@ Future<NativeFacts> _postgresTableFacts(
       NativeFact('schema $schema', '', comment: _text(row[6])),
     if (_text(row[7]) != null) NativeFact('definition', _text(row[7])!),
   ];
-  final constraintRes = await executor.execute('''
+  final constraintResult = await executor.execute('''
  SELECT con.conname::text, pg_get_constraintdef(con.oid, true),
  obj_description(con.oid, 'pg_constraint')
  FROM pg_constraint con
@@ -212,7 +220,7 @@ Future<NativeFacts> _postgresTableFacts(
  WHERE n.nspname = @schema AND c.relname = @table
  ORDER BY con.contype, con.conname
  ''', named: named);
-  final indexRes = await executor.execute('''
+  final indexResult = await executor.execute('''
  SELECT i.relname::text, pg_get_indexdef(i.oid),
  obj_description(i.oid, 'pg_class')
  FROM pg_index x
@@ -222,7 +230,7 @@ Future<NativeFacts> _postgresTableFacts(
  WHERE n.nspname = @schema AND c.relname = @table
  ORDER BY i.relname
  ''', named: named);
-  final triggerRes = await executor.execute('''
+  final triggerResult = await executor.execute('''
  SELECT t.tgname::text, pg_get_triggerdef(t.oid, true),
  obj_description(t.oid, 'pg_trigger')
  FROM pg_trigger t
@@ -231,7 +239,7 @@ Future<NativeFacts> _postgresTableFacts(
  WHERE n.nspname = @schema AND c.relname = @table AND NOT t.tgisinternal
  ORDER BY t.tgname
  ''', named: named);
-  final policyRes = await executor.execute('''
+  final policyResult = await executor.execute('''
  SELECT p.polname::text,
  'FOR ' || CASE p.polcmd WHEN 'r' THEN 'SELECT' WHEN 'a' THEN 'INSERT'
  WHEN 'w' THEN 'UPDATE' WHEN 'd' THEN 'DELETE' ELSE 'ALL' END
@@ -244,17 +252,21 @@ Future<NativeFacts> _postgresTableFacts(
  WHERE n.nspname = @schema AND c.relname = @table
  ORDER BY p.polname
  ''', named: named);
-  List<NativeFact> facts(DbResult res) => [
-    for (final r in res.rows)
-      NativeFact(r[0].toString(), r[1].toString(), comment: _text(r[2])),
+  List<NativeFact> facts(DbResult result) => [
+    for (final factRow in result.rows)
+      NativeFact(
+        factRow[0].toString(),
+        factRow[1].toString(),
+        comment: _text(factRow[2]),
+      ),
   ];
   return NativeFacts(
     comment: _text(row[0]),
     attributes: attributes,
-    constraints: facts(constraintRes),
-    indexes: facts(indexRes),
-    triggers: facts(triggerRes),
-    policies: facts(policyRes),
+    constraints: facts(constraintResult),
+    indexes: facts(indexResult),
+    triggers: facts(triggerResult),
+    policies: facts(policyResult),
   );
 }
 
@@ -276,11 +288,13 @@ Future<NativeFacts> _sqliteColumnFacts(
     positional: [table],
   );
   for (final index in list.rows) {
-    final cols = await executor.execute(
+    final indexColumns = await executor.execute(
       'SELECT name FROM pragma_index_info(?1)',
       positional: [index[0]],
     );
-    final names = [for (final c in cols.rows) c[0].toString()];
+    final names = [
+      for (final columnRow in indexColumns.rows) columnRow[0].toString(),
+    ];
     if (!names.contains(column)) continue;
     indexes.add(
       NativeFact(
@@ -301,32 +315,32 @@ Future<NativeFacts> _sqliteColumnFacts(
 }
 
 Future<NativeFacts> _sqliteTableFacts(DbExecutor executor, String table) async {
-  final res = await executor.execute(
+  final result = await executor.execute(
     "SELECT type, sql FROM sqlite_master WHERE name = ?1 AND type IN ('table', 'view')",
     positional: [table],
   );
-  if (res.isEmpty) return const NativeFacts();
-  final indexRes = await executor.execute(
+  if (result.isEmpty) return const NativeFacts();
+  final indexResult = await executor.execute(
     "SELECT name, sql FROM sqlite_master WHERE type = 'index' AND tbl_name = ?1",
     positional: [table],
   );
-  final triggerRes = await executor.execute(
+  final triggerResult = await executor.execute(
     "SELECT name, sql FROM sqlite_master WHERE type = 'trigger' AND tbl_name = ?1",
     positional: [table],
   );
   return NativeFacts(
     attributes: [
-      NativeFact('kind', res.first[0].toString()),
-      if (_text(res.first[1]) != null)
-        NativeFact('definition', _text(res.first[1])!),
+      NativeFact('kind', result.first[0].toString()),
+      if (_text(result.first[1]) != null)
+        NativeFact('definition', _text(result.first[1])!),
     ],
     indexes: [
-      for (final r in indexRes.rows)
-        NativeFact(r[0].toString(), _text(r[1]) ?? '(automatic)'),
+      for (final indexRow in indexResult.rows)
+        NativeFact(indexRow[0].toString(), _text(indexRow[1]) ?? '(automatic)'),
     ],
     triggers: [
-      for (final r in triggerRes.rows)
-        NativeFact(r[0].toString(), _text(r[1]) ?? ''),
+      for (final triggerRow in triggerResult.rows)
+        NativeFact(triggerRow[0].toString(), _text(triggerRow[1]) ?? ''),
     ],
   );
 }

@@ -151,8 +151,8 @@ class NavigatorTab extends TabModel {
   /// Step id → width in logical pixels.
   final Map<String, double> stepWidths = {};
 
-  void setStepWidth(String stepId, double w) {
-    stepWidths[stepId] = w;
+  void setStepWidth(String stepId, double width) {
+    stepWidths[stepId] = width;
   }
 
   @override
@@ -160,11 +160,11 @@ class NavigatorTab extends TabModel {
     if (steps.isEmpty) return 'Navigator';
     final last = steps.last;
     if (last is RowDetailStep) {
-      final pk = [
+      final primaryKey = [
         for (var i = 0; i < last.pkColumns.length; i++)
           '${last.pkColumns[i]}=${last.pkValues[i]}',
       ].join(', ');
-      return '${last.table}{$pk}';
+      return '${last.table}{$primaryKey}';
     }
     if (last is RowListStep) {
       if (last.inboundFilter != null) {

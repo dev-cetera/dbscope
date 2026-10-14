@@ -46,34 +46,55 @@ class TrustItem {
 /// Every SQL-bearing item of [scope] in [index].
 List<TrustItem> trustItems(MetaIndex index, TrustScope scope) {
   final out = <TrustItem>[];
-  for (final a in index.actions) {
-    final isExec = !a.run.isReadOnly;
+  for (final action in index.actions) {
+    final isExec = !action.run.isReadOnly;
     if (isExec != (scope == TrustScope.exec)) continue;
     final text = [
-      a.target.raw,
-      a.run.name,
-      ?a.sql,
-      ?a.filter,
-      ?a.template,
-      ?a.table?.raw,
-      if (a.expectRows != null) 'expectRows ${a.expectRows}',
+      action.target.raw,
+      action.run.name,
+      ?action.sql,
+      ?action.filter,
+      ?action.template,
+      ?action.table?.raw,
+      if (action.expectRows != null) 'expectRows ${action.expectRows}',
     ].join('\n');
-    out.add(TrustItem(id: a.id, kind: 'action', label: a.label, text: text));
+    out.add(
+      TrustItem(id: action.id, kind: 'action', label: action.label, text: text),
+    );
   }
   if (scope == TrustScope.read) {
-    for (final q in index.queries) {
-      out.add(TrustItem(id: q.id, kind: 'query', label: q.label, text: q.sql));
+    for (final query in index.queries) {
+      out.add(
+        TrustItem(
+          id: query.id,
+          kind: 'query',
+          label: query.label,
+          text: query.sql,
+        ),
+      );
     }
-    for (final c in index.charts) {
-      final source = c.source;
+    for (final chart in index.charts) {
+      final source = chart.source;
       if (source is ChartSqlSource) {
         out.add(
-          TrustItem(id: c.id, kind: 'chart', label: c.label, text: source.sql),
+          TrustItem(
+            id: chart.id,
+            kind: 'chart',
+            label: chart.label,
+            text: source.sql,
+          ),
         );
       }
     }
-    for (final c in index.checks) {
-      out.add(TrustItem(id: c.id, kind: 'check', label: c.label, text: c.sql));
+    for (final check in index.checks) {
+      out.add(
+        TrustItem(
+          id: check.id,
+          kind: 'check',
+          label: check.label,
+          text: check.sql,
+        ),
+      );
     }
     for (final row in index.document.rowsOfKind(MetaKinds.display)) {
       final filter = specString(row.spec, 'defaultFilter');

@@ -24,25 +24,25 @@ class BackendClient {
   void _handle(Envelope env) {
     switch (env.kind) {
       case EnvelopeKind.res:
-        final c = _pending.remove(env.id);
-        if (c == null) return;
+        final completer = _pending.remove(env.id);
+        if (completer == null) return;
         if (env.error != null) {
-          c.completeError(env.error!);
+          completer.completeError(env.error!);
         } else {
-          c.complete(env.result);
+          completer.complete(env.result);
         }
       case EnvelopeKind.evt:
         _streams[env.id]?.add(env.result);
       case EnvelopeKind.end:
-        final s = _streams.remove(env.id);
-        unawaited(s?.close());
+        final controller = _streams.remove(env.id);
+        unawaited(controller?.close());
       case EnvelopeKind.err:
-        final s = _streams.remove(env.id);
-        if (s != null) {
+        final controller = _streams.remove(env.id);
+        if (controller != null) {
           if (env.error != null) {
-            s.addError(env.error!);
+            controller.addError(env.error!);
           }
-          unawaited(s.close());
+          unawaited(controller.close());
         }
       case EnvelopeKind.req:
       case EnvelopeKind.sub:
@@ -90,14 +90,14 @@ class BackendClient {
   Future<void> dispose() async {
     _disposed = true;
     await _sub?.cancel();
-    for (final c in _pending.values) {
-      if (!c.isCompleted) {
-        c.completeError(const RpcError('disposed', 'client disposed'));
+    for (final completer in _pending.values) {
+      if (!completer.isCompleted) {
+        completer.completeError(const RpcError('disposed', 'client disposed'));
       }
     }
     _pending.clear();
-    for (final s in _streams.values) {
-      await s.close();
+    for (final controller in _streams.values) {
+      await controller.close();
     }
     _streams.clear();
     await _transport.dispose();

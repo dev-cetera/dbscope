@@ -23,6 +23,18 @@ import 'chart_data.dart';
 /// charting on open.
 const kAutoRunChartRowLimit = 2000000;
 
+/// Axis labels longer than this are cut short and end in an ellipsis.
+const _kMaxAxisLabelLength = 12;
+
+/// A line chart draws a dot on every point only up to this many points.
+const _kMaxLineDotPoints = 40;
+
+/// The legend lists at most this many series.
+const _kMaxLegendEntries = 12;
+
+/// A pie chart draws (and lists) at most this many slices.
+const _kMaxPieSlices = 24;
+
 class MetaChartCard extends StatefulWidget {
   const MetaChartCard({
     super.key,
@@ -76,9 +88,10 @@ class _MetaChartCardState extends State<MetaChartCard> {
   }
 
   @override
-  void didUpdateWidget(covariant MetaChartCard old) {
-    super.didUpdateWidget(old);
-    if (old.chart.id != widget.chart.id || old.row.row != widget.row.row) {
+  void didUpdateWidget(covariant MetaChartCard oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.chart.id != widget.chart.id ||
+        oldWidget.row.row != widget.row.row) {
       _data = null;
       _error = null;
       if (widget.autoRun) _autoLoad();
@@ -147,7 +160,7 @@ class _MetaChartCardState extends State<MetaChartCard> {
     } else if (_error != null) {
       body = Center(
         child: Padding(
-          padding: const EdgeInsets.all(12),
+          padding: const EdgeInsets.all(12.0),
           child: Text(
             _error!,
             style: theme.textTheme.bodySmall?.copyWith(
@@ -161,7 +174,7 @@ class _MetaChartCardState extends State<MetaChartCard> {
       body = Center(
         child: TextButton.icon(
           onPressed: _load,
-          icon: const Icon(Icons.play_arrow, size: 16),
+          icon: const Icon(Icons.play_arrow, size: 16.0),
           label: const Text('Run chart'),
         ),
       );
@@ -171,7 +184,7 @@ class _MetaChartCardState extends State<MetaChartCard> {
       );
     } else {
       body = Padding(
-        padding: const EdgeInsets.fromLTRB(8, 4, 12, 8),
+        padding: const EdgeInsets.fromLTRB(8.0, 4.0, 12.0, 8.0),
         child: MetaChartPlot(type: widget.chart.type, data: _data!),
       );
     }
@@ -180,13 +193,13 @@ class _MetaChartCardState extends State<MetaChartCard> {
       decoration: BoxDecoration(
         color: palette.surfaceRaised,
         border: Border.all(color: palette.border),
-        borderRadius: BorderRadius.circular(4),
+        borderRadius: BorderRadius.circular(4.0),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           Padding(
-            padding: const EdgeInsets.fromLTRB(10, 6, 4, 0),
+            padding: const EdgeInsets.fromLTRB(10.0, 6.0, 4.0, 0.0),
             child: Row(
               children: [
                 Expanded(
@@ -199,7 +212,7 @@ class _MetaChartCardState extends State<MetaChartCard> {
                 IconButton(
                   tooltip: 'Refresh chart',
                   visualDensity: VisualDensity.compact,
-                  iconSize: 16,
+                  iconSize: 16.0,
                   icon: const Icon(Icons.refresh),
                   onPressed: _loading ? null : _load,
                 ),
@@ -242,18 +255,18 @@ class MetaChartPlot extends StatelessWidget {
   }
 }
 
-String _compact(double v) {
-  final a = v.abs();
-  if (a >= 1e9) return '${(v / 1e9).toStringAsFixed(1)}B';
-  if (a >= 1e6) return '${(v / 1e6).toStringAsFixed(1)}M';
-  if (a >= 1e3) return '${(v / 1e3).toStringAsFixed(1)}K';
-  if (v == v.roundToDouble()) return v.toStringAsFixed(0);
-  return v.toStringAsFixed(2);
+String _compact(double value) {
+  final absolute = value.abs();
+  if (absolute >= 1e9) return '${(value / 1e9).toStringAsFixed(1)}B';
+  if (absolute >= 1e6) return '${(value / 1e6).toStringAsFixed(1)}M';
+  if (absolute >= 1e3) return '${(value / 1e3).toStringAsFixed(1)}K';
+  if (value == value.roundToDouble()) return value.toStringAsFixed(0);
+  return value.toStringAsFixed(2);
 }
 
 FlTitlesData _titles(BuildContext context, List<String> xLabels) {
   final style = TextStyle(
-    fontSize: 10,
+    fontSize: 10.0,
     color: AppPalette.of(context).mutedText,
   );
   final every = math.max(1, (xLabels.length / 8).ceil());
@@ -283,7 +296,9 @@ FlTitlesData _titles(BuildContext context, List<String> xLabels) {
           return SideTitleWidget(
             meta: meta,
             child: Text(
-              label.length > 12 ? '${label.substring(0, 11)}…' : label,
+              label.length > _kMaxAxisLabelLength
+                  ? '${label.substring(0, _kMaxAxisLabelLength - 1)}…'
+                  : label,
               style: style,
             ),
           );
@@ -309,15 +324,15 @@ class _Legend extends StatelessWidget {
   Widget build(BuildContext context) {
     if (series.length < 2) return const SizedBox.shrink();
     return Wrap(
-      spacing: 10,
+      spacing: 10.0,
       children: [
-        for (var i = 0; i < series.length && i < 12; i++)
+        for (var i = 0; i < series.length && i < _kMaxLegendEntries; i++)
           Row(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Container(width: 8, height: 8, color: _seriesColor(i)),
-              const SizedBox(width: 4),
-              Text(series[i].name, style: const TextStyle(fontSize: 10)),
+              Container(width: 8.0, height: 8.0, color: _seriesColor(i)),
+              const SizedBox(width: 4.0),
+              Text(series[i].name, style: const TextStyle(fontSize: 10.0)),
             ],
           ),
       ],
@@ -333,9 +348,9 @@ class _LinePlot extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final bars = <LineChartBarData>[];
-    for (var s = 0; s < data.series.length; s++) {
-      final color = _seriesColor(s);
-      final values = data.series[s].values;
+    for (var seriesIndex = 0; seriesIndex < data.series.length; seriesIndex++) {
+      final color = _seriesColor(seriesIndex);
+      final values = data.series[seriesIndex].values;
       bars.add(
         LineChartBarData(
           spots: [
@@ -343,7 +358,7 @@ class _LinePlot extends StatelessWidget {
               if (values[i] != null) FlSpot(i.toDouble(), values[i]!),
           ],
           color: color,
-          dotData: FlDotData(show: values.length <= 40),
+          dotData: FlDotData(show: values.length <= _kMaxLineDotPoints),
           belowBarData: BarAreaData(
             show: filled,
             color: color.withValues(alpha: 0.18),
@@ -383,10 +398,16 @@ class _BarPlot extends StatelessWidget {
       if (stacked) {
         var acc = 0.0;
         final items = <BarChartRodStackItem>[];
-        for (var s = 0; s < data.series.length; s++) {
-          final v = data.series[s].values[i] ?? 0;
-          items.add(BarChartRodStackItem(acc, acc + v, _seriesColor(s)));
-          acc += v;
+        for (
+          var seriesIndex = 0;
+          seriesIndex < data.series.length;
+          seriesIndex++
+        ) {
+          final value = data.series[seriesIndex].values[i] ?? 0;
+          items.add(
+            BarChartRodStackItem(acc, acc + value, _seriesColor(seriesIndex)),
+          );
+          acc += value;
         }
         groups.add(
           BarChartGroupData(
@@ -407,11 +428,15 @@ class _BarPlot extends StatelessWidget {
           BarChartGroupData(
             x: i,
             barRods: [
-              for (var s = 0; s < data.series.length; s++)
+              for (
+                var seriesIndex = 0;
+                seriesIndex < data.series.length;
+                seriesIndex++
+              )
                 BarChartRodData(
-                  toY: data.series[s].values[i] ?? 0,
+                  toY: data.series[seriesIndex].values[i] ?? 0,
                   width: width / math.max(1, data.series.length),
-                  color: _seriesColor(s),
+                  color: _seriesColor(seriesIndex),
                   borderRadius: BorderRadius.zero,
                 ),
             ],
@@ -433,7 +458,7 @@ class _BarPlot extends StatelessWidget {
                   getTooltipItem: (group, groupIndex, rod, rodIndex) =>
                       BarTooltipItem(
                         '${data.xLabels[group.x]}\n${_compact(rod.toY)}',
-                        const TextStyle(fontSize: 11, color: Colors.white),
+                        const TextStyle(fontSize: 11.0, color: Colors.white),
                       ),
                 ),
               ),
@@ -457,17 +482,17 @@ class _PiePlot extends StatelessWidget {
         : data.series.first.values;
     final total = values.fold<double>(0, (a, b) => a + (b ?? 0));
     final sections = <PieChartSectionData>[];
-    for (var i = 0; i < values.length && i < 24; i++) {
-      final v = values[i] ?? 0;
-      if (v <= 0) continue;
-      final share = total == 0 ? 0 : v / total * 100;
+    for (var i = 0; i < values.length && i < _kMaxPieSlices; i++) {
+      final value = values[i] ?? 0;
+      if (value <= 0) continue;
+      final share = total == 0 ? 0 : value / total * 100;
       sections.add(
         PieChartSectionData(
-          value: v,
+          value: value,
           color: _seriesColor(i),
-          radius: 70,
+          radius: 70.0,
           title: share >= 6 ? '${share.toStringAsFixed(0)}%' : '',
-          titleStyle: const TextStyle(fontSize: 10, color: Colors.white),
+          titleStyle: const TextStyle(fontSize: 10.0, color: Colors.white),
         ),
       );
     }
@@ -479,18 +504,22 @@ class _PiePlot extends StatelessWidget {
           ),
         ),
         SizedBox(
-          width: 140,
+          width: 140.0,
           child: ListView(
             children: [
-              for (var i = 0; i < data.xLabels.length && i < 24; i++)
+              for (
+                var i = 0;
+                i < data.xLabels.length && i < _kMaxPieSlices;
+                i++
+              )
                 Row(
                   children: [
-                    Container(width: 8, height: 8, color: _seriesColor(i)),
-                    const SizedBox(width: 4),
+                    Container(width: 8.0, height: 8.0, color: _seriesColor(i)),
+                    const SizedBox(width: 4.0),
                     Expanded(
                       child: Text(
                         '${data.xLabels[i]} (${_compact(values[i] ?? 0)})',
-                        style: const TextStyle(fontSize: 10),
+                        style: const TextStyle(fontSize: 10.0),
                         overflow: TextOverflow.ellipsis,
                       ),
                     ),
@@ -512,8 +541,8 @@ class _ScatterPlot extends StatelessWidget {
   Widget build(BuildContext context) {
     final xs = data.xNumbers;
     final spots = <ScatterSpot>[];
-    for (var s = 0; s < data.series.length; s++) {
-      final values = data.series[s].values;
+    for (var seriesIndex = 0; seriesIndex < data.series.length; seriesIndex++) {
+      final values = data.series[seriesIndex].values;
       for (var i = 0; i < values.length; i++) {
         final y = values[i];
         if (y == null) continue;
@@ -521,7 +550,10 @@ class _ScatterPlot extends StatelessWidget {
           ScatterSpot(
             xs == null ? i.toDouble() : xs[i],
             y,
-            dotPainter: FlDotCirclePainter(radius: 3, color: _seriesColor(s)),
+            dotPainter: FlDotCirclePainter(
+              radius: 3.0,
+              color: _seriesColor(seriesIndex),
+            ),
           ),
         );
       }

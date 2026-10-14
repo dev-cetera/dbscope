@@ -21,7 +21,7 @@ enum ConnectionState { disconnected, connecting, connected, error }
 class _ConnEntry {
   _ConnEntry({required this.readOnly});
   ConnectionState state = ConnectionState.disconnected;
-  DbExecutor? exec;
+  DbExecutor? executor;
   String? lastError;
   bool readOnly;
 }
@@ -35,23 +35,23 @@ class ConnectionService {
   final Map<String, _ConnEntry> _entries = {};
 
   void register(Server server) {
-    server.onRequest('connection.open', (p) async {
-      final id = _idFrom(p);
+    server.onRequest('connection.open', (rawParams) async {
+      final id = _idFrom(rawParams);
       await _open(id);
       return _state(id);
     });
-    server.onRequest('connection.close', (p) async {
-      final id = _idFrom(p);
+    server.onRequest('connection.close', (rawParams) async {
+      final id = _idFrom(rawParams);
       await _close(id);
       return _state(id);
     });
-    server.onRequest('connection.state', (p) async {
-      final id = _idFrom(p);
+    server.onRequest('connection.state', (rawParams) async {
+      final id = _idFrom(rawParams);
       return _state(id);
     });
-    server.onRequest('connection.setReadOnly', (p) async {
-      _ensureMap(p);
-      final params = p! as Map<String, Object?>;
+    server.onRequest('connection.setReadOnly', (rawParams) async {
+      _ensureMap(rawParams);
+      final params = rawParams! as Map<String, Object?>;
       final id = params['id'] as String?;
       final ro = params['readOnly'] as bool?;
       if (id == null || ro == null) {
@@ -65,17 +65,18 @@ class ConnectionService {
   // Server-side handle to a live connection. Opens lazily if needed.
   Future<DbExecutor> obtain(String profileId) async {
     final entry = _entries[profileId];
-    if (entry?.exec?.isOpen ?? false) return entry!.exec!;
+    if (entry?.executor?.isOpen ?? false) return entry!.executor!;
     await _open(profileId);
     final fresh = _entries[profileId];
-    final c = fresh?.exec;
-    if (c == null || !c.isOpen) {
+    final executor = fresh?.executor;
+    if (executor == null || !executor.isOpen) {
       throw RpcError('not_connected', fresh?.lastError ?? 'connection failed');
     }
-    return c;
+    return executor;
   }
 
-  bool isOpen(String profileId) => _entries[profileId]?.exec?.isOpen ?? false;
+  bool isOpen(String profileId) =>
+      _entries[profileId]?.executor?.isOpen ?? false;
   bool isReadOnly(String profileId) => _entries[profileId]?.readOnly ?? false;
 
   Future<void> _open(String profileId) async {
@@ -86,7 +87,7 @@ class ConnectionService {
     var entry = _entries[profileId];
     entry ??= _ConnEntry(readOnly: profile.readOnly);
     _entries[profileId] = entry;
-    if (entry.exec?.isOpen ?? false) return;
+    if (entry.executor?.isOpen ?? false) return;
     entry.state = ConnectionState.connecting;
     entry.lastError = null;
     _publishState(profileId);
@@ -105,10 +106,10 @@ class ConnectionService {
       if (entry.readOnly && opened.executor.capabilities.sessionReadOnly) {
         await opened.executor.setReadOnly(readOnly: true);
       }
-      entry.exec = opened.executor;
+      entry.executor = opened.executor;
       entry.state = ConnectionState.connected;
     } catch (e) {
-      entry.exec = null;
+      entry.executor = null;
       entry.state = ConnectionState.error;
       entry.lastError = e.toString();
       _publishState(profileId);
@@ -121,12 +122,12 @@ class ConnectionService {
   Future<void> _close(String profileId) async {
     final entry = _entries[profileId];
     if (entry == null) return;
-    final c = entry.exec;
-    entry.exec = null;
+    final executor = entry.executor;
+    entry.executor = null;
     entry.state = ConnectionState.disconnected;
-    if (c != null) {
+    if (executor != null) {
       try {
-        await c.close();
+        await executor.close();
       } catch (_) {}
     }
     _publishState(profileId);
@@ -140,9 +141,11 @@ class ConnectionService {
       return;
     }
     entry.readOnly = ro;
-    final c = entry.exec;
-    if (c != null && c.isOpen && c.capabilities.sessionReadOnly) {
-      await c.setReadOnly(readOnly: ro);
+    final executor = entry.executor;
+    if (executor != null &&
+        executor.isOpen &&
+        executor.capabilities.sessionReadOnly) {
+      await executor.setReadOnly(readOnly: ro);
     }
   }
 
@@ -166,17 +169,17 @@ class ConnectionService {
     _bus.publish('connection.state:$profileId', _state(profileId));
   }
 
-  String _idFrom(Object? p) {
-    _ensureMap(p);
-    final id = (p! as Map<String, Object?>)['id'] as String?;
+  String _idFrom(Object? rawParams) {
+    _ensureMap(rawParams);
+    final id = (rawParams! as Map<String, Object?>)['id'] as String?;
     if (id == null) {
       throw const RpcError('bad_params', 'id required');
     }
     return id;
   }
 
-  void _ensureMap(Object? p) {
-    if (p is! Map<String, Object?>) {
+  void _ensureMap(Object? rawParams) {
+    if (rawParams is! Map<String, Object?>) {
       throw const RpcError('bad_params', 'expected object');
     }
   }

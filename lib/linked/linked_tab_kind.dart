@@ -11,14 +11,14 @@ final linkedTabKind = TabKind(
   buildView: (tab) =>
       LinkedTabView(key: ValueKey(tab.id), tab: tab as LinkedTab),
   serialize: (tab) {
-    final t = tab as LinkedTab;
+    final linkedTab = tab as LinkedTab;
     return {
       'kind': 'linked',
-      'id': t.id,
-      'connectionId': t.connectionId,
-      'seedSchema': t.seedSchema,
-      'seedTable': t.seedTable,
-      'pinned': t.pinned,
+      'id': linkedTab.id,
+      'connectionId': linkedTab.connectionId,
+      'seedSchema': linkedTab.seedSchema,
+      'seedTable': linkedTab.seedTable,
+      'pinned': linkedTab.pinned,
     };
   },
   deserialize: (j) => LinkedTab(

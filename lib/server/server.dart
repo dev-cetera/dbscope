@@ -43,8 +43,8 @@ class Server {
       case EnvelopeKind.sub:
         _handleSub(env, out);
       case EnvelopeKind.unsub:
-        final s = _subs.remove(env.id);
-        unawaited(s?.cancel());
+        final subscription = _subs.remove(env.id);
+        unawaited(subscription?.cancel());
       case EnvelopeKind.res:
       case EnvelopeKind.evt:
       case EnvelopeKind.end:
@@ -105,7 +105,7 @@ class Server {
     }
     // Kept in `_subs` and cancelled on `unsub` (see `dispatch`).
     // ignore: cancel_subscriptions
-    final sub = stream.listen(
+    final subscription = stream.listen(
       (data) => out(Envelope.evt(env.id, data)),
       onError: (Object e, StackTrace st) {
         out(
@@ -123,12 +123,12 @@ class Server {
         _subs.remove(env.id);
       },
     );
-    _subs[env.id] = sub;
+    _subs[env.id] = subscription;
   }
 
   Future<void> dispose() async {
-    for (final s in _subs.values) {
-      await s.cancel();
+    for (final subscription in _subs.values) {
+      await subscription.cancel();
     }
     _subs.clear();
   }

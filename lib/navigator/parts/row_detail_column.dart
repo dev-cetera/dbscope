@@ -29,22 +29,22 @@ class _RowDetailColumnState extends State<RowDetailColumn> {
   }
 
   @override
-  void didUpdateWidget(covariant RowDetailColumn old) {
-    super.didUpdateWidget(old);
-    if (old.step.id != widget.step.id) {
+  void didUpdateWidget(covariant RowDetailColumn oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.step.id != widget.step.id) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (mounted) unawaited(_load());
       });
     }
   }
 
-  DbExecutor? _conn() =>
+  DbExecutor? _executor() =>
       ConnectionRegistry.instance.connectionFor(widget.tab.connectionId);
 
   Future<void> _load() async {
     final step = widget.step;
-    final conn = _conn();
-    if (conn == null) {
+    final executor = _executor();
+    if (executor == null) {
       step.error = 'No connection.';
       AppState.instance.notifyChange();
       return;
@@ -53,29 +53,32 @@ class _RowDetailColumnState extends State<RowDetailColumn> {
     step.error = null;
     AppState.instance.notifyChange();
     try {
-      final catalog = SchemaCatalog(conn);
-      final cols = await catalog.listColumns(step.schema, step.table);
-      final pk = await catalog.primaryKey(step.schema, step.table);
+      final catalog = SchemaCatalog(executor);
+      final columns = await catalog.listColumns(step.schema, step.table);
+      final primaryKeyColumns = await catalog.primaryKey(
+        step.schema,
+        step.table,
+      );
       final values = <Object?>[];
-      for (final c in pk) {
-        final i = step.pkColumns.indexOf(c);
+      for (final primaryKeyColumn in primaryKeyColumns) {
+        final i = step.pkColumns.indexOf(primaryKeyColumn);
         values.add(i >= 0 ? step.pkValues[i] : null);
       }
       final row = await catalog.loadRowByPk(
         schema: step.schema,
         table: step.table,
-        pkColumns: pk,
+        pkColumns: primaryKeyColumns,
         pkValues: values,
       );
       final policies = buildEditPolicies(
-        conn: conn,
+        conn: executor,
         schema: step.schema,
         table: step.table,
-        columns: cols,
-        pkColumns: pk,
+        columns: columns,
+        pkColumns: primaryKeyColumns,
       );
       if (!mounted) return;
-      step.columns = cols;
+      step.columns = columns;
       step.editPolicies = policies;
       step.row = row;
       step.isLoading = false;
@@ -93,16 +96,16 @@ class _RowDetailColumnState extends State<RowDetailColumn> {
 
   Future<void> _saveCell(EditPolicy policy, Object? newRaw) async {
     final step = widget.step;
-    final conn = _conn();
-    if (conn == null) return;
+    final executor = _executor();
+    if (executor == null) return;
     final row = step.row;
     if (row == null) return;
     final pkValues = <String, Object?>{};
-    for (final pk in policy.pkColumns) {
-      pkValues[pk] = row[pk];
+    for (final primaryKey in policy.pkColumns) {
+      pkValues[primaryKey] = row[primaryKey];
     }
     try {
-      final editor = CellEditor(conn);
+      final editor = CellEditor(executor);
       final result = await editor.updateCell(
         policy: policy,
         pkValues: pkValues,
@@ -125,31 +128,36 @@ class _RowDetailColumnState extends State<RowDetailColumn> {
 
   Future<void> _delete() async {
     final step = widget.step;
-    final conn = _conn();
-    if (conn == null) return;
+    final executor = _executor();
+    if (executor == null) return;
     if (step.row == null) return;
-    final pk = step.editPolicies.isNotEmpty
+    final primaryKeyColumns = step.editPolicies.isNotEmpty
         ? step.editPolicies.first.pkColumns
         : const <String>[];
-    final pkVals = <String, Object?>{for (final c in pk) c: step.row![c]};
+    final primaryKeyValues = <String, Object?>{
+      for (final column in primaryKeyColumns) column: step.row![column],
+    };
     final rules = writeRulesFor(
-      conn,
+      executor,
       schema: step.schema,
       table: step.table,
       columns: step.columns,
-      pkColumns: pk,
+      pkColumns: primaryKeyColumns,
       profile: ConnectionRegistry.instance.profileById(
         widget.tab.connectionId,
       ),
     );
-    final refusal = rules.whyNoDelete(pkColumns: pk, pkValues: pkVals);
+    final refusal = rules.whyNoDelete(
+      pkColumns: primaryKeyColumns,
+      pkValues: primaryKeyValues,
+    );
     if (refusal != null) {
       showToast(context, refusal);
       return;
     }
     final softColumn = rules.softDeleteColumn;
-    final pkSummary = pk
-        .map((c) => '$c = ${step.row![c]}')
+    final pkSummary = primaryKeyColumns
+        .map((column) => '$column = ${step.row![column]}')
         .toList(growable: false)
         .join(' AND ');
     final ok = await confirmDialog(
@@ -164,20 +172,20 @@ class _RowDetailColumnState extends State<RowDetailColumn> {
     );
     if (!ok) return;
     try {
-      final editor = CellEditor(conn);
+      final editor = CellEditor(executor);
       if (softColumn == null) {
         await editor.deleteRow(
           schema: step.schema,
           table: step.table,
-          pkColumns: pk,
-          pkValues: pkVals,
+          pkColumns: primaryKeyColumns,
+          pkValues: primaryKeyValues,
         );
       } else {
         await editor.softDeleteRow(
           schema: step.schema,
           table: step.table,
-          pkColumns: pk,
-          pkValues: pkVals,
+          pkColumns: primaryKeyColumns,
+          pkValues: primaryKeyValues,
           deletedColumn: softColumn,
         );
       }
@@ -195,23 +203,25 @@ class _RowDetailColumnState extends State<RowDetailColumn> {
   void _followOutbound(String column, Object? value, List<ForeignKey> group) {
     if (value == null) return;
     final target = group.first;
-    final selectedCol = widget.tab.selectedFollowedColumnAt(widget.index);
-    if (selectedCol == column) {
+    final selectedColumn = widget.tab.selectedFollowedColumnAt(widget.index);
+    if (selectedColumn == column) {
       widget.tab.truncateTo(widget.index);
       AppState.instance.notifyChange();
       return;
     }
-    final toPkCols = group.map((g) => g.toColumn).toList();
+    final toPrimaryKeyColumns = group
+        .map((foreignKey) => foreignKey.toColumn)
+        .toList();
     final pkValues = <Object?>[];
-    for (final g in group) {
-      pkValues.add(widget.step.row?[g.fromColumn]);
+    for (final foreignKey in group) {
+      pkValues.add(widget.step.row?[foreignKey.fromColumn]);
     }
     widget.tab.pushFrom(
       widget.index,
       RowDetailStep(
         schema: target.toSchema,
         table: target.toTable,
-        pkColumns: toPkCols,
+        pkColumns: toPrimaryKeyColumns,
         pkValues: pkValues,
         followedFromColumn: column,
       ),
@@ -227,8 +237,8 @@ class _RowDetailColumnState extends State<RowDetailColumn> {
       return;
     }
     final values = <Object?>[];
-    for (final g in group) {
-      values.add(widget.step.row?[g.toColumn]);
+    for (final foreignKey in group) {
+      values.add(widget.step.row?[foreignKey.toColumn]);
     }
     widget.tab.pushFrom(
       widget.index,
@@ -262,21 +272,21 @@ class _RowDetailColumnState extends State<RowDetailColumn> {
         children: [
           IconButton(
             tooltip: 'Reload',
-            icon: const Icon(Icons.refresh, size: 16),
+            icon: const Icon(Icons.refresh, size: 16.0),
             onPressed: step.isLoading ? null : _load,
           ),
           IconButton(
             tooltip: 'Delete row',
             icon: Icon(
               Icons.delete_outline,
-              size: 16,
+              size: 16.0,
               color: theme.colorScheme.error,
             ),
             onPressed: row == null ? null : _delete,
           ),
           IconButton(
             tooltip: 'Close column',
-            icon: const Icon(Icons.close, size: 16),
+            icon: const Icon(Icons.close, size: 16.0),
             onPressed: () {
               widget.tab.truncateTo(widget.index - 1);
               AppState.instance.notifyChange();
@@ -289,7 +299,7 @@ class _RowDetailColumnState extends State<RowDetailColumn> {
           : step.isLoading || row == null
           ? const Center(
               child: Padding(
-                padding: EdgeInsets.all(16),
+                padding: EdgeInsets.all(16.0),
                 child: CircularProgressIndicator(),
               ),
             )
@@ -319,11 +329,14 @@ class _RowDetailColumnState extends State<RowDetailColumn> {
 // Helpers
 // ---------------------------------------------------------------------------
 
-String _short(Object? v) {
-  if (v == null) return 'NULL';
-  final s = v.toString();
-  if (s.length <= 32) return s;
-  return '${s.substring(0, 32)}…';
+/// Longest value shown in the column header before it is cut with "…".
+const _kShortValueMaxLength = 32;
+
+String _short(Object? value) {
+  if (value == null) return 'NULL';
+  final text = value.toString();
+  if (text.length <= _kShortValueMaxLength) return text;
+  return '${text.substring(0, _kShortValueMaxLength)}…';
 }
 
 bool _listEq(List<Object?> a, List<Object?> b) {

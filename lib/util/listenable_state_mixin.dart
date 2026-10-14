@@ -42,15 +42,15 @@ mixin ListenableStateMixin<T extends StatefulWidget> on State<T> {
   @override
   void initState() {
     super.initState();
-    for (final l in listenables) {
-      l.addListener(_onChange);
+    for (final listenable in listenables) {
+      listenable.addListener(_onChange);
     }
   }
 
   @override
   void dispose() {
-    for (final l in listenables) {
-      l.removeListener(_onChange);
+    for (final listenable in listenables) {
+      listenable.removeListener(_onChange);
     }
     super.dispose();
   }

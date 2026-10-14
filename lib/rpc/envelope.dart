@@ -36,11 +36,11 @@ enum EnvelopeKind {
 
   final String wire;
 
-  static EnvelopeKind parse(String s) {
-    for (final k in values) {
-      if (k.wire == s) return k;
+  static EnvelopeKind parse(String wire) {
+    for (final kind in values) {
+      if (kind.wire == wire) return kind;
     }
-    throw FormatException('unknown envelope kind: $s');
+    throw FormatException('unknown envelope kind: $wire');
   }
 }
 

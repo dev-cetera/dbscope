@@ -21,7 +21,7 @@ class MetricChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final p = AppPalette.of(context);
+    final palette = AppPalette.of(context);
     final body = Column(
       mainAxisSize: MainAxisSize.min,
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -32,10 +32,10 @@ class MetricChip extends StatelessWidget {
           child: Text(
             value,
             style: TextStyle(
-              fontSize: p.bodyFontSize + 7,
-              fontFamily: p.uiFontFamily,
+              fontSize: palette.bodyFontSize + 7,
+              fontFamily: palette.uiFontFamily,
               fontWeight: FontWeight.w700,
-              color: p.accent,
+              color: palette.accent,
               fontFeatures: const [FontFeature.tabularFigures()],
             ),
           ),
@@ -46,9 +46,9 @@ class MetricChip extends StatelessWidget {
               child: Text(
                 label,
                 style: TextStyle(
-                  fontSize: p.smallFontSize,
-                  fontFamily: p.uiFontFamily,
-                  color: p.text,
+                  fontSize: palette.smallFontSize,
+                  fontFamily: palette.uiFontFamily,
+                  color: palette.text,
                 ),
                 overflow: TextOverflow.ellipsis,
               ),
@@ -57,9 +57,9 @@ class MetricChip extends StatelessWidget {
               Text(
                 unit!,
                 style: TextStyle(
-                  fontSize: p.smallFontSize,
-                  fontFamily: p.uiFontFamily,
-                  color: p.mutedText,
+                  fontSize: palette.smallFontSize,
+                  fontFamily: palette.uiFontFamily,
+                  color: palette.mutedText,
                 ),
               ),
           ],
@@ -67,21 +67,21 @@ class MetricChip extends StatelessWidget {
       ],
     );
 
-    const inset = EdgeInsets.symmetric(horizontal: 4, vertical: 3);
+    const inset = EdgeInsets.symmetric(horizontal: 4.0, vertical: 3.0);
     return SizedBox(
       width: width,
       child:
-          p.isBevel
+          palette.isBevel
               ? bevelBox(
-                palette: p,
+                palette: palette,
                 sunken: true,
-                background: p.surface,
+                background: palette.surface,
                 padding: inset,
                 child: body,
               )
               : flatBox(
-                palette: p,
-                background: p.surfaceRaised,
+                palette: palette,
+                background: palette.surfaceRaised,
                 padding: inset,
                 child: body,
               ),

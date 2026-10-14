@@ -13,28 +13,31 @@ import 'support/fake_executor.dart';
 
 void main() {
   test('load completes and stores a ready snapshot', () async {
-    final exec = FakeDbExecutor();
+    final executor = FakeDbExecutor();
     final profile = ConnectionProfile(id: 'cache-test', name: 'cache test');
     await MetadataCache.instance
-        .load(profile, exec)
+        .load(profile, executor)
         .timeout(const Duration(seconds: 5));
     final snapshot = MetadataCache.instance.snapshotFor('cache-test')!;
     expect(snapshot.status, MetaLoadStatus.ready);
     expect(snapshot.tablesOutcome, MetaTablesOutcome.absent);
     expect(snapshot.policy.active, isFalse);
-    expect(MetadataCache.instance.snapshotForExecutor(exec), same(snapshot));
+    expect(
+      MetadataCache.instance.snapshotForExecutor(executor),
+      same(snapshot),
+    );
   });
 
   test('concurrent loads share one in-flight load', () async {
-    final exec = FakeDbExecutor();
+    final executor = FakeDbExecutor();
     final profile = ConnectionProfile(id: 'cache-test-2', name: 'cache test');
     await Future.wait([
-      MetadataCache.instance.load(profile, exec),
-      MetadataCache.instance.load(profile, exec),
+      MetadataCache.instance.load(profile, executor),
+      MetadataCache.instance.load(profile, executor),
     ]).timeout(const Duration(seconds: 5));
     // A second load after completion starts fresh (not stuck in-flight).
     await MetadataCache.instance
-        .load(profile, exec)
+        .load(profile, executor)
         .timeout(const Duration(seconds: 5));
   });
 }

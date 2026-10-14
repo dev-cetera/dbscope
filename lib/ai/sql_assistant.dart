@@ -136,25 +136,29 @@ class SqlAssistant {
   Future<String> _fallbackSchemaContext({int maxTables = 50}) async {
     final catalog = SchemaCatalog(conn);
     final schemas = await catalog.listSchemas();
-    final buf = StringBuffer();
+    final buffer = StringBuffer();
     var tableBudget = maxTables;
-    for (final s in schemas) {
-      if (s.isSystem) continue;
-      final tables = await catalog.listTables(s.name);
-      for (final t in tables) {
+    for (final schema in schemas) {
+      if (schema.isSystem) continue;
+      final tables = await catalog.listTables(schema.name);
+      for (final table in tables) {
         if (tableBudget <= 0) {
-          buf.writeln('(…more tables omitted)');
-          return buf.toString();
+          buffer.writeln('(…more tables omitted)');
+          return buffer.toString();
         }
         tableBudget--;
-        final cols = await catalog.listColumns(s.name, t.name);
-        final colDesc = cols
-            .map((c) => c.typeName.isEmpty ? c.name : '${c.name}:${c.typeName}')
+        final columns = await catalog.listColumns(schema.name, table.name);
+        final columnDescriptions = columns
+            .map(
+              (column) => column.typeName.isEmpty
+                  ? column.name
+                  : '${column.name}:${column.typeName}',
+            )
             .join(', ');
-        buf.writeln('${s.name}.${t.name}($colDesc)');
+        buffer.writeln('${schema.name}.${table.name}($columnDescriptions)');
       }
     }
-    return buf.toString();
+    return buffer.toString();
   }
 
   /// `ai` rows from the schema metadata: free-text notes and example
@@ -183,18 +187,20 @@ class SqlAssistant {
     }
 
     final notes = [
-      for (final n in snapshot.index.aiNotes())
-        if (visible(n.target)) n,
+      for (final note in snapshot.index.aiNotes())
+        if (visible(note.target)) note,
     ];
     if (notes.isEmpty) return '';
-    final buf = StringBuffer('\n\nNotes from the schema owner:\n');
-    for (final n in notes) {
-      if (n.spec.notes != null) buf.writeln('- (${n.target}) ${n.spec.notes}');
-      for (final e in n.spec.examples) {
-        buf.writeln('- Example. Q: ${e.ask}\n  SQL: ${e.sql}');
+    final buffer = StringBuffer('\n\nNotes from the schema owner:\n');
+    for (final note in notes) {
+      if (note.spec.notes != null) {
+        buffer.writeln('- (${note.target}) ${note.spec.notes}');
+      }
+      for (final e in note.spec.examples) {
+        buffer.writeln('- Example. Q: ${e.ask}\n  SQL: ${e.sql}');
       }
     }
-    return buf.toString();
+    return buffer.toString();
   }
 
   String _systemPrompt(String kind) {
@@ -218,12 +224,12 @@ class SqlAssistant {
 
   /// Strip markdown fences, leading prose, trailing semicolons.
   String _extractSql(String raw) {
-    var s = raw.trim();
+    var sql = raw.trim();
     // Pull contents out of ```sql ... ``` fences if present.
     final fence = RegExp(r'```(?:sql)?\s*(.*?)```', dotAll: true);
-    final match = fence.firstMatch(s);
+    final match = fence.firstMatch(sql);
     if (match != null) {
-      s = match.group(1)!.trim();
+      sql = match.group(1)!.trim();
     }
     // Drop any leading "Here's the query:" style preamble before the
     // first SQL keyword. The regex looks for SELECT/WITH/etc. and
@@ -232,14 +238,14 @@ class SqlAssistant {
       r'\b(SELECT|WITH|EXPLAIN|VALUES)\b',
       caseSensitive: false,
     );
-    final m = firstKeyword.firstMatch(s);
-    if (m != null && m.start > 0) {
-      s = s.substring(m.start);
+    final keywordMatch = firstKeyword.firstMatch(sql);
+    if (keywordMatch != null && keywordMatch.start > 0) {
+      sql = sql.substring(keywordMatch.start);
     }
-    if (s.endsWith(';')) {
-      s = s.substring(0, s.length - 1).trim();
+    if (sql.endsWith(';')) {
+      sql = sql.substring(0, sql.length - 1).trim();
     }
-    return s.trim();
+    return sql.trim();
   }
 }
 
@@ -265,8 +271,8 @@ void enforceReadOnly(String sql) {
 }
 
 String _firstWord(String sql) {
-  final m = RegExp('^[A-Za-z_]+').firstMatch(sql);
-  return m?.group(0) ?? '';
+  final match = RegExp('^[A-Za-z_]+').firstMatch(sql);
+  return match?.group(0) ?? '';
 }
 
 class AssistantException implements Exception {

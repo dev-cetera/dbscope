@@ -41,7 +41,7 @@ class TableWriteRules {
     required Map<String, Object?> pkValues,
   }) {
     if (pkColumns.isEmpty) return 'Cannot delete: table has no primary key.';
-    if (pkValues.values.any((v) => v is MaskedValue)) {
+    if (pkValues.values.any((value) => value is MaskedValue)) {
       return 'The primary key is masked for you, so rows cannot be deleted.';
     }
     if (!access.level.atLeast(AccessLevel.full)) {
@@ -81,7 +81,7 @@ TableWriteRules writeRulesFor(
   final snapshot = MetadataCache.instance.snapshotForExecutor(conn);
   final policy = snapshot?.policy ?? AccessPolicy.unrestricted;
   final tablePolicy = snapshot?.index.policyTable(schema, table);
-  final names = {for (final c in columns) c.name};
+  final names = {for (final column in columns) column.name};
   final softDelete =
       profile?.overridesFor(schema, table).softDeleteColumn ??
       tablePolicy?.softDelete;
@@ -100,11 +100,11 @@ TableWriteRules writeRulesFor(
     returningList: columns.isEmpty
         ? '*'
         : [
-            for (final c in columns)
-              if (c.isMasked && !pkColumns.contains(c.name))
-                'NULL AS ${quoteIdent(c.name)}'
+            for (final column in columns)
+              if (column.isMasked && !pkColumns.contains(column.name))
+                'NULL AS ${quoteIdent(column.name)}'
               else
-                quoteIdent(c.name),
+                quoteIdent(column.name),
           ].join(', '),
   );
 }

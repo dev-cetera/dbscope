@@ -176,8 +176,8 @@ class _Body extends StatelessWidget {
     // the previous one — a const sidebar would stop tracking drags.
     final sidebar = Resizable(
       width: state.sidebarWidth,
-      minWidth: 180,
-      maxWidth: 520,
+      minWidth: 180.0,
+      maxWidth: 520.0,
       side: state.sidebarOnRight ? ResizeSide.left : ResizeSide.right,
       onResized: state.setSidebarWidth,
       child: const Sidebar(),
@@ -209,7 +209,7 @@ class _MainArea extends StatelessWidget {
         color: theme.colorScheme.surface,
         child: const EmptyState(
           icon: Icons.lan_outlined,
-          iconSize: 64,
+          iconSize: 64.0,
           message:
               'Open a table from the sidebar, or press Cmd+T for a new query.',
         ),

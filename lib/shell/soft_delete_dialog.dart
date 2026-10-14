@@ -43,26 +43,26 @@ class _SoftDeleteDialog extends StatefulWidget {
 }
 
 class _SoftDeleteDialogState extends State<_SoftDeleteDialog> {
-  late final TextEditingController _ctrl;
+  late final TextEditingController _columnController;
 
   @override
   void initState() {
     super.initState();
-    _ctrl = TextEditingController(text: widget.initialColumn ?? '');
+    _columnController = TextEditingController(text: widget.initialColumn ?? '');
   }
 
   @override
   void dispose() {
-    _ctrl.dispose();
+    _columnController.dispose();
     super.dispose();
   }
 
   void _save() {
-    final v = _ctrl.text.trim();
-    if (v.isEmpty) {
+    final text = _columnController.text.trim();
+    if (text.isEmpty) {
       Navigator.of(context).pop(const SoftDeleteResult.cleared());
     } else {
-      Navigator.of(context).pop(SoftDeleteResult.set(v));
+      Navigator.of(context).pop(SoftDeleteResult.set(text));
     }
   }
 
@@ -71,7 +71,7 @@ class _SoftDeleteDialogState extends State<_SoftDeleteDialog> {
     return AlertDialog(
       title: Text('Soft-delete for ${widget.schema}.${widget.table}'),
       content: ConstrainedBox(
-        constraints: const BoxConstraints(maxWidth: 460),
+        constraints: const BoxConstraints(maxWidth: 460.0),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -82,9 +82,9 @@ class _SoftDeleteDialogState extends State<_SoftDeleteDialog> {
               'and the grid hides rows where the column IS NULL is false.\n\n'
               'Leave blank and Save to clear the setting.',
             ),
-            const SizedBox(height: 12),
+            const SizedBox(height: 12.0),
             TextField(
-              controller: _ctrl,
+              controller: _columnController,
               autofocus: true,
               decoration: const InputDecoration(
                 labelText: 'Column name',

@@ -103,15 +103,15 @@ BoundSql bindSql(String sql, BindingContext context) {
       return null;
     }
     if (name.startsWith(_rowPrefix)) {
-      final col = name.substring(_rowPrefix.length);
-      if (!context.row.containsKey(col)) return name;
-      put(context.row[col]);
+      final column = name.substring(_rowPrefix.length);
+      if (!context.row.containsKey(column)) return name;
+      put(context.row[column]);
       return null;
     }
     if (name.startsWith(_pkPrefix)) {
-      final col = name.substring(_pkPrefix.length);
-      if (!context.primaryKey.containsKey(col)) return name;
-      put(context.primaryKey[col]);
+      final column = name.substring(_pkPrefix.length);
+      if (!context.primaryKey.containsKey(column)) return name;
+      put(context.primaryKey[column]);
       return null;
     }
     if (name.startsWith(_inputPrefix)) {
@@ -125,14 +125,14 @@ BoundSql bindSql(String sql, BindingContext context) {
 
   final rewritten = _scan(sql, (name, annotation) {
     if (name.startsWith(_rowsPrefix)) {
-      final col = name.substring(_rowsPrefix.length);
+      final column = name.substring(_rowsPrefix.length);
       // Never silently act on part of a selection: too many rows, or rows
       // without the column, make the placeholder unsatisfiable.
       final selection = context.selection;
       final complete =
           selection.isNotEmpty &&
           selection.length <= kMaxSelectionBind &&
-          selection.every((row) => row.containsKey(col));
+          selection.every((row) => row.containsKey(column));
       if (!complete) {
         final reason = selection.length > kMaxSelectionBind
             ? '$name (more than $kMaxSelectionBind rows selected)'
@@ -143,12 +143,12 @@ BoundSql bindSql(String sql, BindingContext context) {
       final parts = <String>[];
       for (var i = 0; i < selection.length; i++) {
         final key = '${name}_$i';
-        named[key] = selection[i][col];
+        named[key] = selection[i][column];
         parts.add(annotation == null ? '@$key' : '@$key:$annotation');
       }
       return parts.join(', ');
     }
-    final unresolved = valueFor(name, (v) => named[name] = v);
+    final unresolved = valueFor(name, (value) => named[name] = value);
     if (unresolved != null && !missing.contains(unresolved)) {
       missing.add(unresolved);
     }
@@ -186,8 +186,8 @@ String renderTemplate(
   BindingContext context, {
   String Function(String)? encode,
 }) {
-  return template.replaceAllMapped(RegExp(r'\{([A-Za-z0-9_.]+)\}'), (m) {
-    final key = m.group(1)!;
+  return template.replaceAllMapped(RegExp(r'\{([A-Za-z0-9_.]+)\}'), (match) {
+    final key = match.group(1)!;
     Object? value;
     if (key == 'cell') {
       value = context.cell;
@@ -240,9 +240,12 @@ List<String> missingRowPlaceholders(String sql, BindingContext context) {
 
 // ─── Scanner ────────────────────────────────────────────────────────────
 
-bool _isIdentStart(int c) =>
-    (c >= 0x41 && c <= 0x5a) || (c >= 0x61 && c <= 0x7a) || c == 0x5f;
-bool _isIdentChar(int c) => _isIdentStart(c) || (c >= 0x30 && c <= 0x39);
+bool _isIdentStart(int codeUnit) =>
+    (codeUnit >= 0x41 && codeUnit <= 0x5a) ||
+    (codeUnit >= 0x61 && codeUnit <= 0x7a) ||
+    codeUnit == 0x5f;
+bool _isIdentChar(int codeUnit) =>
+    _isIdentStart(codeUnit) || (codeUnit >= 0x30 && codeUnit <= 0x39);
 
 /// Walks [sql]; for every `@name` placeholder (with its optional driver
 /// type annotation, `@name:type`) calls [onPlaceholder]. When it returns a
@@ -253,41 +256,41 @@ String _scan(
 ) {
   final out = StringBuffer();
   var i = 0;
-  final n = sql.length;
-  while (i < n) {
-    final c = sql.codeUnitAt(i);
+  final length = sql.length;
+  while (i < length) {
+    final codeUnit = sql.codeUnitAt(i);
     // -- line comment
-    if (c == 0x2d && i + 1 < n && sql.codeUnitAt(i + 1) == 0x2d) {
+    if (codeUnit == 0x2d && i + 1 < length && sql.codeUnitAt(i + 1) == 0x2d) {
       final end = sql.indexOf('\n', i);
-      final stop = end < 0 ? n : end;
+      final stop = end < 0 ? length : end;
       out.write(sql.substring(i, stop));
       i = stop;
       continue;
     }
     // /* block comment */
-    if (c == 0x2f && i + 1 < n && sql.codeUnitAt(i + 1) == 0x2a) {
+    if (codeUnit == 0x2f && i + 1 < length && sql.codeUnitAt(i + 1) == 0x2a) {
       final end = sql.indexOf('*/', i + 2);
-      final stop = end < 0 ? n : end + 2;
+      final stop = end < 0 ? length : end + 2;
       out.write(sql.substring(i, stop));
       i = stop;
       continue;
     }
     // E'escape string' — backslash escapes as well as ''.
     final isEscapeString =
-        (c == 0x45 || c == 0x65) &&
-        i + 1 < n &&
+        (codeUnit == 0x45 || codeUnit == 0x65) &&
+        i + 1 < length &&
         sql.codeUnitAt(i + 1) == 0x27 &&
         (i == 0 || !_isIdentChar(sql.codeUnitAt(i - 1)));
     if (isEscapeString) {
       var j = i + 2;
-      while (j < n) {
-        final d = sql.codeUnitAt(j);
-        if (d == 0x5c) {
+      while (j < length) {
+        final inner = sql.codeUnitAt(j);
+        if (inner == 0x5c) {
           j += 2;
           continue;
         }
-        if (d == 0x27) {
-          if (j + 1 < n && sql.codeUnitAt(j + 1) == 0x27) {
+        if (inner == 0x27) {
+          if (j + 1 < length && sql.codeUnitAt(j + 1) == 0x27) {
             j += 2;
             continue;
           }
@@ -295,17 +298,17 @@ String _scan(
         }
         j++;
       }
-      final stop = j < n ? j + 1 : n;
+      final stop = j < length ? j + 1 : length;
       out.write(sql.substring(i, stop));
       i = stop;
       continue;
     }
     // 'string' or "identifier" ('' / "" escapes)
-    if (c == 0x27 || c == 0x22) {
+    if (codeUnit == 0x27 || codeUnit == 0x22) {
       var j = i + 1;
-      while (j < n) {
-        if (sql.codeUnitAt(j) == c) {
-          if (j + 1 < n && sql.codeUnitAt(j + 1) == c) {
+      while (j < length) {
+        if (sql.codeUnitAt(j) == codeUnit) {
+          if (j + 1 < length && sql.codeUnitAt(j + 1) == codeUnit) {
             j += 2;
             continue;
           }
@@ -313,40 +316,42 @@ String _scan(
         }
         j++;
       }
-      final stop = j < n ? j + 1 : n;
+      final stop = j < length ? j + 1 : length;
       out.write(sql.substring(i, stop));
       i = stop;
       continue;
     }
     // $tag$ dollar-quoted $tag$
-    if (c == 0x24) {
+    if (codeUnit == 0x24) {
       final match = RegExp(
         r'\$([A-Za-z_][A-Za-z0-9_]*)?\$',
       ).matchAsPrefix(sql, i);
       if (match != null) {
         final tag = match.group(0)!;
         final end = sql.indexOf(tag, i + tag.length);
-        final stop = end < 0 ? n : end + tag.length;
+        final stop = end < 0 ? length : end + tag.length;
         out.write(sql.substring(i, stop));
         i = stop;
         continue;
       }
     }
     // @name[:type] — like the driver, regardless of what precedes the @.
-    if (c == 0x40 && i + 1 < n && _isIdentStart(sql.codeUnitAt(i + 1))) {
+    if (codeUnit == 0x40 &&
+        i + 1 < length &&
+        _isIdentStart(sql.codeUnitAt(i + 1))) {
       var j = i + 1;
-      while (j < n && _isIdentChar(sql.codeUnitAt(j))) {
+      while (j < length && _isIdentChar(sql.codeUnitAt(j))) {
         j++;
       }
       final name = sql.substring(i + 1, j);
       String? annotation;
       // `@x:int8` is an annotation; `@x::int8` is a real cast.
-      if (j + 1 < n &&
+      if (j + 1 < length &&
           sql.codeUnitAt(j) == 0x3a &&
           sql.codeUnitAt(j + 1) != 0x3a &&
           _isIdentStart(sql.codeUnitAt(j + 1))) {
         var k = j + 1;
-        while (k < n && _isIdentChar(sql.codeUnitAt(k))) {
+        while (k < length && _isIdentChar(sql.codeUnitAt(k))) {
           k++;
         }
         annotation = sql.substring(j + 1, k);
@@ -357,7 +362,7 @@ String _scan(
       i = j;
       continue;
     }
-    out.writeCharCode(c);
+    out.writeCharCode(codeUnit);
     i++;
   }
   return out.toString();

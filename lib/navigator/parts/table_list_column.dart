@@ -27,12 +27,12 @@ class _TableListColumnState extends State<TableListColumn> {
     unawaited(_load());
   }
 
-  DbExecutor? _conn() =>
+  DbExecutor? _executor() =>
       ConnectionRegistry.instance.connectionFor(widget.tab.connectionId);
 
   Future<void> _load() async {
-    final conn = _conn();
-    if (conn == null) {
+    final executor = _executor();
+    if (executor == null) {
       setState(() => _error = 'No connection.');
       return;
     }
@@ -41,13 +41,13 @@ class _TableListColumnState extends State<TableListColumn> {
       _error = null;
     });
     try {
-      final catalog = SchemaCatalog(conn);
+      final catalog = SchemaCatalog(executor);
       final schemas = await catalog.listSchemas();
       final tables = <String, List<TableInfo>>{};
       final expanded = <String>{};
-      for (final s in schemas.where((s) => !s.isSystem)) {
-        tables[s.name] = await catalog.listTables(s.name);
-        expanded.add(s.name);
+      for (final schema in schemas.where((schema) => !schema.isSystem)) {
+        tables[schema.name] = await catalog.listTables(schema.name);
+        expanded.add(schema.name);
       }
       if (!mounted) return;
       setState(() {
@@ -69,14 +69,14 @@ class _TableListColumnState extends State<TableListColumn> {
     }
   }
 
-  void _openTable(SchemaInfo s, TableInfo t) {
+  void _openTable(SchemaInfo schema, TableInfo table) {
     final selected = widget.tab.selectedTableAt(widget.index);
-    if (selected == '${s.name}.${t.name}') {
+    if (selected == '${schema.name}.${table.name}') {
       widget.tab.truncateTo(widget.index);
     } else {
       widget.tab.pushFrom(
         widget.index,
-        RowListStep(schema: s.name, table: t.name),
+        RowListStep(schema: schema.name, table: table.name),
       );
     }
     AppState.instance.notifyChange();
@@ -95,8 +95,10 @@ class _TableListColumnState extends State<TableListColumn> {
   List<TableInfo> _filtered(String schema) {
     final all = _tables[schema] ?? const [];
     if (_filter.isEmpty) return all;
-    final f = _filter.toLowerCase();
-    return all.where((t) => t.name.toLowerCase().contains(f)).toList();
+    final filter = _filter.toLowerCase();
+    return all
+        .where((table) => table.name.toLowerCase().contains(filter))
+        .toList();
   }
 
   @override
@@ -106,9 +108,9 @@ class _TableListColumnState extends State<TableListColumn> {
     // Compute related-table keys (FK in either direction) for color-coding.
     final related = <String>{};
     if (selected != null) {
-      for (final fk in widget.tab.foreignKeys) {
-        if (fk.fromKey == selected) related.add(fk.toKey);
-        if (fk.toKey == selected) related.add(fk.fromKey);
+      for (final foreignKey in widget.tab.foreignKeys) {
+        if (foreignKey.fromKey == selected) related.add(foreignKey.toKey);
+        if (foreignKey.toKey == selected) related.add(foreignKey.fromKey);
       }
     }
     return AppPanel(
@@ -117,21 +119,21 @@ class _TableListColumnState extends State<TableListColumn> {
       subtitle: _loading ? 'loading…' : null,
       trailing: IconButton(
         tooltip: 'Refresh',
-        icon: const Icon(Icons.refresh, size: 16),
+        icon: const Icon(Icons.refresh, size: 16.0),
         onPressed: _loading ? null : _load,
       ),
       filter: TextField(
         decoration: const InputDecoration(
           hintText: 'Filter tables…',
           isDense: true,
-          prefixIcon: Icon(Icons.search, size: 16),
+          prefixIcon: Icon(Icons.search, size: 16.0),
           border: OutlineInputBorder(),
         ),
-        onChanged: (v) => setState(() => _filter = v.trim()),
+        onChanged: (value) => setState(() => _filter = value.trim()),
       ),
       child: _error != null
           ? Padding(
-              padding: const EdgeInsets.all(8),
+              padding: const EdgeInsets.all(8.0),
               child: SelectableText(
                 _error!,
                 style: TextStyle(color: theme.colorScheme.error),
@@ -139,49 +141,51 @@ class _TableListColumnState extends State<TableListColumn> {
             )
           : ListView(
               children: [
-                for (final s in _schemas)
-                  ..._schemaRows(s, selected, related, theme),
+                for (final schema in _schemas)
+                  ..._schemaRows(schema, selected, related, theme),
               ],
             ),
     );
   }
 
   List<Widget> _schemaRows(
-    SchemaInfo s,
+    SchemaInfo schema,
     String? selected,
     Set<String> related,
     ThemeData theme,
   ) {
-    final tables = _filtered(s.name);
+    final tables = _filtered(schema.name);
     if (_filter.isNotEmpty && tables.isEmpty) return const [];
     return [
       InkWell(
-        onTap: () => _toggleSchema(s.name),
+        onTap: () => _toggleSchema(schema.name),
         child: Padding(
-          padding: const EdgeInsets.fromLTRB(6, 4, 6, 4),
+          padding: const EdgeInsets.fromLTRB(6.0, 4.0, 6.0, 4.0),
           child: Row(
             children: [
               Icon(
-                _expanded.contains(s.name)
+                _expanded.contains(schema.name)
                     ? Icons.keyboard_arrow_down
                     : Icons.keyboard_arrow_right,
-                size: 14,
+                size: 14.0,
                 color: theme.hintColor,
               ),
               Icon(
-                s.isSystem ? Icons.folder_outlined : Icons.folder,
-                size: 14,
-                color: s.isSystem ? theme.hintColor : theme.colorScheme.primary,
+                schema.isSystem ? Icons.folder_outlined : Icons.folder,
+                size: 14.0,
+                color: schema.isSystem
+                    ? theme.hintColor
+                    : theme.colorScheme.primary,
               ),
-              const SizedBox(width: 6),
+              const SizedBox(width: 6.0),
               Expanded(
                 child: Text(
-                  s.name,
+                  schema.name,
                   style: TextStyle(
-                    fontWeight: s.isSystem
+                    fontWeight: schema.isSystem
                         ? FontWeight.normal
                         : FontWeight.w600,
-                    color: s.isSystem ? theme.hintColor : null,
+                    color: schema.isSystem ? theme.hintColor : null,
                   ),
                 ),
               ),
@@ -189,14 +193,14 @@ class _TableListColumnState extends State<TableListColumn> {
           ),
         ),
       ),
-      if (_expanded.contains(s.name))
-        for (final t in tables)
+      if (_expanded.contains(schema.name))
+        for (final table in tables)
           _TableEntry(
-            schemaName: s.name,
-            table: t,
-            isSelected: selected == '${s.name}.${t.name}',
-            isRelated: related.contains('${s.name}.${t.name}'),
-            onTap: () => _openTable(s, t),
+            schemaName: schema.name,
+            table: table,
+            isSelected: selected == '${schema.name}.${table.name}',
+            isRelated: related.contains('${schema.name}.${table.name}'),
+            onTap: () => _openTable(schema, table),
           ),
     ];
   }
@@ -220,7 +224,7 @@ class _TableEntry extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final isView = table.kind == 'VIEW';
-    final bg = isSelected
+    final backgroundColor = isSelected
         ? theme.colorScheme.primaryContainer
         : isRelated
         ? theme.colorScheme.tertiaryContainer.withValues(alpha: 0.55)
@@ -228,20 +232,20 @@ class _TableEntry extends StatelessWidget {
     return InkWell(
       onTap: onTap,
       child: Container(
-        color: bg,
-        padding: const EdgeInsets.fromLTRB(28, 3, 8, 3),
+        color: backgroundColor,
+        padding: const EdgeInsets.fromLTRB(28.0, 3.0, 8.0, 3.0),
         child: Row(
           children: [
             Icon(
               isView ? Icons.visibility_outlined : Icons.table_chart_outlined,
-              size: 12,
+              size: 12.0,
               color: isView
                   ? theme.hintColor
                   : isRelated && !isSelected
                   ? theme.colorScheme.tertiary
                   : theme.colorScheme.secondary,
             ),
-            const SizedBox(width: 6),
+            const SizedBox(width: 6.0),
             Expanded(
               child: Text(
                 table.name,
@@ -253,14 +257,14 @@ class _TableEntry extends StatelessWidget {
             ),
             if (isRelated && !isSelected)
               Padding(
-                padding: const EdgeInsets.only(right: 4),
+                padding: const EdgeInsets.only(right: 4.0),
                 child: Icon(
                   Icons.link,
-                  size: 11,
+                  size: 11.0,
                   color: theme.colorScheme.tertiary,
                 ),
               ),
-            const Icon(Icons.chevron_right, size: 14),
+            const Icon(Icons.chevron_right, size: 14.0),
           ],
         ),
       ),

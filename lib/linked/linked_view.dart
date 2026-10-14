@@ -52,14 +52,18 @@ const double _kVerticalGap = 24;
 const double _kResizeHandleWidth = 6;
 const _kListPageSize = 200;
 
+/// Longest cell value shown on a node card before it is cut off with an
+/// ellipsis. Also used when measuring how wide a card must be.
+const _kMaxValueDisplayLength = 32;
+
 /// Rendered height for a row node — header + optional seed-subtitle +
 /// one row per visible column. Cards render in compact mode (PK / FK /
 /// ref-target rows only), so [_compactColumnsFor] is what drives both
 /// height and edge-anchor math.
-double _nodeHeightFor(LinkedRowNode node, List<ForeignKey> allFks) {
+double _nodeHeightFor(LinkedRowNode node, List<ForeignKey> allForeignKeys) {
   final hasSubtitle = _nodeSubtitle(node) != null;
-  final cols = _compactColumnsFor(node, allFks).length;
-  return schemaNodeHeight(cols, hasSubtitle: hasSubtitle);
+  final columnCount = _compactColumnsFor(node, allForeignKeys).length;
+  return schemaNodeHeight(columnCount, hasSubtitle: hasSubtitle);
 }
 
 /// Y position (canvas-space, relative to a node's top) of the centre of
@@ -67,24 +71,28 @@ double _nodeHeightFor(LinkedRowNode node, List<ForeignKey> allFks) {
 /// endpoints to the exact field row.
 double? _columnAnchorYFor(
   LinkedRowNode node,
-  List<ForeignKey> allFks,
+  List<ForeignKey> allForeignKeys,
   String? columnName,
 ) {
   if (columnName == null) return null;
   final hasSubtitle = _nodeSubtitle(node) != null;
-  final cols = _compactColumnsFor(node, allFks);
-  final idx = cols.indexOf(columnName);
-  if (idx < 0) return null;
+  final columns = _compactColumnsFor(node, allForeignKeys);
+  final index = columns.indexOf(columnName);
+  if (index < 0) return null;
   final headerOffset = _kHeaderHeight + (hasSubtitle ? _kSubtitleHeight : 0);
-  return headerOffset + idx * _kRowHeight + _kRowHeight / 2;
+  return headerOffset + index * _kRowHeight + _kRowHeight / 2;
 }
 
 /// Per-table colour used in the sidebar's relationship gutter. Linked-view
 /// nodes outline themselves with this and edges use the destination node's
 /// colour so visual identity is consistent between the two views.
-Color _colorForNode(LinkedNode n) {
-  if (n is LinkedRowNode) return colorForTable('${n.schema}.${n.table}');
-  if (n is LinkedListNode) return colorForTable('${n.schema}.${n.table}');
+Color _colorForNode(LinkedNode node) {
+  if (node is LinkedRowNode) {
+    return colorForTable('${node.schema}.${node.table}');
+  }
+  if (node is LinkedListNode) {
+    return colorForTable('${node.schema}.${node.table}');
+  }
   return Colors.grey;
 }
 
@@ -93,10 +101,10 @@ Color _colorForNode(LinkedNode n) {
 /// renders. Clamped to a sane min/max so a runaway-long column name
 /// can't push the node off-screen — the user can drag the right edge
 /// to grow it further.
-double _autoWidthFor(LinkedRowNode node, List<ForeignKey> fks) {
-  const headerStyle = TextStyle(fontSize: 13, fontWeight: FontWeight.w700);
+double _autoWidthFor(LinkedRowNode node, List<ForeignKey> foreignKeys) {
+  const headerStyle = TextStyle(fontSize: 13.0, fontWeight: FontWeight.w700);
   const subtitleStyle = TextStyle(fontSize: 11, fontFamily: 'Menlo');
-  const nameStyle = TextStyle(fontSize: 12);
+  const nameStyle = TextStyle(fontSize: 12.0);
   const typeStyle = TextStyle(fontSize: 11, fontFamily: 'Menlo');
 
   double measure(String text, TextStyle style) {
@@ -122,21 +130,27 @@ double _autoWidthFor(LinkedRowNode node, List<ForeignKey> fks) {
   }
 
   // Body rows: name on the left, type-or-value on the right.
-  final cols = node.columns.isNotEmpty
+  final columns = node.columns.isNotEmpty
       ? [for (final c in node.columns) (name: c.name, type: c.typeName)]
-      : [for (final c in node.bodyColumnOrder(fks)) (name: c, type: '')];
-  for (final c in cols) {
+      : [
+          for (final c in node.bodyColumnOrder(foreignKeys))
+            (name: c, type: ''),
+        ];
+  for (final column in columns) {
     final right = node.row != null
         ? (() {
-            final v = node.row?[c.name];
-            if (v == null) return 'NULL';
-            final s = v.toString();
-            return s.length > 32 ? '${s.substring(0, 32)}…' : s;
+            final value = node.row?[column.name];
+            if (value == null) return 'NULL';
+            final text = value.toString();
+            return text.length > _kMaxValueDisplayLength
+                ? '${text.substring(0, _kMaxValueDisplayLength)}…'
+                : text;
           })()
-        : c.type;
+        : column.type;
     // 8px gap between left + right, plus prefix glyph ("* "/"+ ") width.
-    final w = measure(c.name, nameStyle) + 12 + measure(right, typeStyle) + 8;
-    if (w > widest) widest = w;
+    final width =
+        measure(column.name, nameStyle) + 12 + measure(right, typeStyle) + 8;
+    if (width > widest) widest = width;
   }
 
   // Card padding (10 + 10) and a little breathing room.
@@ -180,21 +194,21 @@ class _LinkedTabViewState extends State<LinkedTabView> {
     });
   }
 
-  DbExecutor? _conn() =>
+  DbExecutor? _executor() =>
       ConnectionRegistry.instance.connectionFor(widget.tab.connectionId);
 
   Future<void> _loadFKs() async {
     final tab = widget.tab;
     if (tab.fksLoaded) return;
-    final conn = _conn();
-    if (conn == null) {
+    final executor = _executor();
+    if (executor == null) {
       tab.fksError = 'No connection.';
       AppState.instance.notifyChange();
       return;
     }
     try {
-      final fks = await SchemaCatalog(conn).listForeignKeys();
-      tab.foreignKeys = fks;
+      final foreignKeys = await SchemaCatalog(executor).listForeignKeys();
+      tab.foreignKeys = foreignKeys;
       tab.fksLoaded = true;
       tab.fksError = null;
     } catch (e) {
@@ -229,16 +243,16 @@ class _LinkedTabViewState extends State<LinkedTabView> {
     }
     // Place the new node somewhere visible — to the right of the right-
     // most existing node if any, otherwise origin.
-    var position = const Offset(60, 60);
+    var position = const Offset(60.0, 60.0);
     if (tab.nodes.isNotEmpty) {
       final maxRight = tab.nodes
-          .map((n) => n.position.dx)
+          .map((otherNode) => otherNode.position.dx)
           .reduce((a, b) => a > b ? a : b);
       // Use the right-most node's width to space the new one.
       final rightMost = tab.nodes.reduce(
         (a, b) => a.position.dx > b.position.dx ? a : b,
       );
-      position = Offset(maxRight + rightMost.width + _kHorizontalGap, 60);
+      position = Offset(maxRight + rightMost.width + _kHorizontalGap, 60.0);
     }
     final node = LinkedRowNode(
       position: position,
@@ -263,14 +277,17 @@ class _LinkedTabViewState extends State<LinkedTabView> {
     AppState.instance.notifyChange();
   }
 
-  Future<void> _showNodeContextMenu(LinkedNode node, Offset globalPos) async {
+  Future<void> _showNodeContextMenu(
+    LinkedNode node,
+    Offset globalPosition,
+  ) async {
     final selected = await showMenu<String>(
       context: context,
       position: RelativeRect.fromLTRB(
-        globalPos.dx,
-        globalPos.dy,
-        globalPos.dx + 1,
-        globalPos.dy + 1,
+        globalPosition.dx,
+        globalPosition.dy,
+        globalPosition.dx + 1,
+        globalPosition.dy + 1,
       ),
       items: const [
         PopupMenuItem<String>(
@@ -278,8 +295,8 @@ class _LinkedTabViewState extends State<LinkedTabView> {
           child: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Icon(Icons.scatter_plot_outlined, size: 16),
-              SizedBox(width: 8),
+              Icon(Icons.scatter_plot_outlined, size: 16.0),
+              SizedBox(width: 8.0),
               Text('Remove chain'),
             ],
           ),
@@ -321,8 +338,8 @@ class _LinkedTabViewState extends State<LinkedTabView> {
   }
 
   Future<void> _loadPreviewRow(LinkedRowRef ref) async {
-    final conn = _conn();
-    if (conn == null) {
+    final executor = _executor();
+    if (executor == null) {
       ref.error = 'No connection.';
       AppState.instance.notifyChange();
       return;
@@ -331,31 +348,31 @@ class _LinkedTabViewState extends State<LinkedTabView> {
     ref.error = null;
     AppState.instance.notifyChange();
     try {
-      final catalog = SchemaCatalog(conn);
-      final cols = await catalog.listColumns(ref.schema, ref.table);
-      final pk = await catalog.primaryKey(ref.schema, ref.table);
+      final catalog = SchemaCatalog(executor);
+      final columns = await catalog.listColumns(ref.schema, ref.table);
+      final primaryKey = await catalog.primaryKey(ref.schema, ref.table);
       final values = <Object?>[];
-      for (final c in pk) {
-        final i = ref.pkColumns.indexOf(c);
+      for (final column in primaryKey) {
+        final i = ref.pkColumns.indexOf(column);
         values.add(i >= 0 ? ref.pkValues[i] : null);
       }
       final row = await catalog.loadRowByPk(
         schema: ref.schema,
         table: ref.table,
-        pkColumns: pk,
+        pkColumns: primaryKey,
         pkValues: values,
       );
       if (!mounted) return;
       // The preview may have been replaced or cleared while we awaited —
       // discard this load so we don't paint stale data over a newer one.
       if (widget.tab.previewRow != ref) return;
-      ref.columns = cols;
+      ref.columns = columns;
       ref.editPolicies = buildEditPolicies(
-        conn: conn,
+        conn: executor,
         schema: ref.schema,
         table: ref.table,
-        columns: cols,
-        pkColumns: pk,
+        columns: columns,
+        pkColumns: primaryKey,
       );
       ref.row = row;
       ref.isLoading = false;
@@ -379,14 +396,14 @@ class _LinkedTabViewState extends State<LinkedTabView> {
     EditPolicy policy,
     Object? newRaw,
   ) async {
-    final conn = _conn();
+    final executor = _executor();
     final row = ref.row;
-    if (conn == null || row == null) return;
+    if (executor == null || row == null) return;
     final pkValues = <String, Object?>{
-      for (final pk in policy.pkColumns) pk: row[pk],
+      for (final primaryKey in policy.pkColumns) primaryKey: row[primaryKey],
     };
     try {
-      final editor = CellEditor(conn);
+      final editor = CellEditor(executor);
       final result = await editor.updateCell(
         policy: policy,
         pkValues: pkValues,
@@ -424,7 +441,7 @@ class _LinkedTabViewState extends State<LinkedTabView> {
     }
     final source = tab.selectedRowNode;
     final position = source == null
-        ? const Offset(60, 60)
+        ? const Offset(60.0, 60.0)
         : _placeNextTo(source);
     final node = LinkedRowNode(
       position: position,
@@ -444,21 +461,25 @@ class _LinkedTabViewState extends State<LinkedTabView> {
     return node;
   }
 
+  /// Upper bound on how many times [_placeNextTo] bumps the candidate slot
+  /// down, so a crowded canvas can never loop forever.
+  static const _kMaxPlacementAttempts = 40;
+
   /// Place a freshly spawned node next to [source]. Vertical bumping
   /// avoids overlapping an existing node at the same column. Keeps a
   /// hand-laid-out canvas readable without doing real auto-layout.
   Offset _placeNextTo(LinkedNode source) {
-    final fks = widget.tab.foreignKeys;
-    final base = source.position + Offset(source.width + _kHorizontalGap, 0);
+    final foreignKeys = widget.tab.foreignKeys;
+    final base = source.position + Offset(source.width + _kHorizontalGap, 0.0);
     var candidate = base;
     final occupied = <Rect>[
-      for (final n in widget.tab.nodes)
+      for (final node in widget.tab.nodes)
         Rect.fromLTWH(
-          n.position.dx,
-          n.position.dy,
-          n.width,
-          n is LinkedRowNode
-              ? _nodeHeightFor(n, fks)
+          node.position.dx,
+          node.position.dy,
+          node.width,
+          node is LinkedRowNode
+              ? _nodeHeightFor(node, foreignKeys)
               : _kHeaderHeight + _kRowHeight,
         ),
     ];
@@ -466,7 +487,7 @@ class _LinkedTabViewState extends State<LinkedTabView> {
     final fallbackWidth = source.width;
     var safety = 0;
     while (occupied.any(
-          (r) => r.overlaps(
+          (rect) => rect.overlaps(
             Rect.fromLTWH(
               candidate.dx,
               candidate.dy,
@@ -475,8 +496,8 @@ class _LinkedTabViewState extends State<LinkedTabView> {
             ),
           ),
         ) &&
-        safety < 40) {
-      candidate += const Offset(0, fallbackHeight + _kVerticalGap);
+        safety < _kMaxPlacementAttempts) {
+      candidate += const Offset(0.0, fallbackHeight + _kVerticalGap);
       safety++;
     }
     return candidate;
@@ -485,8 +506,8 @@ class _LinkedTabViewState extends State<LinkedTabView> {
   // ---- Row node loading & DML ------------------------------------------
 
   Future<void> _loadRowNode(LinkedRowNode node) async {
-    final conn = _conn();
-    if (conn == null) {
+    final executor = _executor();
+    if (executor == null) {
       node.error = 'No connection.';
       AppState.instance.notifyChange();
       return;
@@ -495,28 +516,28 @@ class _LinkedTabViewState extends State<LinkedTabView> {
     node.error = null;
     AppState.instance.notifyChange();
     try {
-      final catalog = SchemaCatalog(conn);
-      final cols = await catalog.listColumns(node.schema, node.table);
-      final pk = await catalog.primaryKey(node.schema, node.table);
+      final catalog = SchemaCatalog(executor);
+      final columns = await catalog.listColumns(node.schema, node.table);
+      final primaryKey = await catalog.primaryKey(node.schema, node.table);
       final values = <Object?>[];
-      for (final c in pk) {
-        final i = node.pkColumns.indexOf(c);
+      for (final column in primaryKey) {
+        final i = node.pkColumns.indexOf(column);
         values.add(i >= 0 ? node.pkValues[i] : null);
       }
       final row = await catalog.loadRowByPk(
         schema: node.schema,
         table: node.table,
-        pkColumns: pk,
+        pkColumns: primaryKey,
         pkValues: values,
       );
       if (!mounted) return;
-      node.columns = cols;
+      node.columns = columns;
       node.editPolicies = buildEditPolicies(
-        conn: conn,
+        conn: executor,
         schema: node.schema,
         table: node.table,
-        columns: cols,
-        pkColumns: pk,
+        columns: columns,
+        pkColumns: primaryKey,
       );
       node.row = row;
       node.rowLabel = _metaRowLabel(node.schema, node.table, row);
@@ -552,14 +573,17 @@ class _LinkedTabViewState extends State<LinkedTabView> {
     // Outbound: group FKs by constraint key so composite FKs spawn one
     // child, not one per column.
     final outboundByConstraint = <String, List<ForeignKey>>{};
-    for (final fk in tab.foreignKeys) {
-      if (fk.fromSchema == node.schema && fk.fromTable == node.table) {
-        outboundByConstraint.putIfAbsent(fk.constraintKey, () => []).add(fk);
+    for (final foreignKey in tab.foreignKeys) {
+      if (foreignKey.fromSchema == node.schema &&
+          foreignKey.fromTable == node.table) {
+        outboundByConstraint
+            .putIfAbsent(foreignKey.constraintKey, () => [])
+            .add(foreignKey);
       }
     }
     for (final group in outboundByConstraint.values) {
       // A composite FK with all-null values has no target row to load.
-      final allNull = group.every((g) => row[g.fromColumn] == null);
+      final allNull = group.every((member) => row[member.fromColumn] == null);
       if (allNull) continue;
       final lead = group.first;
       _spawnOutbound(
@@ -573,9 +597,12 @@ class _LinkedTabViewState extends State<LinkedTabView> {
     // Inbound: each constraint becomes one list node showing the rows
     // that reference us.
     final inboundByConstraint = <String, List<ForeignKey>>{};
-    for (final fk in tab.foreignKeys) {
-      if (fk.toSchema == node.schema && fk.toTable == node.table) {
-        inboundByConstraint.putIfAbsent(fk.constraintKey, () => []).add(fk);
+    for (final foreignKey in tab.foreignKeys) {
+      if (foreignKey.toSchema == node.schema &&
+          foreignKey.toTable == node.table) {
+        inboundByConstraint
+            .putIfAbsent(foreignKey.constraintKey, () => [])
+            .add(foreignKey);
       }
     }
     for (final group in inboundByConstraint.values) {
@@ -588,14 +615,14 @@ class _LinkedTabViewState extends State<LinkedTabView> {
     EditPolicy policy,
     Object? newRaw,
   ) async {
-    final conn = _conn();
+    final executor = _executor();
     final row = node.row;
-    if (conn == null || row == null) return;
+    if (executor == null || row == null) return;
     final pkValues = <String, Object?>{
-      for (final pk in policy.pkColumns) pk: row[pk],
+      for (final primaryKey in policy.pkColumns) primaryKey: row[primaryKey],
     };
     try {
-      final editor = CellEditor(conn);
+      final editor = CellEditor(executor);
       final result = await editor.updateCell(
         policy: policy,
         pkValues: pkValues,
@@ -627,10 +654,10 @@ class _LinkedTabViewState extends State<LinkedTabView> {
     if (value == null) return;
     final tab = widget.tab;
     final target = group.first;
-    final toPkCols = group.map((g) => g.toColumn).toList();
+    final toPrimaryKeyColumns = group.map((member) => member.toColumn).toList();
     final pkValues = <Object?>[];
-    for (final g in group) {
-      pkValues.add(source.row?[g.fromColumn]);
+    for (final member in group) {
+      pkValues.add(source.row?[member.fromColumn]);
     }
     final existing = tab.findRow(target.toSchema, target.toTable, pkValues);
     if (existing != null) {
@@ -656,7 +683,7 @@ class _LinkedTabViewState extends State<LinkedTabView> {
       position: _placeNextTo(source),
       schema: target.toSchema,
       table: target.toTable,
-      pkColumns: toPkCols,
+      pkColumns: toPrimaryKeyColumns,
       pkValues: pkValues,
     );
     tab.nodes.add(node);
@@ -694,23 +721,25 @@ class _LinkedTabViewState extends State<LinkedTabView> {
       tab.pickerTable = fromTable;
     }
 
-    final conn = _conn();
-    if (conn == null) return;
+    final executor = _executor();
+    if (executor == null) return;
     try {
-      final catalog = SchemaCatalog(conn);
-      final pk = await catalog.primaryKey(fromSchema, fromTable);
-      if (pk.isEmpty) return;
-      final whereCols = group.map((g) => quoteIdent(g.fromColumn)).toList();
+      final catalog = SchemaCatalog(executor);
+      final primaryKey = await catalog.primaryKey(fromSchema, fromTable);
+      if (primaryKey.isEmpty) return;
+      final whereColumns = group
+          .map((member) => quoteIdent(member.fromColumn))
+          .toList();
       final params = <Object?>[];
       final placeholders = <String>[];
-      for (final g in group) {
-        params.add(row[g.toColumn]);
+      for (final member in group) {
+        params.add(row[member.toColumn]);
         placeholders.add('\$${params.length}');
       }
       final sql =
-          'SELECT ${pk.map(quoteIdent).join(', ')} FROM ${quoteQualified(fromSchema, fromTable)} '
-          'WHERE (${whereCols.join(', ')}) = (${placeholders.join(', ')}) LIMIT 1';
-      final result = await conn.execute(sql, positional: params);
+          'SELECT ${primaryKey.map(quoteIdent).join(', ')} FROM ${quoteQualified(fromSchema, fromTable)} '
+          'WHERE (${whereColumns.join(', ')}) = (${placeholders.join(', ')}) LIMIT 1';
+      final result = await executor.execute(sql, positional: params);
       if (!mounted || result.rows.isEmpty) return;
       final pkValues = List<Object?>.from(result.rows.first);
 
@@ -739,7 +768,7 @@ class _LinkedTabViewState extends State<LinkedTabView> {
         position: _placeNextTo(source),
         schema: fromSchema,
         table: fromTable,
-        pkColumns: pk,
+        pkColumns: primaryKey,
         pkValues: pkValues,
       );
       tab.nodes.add(node);
@@ -788,7 +817,7 @@ class _LinkedTabViewState extends State<LinkedTabView> {
               AppState.instance.notifyChange();
             },
           ),
-          const Divider(height: 1),
+          const Divider(height: 1.0),
           Expanded(
             child: Row(
               children: [
@@ -803,7 +832,7 @@ class _LinkedTabViewState extends State<LinkedTabView> {
                   )
                 else
                   SizedBox(
-                    width: 280,
+                    width: 280.0,
                     child: _RowPickerPanel(
                       connectionId: tab.connectionId,
                       schema: tab.pickerSchema,
@@ -815,7 +844,7 @@ class _LinkedTabViewState extends State<LinkedTabView> {
                       },
                     ),
                   ),
-                const VerticalDivider(width: 1),
+                const VerticalDivider(width: 1.0),
                 Expanded(
                   child: GridWithInspector(
                     grid: _CanvasWithMiddle(
@@ -857,16 +886,16 @@ class _LinkedTabViewState extends State<LinkedTabView> {
                         if (selected == null) return Future.value();
                         return _saveRowCell(selected, policy, raw);
                       },
-                      onFollowOutbound: (col, value, group) {
+                      onFollowOutbound: (column, value, group) {
                         if (tab.previewRow != null) {
                           final promoted = _promotePreview();
                           if (promoted == null) return;
-                          _spawnOutbound(promoted, col, value, group);
+                          _spawnOutbound(promoted, column, value, group);
                           return;
                         }
                         final selected = tab.selectedRowNode;
                         if (selected == null) return;
-                        _spawnOutbound(selected, col, value, group);
+                        _spawnOutbound(selected, column, value, group);
                       },
                       onOpenInbound: (group) {
                         if (tab.previewRow != null) {
@@ -935,7 +964,7 @@ class _Header extends StatelessWidget {
     final percent = (tab.scale * 100).round();
     final rowCount = tab.nodes.whereType<LinkedRowNode>().length;
     return PanelHeader(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 4.0),
       titleIcon: Icons.hub_outlined,
       title: 'Linked view',
       subtitle:
@@ -946,17 +975,17 @@ class _Header extends StatelessWidget {
         children: [
           TextButton.icon(
             onPressed: rowCount == 0 ? null : onExplode,
-            icon: const Icon(Icons.scatter_plot_outlined, size: 16),
+            icon: const Icon(Icons.scatter_plot_outlined, size: 16.0),
             label: const Text('Explode'),
             style: TextButton.styleFrom(visualDensity: VisualDensity.compact),
           ),
           IconButton(
             tooltip: 'Zoom out',
-            icon: const Icon(Icons.remove, size: 18),
+            icon: const Icon(Icons.remove, size: 18.0),
             onPressed: onZoomOut,
           ),
           SizedBox(
-            width: 44,
+            width: 44.0,
             child: Text(
               '$percent%',
               textAlign: TextAlign.center,
@@ -965,12 +994,12 @@ class _Header extends StatelessWidget {
           ),
           IconButton(
             tooltip: 'Zoom in',
-            icon: const Icon(Icons.add, size: 18),
+            icon: const Icon(Icons.add, size: 18.0),
             onPressed: onZoomIn,
           ),
           IconButton(
             tooltip: 'Reset view',
-            icon: const Icon(Icons.center_focus_strong, size: 18),
+            icon: const Icon(Icons.center_focus_strong, size: 18.0),
             onPressed: onResetView,
           ),
         ],
@@ -1031,7 +1060,7 @@ class _RightInspector extends StatelessWidget {
     if (table == null) {
       body = const EmptyState(
         icon: Icons.article_outlined,
-        iconSize: 36,
+        iconSize: 36.0,
         message: 'Tap a node on the canvas to view its row here.',
       );
     } else if (error != null) {
@@ -1039,11 +1068,11 @@ class _RightInspector extends StatelessWidget {
     } else if (rowMap == null || isLoading) {
       body = const Center(
         child: Padding(
-          padding: EdgeInsets.all(16),
+          padding: EdgeInsets.all(16.0),
           child: SizedBox(
-            width: 20,
-            height: 20,
-            child: CircularProgressIndicator(strokeWidth: 2),
+            width: 20.0,
+            height: 20.0,
+            child: CircularProgressIndicator(strokeWidth: 2.0),
           ),
         ),
       );
@@ -1074,9 +1103,9 @@ class _RightInspector extends StatelessWidget {
             : Icons.article_outlined,
         trailing: IconButton(
           tooltip: 'Hide inspector',
-          icon: const Icon(Icons.close, size: 14),
+          icon: const Icon(Icons.close, size: 14.0),
           visualDensity: VisualDensity.compact,
-          padding: const EdgeInsets.all(2),
+          padding: const EdgeInsets.all(2.0),
           constraints: const BoxConstraints(),
           onPressed: AppState.instance.togglePropertyInspector,
         ),
@@ -1164,7 +1193,7 @@ class _MiddlePane extends StatelessWidget {
       );
     }
     final preview = tab.previewRow;
-    final selectedPk =
+    final selectedPrimaryKey =
         preview != null &&
             preview.schema == selected.schema &&
             preview.table == selected.table
@@ -1172,11 +1201,11 @@ class _MiddlePane extends StatelessWidget {
         : selected.pkValues;
     return Resizable(
       width: tab.middlePanelWidth,
-      minWidth: 220,
-      maxWidth: 600,
+      minWidth: 220.0,
+      maxWidth: 600.0,
       side: ResizeSide.left,
-      onResized: (w) {
-        tab.middlePanelWidth = w;
+      onResized: (width) {
+        tab.middlePanelWidth = width;
         AppState.instance.notifyChange();
       },
       child: DecoratedBox(
@@ -1191,7 +1220,7 @@ class _MiddlePane extends StatelessWidget {
           table: selected.table,
           onTapRow: onTapPreviewRow,
           trailingIcon: Icons.visibility_outlined,
-          selectedPkValues: selectedPk,
+          selectedPkValues: selectedPrimaryKey,
           restrictPkCols: selected.pkColumns,
           restrictPkValues: selected.pkValues,
           emptyHint: 'No rows.',
@@ -1222,7 +1251,7 @@ class _PanelExpander extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     return Container(
-      width: 22,
+      width: 22.0,
       decoration: BoxDecoration(
         color: theme.colorScheme.surfaceContainer,
         border: Border(
@@ -1234,7 +1263,7 @@ class _PanelExpander extends StatelessWidget {
         message: tooltip,
         child: InkWell(
           onTap: onTap,
-          child: Center(child: Icon(icon, size: 16, color: theme.hintColor)),
+          child: Center(child: Icon(icon, size: 16.0, color: theme.hintColor)),
         ),
       ),
     );
@@ -1251,10 +1280,10 @@ class _PanelExpander extends StatelessWidget {
 /// so wider cards never visually crash into the next column. Within a
 /// column, nodes stack vertically with [_kVerticalGap] between them.
 void _applyExplodeLayout(LinkedTab tab) {
-  final byId = {for (final n in tab.nodes) n.id: n};
-  final incoming = <String, int>{for (final n in tab.nodes) n.id: 0};
+  final byId = {for (final node in tab.nodes) node.id: node};
+  final incoming = <String, int>{for (final node in tab.nodes) node.id: 0};
   final outgoing = <String, List<String>>{
-    for (final n in tab.nodes) n.id: <String>[],
+    for (final node in tab.nodes) node.id: <String>[],
   };
   for (final e in tab.edges) {
     if (!byId.containsKey(e.fromNodeId) || !byId.containsKey(e.toNodeId)) {
@@ -1267,8 +1296,8 @@ void _applyExplodeLayout(LinkedTab tab) {
   // Roots = nodes with no incoming edge; if every node has one (cycle),
   // pick the first node as a fallback root so layout still completes.
   final roots = [
-    for (final n in tab.nodes)
-      if ((incoming[n.id] ?? 0) == 0) n.id,
+    for (final node in tab.nodes)
+      if ((incoming[node.id] ?? 0) == 0) node.id,
   ];
   if (roots.isEmpty) roots.add(tab.nodes.first.id);
 
@@ -1276,19 +1305,19 @@ void _applyExplodeLayout(LinkedTab tab) {
   final queue = <String>[...roots];
   while (queue.isNotEmpty) {
     final id = queue.removeAt(0);
-    final d = depth[id]!;
+    final parentDepth = depth[id]!;
     for (final child in outgoing[id]!) {
       // First-write-wins so a long path doesn't push a node deeper than
       // needed (DAG-ish layouts read better that way).
       if (depth.containsKey(child)) continue;
-      depth[child] = d + 1;
+      depth[child] = parentDepth + 1;
       queue.add(child);
     }
   }
   // Orphans (unreachable from any root after the fallback) — append at
   // depth 0 so they still show up.
-  for (final n in tab.nodes) {
-    depth.putIfAbsent(n.id, () => 0);
+  for (final node in tab.nodes) {
+    depth.putIfAbsent(node.id, () => 0);
   }
 
   // Bucket by depth, place column-by-column.
@@ -1297,32 +1326,32 @@ void _applyExplodeLayout(LinkedTab tab) {
     columns.putIfAbsent(entry.value, () => []).add(entry.key);
   }
   const margin = 40.0;
-  final fks = tab.foreignKeys;
+  final foreignKeys = tab.foreignKeys;
   final sortedDepths = columns.keys.toList()..sort();
   // Column stride per depth uses the widest node at that depth so wider
   // cards don't visually crash into the column to their right.
   final colWidth = <int, double>{
-    for (final d in sortedDepths)
-      d: columns[d]!
+    for (final columnDepth in sortedDepths)
+      columnDepth: columns[columnDepth]!
           .map((id) => byId[id]!.width)
           .fold<double>(_kDefaultNodeWidth, (a, b) => a > b ? a : b),
   };
   final colStart = <int, double>{};
   var cursor = margin;
-  for (final d in sortedDepths) {
-    colStart[d] = cursor;
-    cursor += colWidth[d]! + _kHorizontalGap;
+  for (final columnDepth in sortedDepths) {
+    colStart[columnDepth] = cursor;
+    cursor += colWidth[columnDepth]! + _kHorizontalGap;
   }
-  for (final d in sortedDepths) {
-    final ids = columns[d]!;
+  for (final columnDepth in sortedDepths) {
+    final ids = columns[columnDepth]!;
     var y = margin;
     for (final id in ids) {
-      final n = byId[id]!;
-      n.position = Offset(colStart[d]!, y);
-      final h = n is LinkedRowNode
-          ? _nodeHeightFor(n, fks)
+      final node = byId[id]!;
+      node.position = Offset(colStart[columnDepth]!, y);
+      final height = node is LinkedRowNode
+          ? _nodeHeightFor(node, foreignKeys)
           : _kHeaderHeight + _kRowHeight;
-      y += h + _kVerticalGap;
+      y += height + _kVerticalGap;
     }
   }
 }

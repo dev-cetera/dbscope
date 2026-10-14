@@ -19,7 +19,7 @@ class ProjectStore {
 
   static const _kStorageKey = 'dbscope.project';
 
-  var _doc = ProjectDocument();
+  var _document = ProjectDocument();
   var _loaded = false;
   Future<void>? _writeQueue;
 
@@ -30,86 +30,88 @@ class ProjectStore {
   }
 
   Future<ProjectDocument> load() async {
-    if (_loaded) return _doc;
-    final prefs = await SharedPreferences.getInstance();
-    final raw = prefs.getString(_kStorageKey);
+    if (_loaded) return _document;
+    final preferences = await SharedPreferences.getInstance();
+    final raw = preferences.getString(_kStorageKey);
     if (raw == null || raw.trim().isEmpty) {
-      _doc = ProjectDocument();
+      _document = ProjectDocument();
       await _writeNow();
     } else {
       try {
-        _doc = ProjectDocument.fromJson(
+        _document = ProjectDocument.fromJson(
           jsonDecode(raw) as Map<String, Object?>,
         );
       } catch (_) {
         // Corrupt — start clean, like the desktop store does.
-        _doc = ProjectDocument();
+        _document = ProjectDocument();
       }
     }
     _loaded = true;
-    return _doc;
+    return _document;
   }
 
   Future<void> _writeNow() async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setString(
+    final preferences = await SharedPreferences.getInstance();
+    await preferences.setString(
       _kStorageKey,
-      const JsonEncoder.withIndent(' ').convert(_doc.toJson()),
+      const JsonEncoder.withIndent(' ').convert(_document.toJson()),
     );
   }
 
-  Future<void> _mutate(void Function(ProjectDocument doc) fn) async {
-    final prev = _writeQueue;
+  Future<void> _mutate(
+    void Function(ProjectDocument projectDocument) fn,
+  ) async {
+    final previousWrite = _writeQueue;
     final task = () async {
       try {
-        await prev;
+        await previousWrite;
       } catch (_) {}
       // Re-read storage in case another tab updated it.
       try {
-        final prefs = await SharedPreferences.getInstance();
-        final raw = prefs.getString(_kStorageKey);
+        final preferences = await SharedPreferences.getInstance();
+        final raw = preferences.getString(_kStorageKey);
         if (raw != null && raw.trim().isNotEmpty) {
-          _doc = ProjectDocument.fromJson(
+          _document = ProjectDocument.fromJson(
             jsonDecode(raw) as Map<String, Object?>,
           );
         }
       } catch (_) {
         /* keep prior in-memory doc */
       }
-      fn(_doc);
+      fn(_document);
       await _writeNow();
     }();
     _writeQueue = task;
     return task;
   }
 
-  ProjectDocument get document => _doc;
+  ProjectDocument get document => _document;
 
   Future<void> setProfiles(List<Map<String, Object?>> profiles) =>
-      _mutate((d) => d.profiles = profiles);
+      _mutate((projectDocument) => projectDocument.profiles = profiles);
 
   Future<void> setSavedQueries(
     String connectionId,
     List<SavedQuery> queries,
-  ) => _mutate((d) {
+  ) => _mutate((projectDocument) {
     if (queries.isEmpty) {
-      d.savedQueries.remove(connectionId);
+      projectDocument.savedQueries.remove(connectionId);
     } else {
-      d.savedQueries[connectionId] = queries;
+      projectDocument.savedQueries[connectionId] = queries;
     }
   });
 
   Future<void> setSavedAiQueries(
     String connectionId,
     List<SavedAiQuery> queries,
-  ) => _mutate((d) {
+  ) => _mutate((projectDocument) {
     if (queries.isEmpty) {
-      d.savedAiQueries.remove(connectionId);
+      projectDocument.savedAiQueries.remove(connectionId);
     } else {
-      d.savedAiQueries[connectionId] = queries;
+      projectDocument.savedAiQueries[connectionId] = queries;
     }
   });
 
   Future<void> setAiSettings(AiSettings settings) =>
-      _mutate((d) => d.ai = settings);
+      _mutate((projectDocument) => projectDocument.ai = settings);
 }

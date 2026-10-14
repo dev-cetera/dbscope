@@ -23,6 +23,10 @@ import 'package:web_socket_channel/web_socket_channel.dart';
 
 import 'plugin.dart' show kPgProxyKind;
 
+/// How long to wait for the proxy to confirm the upstream database is open
+/// before giving up on the connection.
+const _kReadyTimeout = Duration(seconds: 15);
+
 class PgProxyException implements Exception {
   PgProxyException(this.message, {this.code, this.constraintName});
   final String? code;
@@ -51,8 +55,8 @@ class PgProxyExecutor implements DbExecutor {
     }
     final channel = WebSocketChannel.connect(Uri.parse(proxyUrl));
     await channel.ready;
-    final exec = PgProxyExecutor._(channel);
-    final openMsg = <String, Object?>{
+    final executor = PgProxyExecutor._(channel);
+    final openMessage = <String, Object?>{
       'type': 'open',
       'host': profile.host,
       'port': profile.port,
@@ -64,15 +68,15 @@ class PgProxyExecutor implements DbExecutor {
         'secret': extra['sharedSecret'],
     };
     final ready = Completer<void>();
-    exec._readyCompleter = ready;
-    exec._channel.sink.add(jsonEncode(openMsg));
+    executor._readyCompleter = ready;
+    executor._channel.sink.add(jsonEncode(openMessage));
     try {
-      await ready.future.timeout(const Duration(seconds: 15));
+      await ready.future.timeout(_kReadyTimeout);
     } catch (e) {
-      await exec.close(force: true);
+      await executor.close(force: true);
       rethrow;
     }
-    return exec;
+    return executor;
   }
 
   Completer<void>? _readyCompleter;
@@ -102,15 +106,16 @@ class PgProxyExecutor implements DbExecutor {
     final id = _ids.next();
     final completer = Completer<Map<String, Object?>>();
     _pending[id] = completer;
-    final msg = <String, Object?>{
+    final message = <String, Object?>{
       'type': 'execute',
       'id': id,
       'sql': sql,
-      if (named != null) 'named': named.map((k, v) => MapEntry(k, _wire(v))),
+      if (named != null)
+        'named': named.map((key, value) => MapEntry(key, _wire(value))),
       if (named == null && positional != null)
-        'positional': [for (final v in positional) _wire(v)],
+        'positional': [for (final value in positional) _wire(value)],
     };
-    _channel.sink.add(jsonEncode(msg));
+    _channel.sink.add(jsonEncode(message));
     final reply = await completer.future;
     if (cancelToken?.isCancelled ?? false) {
       return const DbResult(columns: [], rows: []);
@@ -122,20 +127,20 @@ class PgProxyExecutor implements DbExecutor {
         constraintName: reply['constraintName'] as String?,
       );
     }
-    final cols = [
-      for (final c in (reply['columns'] as List? ?? const []))
-        if (c is Map)
+    final columns = [
+      for (final columnJson in (reply['columns'] as List? ?? const []))
+        if (columnJson is Map)
           DbColumn(
-            name: (c['name'] as String?) ?? '',
-            typeName: c['typeName'] as String?,
+            name: (columnJson['name'] as String?) ?? '',
+            typeName: columnJson['typeName'] as String?,
           ),
     ];
     final rows = <List<Object?>>[
       for (final row in (reply['rows'] as List? ?? const []))
-        if (row is List) [for (final v in row) _decode(v)],
+        if (row is List) [for (final value in row) _decode(value)],
     ];
     final affected = (reply['affected'] as num?)?.toInt() ?? 0;
-    return DbResult(columns: cols, rows: rows, affectedRows: affected);
+    return DbResult(columns: columns, rows: rows, affectedRows: affected);
   }
 
   @override
@@ -162,9 +167,9 @@ class PgProxyExecutor implements DbExecutor {
       await _channel.sink.close();
     } catch (_) {}
     await _sub?.cancel();
-    for (final c in _pending.values) {
-      if (!c.isCompleted) {
-        c.completeError(StateError('connection closed'));
+    for (final pending in _pending.values) {
+      if (!pending.isCompleted) {
+        pending.completeError(StateError('connection closed'));
       }
     }
     _pending.clear();
@@ -172,73 +177,77 @@ class PgProxyExecutor implements DbExecutor {
 
   void _onFrame(dynamic raw) {
     if (raw is! String) return;
-    Map<String, Object?> msg;
+    Map<String, Object?> message;
     try {
-      msg = jsonDecode(raw) as Map<String, Object?>;
+      message = jsonDecode(raw) as Map<String, Object?>;
     } catch (_) {
       return;
     }
-    final type = msg['type'];
+    final type = message['type'];
     if (type == 'ready') {
-      final r = _readyCompleter;
-      if (r != null && !r.isCompleted) r.complete();
+      final readyCompleter = _readyCompleter;
+      if (readyCompleter != null && !readyCompleter.isCompleted) {
+        readyCompleter.complete();
+      }
       return;
     }
-    if (type == 'error' && msg['id'] == null) {
+    if (type == 'error' && message['id'] == null) {
       // Pre-ready error: fail the readyCompleter so open() rejects.
-      final r = _readyCompleter;
-      if (r != null && !r.isCompleted) {
-        r.completeError(
-          PgProxyException((msg['message'] as String?) ?? 'proxy error'),
+      final readyCompleter = _readyCompleter;
+      if (readyCompleter != null && !readyCompleter.isCompleted) {
+        readyCompleter.completeError(
+          PgProxyException((message['message'] as String?) ?? 'proxy error'),
         );
       }
       return;
     }
-    final id = msg['id'];
+    final id = message['id'];
     if (id is! String) return;
-    final c = _pending.remove(id);
-    if (c == null) return;
-    c.complete(msg);
+    final pending = _pending.remove(id);
+    if (pending == null) return;
+    pending.complete(message);
   }
 
   void _onError(Object e, StackTrace st) {
-    final r = _readyCompleter;
-    if (r != null && !r.isCompleted) r.completeError(e, st);
-    for (final c in _pending.values) {
-      if (!c.isCompleted) c.completeError(e, st);
+    final readyCompleter = _readyCompleter;
+    if (readyCompleter != null && !readyCompleter.isCompleted) {
+      readyCompleter.completeError(e, st);
+    }
+    for (final pending in _pending.values) {
+      if (!pending.isCompleted) pending.completeError(e, st);
     }
     _pending.clear();
   }
 
   void _onDone() {
     _closed = true;
-    for (final c in _pending.values) {
-      if (!c.isCompleted) {
-        c.completeError(StateError('proxy WebSocket closed'));
+    for (final pending in _pending.values) {
+      if (!pending.isCompleted) {
+        pending.completeError(StateError('proxy WebSocket closed'));
       }
     }
     _pending.clear();
   }
 }
 
-Object? _wire(Object? v) {
-  if (v == null) return null;
-  if (v is String || v is num || v is bool) return v;
-  if (v is DateTime) return v.toUtc().toIso8601String();
-  if (v is Uint8List) return {'_b64': base64Encode(v)};
-  if (v is List<int>) return {'_b64': base64Encode(v)};
-  return v.toString();
+Object? _wire(Object? value) {
+  if (value == null) return null;
+  if (value is String || value is num || value is bool) return value;
+  if (value is DateTime) return value.toUtc().toIso8601String();
+  if (value is Uint8List) return {'_b64': base64Encode(value)};
+  if (value is List<int>) return {'_b64': base64Encode(value)};
+  return value.toString();
 }
 
-Object? _decode(Object? v) {
-  if (v is Map && v['_b64'] is String) {
-    return base64Decode(v['_b64'] as String);
+Object? _decode(Object? value) {
+  if (value is Map && value['_b64'] is String) {
+    return base64Decode(value['_b64'] as String);
   }
-  return v;
+  return value;
 }
 
-String _sslName(SslMode m) {
-  switch (m) {
+String _sslName(SslMode mode) {
+  switch (mode) {
     case SslMode.disable:
       return 'disable';
     case SslMode.require:

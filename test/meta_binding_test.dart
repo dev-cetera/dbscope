@@ -119,13 +119,13 @@ meta:
     ).charts.single;
 
     test('time series with series and range, postgres', () {
-      final c = chart(
+      final metaChart = chart(
         '{ id: c, target: public.accounts, kind: chart, type: line, '
         'x: created_at, bucket: day, series: source, range: last_7_days, '
         'y: [{ agg: count }] }',
       );
       final sql = buildTableChartSql(
-        chart: c,
+        chart: metaChart,
         schema: 'public',
         table: 'accounts',
         readableColumns: {'created_at', 'source'},
@@ -143,11 +143,11 @@ meta:
     });
 
     test('sqlite buckets use strftime', () {
-      final c = chart(
+      final metaChart = chart(
         '{ id: c, target: main.t, kind: chart, type: bar, x: at, bucket: month }',
       );
       final sql = buildTableChartSql(
-        chart: c,
+        chart: metaChart,
         schema: 'main',
         table: 't',
         readableColumns: {'at'},
@@ -158,12 +158,12 @@ meta:
     });
 
     test('refuses an unreadable column', () {
-      final c = chart(
+      final metaChart = chart(
         '{ id: c, target: public.users, kind: chart, type: pie, x: email }',
       );
       expect(
         () => buildTableChartSql(
-          chart: c,
+          chart: metaChart,
           schema: 'public',
           table: 'users',
           readableColumns: {'name'},

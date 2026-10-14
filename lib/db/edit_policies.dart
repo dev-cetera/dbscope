@@ -27,14 +27,14 @@ List<EditPolicy> buildEditPolicies({
   // `touch` stamps CURRENT_TIMESTAMP, so only time-typed columns qualify — an
   // epoch-integer or text column would fail every edit (or get garbage).
   final timeColumns = {
-    for (final c in columns)
-      if (c.type == PgType.timestamp ||
-          c.type == PgType.timestamptz ||
-          c.type == PgType.date)
-        c.name,
+    for (final column in columns)
+      if (column.type == PgType.timestamp ||
+          column.type == PgType.timestamptz ||
+          column.type == PgType.date)
+        column.name,
   };
   final pkMasked = columns.any(
-    (c) => c.isMasked && pkColumns.contains(c.name),
+    (column) => column.isMasked && pkColumns.contains(column.name),
   );
   final tableEditable =
       tableAccess.level.atLeast(AccessLevel.edit) &&
@@ -42,9 +42,9 @@ List<EditPolicy> buildEditPolicies({
       !(tablePolicy?.readOnly ?? false);
 
   return [
-    for (final c in columns)
+    for (final column in columns)
       _policyFor(
-        c,
+        column,
         schema: schema,
         table: table,
         pkColumns: pkColumns,
@@ -53,17 +53,17 @@ List<EditPolicy> buildEditPolicies({
         tableEditable: tableEditable,
         pkMasked: pkMasked,
         tablePolicy: tablePolicy,
-        columnPolicy: index?.policyColumn(schema, table, c.name),
+        columnPolicy: index?.policyColumn(schema, table, column.name),
         touchColumns: [
-          for (final t in tablePolicy?.touch ?? const <String>[])
-            if (timeColumns.contains(t)) t,
+          for (final touchColumn in tablePolicy?.touch ?? const <String>[])
+            if (timeColumns.contains(touchColumn)) touchColumn,
         ],
       ),
   ];
 }
 
 EditPolicy _policyFor(
-  ColumnInfo c, {
+  ColumnInfo column, {
   required String schema,
   required String table,
   required List<String> pkColumns,
@@ -84,8 +84,8 @@ EditPolicy _policyFor(
     } else {
       reason = 'Your access to this table is ${tableAccess.level.name}.';
     }
-  } else if (!c.accessLevel.atLeast(AccessLevel.edit)) {
-    reason = 'Your access to this column is ${c.accessLevel.name}.';
+  } else if (!column.accessLevel.atLeast(AccessLevel.edit)) {
+    reason = 'Your access to this column is ${column.accessLevel.name}.';
   } else if (columnPolicy?.readOnly ?? false) {
     reason = columnPolicy?.reason ?? 'Metadata marks this column read-only.';
   }
@@ -93,24 +93,24 @@ EditPolicy _policyFor(
     schema: schema,
     table: table,
     pkColumns: pkColumns,
-    column: c.name,
-    type: c.type,
-    typeName: c.typeName,
-    nullable: c.nullable,
-    isGenerated: c.isGenerated,
-    isIdentity: c.isIdentity,
+    column: column.name,
+    type: column.type,
+    typeName: column.typeName,
+    nullable: column.nullable,
+    isGenerated: column.isGenerated,
+    isIdentity: column.isIdentity,
     readOnly:
         pkColumns.isEmpty ||
-        c.isGenerated ||
-        c.isIdentity ||
+        column.isGenerated ||
+        column.isIdentity ||
         connectionReadOnly ||
         reason != null,
     multiLine:
-        c.type == PgType.json ||
-        c.type == PgType.jsonb ||
-        c.type == PgType.text,
-    nullIfBlank: c.nullable,
-    enumValues: c.enumValues,
+        column.type == PgType.json ||
+        column.type == PgType.jsonb ||
+        column.type == PgType.text,
+    nullIfBlank: column.nullable,
+    enumValues: column.enumValues,
     readOnlyReason: reason,
     pattern: columnPolicy?.pattern,
     min: columnPolicy?.min,

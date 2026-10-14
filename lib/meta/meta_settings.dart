@@ -13,8 +13,8 @@ enum MetaTablesMode {
   ;
 
   static MetaTablesMode parse(Object? raw) {
-    for (final m in MetaTablesMode.values) {
-      if (m.name == raw) return m;
+    for (final mode in MetaTablesMode.values) {
+      if (mode.name == raw) return mode;
     }
     return MetaTablesMode.auto;
   }
@@ -36,8 +36,8 @@ class MetadataSettings {
 
   factory MetadataSettings.fromJson(Object? raw) {
     if (raw is! Map) return defaults;
-    String? text(Object? v) =>
-        v is String && v.trim().isNotEmpty ? v.trim() : null;
+    String? text(Object? value) =>
+        value is String && value.trim().isNotEmpty ? value.trim() : null;
     return MetadataSettings(
       tablesMode: MetaTablesMode.parse(raw['tablesMode']),
       customName: text(raw['customName']),

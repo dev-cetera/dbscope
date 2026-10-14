@@ -12,6 +12,9 @@ class ConnectionDialog extends StatefulWidget {
 }
 
 class _ConnectionDialogState extends State<ConnectionDialog> {
+  /// Highest valid TCP port number.
+  static const _kMaxPort = 65535;
+
   final _formKey = GlobalKey<FormState>();
   late final TextEditingController _name;
   late final TextEditingController _host;
@@ -57,14 +60,14 @@ class _ConnectionDialogState extends State<ConnectionDialog> {
   }
 
   TenantFilter? _buildTenantFilter() {
-    final col = _tenantColumn.text.trim();
+    final column = _tenantColumn.text.trim();
     final raw = _tenantValue.text.trim();
-    if (col.isEmpty || raw.isEmpty) return null;
+    if (column.isEmpty || raw.isEmpty) return null;
     // Try int first so `account_id = 42` works against an integer column.
     // Fall back to string — PG will implicitly cast text to uuid /
     // timestamptz / etc. on equality.
     final asInt = int.tryParse(raw);
-    return TenantFilter(column: col, value: asInt ?? raw);
+    return TenantFilter(column: column, value: asInt ?? raw);
   }
 
   void _submit() {
@@ -100,9 +103,9 @@ class _ConnectionDialogState extends State<ConnectionDialog> {
             TextFormField(
               controller: _name,
               decoration: const InputDecoration(labelText: 'Name'),
-              validator: _req,
+              validator: _validateRequired,
             ),
-            const SizedBox(height: 12),
+            const SizedBox(height: 12.0),
             Row(
               children: [
                 Expanded(
@@ -110,38 +113,40 @@ class _ConnectionDialogState extends State<ConnectionDialog> {
                   child: TextFormField(
                     controller: _host,
                     decoration: const InputDecoration(labelText: 'Host'),
-                    validator: _req,
+                    validator: _validateRequired,
                   ),
                 ),
-                const SizedBox(width: 12),
+                const SizedBox(width: 12.0),
                 Expanded(
                   child: TextFormField(
                     controller: _port,
                     decoration: const InputDecoration(labelText: 'Port'),
                     keyboardType: TextInputType.number,
-                    validator: (v) {
-                      if (v == null || v.isEmpty) return 'required';
-                      final p = int.tryParse(v);
-                      if (p == null || p <= 0 || p > 65535) return 'invalid';
+                    validator: (text) {
+                      if (text == null || text.isEmpty) return 'required';
+                      final port = int.tryParse(text);
+                      if (port == null || port <= 0 || port > _kMaxPort) {
+                        return 'invalid';
+                      }
                       return null;
                     },
                   ),
                 ),
               ],
             ),
-            const SizedBox(height: 12),
+            const SizedBox(height: 12.0),
             TextFormField(
               controller: _database,
               decoration: const InputDecoration(labelText: 'Database'),
-              validator: _req,
+              validator: _validateRequired,
             ),
-            const SizedBox(height: 12),
+            const SizedBox(height: 12.0),
             TextFormField(
               controller: _username,
               decoration: const InputDecoration(labelText: 'Username'),
-              validator: _req,
+              validator: _validateRequired,
             ),
-            const SizedBox(height: 12),
+            const SizedBox(height: 12.0),
             TextFormField(
               controller: _password,
               obscureText: !_passwordVisible,
@@ -157,7 +162,7 @@ class _ConnectionDialogState extends State<ConnectionDialog> {
                 ),
               ),
             ),
-            const SizedBox(height: 12),
+            const SizedBox(height: 12.0),
             DropdownButtonFormField<SslMode>(
               initialValue: _sslMode,
               decoration: const InputDecoration(labelText: 'SSL mode'),
@@ -175,31 +180,32 @@ class _ConnectionDialogState extends State<ConnectionDialog> {
                   child: Text('verify-full'),
                 ),
               ],
-              onChanged: (v) => setState(() => _sslMode = v ?? SslMode.disable),
+              onChanged: (mode) =>
+                  setState(() => _sslMode = mode ?? SslMode.disable),
             ),
-            const SizedBox(height: 12),
+            const SizedBox(height: 12.0),
             SwitchListTile(
               value: _readOnly,
-              onChanged: (v) => setState(() => _readOnly = v),
+              onChanged: (readOnly) => setState(() => _readOnly = readOnly),
               title: const Text('Read-only'),
               subtitle: const Text(
                 'Enforced via SET default_transaction_read_only',
               ),
               contentPadding: EdgeInsets.zero,
             ),
-            const Divider(height: 24),
+            const Divider(height: 24.0),
             Text(
               'Default tenant filter (optional)',
               style: Theme.of(context).textTheme.titleSmall,
             ),
-            const SizedBox(height: 4),
+            const SizedBox(height: 4.0),
             Text(
               'When set, every table that has this column gets '
               '"<column> = <value>" added to its WHERE. Tables without '
               'the column are unaffected. Leave blank to disable.',
               style: Theme.of(context).textTheme.bodySmall,
             ),
-            const SizedBox(height: 8),
+            const SizedBox(height: 8.0),
             Row(
               children: [
                 Expanded(
@@ -212,7 +218,7 @@ class _ConnectionDialogState extends State<ConnectionDialog> {
                     ),
                   ),
                 ),
-                const SizedBox(width: 12),
+                const SizedBox(width: 12.0),
                 Expanded(
                   flex: 3,
                   child: TextFormField(
@@ -231,6 +237,6 @@ class _ConnectionDialogState extends State<ConnectionDialog> {
     );
   }
 
-  String? _req(String? v) =>
-      (v == null || v.trim().isEmpty) ? 'required' : null;
+  String? _validateRequired(String? text) =>
+      (text == null || text.trim().isEmpty) ? 'required' : null;
 }

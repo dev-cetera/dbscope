@@ -32,8 +32,8 @@ DbResult _rows(List<List<Object?>> rows) =>
 void main() {
   group('KeysetPager — happy path with PK', () {
     test('first page has no cursor WHERE; ORDER BY is PK ascending', () async {
-      final exec = FakeDbExecutor();
-      exec.enqueue(
+      final executor = FakeDbExecutor();
+      executor.enqueue(
         _rows([
           [1, 'a'],
           [2, 'b'],
@@ -41,7 +41,7 @@ void main() {
       );
 
       final pager = KeysetPager(
-        conn: exec,
+        conn: executor,
         schema: 'public',
         table: 'users',
         columns: [_col('id'), _col('name')],
@@ -53,7 +53,7 @@ void main() {
       expect(page.rows, hasLength(2));
       expect(page.lastPkVals, [2]);
 
-      final call = exec.calls.single;
+      final call = executor.calls.single;
       expect(
         call.sql,
         'SELECT "id", "name" FROM "public"."users" ORDER BY "id" ASC LIMIT 2',
@@ -62,21 +62,21 @@ void main() {
     });
 
     test('second page applies (pk) > (lastPk) tuple-compare cursor', () async {
-      final exec = FakeDbExecutor();
-      exec.enqueue(
+      final executor = FakeDbExecutor();
+      executor.enqueue(
         _rows([
           [1],
           [2],
         ]),
       );
-      exec.enqueue(
+      executor.enqueue(
         _rows([
           [3],
         ]),
       );
 
       final pager = KeysetPager(
-        conn: exec,
+        conn: executor,
         schema: 'public',
         table: 'users',
         columns: [_col('id')],
@@ -87,7 +87,7 @@ void main() {
       await pager.fetchNext();
       await pager.fetchNext();
 
-      final secondCall = exec.calls[1];
+      final secondCall = executor.calls[1];
       expect(
         secondCall.sql,
         r'SELECT "id" FROM "public"."users" WHERE ("id") > ($1) ORDER BY "id" ASC LIMIT 2',
@@ -98,21 +98,21 @@ void main() {
     test(
       'descending sort flips ORDER BY direction and uses `<` cursor',
       () async {
-        final exec = FakeDbExecutor();
-        exec.enqueue(
+        final executor = FakeDbExecutor();
+        executor.enqueue(
           _rows([
             [10],
             [9],
           ]),
         );
-        exec.enqueue(
+        executor.enqueue(
           _rows([
             [8],
           ]),
         );
 
         final pager = KeysetPager(
-          conn: exec,
+          conn: executor,
           schema: 'public',
           table: 'users',
           columns: [_col('id')],
@@ -124,7 +124,7 @@ void main() {
         await pager.fetchNext();
         await pager.fetchNext();
 
-        final second = exec.calls[1];
+        final second = executor.calls[1];
         expect(second.sql, contains('ORDER BY "id" DESC'));
         expect(second.sql, contains(r'WHERE ("id") < ($1)'));
         expect(second.positional, [9]);
@@ -132,21 +132,21 @@ void main() {
     );
 
     test('explicit sortColumn is prepended to the keyset tuple', () async {
-      final exec = FakeDbExecutor();
-      exec.enqueue(
+      final executor = FakeDbExecutor();
+      executor.enqueue(
         _rows([
           ['Alice', 1],
           ['Bob', 2],
         ]),
       );
-      exec.enqueue(
+      executor.enqueue(
         _rows([
           ['Carol', 3],
         ]),
       );
 
       final pager = KeysetPager(
-        conn: exec,
+        conn: executor,
         schema: 'public',
         table: 'users',
         columns: [_col('name'), _col('id')],
@@ -158,7 +158,7 @@ void main() {
       await pager.fetchNext();
       await pager.fetchNext();
 
-      final second = exec.calls[1];
+      final second = executor.calls[1];
       expect(
         second.sql,
         contains(
@@ -169,15 +169,15 @@ void main() {
     });
 
     test('a short page marks the pager done', () async {
-      final exec = FakeDbExecutor();
-      exec.enqueue(
+      final executor = FakeDbExecutor();
+      executor.enqueue(
         _rows([
           [1],
         ]),
       );
 
       final pager = KeysetPager(
-        conn: exec,
+        conn: executor,
         schema: 'public',
         table: 'users',
         columns: [_col('id')],
@@ -191,27 +191,27 @@ void main() {
       // Further fetchNext returns an empty page without touching the executor.
       final empty = await pager.fetchNext();
       expect(empty.rows, isEmpty);
-      expect(exec.calls, hasLength(1));
+      expect(executor.calls, hasLength(1));
     });
   });
 
   group('KeysetPager — baseWhere placeholder numbering', () {
     test(r'baseWhere params take $1..$N, cursor params follow', () async {
-      final exec = FakeDbExecutor();
-      exec.enqueue(
+      final executor = FakeDbExecutor();
+      executor.enqueue(
         _rows([
           [1],
           [2],
         ]),
       );
-      exec.enqueue(
+      executor.enqueue(
         _rows([
           [3],
         ]),
       );
 
       final pager = KeysetPager(
-        conn: exec,
+        conn: executor,
         schema: 'public',
         table: 'items',
         columns: [_col('id')],
@@ -223,7 +223,7 @@ void main() {
 
       await pager.fetchNext();
       // First page: baseWhere only, no cursor yet.
-      final first = exec.calls.first;
+      final first = executor.calls.first;
       expect(
         first.sql,
         contains(
@@ -234,7 +234,7 @@ void main() {
 
       await pager.fetchNext();
       // Second page: baseWhere ($1) AND cursor ($2).
-      final second = exec.calls[1];
+      final second = executor.calls[1];
       expect(
         second.sql,
         contains(
@@ -247,8 +247,8 @@ void main() {
 
   group('KeysetPager — no PK', () {
     test('streaming via pages() emits a single LIMIT page', () async {
-      final exec = FakeDbExecutor();
-      exec.enqueue(
+      final executor = FakeDbExecutor();
+      executor.enqueue(
         _rows([
           [1, 'a'],
           [2, 'b'],
@@ -256,7 +256,7 @@ void main() {
       );
 
       final pager = KeysetPager(
-        conn: exec,
+        conn: executor,
         schema: 'information_schema',
         table: 'columns',
         columns: [_col('a'), _col('b')],
@@ -268,7 +268,7 @@ void main() {
       expect(pages, hasLength(1));
       expect(pages.single.rows, hasLength(2));
 
-      final call = exec.calls.single;
+      final call = executor.calls.single;
       // SELECT * is the no-PK fast path; no ORDER BY tuple, just LIMIT.
       expect(
         call.sql,
@@ -278,15 +278,15 @@ void main() {
     });
 
     test('no-PK with baseWhere passes params and adds WHERE clause', () async {
-      final exec = FakeDbExecutor();
-      exec.enqueue(
+      final executor = FakeDbExecutor();
+      executor.enqueue(
         _rows([
           [1],
         ]),
       );
 
       final pager = KeysetPager(
-        conn: exec,
+        conn: executor,
         schema: 'public',
         table: 'view_x',
         columns: [_col('id')],
@@ -298,7 +298,7 @@ void main() {
 
       await pager.pages().toList();
 
-      final call = exec.calls.single;
+      final call = executor.calls.single;
       expect(
         call.sql,
         r'SELECT * FROM "public"."view_x" WHERE "flag" = $1 LIMIT 100',
@@ -307,15 +307,15 @@ void main() {
     });
 
     test('isDone after a single no-PK page', () async {
-      final exec = FakeDbExecutor();
-      exec.enqueue(
+      final executor = FakeDbExecutor();
+      executor.enqueue(
         _rows([
           [1],
         ]),
       );
 
       final pager = KeysetPager(
-        conn: exec,
+        conn: executor,
         schema: 'information_schema',
         table: 'views',
         columns: [_col('a')],

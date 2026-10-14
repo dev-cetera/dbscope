@@ -66,19 +66,21 @@ class MetaPlugin extends DbscopePlugin {
 
   /// Table-scoped metadata actions plus "About this table…".
   static List<SidebarTableAction> _sidebarActions(
-    SidebarTableActionContext ctx,
+    SidebarTableActionContext actionContext,
   ) {
-    final snapshot = MetadataCache.instance.snapshotFor(ctx.connectionId);
+    final snapshot = MetadataCache.instance.snapshotFor(
+      actionContext.connectionId,
+    );
     if (snapshot == null) return const [];
     final click = MetaClickContext(
-      connectionId: ctx.connectionId,
-      schema: ctx.schema,
-      table: ctx.table,
+      connectionId: actionContext.connectionId,
+      schema: actionContext.schema,
+      table: actionContext.table,
     );
     final actions = snapshot.index.actionsForTable(
       ActionScope.table,
-      ctx.schema,
-      ctx.table,
+      actionContext.schema,
+      actionContext.table,
     );
     final out = <SidebarTableAction>[];
     for (var i = 0; i < actions.length; i++) {
@@ -90,8 +92,8 @@ class MetaPlugin extends DbscopePlugin {
           label: reason == null ? action.label : '${action.label} — $reason',
           icon: Icons.bolt_outlined,
           startsGroup: i == 0,
-          onSelected: (c) =>
-              MetaActionRunner.run(c.buildContext, action, click),
+          onSelected: (actionContext) =>
+              MetaActionRunner.run(actionContext.buildContext, action, click),
         ),
       );
     }
@@ -101,31 +103,31 @@ class MetaPlugin extends DbscopePlugin {
         label: 'About this table…',
         icon: Icons.info_outline,
         startsGroup: true,
-        onSelected: (c) => showAboutTableDialog(
-          c.buildContext,
-          connectionId: ctx.connectionId,
-          schema: ctx.schema,
-          table: ctx.table,
+        onSelected: (actionContext) => showAboutTableDialog(
+          actionContext.buildContext,
+          connectionId: actionContext.connectionId,
+          schema: actionContext.schema,
+          table: actionContext.table,
         ),
       ),
     );
     final canDescribe =
         snapshot.policy.can(Capability.manage) &&
-        !ConnectionRegistry.instance.isReadOnlyFor(ctx.connectionId);
+        !ConnectionRegistry.instance.isReadOnlyFor(actionContext.connectionId);
     if (canDescribe) {
       out.add(
         SidebarTableAction(
           id: 'meta:describe-table',
           label: 'Edit table description…',
           icon: Icons.edit_note,
-          onSelected: (c) => showEditDescriptionDialog(
-            c.buildContext,
-            connectionId: ctx.connectionId,
-            schema: ctx.schema,
-            table: ctx.table,
+          onSelected: (actionContext) => showEditDescriptionDialog(
+            actionContext.buildContext,
+            connectionId: actionContext.connectionId,
+            schema: actionContext.schema,
+            table: actionContext.table,
             initial:
                 snapshot.index
-                    .describeTable(ctx.schema, ctx.table)
+                    .describeTable(actionContext.schema, actionContext.table)
                     .description ??
                 '',
           ),

@@ -34,22 +34,22 @@ class _AiSettingsDialogState extends State<AiSettingsDialog> {
   @override
   void initState() {
     super.initState();
-    for (final p in AiBrokerRegistry.instance.all) {
-      _keyControllers[p.id] = TextEditingController();
+    for (final provider in AiBrokerRegistry.instance.all) {
+      _keyControllers[provider.id] = TextEditingController();
     }
     unawaited(_hydrate());
   }
 
   Future<void> _hydrate() async {
     final settings = await AiSettingsStore.instance.load();
-    for (final p in AiBrokerRegistry.instance.all) {
-      final stored = await SecureStore.instance.readAiKey(p.id);
-      _keyControllers[p.id]!.text = stored ?? '';
+    for (final provider in AiBrokerRegistry.instance.all) {
+      final stored = await SecureStore.instance.readAiKey(provider.id);
+      _keyControllers[provider.id]!.text = stored ?? '';
       if (stored != null && stored.isNotEmpty) {
         // Pre-populate the model dropdown for whatever we know works —
         // skip the network call until the user clicks Verify so opening
         // the dialog isn't a multi-second wait.
-        _availableModels[p.id] = const [];
+        _availableModels[provider.id] = const [];
       }
     }
     if (!mounted) return;
@@ -63,8 +63,8 @@ class _AiSettingsDialogState extends State<AiSettingsDialog> {
 
   @override
   void dispose() {
-    for (final c in _keyControllers.values) {
-      c.dispose();
+    for (final controller in _keyControllers.values) {
+      controller.dispose();
     }
     super.dispose();
   }
@@ -147,10 +147,10 @@ class _AiSettingsDialogState extends State<AiSettingsDialog> {
     return AlertDialog(
       title: const Text('AI settings'),
       content: SizedBox(
-        width: 520,
+        width: 520.0,
         child: !_initialised
             ? const SizedBox(
-                height: 200,
+                height: 200.0,
                 child: Center(child: CircularProgressIndicator()),
               )
             : SingleChildScrollView(
@@ -158,13 +158,14 @@ class _AiSettingsDialogState extends State<AiSettingsDialog> {
                   mainAxisSize: MainAxisSize.min,
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    for (final p in providers) _providerSection(p),
-                    const Divider(height: 24),
+                    for (final provider in providers)
+                      _providerSection(provider),
+                    const Divider(height: 24.0),
                     const Text(
                       'Active',
                       style: TextStyle(fontWeight: FontWeight.w600),
                     ),
-                    const SizedBox(height: 8),
+                    const SizedBox(height: 8.0),
                     DropdownButtonFormField<String?>(
                       initialValue: _activeProviderId,
                       decoration: const InputDecoration(
@@ -175,26 +176,30 @@ class _AiSettingsDialogState extends State<AiSettingsDialog> {
                         const DropdownMenuItem(
                           child: Text('(none)'),
                         ),
-                        for (final p in providers)
-                          DropdownMenuItem(value: p.id, child: Text(p.label)),
+                        for (final provider in providers)
+                          DropdownMenuItem(
+                            value: provider.id,
+                            child: Text(provider.label),
+                          ),
                       ],
-                      onChanged: (v) {
+                      onChanged: (providerId) {
                         setState(() {
-                          _activeProviderId = v;
+                          _activeProviderId = providerId;
                           _activeModel = null;
                         });
                         // Auto-verify so the model dropdown populates
                         // without the user knowing to click Verify.
-                        if (v != null) {
+                        if (providerId != null) {
                           final provider = AiBrokerRegistry.instance.lookup(
-                            v,
+                            providerId,
                           );
                           final key = AiKeyResolver.effectiveKey(
-                            v,
-                            _keyControllers[v]?.text ?? '',
+                            providerId,
+                            _keyControllers[providerId]?.text ?? '',
                           );
                           final alreadyFetched =
-                              (_availableModels[v] ?? const []).isNotEmpty;
+                              (_availableModels[providerId] ?? const [])
+                                  .isNotEmpty;
                           if (provider != null &&
                               key.isNotEmpty &&
                               !alreadyFetched) {
@@ -203,7 +208,7 @@ class _AiSettingsDialogState extends State<AiSettingsDialog> {
                         }
                       },
                     ),
-                    const SizedBox(height: 8),
+                    const SizedBox(height: 8.0),
                     Builder(
                       builder: (_) {
                         final fetched =
@@ -230,20 +235,24 @@ class _AiSettingsDialogState extends State<AiSettingsDialog> {
                             const DropdownMenuItem(
                               child: Text('(auto)'),
                             ),
-                            for (final m in all)
-                              DropdownMenuItem(value: m, child: Text(m)),
+                            for (final model in all)
+                              DropdownMenuItem(
+                                value: model,
+                                child: Text(model),
+                              ),
                           ],
                           onChanged: _activeProviderId == null
                               ? null
-                              : (v) => setState(() => _activeModel = v),
+                              : (model) => setState(() => _activeModel = model),
                         );
                       },
                     ),
-                    const SizedBox(height: 16),
+                    const SizedBox(height: 16.0),
                     SwitchListTile(
                       contentPadding: EdgeInsets.zero,
                       value: _allowSampleRows,
-                      onChanged: (v) => setState(() => _allowSampleRows = v),
+                      onChanged: (allow) =>
+                          setState(() => _allowSampleRows = allow),
                       title: const Text('Send sample rows for inference'),
                       subtitle: const Text(
                         'Needed for AI regex column-guess. Sends a few '
@@ -263,9 +272,9 @@ class _AiSettingsDialogState extends State<AiSettingsDialog> {
           onPressed: _saving ? null : _save,
           child: _saving
               ? const SizedBox(
-                  width: 16,
-                  height: 16,
-                  child: CircularProgressIndicator(strokeWidth: 2),
+                  width: 16.0,
+                  height: 16.0,
+                  child: CircularProgressIndicator(strokeWidth: 2.0),
                 )
               : const Text('Save'),
         ),
@@ -333,7 +342,7 @@ class _ProviderSectionState extends State<_ProviderSection> {
         ? null
         : AiKeyResolver.fromEnv(provider.id);
     return Padding(
-      padding: const EdgeInsets.only(bottom: 12),
+      padding: const EdgeInsets.only(bottom: 12.0),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
@@ -341,7 +350,7 @@ class _ProviderSectionState extends State<_ProviderSection> {
             provider.label,
             style: const TextStyle(fontWeight: FontWeight.w600),
           ),
-          const SizedBox(height: 4),
+          const SizedBox(height: 4.0),
           Row(
             children: [
               Expanded(
@@ -355,7 +364,7 @@ class _ProviderSectionState extends State<_ProviderSection> {
                   ),
                 ),
               ),
-              const SizedBox(width: 8),
+              const SizedBox(width: 8.0),
               TextButton(
                 onPressed: widget.onVerify,
                 child: const Text('Verify'),
@@ -364,32 +373,32 @@ class _ProviderSectionState extends State<_ProviderSection> {
           ),
           if (envVarName != null)
             Padding(
-              padding: const EdgeInsets.only(top: 4),
+              padding: const EdgeInsets.only(top: 4.0),
               child: Text(
                 envKey != null
                     ? 'Using \$$envVarName from your environment.'
                     : 'Leave empty to use \$$envVarName '
                           '(File ▸ Environment…).',
                 style: TextStyle(
-                  fontSize: 11,
+                  fontSize: 11.0,
                   color: envKey != null ? Colors.green : Colors.grey,
                 ),
               ),
             ),
           if (availableModels != null && availableModels.isNotEmpty)
             Padding(
-              padding: const EdgeInsets.only(top: 4),
+              padding: const EdgeInsets.only(top: 4.0),
               child: Text(
                 '${availableModels.length} model(s) available',
-                style: const TextStyle(fontSize: 11, color: Colors.green),
+                style: const TextStyle(fontSize: 11.0, color: Colors.green),
               ),
             ),
           if (error != null)
             Padding(
-              padding: const EdgeInsets.only(top: 4),
+              padding: const EdgeInsets.only(top: 4.0),
               child: Text(
                 error,
-                style: const TextStyle(fontSize: 11, color: Colors.red),
+                style: const TextStyle(fontSize: 11.0, color: Colors.red),
               ),
             ),
         ],

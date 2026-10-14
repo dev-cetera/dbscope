@@ -21,9 +21,9 @@ enum SchemaTypeFamily {
 }
 
 class _Hue {
-  const _Hue(this.h, this.s);
-  final double h;
-  final double s;
+  const _Hue(this.degrees, this.saturation);
+  final double degrees;
+  final double saturation;
 }
 
 const Map<SchemaTypeFamily, _Hue> _familyHue = {
@@ -43,47 +43,47 @@ const Map<SchemaTypeFamily, _Hue> _familyHue = {
 
 SchemaTypeFamily classifyTypeName(String? rawTypeLabel) {
   if (rawTypeLabel == null) return SchemaTypeFamily.otherFamily;
-  final s = rawTypeLabel.trim();
-  if (s.isEmpty) return SchemaTypeFamily.otherFamily;
-  if (RegExp(r'\[\]\s*$').hasMatch(s)) return SchemaTypeFamily.arrayFamily;
+  final label = rawTypeLabel.trim();
+  if (label.isEmpty) return SchemaTypeFamily.otherFamily;
+  if (RegExp(r'\[\]\s*$').hasMatch(label)) return SchemaTypeFamily.arrayFamily;
   if (RegExp(r'^(small|big|tiny|medium)?int(eger)?\d*$', caseSensitive: false)
-      .hasMatch(s)) {
+      .hasMatch(label)) {
     return SchemaTypeFamily.intFamily;
   }
-  if (RegExp(r'^serial\d*$', caseSensitive: false).hasMatch(s)) {
+  if (RegExp(r'^serial\d*$', caseSensitive: false).hasMatch(label)) {
     return SchemaTypeFamily.intFamily;
   }
-  if (s.toLowerCase() == 'bigserial') return SchemaTypeFamily.intFamily;
+  if (label.toLowerCase() == 'bigserial') return SchemaTypeFamily.intFamily;
   if (RegExp(
     r'^(numeric|decimal|real|double precision|float\d*)$',
     caseSensitive: false,
-  ).hasMatch(s)) {
+  ).hasMatch(label)) {
     return SchemaTypeFamily.floatFamily;
   }
-  if (RegExp(r'^bool(ean)?$', caseSensitive: false).hasMatch(s)) {
+  if (RegExp(r'^bool(ean)?$', caseSensitive: false).hasMatch(label)) {
     return SchemaTypeFamily.boolFamily;
   }
   if (RegExp(
     r'^(text|varchar|char|character( varying)?|citext|name)$',
     caseSensitive: false,
-  ).hasMatch(s)) {
+  ).hasMatch(label)) {
     return SchemaTypeFamily.textFamily;
   }
   if (RegExp(
     '^(timestamp|timestamptz|date|time|timetz|interval)',
     caseSensitive: false,
-  ).hasMatch(s)) {
+  ).hasMatch(label)) {
     return SchemaTypeFamily.timeFamily;
   }
-  if (s.toLowerCase() == 'uuid') return SchemaTypeFamily.uuidFamily;
-  if (RegExp(r'^(json|jsonb|hstore)$', caseSensitive: false).hasMatch(s)) {
+  if (label.toLowerCase() == 'uuid') return SchemaTypeFamily.uuidFamily;
+  if (RegExp(r'^(json|jsonb|hstore)$', caseSensitive: false).hasMatch(label)) {
     return SchemaTypeFamily.jsonFamily;
   }
-  if (s.toLowerCase() == 'bytea') return SchemaTypeFamily.binaryFamily;
+  if (label.toLowerCase() == 'bytea') return SchemaTypeFamily.binaryFamily;
   if (RegExp(
     '^(geometry|geography|point|polygon|line|box|circle|path|lseg)',
     caseSensitive: false,
-  ).hasMatch(s)) {
+  ).hasMatch(label)) {
     return SchemaTypeFamily.geoFamily;
   }
   return SchemaTypeFamily.otherFamily;
@@ -92,6 +92,7 @@ SchemaTypeFamily classifyTypeName(String? rawTypeLabel) {
 Color colorForType(String? rawTypeLabel, {required bool darkMode}) {
   final fam = classifyTypeName(rawTypeLabel);
   final hue = _familyHue[fam]!;
-  final l = darkMode ? 0.74 : 0.36;
-  return HSLColor.fromAHSL(1.0, hue.h, hue.s, l).toColor();
+  final lightness = darkMode ? 0.74 : 0.36;
+  return HSLColor.fromAHSL(1.0, hue.degrees, hue.saturation, lightness)
+      .toColor();
 }

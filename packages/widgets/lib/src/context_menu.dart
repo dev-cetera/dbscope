@@ -52,16 +52,16 @@ Future<T?> showAppContextMenu<T>({
       PopupMenuItem<T>(
         value: e.value,
         enabled: e.enabled && e.value != null,
-        height: 32,
+        height: 32.0,
         child: Row(
           children: [
             if (e.icon != null) ...[
               Icon(
                 e.icon,
-                size: 14,
+                size: 14.0,
                 color: e.destructive ? theme.colorScheme.error : null,
               ),
-              const SizedBox(width: 8),
+              const SizedBox(width: 8.0),
             ],
             Expanded(
               child: Text(

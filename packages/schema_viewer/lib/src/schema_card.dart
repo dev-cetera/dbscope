@@ -5,6 +5,10 @@ import 'schema_model.dart';
 import 'table_colors.dart';
 import 'type_colors.dart';
 
+/// How long the card takes to fade and re-style when it is selected,
+/// highlighted or dimmed.
+const _kCardStateTransition = Duration(milliseconds: 120);
+
 /// The one card the schema viewer renders. Visually deliberate enough
 /// that the host app can drop it into a full ER diagram, a single-row
 /// linked explorer, or a side-panel preview without restyling.
@@ -83,8 +87,8 @@ class SchemaCard extends StatelessWidget {
     final dimmed = hasSelection && !highlighted;
     final headerColor = colorForTable('${node.schema}.${node.tableName}');
     final visibleFields = <SchemaFieldSpec>[
-      for (final f in node.fields)
-        if (!node.compact || f.pk || f.fk || f.isRefTarget) f,
+      for (final field in node.fields)
+        if (!node.compact || field.pk || field.fk || field.isRefTarget) field,
     ];
     // admin_site uses 2px primary outline when highlighted, otherwise
     // the theme's neutral border (theme.border, solid). With
@@ -99,15 +103,15 @@ class SchemaCard extends StatelessWidget {
     final borderWidth = highlighted ? 2.0 : 1.0;
 
     return AnimatedOpacity(
-      duration: const Duration(milliseconds: 120),
+      duration: _kCardStateTransition,
       curve: Curves.easeInOut,
       opacity: dimmed ? 0.35 : 1.0,
       child: AnimatedContainer(
-        duration: const Duration(milliseconds: 120),
+        duration: _kCardStateTransition,
         curve: Curves.easeInOut,
         decoration: BoxDecoration(
           color: theme.colorScheme.surface,
-          borderRadius: BorderRadius.circular(4),
+          borderRadius: BorderRadius.circular(4.0),
           border: Border.all(
             color: borderColor,
             width: borderWidth,
@@ -123,16 +127,16 @@ class SchemaCard extends StatelessWidget {
                   ),
                   BoxShadow(
                     color: Colors.black.withValues(alpha: 0.45),
-                    blurRadius: 14,
-                    offset: const Offset(0, 4),
+                    blurRadius: 14.0,
+                    offset: const Offset(0.0, 4.0),
                   ),
                 ]
               : [
                   // admin_site default: 0 2px 8px black-0.35.
                   BoxShadow(
                     color: Colors.black.withValues(alpha: 0.35),
-                    blurRadius: 8,
-                    offset: const Offset(0, 2),
+                    blurRadius: 8.0,
+                    offset: const Offset(0.0, 2.0),
                   ),
                 ],
         ),
@@ -159,7 +163,7 @@ class SchemaCard extends StatelessWidget {
               onTap: onTap,
               onSecondaryTapDown: onSecondaryTapDown == null
                   ? null
-                  : (d) => onSecondaryTapDown!(d.globalPosition),
+                  : (details) => onSecondaryTapDown!(details.globalPosition),
               child: SizedBox(
                 width: effectiveNodeWidth(node),
                 child: visibleFields.isEmpty
@@ -168,9 +172,9 @@ class SchemaCard extends StatelessWidget {
                         crossAxisAlignment: CrossAxisAlignment.stretch,
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          for (final f in visibleFields)
+                          for (final field in visibleFields)
                             _SchemaFieldRow(
-                              field: f,
+                              field: field,
                               darkMode: darkMode,
                             ),
                         ],
@@ -225,7 +229,7 @@ class _SchemaCardHeader extends StatelessWidget {
       onPanCancel: onHeaderPanEnd,
       onSecondaryTapDown: onSecondaryTapDown == null
           ? null
-          : (d) => onSecondaryTapDown!(d.globalPosition),
+          : (details) => onSecondaryTapDown!(details.globalPosition),
       child: MouseRegion(
         cursor: SystemMouseCursors.move,
         child: Container(
@@ -233,7 +237,7 @@ class _SchemaCardHeader extends StatelessWidget {
               (node.subtitle != null ? kSchemaSubtitleHeight : 0),
           // admin_site uses padding "0 12px"; the Column's centred
           // mainAxis handles vertical placement.
-          padding: const EdgeInsets.symmetric(horizontal: 12),
+          padding: const EdgeInsets.symmetric(horizontal: 12.0),
           color: headerColor,
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
@@ -242,8 +246,8 @@ class _SchemaCardHeader extends StatelessWidget {
               Row(
                 children: [
                   if (node.headerLeadingIcon != null) ...[
-                    Icon(node.headerLeadingIcon, size: 13, color: onHeader),
-                    const SizedBox(width: 6),
+                    Icon(node.headerLeadingIcon, size: 13.0, color: onHeader),
+                    const SizedBox(width: 6.0),
                   ],
                   Expanded(
                     child: Text(
@@ -251,23 +255,23 @@ class _SchemaCardHeader extends StatelessWidget {
                       style: TextStyle(
                         color: onHeader,
                         fontWeight: FontWeight.w700,
-                        fontSize: 13,
+                        fontSize: 13.0,
                       ),
                       overflow: TextOverflow.ellipsis,
                       maxLines: 1,
                     ),
                   ),
                   if (onActivate != null) ...[
-                    const SizedBox(width: 6),
+                    const SizedBox(width: 6.0),
                     _HeaderButton(
                       tooltip: activateTooltip,
                       onHeaderColor: onHeader,
                       onPressed: onActivate!,
-                      child: Icon(activateIcon, size: 12, color: onHeader),
+                      child: Icon(activateIcon, size: 12.0, color: onHeader),
                     ),
                   ],
                   if (onToggleCompact != null) ...[
-                    const SizedBox(width: 6),
+                    const SizedBox(width: 6.0),
                     _HeaderButton(
                       tooltip: node.compact
                           ? 'Show all fields'
@@ -281,7 +285,7 @@ class _SchemaCardHeader extends StatelessWidget {
                         node.compact ? '+' : '-',
                         style: TextStyle(
                           color: onHeader,
-                          fontSize: 14,
+                          fontSize: 14.0,
                           height: 1.0,
                           fontWeight: FontWeight.w700,
                         ),
@@ -292,12 +296,12 @@ class _SchemaCardHeader extends StatelessWidget {
               ),
               if (node.subtitle != null)
                 Padding(
-                  padding: const EdgeInsets.only(top: 1),
+                  padding: const EdgeInsets.only(top: 1.0),
                   child: Text(
                     node.subtitle!,
                     style: TextStyle(
                       color: onHeader.withValues(alpha: 0.85),
-                      fontSize: 11,
+                      fontSize: 11.0,
                       fontFamily: 'Menlo',
                     ),
                     overflow: TextOverflow.ellipsis,
@@ -336,12 +340,12 @@ class _HeaderButton extends StatelessWidget {
           onPanStart: (_) {},
           onTap: onPressed,
           child: Container(
-            width: 20,
-            height: 20,
+            width: 20.0,
+            height: 20.0,
             decoration: BoxDecoration(
               // admin_site: bg = white-0.28, border = white-0.45, radius 3.
               color: Colors.white.withValues(alpha: 0.28),
-              borderRadius: BorderRadius.circular(3),
+              borderRadius: BorderRadius.circular(3.0),
               border: Border.all(
                 color: Colors.white.withValues(alpha: 0.45),
               ),
@@ -364,7 +368,7 @@ class _EmptyBody extends StatelessWidget {
     return SizedBox(
       height: kSchemaEmptyBodyHeight,
       child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 12),
+        padding: const EdgeInsets.symmetric(horizontal: 12.0),
         child: Align(
           alignment: Alignment.centerLeft,
           child: Text(
@@ -372,7 +376,7 @@ class _EmptyBody extends StatelessWidget {
             style: TextStyle(
               color: theme.colorScheme.onSurface.withValues(alpha: 0.5),
               fontStyle: FontStyle.italic,
-              fontSize: 11,
+              fontSize: 11.0,
             ),
           ),
         ),
@@ -415,7 +419,7 @@ class _SchemaFieldRow extends StatelessWidget {
     // subtle hairline between rows.
     return Container(
       height: kSchemaRowHeight,
-      padding: const EdgeInsets.symmetric(horizontal: 12),
+      padding: const EdgeInsets.symmetric(horizontal: 12.0),
       decoration: BoxDecoration(
         border: Border(
           top: BorderSide(
@@ -433,15 +437,15 @@ class _SchemaFieldRow extends StatelessWidget {
               style: TextStyle(
                 color: nameColor,
                 fontWeight: field.pk ? FontWeight.w700 : FontWeight.w400,
-                fontSize: 12,
+                fontSize: 12.0,
               ),
             ),
           ),
-          const SizedBox(width: 12),
+          const SizedBox(width: 12.0),
           ConstrainedBox(
             // admin_site clamps the type column at 110px so a long
             // type doesn't push the column name off-card.
-            constraints: const BoxConstraints(maxWidth: 110),
+            constraints: const BoxConstraints(maxWidth: 110.0),
             child: Text(
               typeText,
               maxLines: 1,
@@ -450,7 +454,7 @@ class _SchemaFieldRow extends StatelessWidget {
               style: TextStyle(
                 color: rightColor,
                 fontFamily: 'Menlo',
-                fontSize: 11,
+                fontSize: 11.0,
                 fontStyle: field.valueIsNull ? FontStyle.italic : null,
               ),
             ),

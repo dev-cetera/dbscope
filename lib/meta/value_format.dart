@@ -30,26 +30,26 @@ String? formatForRenderer(
     case ValueRenderer.money:
       return _money(args, value);
     case ValueRenderer.bytes:
-      final n = _number(value);
-      return n == null ? null : formatBytes(n);
+      final number = _number(value);
+      return number == null ? null : formatBytes(number);
     case ValueRenderer.duration:
-      final n = _number(value);
-      if (n == null) return null;
+      final number = _number(value);
+      if (number == null) return null;
       final unit = specString(args, 'unit') ?? 'ms';
       final ms = switch (unit) {
-        's' => n * 1000,
-        'min' => n * 60000,
-        _ => n,
+        's' => number * 1000,
+        'min' => number * 60000,
+        _ => number,
       };
       return formatDuration(Duration(milliseconds: ms.round()));
     case ValueRenderer.timestamp:
-      final t = _dateTime(value);
-      if (t == null) return null;
-      return formatTimestamp(t, args);
+      final dateTime = _dateTime(value);
+      if (dateTime == null) return null;
+      return formatTimestamp(dateTime, args);
     case ValueRenderer.relativeTime:
-      final t = _dateTime(value);
-      if (t == null) return null;
-      return formatRelative(t, now ?? DateTime.now());
+      final dateTime = _dateTime(value);
+      if (dateTime == null) return null;
+      return formatRelative(dateTime, now ?? DateTime.now());
     case ValueRenderer.imageUrl:
     case ValueRenderer.url:
     case ValueRenderer.color:
@@ -62,9 +62,9 @@ String? formatForRenderer(
 /// A finite number, or null (NaN/Infinity must never reach a formatter:
 /// `.round()` and `toStringAsFixed` throw on them).
 num? _number(Object value) {
-  final n = value is num ? value : num.tryParse(value.toString());
-  if (n == null || !n.isFinite) return null;
-  return n;
+  final number = value is num ? value : num.tryParse(value.toString());
+  if (number == null || !number.isFinite) return null;
+  return number;
 }
 
 /// Parses a timestamp. A string with no zone ("2024-01-01 10:00:00", the
@@ -79,11 +79,11 @@ DateTime? _dateTime(Object value) {
 }
 
 String? _money(Map<String, Object?> args, Object value) {
-  final n = _number(value);
-  if (n == null) return null;
+  final number = _number(value);
+  if (number == null) return null;
   final minor = specBool(args, 'minorUnits');
   final decimals = (specInt(args, 'decimals') ?? 2).clamp(0, 20);
-  final amount = minor ? n / 100 : n;
+  final amount = minor ? number / 100 : number;
   final currency = specString(args, 'currency');
   final fixed = amount.abs().toStringAsFixed(decimals);
   final parts = fixed.split('.');
@@ -141,7 +141,7 @@ String formatTimestamp(DateTime t, Map<String, Object?> args) {
     shown = t.toUtc();
     suffix = ' UTC';
   }
-  String two(int n) => n.toString().padLeft(2, '0');
+  String two(int number) => number.toString().padLeft(2, '0');
   final date = '${shown.year}-${two(shown.month)}-${two(shown.day)}';
   if (specString(args, 'format') == 'date') return date;
   return '$date ${two(shown.hour)}:${two(shown.minute)}:${two(shown.second)}$suffix';
@@ -149,31 +149,31 @@ String formatTimestamp(DateTime t, Map<String, Object?> args) {
 
 Duration? _parseOffset(String? raw) {
   if (raw == null) return null;
-  final m = RegExp(r'^([+-])(\d{1,2}):?(\d{2})?$').firstMatch(raw.trim());
-  if (m == null) return null;
-  final sign = m.group(1) == '-' ? -1 : 1;
-  final hours = int.parse(m.group(2)!);
-  final minutes = int.parse(m.group(3) ?? '0');
+  final match = RegExp(r'^([+-])(\d{1,2}):?(\d{2})?$').firstMatch(raw.trim());
+  if (match == null) return null;
+  final sign = match.group(1) == '-' ? -1 : 1;
+  final hours = int.parse(match.group(2)!);
+  final minutes = int.parse(match.group(3) ?? '0');
   return Duration(minutes: sign * (hours * 60 + minutes));
 }
 
 String formatRelative(DateTime t, DateTime now) {
   final diff = now.difference(t);
   final future = diff.isNegative;
-  final d = diff.abs();
+  final elapsed = diff.abs();
   String core;
-  if (d.inSeconds < 60) {
-    core = '${d.inSeconds} s';
-  } else if (d.inMinutes < 60) {
-    core = '${d.inMinutes} min';
-  } else if (d.inHours < 48) {
-    core = '${d.inHours} h';
-  } else if (d.inDays < 60) {
-    core = '${d.inDays} d';
-  } else if (d.inDays < 730) {
-    core = '${(d.inDays / 30).floor()} mo';
+  if (elapsed.inSeconds < 60) {
+    core = '${elapsed.inSeconds} s';
+  } else if (elapsed.inMinutes < 60) {
+    core = '${elapsed.inMinutes} min';
+  } else if (elapsed.inHours < 48) {
+    core = '${elapsed.inHours} h';
+  } else if (elapsed.inDays < 60) {
+    core = '${elapsed.inDays} d';
+  } else if (elapsed.inDays < 730) {
+    core = '${(elapsed.inDays / 30).floor()} mo';
   } else {
-    core = '${(d.inDays / 365).floor()} y';
+    core = '${(elapsed.inDays / 365).floor()} y';
   }
   return future ? 'in $core' : '$core ago';
 }
@@ -186,7 +186,7 @@ int? parseColorValue(Object? value) {
   if (text.startsWith('#')) text = text.substring(1);
   if (!RegExp(r'^[0-9a-fA-F]+$').hasMatch(text)) return null;
   if (text.length == 3) {
-    text = text.split('').map((c) => '$c$c').join();
+    text = text.split('').map((digit) => '$digit$digit').join();
   }
   if (text.length == 6) return 0xFF000000 | int.parse(text, radix: 16);
   if (text.length == 8) {
@@ -201,8 +201,8 @@ int? parseColorValue(Object? value) {
 /// Renders a `{col}` row-label template against a row. Masked or missing
 /// columns render as the mask or as an empty string.
 String renderRowLabel(String template, Map<String, Object?> row) {
-  return template.replaceAllMapped(RegExp(r'\{([A-Za-z0-9_]+)\}'), (m) {
-    final value = row[m.group(1)!];
+  return template.replaceAllMapped(RegExp(r'\{([A-Za-z0-9_]+)\}'), (match) {
+    final value = row[match.group(1)!];
     return value?.toString() ?? '';
   }).trim();
 }

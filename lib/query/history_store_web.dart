@@ -15,11 +15,14 @@ class HistoryStore {
   HistoryStore._();
   static final instance = HistoryStore._();
 
+  /// How many of the most recent queries are kept per connection.
+  static const _kMaxHistoryEntries = 200;
+
   String _key(String connectionId) => 'dbscope.history.$connectionId';
 
   Future<List<HistoryEntry>> loadHistory(String connectionId) async {
-    final prefs = await SharedPreferences.getInstance();
-    final raw = prefs.getString(_key(connectionId));
+    final preferences = await SharedPreferences.getInstance();
+    final raw = preferences.getString(_key(connectionId));
     if (raw == null || raw.trim().isEmpty) return [];
     try {
       final list = jsonDecode(raw) as List<Object?>;
@@ -35,26 +38,28 @@ class HistoryStore {
   Future<void> appendHistory(String connectionId, String sql) async {
     final existing = await loadHistory(connectionId);
     existing.insert(0, HistoryEntry(sql, DateTime.now()));
-    final trimmed = existing.take(200).toList();
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setString(
+    final trimmed = existing.take(_kMaxHistoryEntries).toList();
+    final preferences = await SharedPreferences.getInstance();
+    await preferences.setString(
       _key(connectionId),
       jsonEncode([for (final e in trimmed) e.toJson()]),
     );
   }
 
   Future<List<SavedQuery>> loadSaved(String connectionId) async {
-    final doc = await ProjectStore.instance.load();
-    return List<SavedQuery>.from(doc.savedQueries[connectionId] ?? const []);
+    final projectDocument = await ProjectStore.instance.load();
+    return List<SavedQuery>.from(
+      projectDocument.savedQueries[connectionId] ?? const [],
+    );
   }
 
   Future<void> saveSaved(String connectionId, List<SavedQuery> queries) =>
       ProjectStore.instance.setSavedQueries(connectionId, queries);
 
   Future<List<SavedAiQuery>> loadSavedAi(String connectionId) async {
-    final doc = await ProjectStore.instance.load();
+    final projectDocument = await ProjectStore.instance.load();
     return List<SavedAiQuery>.from(
-      doc.savedAiQueries[connectionId] ?? const [],
+      projectDocument.savedAiQueries[connectionId] ?? const [],
     );
   }
 

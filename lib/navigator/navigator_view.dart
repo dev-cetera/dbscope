@@ -59,8 +59,8 @@ class _NavigatorTabViewState extends State<NavigatorTabView> {
   }
 
   @override
-  void didUpdateWidget(covariant NavigatorTabView old) {
-    super.didUpdateWidget(old);
+  void didUpdateWidget(covariant NavigatorTabView oldWidget) {
+    super.didUpdateWidget(oldWidget);
     final currentTrailing = widget.tab.steps.isEmpty
         ? null
         : widget.tab.steps.last.id;
@@ -101,17 +101,17 @@ class _NavigatorTabViewState extends State<NavigatorTabView> {
 
   Future<void> _loadFKsIfNeeded() async {
     if (widget.tab.fksLoaded) return;
-    final conn = ConnectionRegistry.instance.connectionFor(
+    final executor = ConnectionRegistry.instance.connectionFor(
       widget.tab.connectionId,
     );
-    if (conn == null) {
+    if (executor == null) {
       widget.tab.fksError = 'No connection.';
       AppState.instance.notifyChange();
       return;
     }
     try {
-      final fks = await SchemaCatalog(conn).listForeignKeys();
-      widget.tab.foreignKeys = fks;
+      final foreignKeys = await SchemaCatalog(executor).listForeignKeys();
+      widget.tab.foreignKeys = foreignKeys;
       widget.tab.fksLoaded = true;
       widget.tab.fksError = null;
     } catch (e) {
@@ -170,9 +170,9 @@ class _NavigatorTabViewState extends State<NavigatorTabView> {
                       Resizable(
                         width: widths[i],
                         minWidth: _minWidth(tab.steps[i]),
-                        maxWidth: 1600,
-                        onResized: (w) {
-                          tab.setStepWidth(tab.steps[i].id, w);
+                        maxWidth: 1600.0,
+                        onResized: (width) {
+                          tab.setStepWidth(tab.steps[i].id, width);
                           AppState.instance.notifyChange();
                         },
                         child: _widgetFor(tab.steps[i], i),
@@ -194,7 +194,8 @@ class _NavigatorTabViewState extends State<NavigatorTabView> {
   /// far from the row text and looked broken on wide screens.
   List<double> _computeWidths(List<NavStep> steps) {
     return [
-      for (final s in steps) widget.tab.stepWidths[s.id] ?? _defaultWidth(s),
+      for (final step in steps)
+        widget.tab.stepWidths[step.id] ?? _defaultWidth(step),
     ];
   }
 
@@ -214,15 +215,15 @@ class _NavigatorTabViewState extends State<NavigatorTabView> {
   Widget _widgetFor(NavStep step, int index) {
     return switch (step) {
       TableListStep _ => TableListColumn(tab: widget.tab, index: index),
-      final RowListStep s => RowListColumn(
+      final RowListStep rowListStep => RowListColumn(
         tab: widget.tab,
         index: index,
-        step: s,
+        step: rowListStep,
       ),
-      final RowDetailStep s => RowDetailColumn(
+      final RowDetailStep rowDetailStep => RowDetailColumn(
         tab: widget.tab,
         index: index,
-        step: s,
+        step: rowDetailStep,
       ),
     };
   }

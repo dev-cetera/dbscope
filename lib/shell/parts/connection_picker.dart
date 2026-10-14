@@ -5,7 +5,7 @@ class _ConnectionPicker extends StatelessWidget {
   final ConnectionRegistry registry;
   final Future<void> Function() onReload;
 
-  Future<void> _openMenu(BuildContext context, Offset globalPos) async {
+  Future<void> _openMenu(BuildContext context, Offset globalPosition) async {
     // Pull a fresh list every time so a saved-from-another-window
     // connection shows up.
     await registry.reloadProfiles();
@@ -13,31 +13,34 @@ class _ConnectionPicker extends StatelessWidget {
     final profile = registry.profile;
     final profiles = registry.profiles;
     final items = <SearchableMenuItem<_PickerAction>>[
-      for (final p in profiles)
+      for (final savedProfile in profiles)
         SearchableMenuItem<_PickerAction>(
-          value: _PickerAction(_ActionKind.switchTo, id: p.id),
-          searchKey: p.name,
+          value: _PickerAction(_ActionKind.switchTo, id: savedProfile.id),
+          searchKey: savedProfile.name,
           child: Row(
             children: [
               Icon(
-                p.id == registry.activeId
+                savedProfile.id == registry.activeId
                     ? Icons.radio_button_on
                     : Icons.radio_button_off,
-                size: 14,
+                size: 14.0,
               ),
-              const SizedBox(width: 8),
+              const SizedBox(width: 8.0),
               Expanded(
-                child: Text(p.name, overflow: TextOverflow.ellipsis),
+                child: Text(
+                  savedProfile.name,
+                  overflow: TextOverflow.ellipsis,
+                ),
               ),
-              if (p.readOnly)
+              if (savedProfile.readOnly)
                 Container(
                   padding: const EdgeInsets.symmetric(
-                    horizontal: 4,
-                    vertical: 1,
+                    horizontal: 4.0,
+                    vertical: 1.0,
                   ),
                   decoration: BoxDecoration(
                     color: Colors.orange.withValues(alpha: 0.2),
-                    borderRadius: BorderRadius.circular(2),
+                    borderRadius: BorderRadius.circular(2.0),
                   ),
                   child: const Text('RO', style: TextStyle(fontSize: 9)),
                 ),
@@ -49,8 +52,8 @@ class _ConnectionPicker extends StatelessWidget {
         searchKey: 'add connection new',
         child: Row(
           children: [
-            Icon(Icons.add, size: 16),
-            SizedBox(width: 8),
+            Icon(Icons.add, size: 16.0),
+            SizedBox(width: 8.0),
             Text('Add connection…'),
           ],
         ),
@@ -60,8 +63,8 @@ class _ConnectionPicker extends StatelessWidget {
         searchKey: 'refresh list reload',
         child: Row(
           children: [
-            Icon(Icons.refresh, size: 16),
-            SizedBox(width: 8),
+            Icon(Icons.refresh, size: 16.0),
+            SizedBox(width: 8.0),
             Text('Refresh list'),
           ],
         ),
@@ -72,8 +75,8 @@ class _ConnectionPicker extends StatelessWidget {
           searchKey: 'edit current settings',
           child: const Row(
             children: [
-              Icon(Icons.edit, size: 16),
-              SizedBox(width: 8),
+              Icon(Icons.edit, size: 16.0),
+              SizedBox(width: 8.0),
               Text('Edit current…'),
             ],
           ),
@@ -85,9 +88,9 @@ class _ConnectionPicker extends StatelessWidget {
             children: [
               Icon(
                 registry.isReadOnly ? Icons.lock_open : Icons.lock_outline,
-                size: 16,
+                size: 16.0,
               ),
-              const SizedBox(width: 8),
+              const SizedBox(width: 8.0),
               Text(registry.isReadOnly ? 'Make read-write' : 'Make read-only'),
             ],
           ),
@@ -97,8 +100,8 @@ class _ConnectionPicker extends StatelessWidget {
           searchKey: 'remove delete current',
           child: const Row(
             children: [
-              Icon(Icons.delete_outline, size: 16),
-              SizedBox(width: 8),
+              Icon(Icons.delete_outline, size: 16.0),
+              SizedBox(width: 8.0),
               Text('Remove current'),
             ],
           ),
@@ -108,8 +111,8 @@ class _ConnectionPicker extends StatelessWidget {
           searchKey: 'disconnect',
           child: Row(
             children: [
-              Icon(Icons.power_settings_new, size: 16),
-              SizedBox(width: 8),
+              Icon(Icons.power_settings_new, size: 16.0),
+              SizedBox(width: 8.0),
               Text('Disconnect'),
             ],
           ),
@@ -118,7 +121,7 @@ class _ConnectionPicker extends StatelessWidget {
     ];
     final action = await showSearchableMenu<_PickerAction>(
       context: context,
-      position: globalPos,
+      position: globalPosition,
       items: items,
       hint: 'Find connection or action…',
     );
@@ -132,9 +135,9 @@ class _ConnectionPicker extends StatelessWidget {
         await registry.connectProfile(created, context: context);
         AppState.instance.notifyChange();
       case _ActionKind.edit:
-        final p = registry.profileById(action.id!);
-        if (p == null) return;
-        final edited = await showAddConnectionDialog(context, initial: p);
+        final target = registry.profileById(action.id!);
+        if (target == null) return;
+        final edited = await showAddConnectionDialog(context, initial: target);
         if (edited != null) {
           await registry.updateProfile(edited);
           if (!context.mounted) return;
@@ -145,25 +148,25 @@ class _ConnectionPicker extends StatelessWidget {
           }
         }
       case _ActionKind.remove:
-        final p = registry.profileById(action.id!);
-        if (p == null) return;
+        final target = registry.profileById(action.id!);
+        if (target == null) return;
         final ok = await confirmDialog(
           context,
-          title: 'Remove "${p.name}"?',
+          title: 'Remove "${target.name}"?',
           message: 'Saved credentials will be deleted.',
           confirmLabel: 'Remove',
           destructive: true,
         );
         if (ok) {
-          await registry.removeProfile(p.id);
-          AppState.instance.closeTabsForConnection(p.id);
+          await registry.removeProfile(target.id);
+          AppState.instance.closeTabsForConnection(target.id);
         }
       case _ActionKind.disconnect:
         await registry.disconnect();
       case _ActionKind.toggleRo:
-        final p = registry.profileById(action.id!);
-        if (p == null) return;
-        await registry.setReadOnly(p.id, readOnly: !registry.isReadOnly);
+        final target = registry.profileById(action.id!);
+        if (target == null) return;
+        await registry.setReadOnly(target.id, readOnly: !registry.isReadOnly);
       case _ActionKind.refresh:
         await registry.reloadProfiles();
     }
@@ -174,7 +177,7 @@ class _ConnectionPicker extends StatelessWidget {
     final theme = Theme.of(context);
     final profile = registry.profile;
     return Padding(
-      padding: const EdgeInsets.fromLTRB(8, 8, 8, 8),
+      padding: const EdgeInsets.fromLTRB(8.0, 8.0, 8.0, 8.0),
       child: Row(
         children: [
           Icon(
@@ -183,20 +186,22 @@ class _ConnectionPicker extends StatelessWidget {
                 : (registry.isConnected
                       ? Icons.check_circle
                       : Icons.error_outline),
-            size: 16,
+            size: 16.0,
             color: profile == null
                 ? theme.hintColor
                 : (registry.isConnected ? Colors.green : Colors.orange),
           ),
-          const SizedBox(width: 6),
+          const SizedBox(width: 6.0),
           Expanded(
             child: Builder(
-              builder: (btnCtx) => InkWell(
+              builder: (buttonContext) => InkWell(
                 onTap: () {
-                  final box = btnCtx.findRenderObject() as RenderBox?;
+                  final box = buttonContext.findRenderObject() as RenderBox?;
                   if (box == null) return;
-                  final origin = box.localToGlobal(Offset(0, box.size.height));
-                  unawaited(_openMenu(btnCtx, origin));
+                  final origin = box.localToGlobal(
+                    Offset(0.0, box.size.height),
+                  );
+                  unawaited(_openMenu(buttonContext, origin));
                 },
                 child: Tooltip(
                   message: 'Connections',
@@ -209,7 +214,7 @@ class _ConnectionPicker extends StatelessWidget {
                           overflow: TextOverflow.ellipsis,
                         ),
                       ),
-                      const Icon(Icons.arrow_drop_down, size: 16),
+                      const Icon(Icons.arrow_drop_down, size: 16.0),
                     ],
                   ),
                 ),
@@ -218,14 +223,14 @@ class _ConnectionPicker extends StatelessWidget {
           ),
           if (registry.isConnecting)
             const SizedBox(
-              width: 14,
-              height: 14,
-              child: CircularProgressIndicator(strokeWidth: 2),
+              width: 14.0,
+              height: 14.0,
+              child: CircularProgressIndicator(strokeWidth: 2.0),
             )
           else if (profile != null)
             IconButton(
               tooltip: 'Refresh',
-              icon: const Icon(Icons.refresh, size: 18),
+              icon: const Icon(Icons.refresh, size: 18.0),
               onPressed: () async => onReload(),
             ),
         ],

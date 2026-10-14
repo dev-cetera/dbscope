@@ -62,20 +62,21 @@ class DataGrid extends StatefulWidget {
   final List<ForeignKey> foreignKeys;
   final String? schema;
   final String? table;
-  final void Function(ForeignKey fk, {required bool incoming})? onFollowLink;
+  final void Function(ForeignKey foreignKey, {required bool incoming})?
+  onFollowLink;
 
   /// Extra right-click entries for the clicked cell (row index, original
   /// column index) — metadata actions, links, "About this column", …
   final List<GridMenuEntry> Function(
     int rowIdx,
-    int columnIdx,
+    int columnIndex,
     List<int> selectedRows,
   )?
   contextMenuExtras;
 
   /// Wraps each column header (original column index): description
   /// tooltip, right-click "About this column".
-  final Widget Function(BuildContext context, int columnIdx, Widget header)?
+  final Widget Function(BuildContext context, int columnIndex, Widget header)?
   headerBuilder;
 
   /// Metadata display (value renderers) by column name.
@@ -94,8 +95,8 @@ class _DataGridState extends State<DataGrid> {
     super.initState();
     _rowHeight = ValueNotifier<double>(AppState.instance.rowHeight);
     _appStateListener = () {
-      final v = AppState.instance.rowHeight;
-      if (v != _rowHeight.value) _rowHeight.value = v;
+      final rowHeight = AppState.instance.rowHeight;
+      if (rowHeight != _rowHeight.value) _rowHeight.value = rowHeight;
     };
     AppState.instance.addListener(_appStateListener);
   }
@@ -115,12 +116,18 @@ class _DataGridState extends State<DataGrid> {
       // Group outbound FKs by constraint so composite FKs don't
       // misrender as a per-cell single link.
       final outboundGroups = <String, List<ForeignKey>>{};
-      for (final fk in widget.foreignKeys) {
-        if (fk.fromSchema == widget.schema && fk.fromTable == widget.table) {
-          outboundGroups.putIfAbsent(fk.constraintKey, () => []).add(fk);
+      for (final foreignKey in widget.foreignKeys) {
+        if (foreignKey.fromSchema == widget.schema &&
+            foreignKey.fromTable == widget.table) {
+          outboundGroups
+              .putIfAbsent(foreignKey.constraintKey, () => [])
+              .add(foreignKey);
         }
-        if (fk.toSchema == widget.schema && fk.toTable == widget.table) {
-          inboundByColumn.putIfAbsent(fk.toColumn, () => []).add(fk);
+        if (foreignKey.toSchema == widget.schema &&
+            foreignKey.toTable == widget.table) {
+          inboundByColumn
+              .putIfAbsent(foreignKey.toColumn, () => [])
+              .add(foreignKey);
         }
       }
       for (final entry in outboundGroups.entries) {
@@ -131,24 +138,25 @@ class _DataGridState extends State<DataGrid> {
     }
 
     final policies = <String, EditPolicy>{
-      for (final p in widget.editPolicies) p.column: p,
+      for (final policy in widget.editPolicies) policy.column: policy,
     };
 
     // Defaults stored on the column spec so the package's reset logic
     // picks them up without re-passing the type table.
     final columnsWithWidths = <GridColumnSpec>[
-      for (final c in widget.data.columns)
+      for (final column in widget.data.columns)
         gridColumn(
-          name: c.name,
-          type: c.type ?? PgType.unknown,
-          typeName: c.typeLabel,
-          primaryKey: c.primaryKey,
-          indexed: c.indexed,
+          name: column.name,
+          type: column.type ?? PgType.unknown,
+          typeName: column.typeLabel,
+          primaryKey: column.primaryKey,
+          indexed: column.indexed,
           defaultWidth:
-              c.defaultWidth ?? defaultWidthForPgType(c.type ?? PgType.unknown),
-          hidden: c.hidden,
-          tooltip: c.tooltip,
-          marker: c.marker,
+              column.defaultWidth ??
+              defaultWidthForPgType(column.type ?? PgType.unknown),
+          hidden: column.hidden,
+          tooltip: column.tooltip,
+          marker: column.marker,
         ),
     ];
     final dataForGrid = g.GridData<PgType>(

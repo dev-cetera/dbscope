@@ -69,23 +69,33 @@ class AppState extends ChangeNotifier {
   /// before the first frame paints so the saved sizes drive layout.
   Future<void> loadPersisted() async {
     await UiPrefs.instance.init();
-    final p = UiPrefs.instance;
-    final w = p.sidebarWidth;
-    if (w != null) _sidebarWidth = w.clamp(160.0, 600.0);
-    final r = p.sidebarOnRight;
-    if (r != null) _sidebarOnRight = r;
-    final v = p.sidebarVisible;
-    if (v != null) _sidebarVisible = v;
-    final iw = p.inspectorWidth;
-    if (iw != null) _propertyInspectorWidth = iw.clamp(220.0, 700.0);
-    final ic = p.inspectorCollapsed;
-    if (ic != null) _propertyInspectorCollapsed = ic;
-    final rh = p.rowHeight;
-    if (rh != null) _rowHeight = rh.clamp(20.0, 100.0);
-    final eh = p.sqlEditorHeight;
-    if (eh != null) _sqlEditorHeight = eh.clamp(120.0, 800.0);
-    final tm = p.themeMode;
-    if (tm != null) _themeId = tm;
+    final prefs = UiPrefs.instance;
+    final savedSidebarWidth = prefs.sidebarWidth;
+    if (savedSidebarWidth != null) {
+      _sidebarWidth = savedSidebarWidth.clamp(160.0, 600.0);
+    }
+    final savedOnRight = prefs.sidebarOnRight;
+    if (savedOnRight != null) _sidebarOnRight = savedOnRight;
+    final savedVisible = prefs.sidebarVisible;
+    if (savedVisible != null) _sidebarVisible = savedVisible;
+    final savedInspectorWidth = prefs.inspectorWidth;
+    if (savedInspectorWidth != null) {
+      _propertyInspectorWidth = savedInspectorWidth.clamp(220.0, 700.0);
+    }
+    final savedInspectorCollapsed = prefs.inspectorCollapsed;
+    if (savedInspectorCollapsed != null) {
+      _propertyInspectorCollapsed = savedInspectorCollapsed;
+    }
+    final savedRowHeight = prefs.rowHeight;
+    if (savedRowHeight != null) {
+      _rowHeight = savedRowHeight.clamp(20.0, 100.0);
+    }
+    final savedSqlEditorHeight = prefs.sqlEditorHeight;
+    if (savedSqlEditorHeight != null) {
+      _sqlEditorHeight = savedSqlEditorHeight.clamp(120.0, 800.0);
+    }
+    final savedThemeMode = prefs.themeMode;
+    if (savedThemeMode != null) _themeId = savedThemeMode;
   }
 
   var _persistTabsEnabled = false;
@@ -102,10 +112,10 @@ class AppState extends ChangeNotifier {
     if (!_persistTabsEnabled) return;
     final registry = TabKindRegistry.instance;
     final entries = <Map<String, Object?>>[];
-    for (final t in tabs) {
-      final kind = registry.lookupForTab(t);
-      final j = kind?.serialize?.call(t);
-      if (j != null) entries.add(j);
+    for (final tab in tabs) {
+      final kind = registry.lookupForTab(tab);
+      final serialized = kind?.serialize?.call(tab);
+      if (serialized != null) entries.add(serialized);
     }
     final blob = jsonEncode({
       'version': 1,
@@ -139,20 +149,20 @@ class AppState extends ChangeNotifier {
       final kindId = entry['kind'] as String?;
       if (kindId == null) continue;
       final kind = registry.lookupById(kindId);
-      final t = kind?.deserialize?.call(entry);
-      if (t == null) continue;
-      t.pinned = entry['pinned'] as bool? ?? false;
-      restored.add(t);
+      final tab = kind?.deserialize?.call(entry);
+      if (tab == null) continue;
+      tab.pinned = entry['pinned'] as bool? ?? false;
+      restored.add(tab);
       if (restored.length >= maxTabs) break;
     }
     if (restored.isEmpty) return;
     tabs.addAll(restored);
     final activeId = decoded['activeId'] as String?;
     if (activeId != null) {
-      for (final t in restored) {
-        if (t.id == activeId) {
-          _active = t;
-          t.lastActivatedAt = ++_tabClock;
+      for (final tab in restored) {
+        if (tab.id == activeId) {
+          _active = tab;
+          tab.lastActivatedAt = ++_tabClock;
           break;
         }
       }
@@ -165,8 +175,8 @@ class AppState extends ChangeNotifier {
   /// Uniform row height for every grid in the app. Clamped to keep cell
   /// content rendering sane (cell editors and inline FK chips assume a
   /// minimum height; very tall rows just waste pixels).
-  void setRowHeight(double h) {
-    final clamped = h.clamp(20.0, 100.0);
+  void setRowHeight(double height) {
+    final clamped = height.clamp(20.0, 100.0);
     if (clamped == _rowHeight) return;
     _rowHeight = clamped;
     UiPrefs.instance.setRowHeight(_rowHeight);
@@ -189,10 +199,10 @@ class AppState extends ChangeNotifier {
     final all = ThemeRegistry.instance.all;
     if (all.isEmpty) return;
     final current = themePlugin;
-    final idx = current == null
+    final index = current == null
         ? -1
-        : all.indexWhere((t) => t.id == current.id);
-    final next = all[(idx + 1) % all.length];
+        : all.indexWhere((theme) => theme.id == current.id);
+    final next = all[(index + 1) % all.length];
     setThemeId(next.id);
   }
 
@@ -208,8 +218,8 @@ class AppState extends ChangeNotifier {
     notifyListeners();
   }
 
-  void setSidebarWidth(double w) {
-    _sidebarWidth = w.clamp(160.0, 600.0);
+  void setSidebarWidth(double width) {
+    _sidebarWidth = width.clamp(160.0, 600.0);
     UiPrefs.instance.setSidebarWidth(_sidebarWidth);
     notifyListeners();
   }
@@ -222,14 +232,14 @@ class AppState extends ChangeNotifier {
     notifyListeners();
   }
 
-  void setPropertyInspectorWidth(double w) {
-    _propertyInspectorWidth = w.clamp(220.0, 700.0);
+  void setPropertyInspectorWidth(double width) {
+    _propertyInspectorWidth = width.clamp(220.0, 700.0);
     UiPrefs.instance.setInspectorWidth(_propertyInspectorWidth);
     notifyListeners();
   }
 
-  void setSqlEditorHeight(double h) {
-    final clamped = h.clamp(120.0, 800.0);
+  void setSqlEditorHeight(double height) {
+    final clamped = height.clamp(120.0, 800.0);
     if (clamped == _sqlEditorHeight) return;
     _sqlEditorHeight = clamped;
     UiPrefs.instance.setSqlEditorHeight(_sqlEditorHeight);
@@ -251,7 +261,7 @@ class AppState extends ChangeNotifier {
   void _evictIfOverCap() {
     while (tabs.length > maxTabs) {
       final candidates = tabs
-          .where((t) => !t.pinned && t.id != _active?.id)
+          .where((tab) => !tab.pinned && tab.id != _active?.id)
           .toList();
       if (candidates.isEmpty) return;
       candidates.sort((a, b) => a.lastActivatedAt.compareTo(b.lastActivatedAt));
@@ -268,12 +278,12 @@ class AppState extends ChangeNotifier {
     required int estimatedRows,
   }) {
     final existing = tabs.firstWhere(
-      (t) =>
-          t is TableTab &&
-          t.metaFilter == null &&
-          t.connectionId == connectionId &&
-          t.schema == schema &&
-          t.table == table,
+      (tab) =>
+          tab is TableTab &&
+          tab.metaFilter == null &&
+          tab.connectionId == connectionId &&
+          tab.schema == schema &&
+          tab.table == table,
       orElse: () => _Sentinel.instance,
     );
     if (existing is! _Sentinel) {
@@ -349,15 +359,15 @@ class AppState extends ChangeNotifier {
   }
 
   void closeTab(String id) {
-    final idx = tabs.indexWhere((t) => t.id == id);
-    if (idx < 0) return;
-    final removed = tabs.removeAt(idx);
+    final index = tabs.indexWhere((tab) => tab.id == id);
+    if (index < 0) return;
+    final removed = tabs.removeAt(index);
     removed.cancelToken?.cancel();
     if (_active?.id == id) {
       if (tabs.isEmpty) {
         _active = null;
       } else {
-        _active = tabs[idx == tabs.length ? idx - 1 : idx];
+        _active = tabs[index == tabs.length ? index - 1 : index];
       }
     }
     _persistTabs();
@@ -373,42 +383,44 @@ class AppState extends ChangeNotifier {
     if (target < 0) target = 0;
     if (target > tabs.length - 1) target = tabs.length - 1;
     if (oldIndex == target) return;
-    final t = tabs.removeAt(oldIndex);
-    tabs.insert(target, t);
+    final tab = tabs.removeAt(oldIndex);
+    tabs.insert(target, tab);
     _persistTabs();
     notifyListeners();
   }
 
   void selectTab(String id) {
-    final t = tabs.firstWhere(
-      (t) => t.id == id,
+    final found = tabs.firstWhere(
+      (tab) => tab.id == id,
       orElse: () => _Sentinel.instance,
     );
-    if (t is _Sentinel) return;
-    _active = t;
-    t.lastActivatedAt = ++_tabClock;
+    if (found is _Sentinel) return;
+    _active = found;
+    found.lastActivatedAt = ++_tabClock;
     _persistTabs();
     notifyListeners();
   }
 
   void togglePin(String id) {
-    final t = tabs.firstWhere(
-      (t) => t.id == id,
+    final found = tabs.firstWhere(
+      (tab) => tab.id == id,
       orElse: () => _Sentinel.instance,
     );
-    if (t is _Sentinel) return;
-    t.pinned = !t.pinned;
+    if (found is _Sentinel) return;
+    found.pinned = !found.pinned;
     _persistTabs();
     notifyListeners();
   }
 
   /// Close every tab except [keepId] and any pinned tab.
   void closeOtherTabs(String keepId) {
-    final removed = tabs.where((t) => t.id != keepId && !t.pinned).toList();
-    for (final t in removed) {
-      t.cancelToken?.cancel();
+    final removed = tabs
+        .where((tab) => tab.id != keepId && !tab.pinned)
+        .toList();
+    for (final tab in removed) {
+      tab.cancelToken?.cancel();
     }
-    tabs.removeWhere((t) => t.id != keepId && !t.pinned);
+    tabs.removeWhere((tab) => tab.id != keepId && !tab.pinned);
     if (_active != null && !tabs.contains(_active)) {
       _active = tabs.isEmpty ? null : tabs.first;
     }
@@ -418,18 +430,18 @@ class AppState extends ChangeNotifier {
 
   /// Close every unpinned tab to the right of [anchorId].
   void closeTabsToRight(String anchorId) {
-    final anchorIdx = tabs.indexWhere((t) => t.id == anchorId);
-    if (anchorIdx < 0) return;
+    final anchorIndex = tabs.indexWhere((tab) => tab.id == anchorId);
+    if (anchorIndex < 0) return;
     final toRemove = <TabModel>[];
-    for (var i = anchorIdx + 1; i < tabs.length; i++) {
+    for (var i = anchorIndex + 1; i < tabs.length; i++) {
       if (!tabs[i].pinned) toRemove.add(tabs[i]);
     }
-    for (final t in toRemove) {
-      t.cancelToken?.cancel();
+    for (final tab in toRemove) {
+      tab.cancelToken?.cancel();
     }
     tabs.removeWhere(toRemove.contains);
     if (_active != null && !tabs.contains(_active)) {
-      _active = tabs[anchorIdx];
+      _active = tabs[anchorIndex];
     }
     _persistTabs();
     notifyListeners();
@@ -437,14 +449,14 @@ class AppState extends ChangeNotifier {
 
   /// Close every unpinned tab to the left of [anchorId].
   void closeTabsToLeft(String anchorId) {
-    final anchorIdx = tabs.indexWhere((t) => t.id == anchorId);
-    if (anchorIdx <= 0) return;
+    final anchorIndex = tabs.indexWhere((tab) => tab.id == anchorId);
+    if (anchorIndex <= 0) return;
     final toRemove = <TabModel>[];
-    for (var i = 0; i < anchorIdx; i++) {
+    for (var i = 0; i < anchorIndex; i++) {
       if (!tabs[i].pinned) toRemove.add(tabs[i]);
     }
-    for (final t in toRemove) {
-      t.cancelToken?.cancel();
+    for (final tab in toRemove) {
+      tab.cancelToken?.cancel();
     }
     tabs.removeWhere(toRemove.contains);
     if (_active != null && !tabs.contains(_active)) {
@@ -455,11 +467,13 @@ class AppState extends ChangeNotifier {
   }
 
   void closeTabsForConnection(String connectionId) {
-    final removed = tabs.where((t) => t.connectionId == connectionId).toList();
-    for (final t in removed) {
-      t.cancelToken?.cancel();
+    final removed = tabs
+        .where((tab) => tab.connectionId == connectionId)
+        .toList();
+    for (final tab in removed) {
+      tab.cancelToken?.cancel();
     }
-    tabs.removeWhere((t) => t.connectionId == connectionId);
+    tabs.removeWhere((tab) => tab.connectionId == connectionId);
     if (_active != null && _active!.connectionId == connectionId) {
       _active = tabs.isEmpty ? null : tabs.first;
     }
@@ -469,15 +483,15 @@ class AppState extends ChangeNotifier {
 
   Iterable<TabModel> runningTabs() {
     final registry = TabKindRegistry.instance;
-    return tabs.where((t) {
-      final isRunning = registry.lookupForTab(t)?.isRunning;
-      return isRunning != null && isRunning(t);
+    return tabs.where((tab) {
+      final isRunning = registry.lookupForTab(tab)?.isRunning;
+      return isRunning != null && isRunning(tab);
     });
   }
 
   void cancelAll() {
-    for (final t in runningTabs()) {
-      t.cancelToken?.cancel();
+    for (final tab in runningTabs()) {
+      tab.cancelToken?.cancel();
     }
     notifyListeners();
   }

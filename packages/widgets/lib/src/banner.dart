@@ -34,7 +34,7 @@ class AppBanner extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final (bg, fg) = switch (severity) {
+    final (background, foreground) = switch (severity) {
       BannerSeverity.hint => (
         theme.colorScheme.surfaceContainerHigh,
         theme.colorScheme.onSurface,
@@ -50,7 +50,7 @@ class AppBanner extends StatelessWidget {
     };
     return Container(
       width: double.infinity,
-      color: bg,
+      color: background,
       padding: EdgeInsets.symmetric(
         horizontal: dense ? 8 : 12,
         vertical: dense ? 4 : 6,
@@ -58,7 +58,7 @@ class AppBanner extends StatelessWidget {
       child: Text(
         message,
         style: TextStyle(
-          color: fg,
+          color: foreground,
           fontSize: dense ? 11 : 12,
           fontWeight:
               severity == BannerSeverity.hint

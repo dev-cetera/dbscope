@@ -10,9 +10,9 @@ class ProfileStore {
   static final instance = ProfileStore._();
 
   Future<List<ConnectionProfile>> load() async {
-    final doc = await ProjectStore.instance.load();
+    final projectDocument = await ProjectStore.instance.load();
     final out = <ConnectionProfile>[];
-    for (final entry in doc.profiles) {
+    for (final entry in projectDocument.profiles) {
       final id = entry['id'] as String?;
       if (id == null) continue;
       final password = await SecureStore.instance.readPassword(id) ?? '';
@@ -23,16 +23,16 @@ class ProfileStore {
 
   Future<void> save(List<ConnectionProfile> profiles) async {
     await ProjectStore.instance.setProfiles([
-      for (final p in profiles) p.toJson(),
+      for (final profile in profiles) profile.toJson(),
     ]);
-    for (final p in profiles) {
-      if (p.password.isNotEmpty) {
-        await SecureStore.instance.writePassword(p.id, p.password);
+    for (final profile in profiles) {
+      if (profile.password.isNotEmpty) {
+        await SecureStore.instance.writePassword(profile.id, profile.password);
       }
     }
   }
 
-  Future<void> delete(ConnectionProfile p) async {
-    await SecureStore.instance.deletePassword(p.id);
+  Future<void> delete(ConnectionProfile profile) async {
+    await SecureStore.instance.deletePassword(profile.id);
   }
 }

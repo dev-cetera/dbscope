@@ -44,7 +44,7 @@ class ThemeRegistry {
 
   void register(ThemePlugin theme) {
     if (_byId.containsKey(theme.id)) {
-      _ordered.removeWhere((t) => t.id == theme.id);
+      _ordered.removeWhere((existing) => existing.id == theme.id);
     }
     _byId[theme.id] = theme;
     _ordered.add(theme);

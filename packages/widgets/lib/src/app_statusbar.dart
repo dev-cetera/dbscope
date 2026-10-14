@@ -12,20 +12,23 @@ class AppStatusBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final p = AppPalette.of(context);
-    final cells = segments.where((s) => s.isNotEmpty).toList();
+    final palette = AppPalette.of(context);
+    final cells = segments.where((segment) => segment.isNotEmpty).toList();
     return SelectionArea(
       child: Container(
         decoration: BoxDecoration(
-          color: p.surface,
-          border: p.isBevel ? null : Border(top: BorderSide(color: p.border)),
+          color: palette.surface,
+          border:
+              palette.isBevel
+                  ? null
+                  : Border(top: BorderSide(color: palette.border)),
         ),
-        padding: const EdgeInsets.fromLTRB(2, 2, 2, 2),
+        padding: const EdgeInsets.fromLTRB(2.0, 2.0, 2.0, 2.0),
         child: Row(
           children: [
             for (var i = 0; i < cells.length; i++) ...[
-              Flexible(flex: i == 0 ? 6 : 2, child: _cell(p, cells[i])),
-              if (i < cells.length - 1) const SizedBox(width: 2),
+              Flexible(flex: i == 0 ? 6 : 2, child: _cell(palette, cells[i])),
+              if (i < cells.length - 1) const SizedBox(width: 2.0),
             ],
           ],
         ),
@@ -33,22 +36,22 @@ class AppStatusBar extends StatelessWidget {
     );
   }
 
-  Widget _cell(AppPalette p, String text) {
+  Widget _cell(AppPalette palette, String text) {
     final label = Text(
       text,
       overflow: TextOverflow.ellipsis,
       style: TextStyle(
-        fontSize: p.bodyFontSize,
-        fontFamily: p.uiFontFamily,
-        color: p.text,
+        fontSize: palette.bodyFontSize,
+        fontFamily: palette.uiFontFamily,
+        color: palette.text,
       ),
     );
-    const cellPadding = EdgeInsets.symmetric(horizontal: 4, vertical: 1);
-    return p.isBevel
+    const cellPadding = EdgeInsets.symmetric(horizontal: 4.0, vertical: 1.0);
+    return palette.isBevel
         ? bevelBox(
-          palette: p,
+          palette: palette,
           sunken: true,
-          background: p.surface,
+          background: palette.surface,
           padding: cellPadding,
           child: label,
         )

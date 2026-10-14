@@ -9,11 +9,11 @@ class _NullPlaceholder extends StatelessWidget {
     return AppBevel(
       raised: false,
       color: palette.surface,
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 7),
+      padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 7.0),
       child: Row(
         children: [
-          Icon(Icons.block, size: 12, color: palette.mutedText),
-          const SizedBox(width: 6),
+          Icon(Icons.block, size: 12.0, color: palette.mutedText),
+          const SizedBox(width: 6.0),
           Text(
             'NULL',
             style: TextStyle(
@@ -49,7 +49,7 @@ class _NullButton extends StatelessWidget {
         child: AppBevel(
           raised: !isNull,
           color: isNull ? palette.accent : palette.surface,
-          padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+          padding: const EdgeInsets.symmetric(horizontal: 7.0, vertical: 2.0),
           child: Text(
             'NULL',
             style: TextStyle(
@@ -70,7 +70,7 @@ class _Field extends StatelessWidget {
   const _Field({
     required this.child,
     required this.enabled,
-    this.padding = const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
+    this.padding = const EdgeInsets.symmetric(horizontal: 4.0, vertical: 1.0),
   });
   final Widget child;
   final bool enabled;

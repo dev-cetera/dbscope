@@ -29,20 +29,24 @@ double schemaNodeHeight(int visibleFieldCount, {bool hasSubtitle = false}) {
   return kSchemaHeaderHeight + extra + body;
 }
 
-int visibleFieldCountFor(SchemaNodeData n, {bool compact = false}) {
-  if (!compact) return n.fields.length;
-  return n.fields.where((f) => f.pk || f.fk || f.isRefTarget).length;
+int visibleFieldCountFor(SchemaNodeData node, {bool compact = false}) {
+  if (!compact) return node.fields.length;
+  return node.fields
+      .where((field) => field.pk || field.fk || field.isRefTarget)
+      .length;
 }
 
-double renderedNodeHeight(SchemaNodeData n) {
+double renderedNodeHeight(SchemaNodeData node) {
   return schemaNodeHeight(
-    visibleFieldCountFor(n, compact: n.compact),
-    hasSubtitle: n.subtitle != null,
+    visibleFieldCountFor(node, compact: node.compact),
+    hasSubtitle: node.subtitle != null,
   );
 }
 
-double effectiveNodeWidth(SchemaNodeData n) {
-  if (n.widthOverridden && n.widthOverride != null) return n.widthOverride!;
+double effectiveNodeWidth(SchemaNodeData node) {
+  if (node.widthOverridden && node.widthOverride != null) {
+    return node.widthOverride!;
+  }
   return kSchemaNodeWidth;
 }
 
@@ -77,28 +81,28 @@ Size _layoutGrid(
   required double colGap,
   required double rowGap,
 }) {
-  final cols = math.max(1, math.sqrt(nodes.length).ceil());
+  final columnCount = math.max(1, math.sqrt(nodes.length).ceil());
   double x = 0;
   double y = 0;
   double rowHMax = 0;
-  var col = 0;
+  var column = 0;
   double maxX = 0;
   double maxY = 0;
-  for (final n in nodes) {
-    final w = effectiveNodeWidth(n);
-    final h = renderedNodeHeight(n);
-    n.position = Offset(x, y);
-    rowHMax = math.max(rowHMax, h);
-    maxX = math.max(maxX, x + w);
-    maxY = math.max(maxY, y + h);
-    col += 1;
-    if (col >= cols) {
-      col = 0;
+  for (final node in nodes) {
+    final width = effectiveNodeWidth(node);
+    final height = renderedNodeHeight(node);
+    node.position = Offset(x, y);
+    rowHMax = math.max(rowHMax, height);
+    maxX = math.max(maxX, x + width);
+    maxY = math.max(maxY, y + height);
+    column += 1;
+    if (column >= columnCount) {
+      column = 0;
       x = 0;
       y += rowHMax + rowGap;
       rowHMax = 0;
     } else {
-      x += w + colGap;
+      x += width + colGap;
     }
   }
   return Size(maxX, maxY);
@@ -114,8 +118,8 @@ Size _layoutRanked(
   required double colGap,
   required double rowGap,
 }) {
-  final ids = nodes.map((n) => n.id).toSet();
-  final node = {for (final n in nodes) n.id: n};
+  final ids = nodes.map((node) => node.id).toSet();
+  final nodeById = {for (final node in nodes) node.id: node};
 
   // adjacency, skipping self-edges and edges to/from missing nodes
   final outAdj = <String, List<String>>{for (final id in ids) id: []};
@@ -134,12 +138,12 @@ Size _layoutRanked(
     if (visited[id] ?? false) return;
     visited[id] = true;
     var best = 0;
-    for (final p in inAdj[id]!) {
+    for (final parent in inAdj[id]!) {
       // Ignore back-edges (DFS cycle): if we'd recurse into a node already
       // on the stack, skip it. visited[..]==null means not seen; ==true
       // means we just landed here in this assignRank call.
-      if (visited[p] == null) assignRank(p);
-      final rp = rank[p];
+      if (visited[parent] == null) assignRank(parent);
+      final rp = rank[parent];
       if (rp != null && rp + 1 > best) best = rp + 1;
     }
     rank[id] = best;
@@ -159,36 +163,38 @@ Size _layoutRanked(
   // already-assigned indexes. Reduces crossings without a full
   // 2-sweep heuristic; for schemas this is good enough.
   final order = <int, List<String>>{};
-  for (var r = 0; r <= maxRank; r++) {
-    final layer = (buckets[r] ?? const <String>[]).toList();
-    if (r == 0) {
+  for (var rankIndex = 0; rankIndex <= maxRank; rankIndex++) {
+    final layer = (buckets[rankIndex] ?? const <String>[]).toList();
+    if (rankIndex == 0) {
       layer.sort();
-      order[r] = layer;
+      order[rankIndex] = layer;
       continue;
     }
-    final prev = order[r - 1] ?? const [];
-    final prevIdx = {for (var i = 0; i < prev.length; i++) prev[i]: i};
+    final previousLayer = order[rankIndex - 1] ?? const [];
+    final previousIndex = {
+      for (var i = 0; i < previousLayer.length; i++) previousLayer[i]: i,
+    };
     double barycentre(String id) {
       final parents = inAdj[id]!;
       double sum = 0;
       var count = 0;
-      for (final p in parents) {
-        final i = prevIdx[p];
+      for (final parent in parents) {
+        final i = previousIndex[parent];
         if (i != null) {
           sum += i.toDouble();
           count += 1;
         }
       }
-      if (count == 0) return prev.length / 2.0;
+      if (count == 0) return previousLayer.length / 2.0;
       return sum / count;
     }
 
     layer.sort((a, b) {
-      final c = barycentre(a).compareTo(barycentre(b));
-      if (c != 0) return c;
+      final comparison = barycentre(a).compareTo(barycentre(b));
+      if (comparison != 0) return comparison;
       return a.compareTo(b);
     });
-    order[r] = layer;
+    order[rankIndex] = layer;
   }
 
   // Coordinate assignment. LR = ranks across X, positions across Y.
@@ -196,37 +202,37 @@ Size _layoutRanked(
   final positions = <String, Offset>{};
   if (mode == SchemaLayoutMode.lr) {
     double x = 0;
-    for (var r = 0; r <= maxRank; r++) {
-      final layer = order[r] ?? const [];
+    for (var rankIndex = 0; rankIndex <= maxRank; rankIndex++) {
+      final layer = order[rankIndex] ?? const [];
       double rankWidth = 0;
       for (final id in layer) {
-        rankWidth = math.max(rankWidth, effectiveNodeWidth(node[id]!));
+        rankWidth = math.max(rankWidth, effectiveNodeWidth(nodeById[id]!));
       }
       double y = 0;
       for (final id in layer) {
-        final w = effectiveNodeWidth(node[id]!);
-        final h = renderedNodeHeight(node[id]!);
-        final cx = x + (rankWidth - w) / 2;
+        final width = effectiveNodeWidth(nodeById[id]!);
+        final height = renderedNodeHeight(nodeById[id]!);
+        final cx = x + (rankWidth - width) / 2;
         positions[id] = Offset(cx, y);
-        y += h + rowGap;
+        y += height + rowGap;
       }
       x += rankWidth + colGap;
     }
   } else {
     double y = 0;
-    for (var r = 0; r <= maxRank; r++) {
-      final layer = order[r] ?? const [];
+    for (var rankIndex = 0; rankIndex <= maxRank; rankIndex++) {
+      final layer = order[rankIndex] ?? const [];
       double rankHeight = 0;
       for (final id in layer) {
-        rankHeight = math.max(rankHeight, renderedNodeHeight(node[id]!));
+        rankHeight = math.max(rankHeight, renderedNodeHeight(nodeById[id]!));
       }
       double x = 0;
       for (final id in layer) {
-        final w = effectiveNodeWidth(node[id]!);
-        final h = renderedNodeHeight(node[id]!);
-        final cy = y + (rankHeight - h) / 2;
+        final width = effectiveNodeWidth(nodeById[id]!);
+        final height = renderedNodeHeight(nodeById[id]!);
+        final cy = y + (rankHeight - height) / 2;
         positions[id] = Offset(x, cy);
-        x += w + colGap;
+        x += width + colGap;
       }
       y += rankHeight + rowGap;
     }
@@ -235,13 +241,13 @@ Size _layoutRanked(
   // Apply, compute bounding box.
   double maxX = 0;
   double maxY = 0;
-  for (final n in nodes) {
-    final p = positions[n.id] ?? Offset.zero;
-    n.position = p;
-    final w = effectiveNodeWidth(n);
-    final h = renderedNodeHeight(n);
-    maxX = math.max(maxX, p.dx + w);
-    maxY = math.max(maxY, p.dy + h);
+  for (final node in nodes) {
+    final position = positions[node.id] ?? Offset.zero;
+    node.position = position;
+    final width = effectiveNodeWidth(node);
+    final height = renderedNodeHeight(node);
+    maxX = math.max(maxX, position.dx + width);
+    maxY = math.max(maxY, position.dy + height);
   }
   return Size(maxX, maxY);
 }
@@ -263,28 +269,34 @@ Set<String> cascadeSeparate({
   for (var pass = 0; pass < maxPasses; pass++) {
     final next = <String>{};
     for (final id in work) {
-      final a = positions[id];
+      final aPosition = positions[id];
       final da = dimsFor(id);
-      if (a == null || da == null) continue;
+      if (aPosition == null || da == null) continue;
       for (final otherId in allIds) {
         if (otherId == id) continue;
         if (movedIds.contains(otherId)) continue;
-        final b = positions[otherId];
+        final bPosition = positions[otherId];
         final db = dimsFor(otherId);
-        if (b == null || db == null) continue;
+        if (bPosition == null || db == null) continue;
         final minDx = (da.w + db.w) / 2 + kSchemaNodeMargin;
         final minDy = (da.h + db.h) / 2 + kSchemaNodeMargin;
-        final dx = (b.dx + db.w / 2) - (a.dx + da.w / 2);
-        final dy = (b.dy + db.h / 2) - (a.dy + da.h / 2);
+        final dx = (bPosition.dx + db.w / 2) - (aPosition.dx + da.w / 2);
+        final dy = (bPosition.dy + db.h / 2) - (aPosition.dy + da.h / 2);
         final ox = minDx - dx.abs();
         final oy = minDy - dy.abs();
         if (ox <= 0 || oy <= 0) continue;
         if (ox < oy) {
           final push = ox + 0.5;
-          positions[otherId] = Offset(b.dx + (dx >= 0 ? push : -push), b.dy);
+          positions[otherId] = Offset(
+            bPosition.dx + (dx >= 0 ? push : -push),
+            bPosition.dy,
+          );
         } else {
           final push = oy + 0.5;
-          positions[otherId] = Offset(b.dx, b.dy + (dy >= 0 ? push : -push));
+          positions[otherId] = Offset(
+            bPosition.dx,
+            bPosition.dy + (dy >= 0 ? push : -push),
+          );
         }
         changed.add(otherId);
         next.add(otherId);
@@ -298,12 +310,12 @@ Set<String> cascadeSeparate({
 
 /// AABB rectangle for a node, used by the edge painter and the side-
 /// picker.
-Rect rectForNode(SchemaNodeData n) {
+Rect rectForNode(SchemaNodeData node) {
   return Rect.fromLTWH(
-    n.position.dx,
-    n.position.dy,
-    effectiveNodeWidth(n),
-    renderedNodeHeight(n),
+    node.position.dx,
+    node.position.dy,
+    effectiveNodeWidth(node),
+    renderedNodeHeight(node),
   );
 }
 
@@ -311,16 +323,18 @@ Rect rectForNode(SchemaNodeData n) {
 /// at the exact row centre instead of the card rim. Returns null when the
 /// column isn't actually rendered (compact mode hiding a non-PK/FK
 /// column).
-double? columnLocalCentreY(SchemaNodeData n, String columnName) {
+double? columnLocalCentreY(SchemaNodeData node, String columnName) {
   final visible = <SchemaFieldSpec>[];
-  for (final f in n.fields) {
-    if (!n.compact || f.pk || f.fk || f.isRefTarget) visible.add(f);
+  for (final field in node.fields) {
+    if (!node.compact || field.pk || field.fk || field.isRefTarget) {
+      visible.add(field);
+    }
   }
-  final idx = visible.indexWhere((f) => f.name == columnName);
-  if (idx < 0) return null;
+  final index = visible.indexWhere((field) => field.name == columnName);
+  if (index < 0) return null;
   final headerOffset =
-      kSchemaHeaderHeight + (n.subtitle != null ? kSchemaSubtitleHeight : 0);
-  return headerOffset + idx * kSchemaRowHeight + kSchemaRowHeight / 2;
+      kSchemaHeaderHeight + (node.subtitle != null ? kSchemaSubtitleHeight : 0);
+  return headerOffset + index * kSchemaRowHeight + kSchemaRowHeight / 2;
 }
 
 /// Per-edge side picker. For each edge with [SchemaEdgeData.sourceField]
@@ -333,15 +347,15 @@ Map<String, ({bool sourceOnRight, bool targetOnRight})> pickEdgeSides(
 ) {
   final out = <String, ({bool sourceOnRight, bool targetOnRight})>{};
   for (final e in edges) {
-    final s = dimsFor(e.sourceId);
-    final t = dimsFor(e.targetId);
-    if (s == null || t == null) continue;
-    final sy = s.y + s.h / 2;
-    final ty = t.y + t.h / 2;
-    final sRight = s.x + s.w;
-    final sLeft = s.x;
-    final tRight = t.x + t.w;
-    final tLeft = t.x;
+    final source = dimsFor(e.sourceId);
+    final target = dimsFor(e.targetId);
+    if (source == null || target == null) continue;
+    final sy = source.y + source.h / 2;
+    final ty = target.y + target.h / 2;
+    final sRight = source.x + source.w;
+    final sLeft = source.x;
+    final tRight = target.x + target.w;
+    final tLeft = target.x;
     final distRtoL =
         math.sqrt(math.pow(tLeft - sRight, 2) + math.pow(ty - sy, 2));
     final distLtoR =

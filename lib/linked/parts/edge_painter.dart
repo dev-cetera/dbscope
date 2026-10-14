@@ -19,10 +19,10 @@ enum _LinkedAnchorSide { left, right, top, bottom }
 
 extension on _LinkedAnchorSide {
   Offset get direction => switch (this) {
-    _LinkedAnchorSide.left => const Offset(-1, 0),
-    _LinkedAnchorSide.right => const Offset(1, 0),
-    _LinkedAnchorSide.top => const Offset(0, -1),
-    _LinkedAnchorSide.bottom => const Offset(0, 1),
+    _LinkedAnchorSide.left => const Offset(-1.0, 0.0),
+    _LinkedAnchorSide.right => const Offset(1.0, 0.0),
+    _LinkedAnchorSide.top => const Offset(0.0, -1.0),
+    _LinkedAnchorSide.bottom => const Offset(0.0, 1.0),
   };
 }
 
@@ -45,17 +45,17 @@ class _EdgePainter extends CustomPainter {
   /// each path.
   final double tickerValue;
 
-  Rect _rectOf(LinkedNode n) {
-    final dx = n.position.dx + (n.id == dragNodeId ? dragDelta.dx : 0);
-    final dy = n.position.dy + (n.id == dragNodeId ? dragDelta.dy : 0);
-    final h = n is LinkedRowNode
-        ? _nodeHeightFor(n, tab.foreignKeys)
+  Rect _rectOf(LinkedNode node) {
+    final dx = node.position.dx + (node.id == dragNodeId ? dragDelta.dx : 0.0);
+    final dy = node.position.dy + (node.id == dragNodeId ? dragDelta.dy : 0.0);
+    final height = node is LinkedRowNode
+        ? _nodeHeightFor(node, tab.foreignKeys)
         : _kHeaderHeight + _kRowHeight;
     return Rect.fromLTWH(
       pan.dx + dx * scale,
       pan.dy + dy * scale,
-      n.width * scale,
-      h * scale,
+      node.width * scale,
+      height * scale,
     );
   }
 
@@ -104,51 +104,51 @@ class _EdgePainter extends CustomPainter {
     Offset b,
   })
   _pickBestPair({
-    required LinkedNode src,
-    required Rect srcRect,
-    required LinkedNode tgt,
-    required Rect tgtRect,
+    required LinkedNode source,
+    required Rect sourceRect,
+    required LinkedNode target,
+    required Rect targetRect,
     required String? sourceField,
     required String? targetField,
   }) {
     _LinkedAnchorSide? bestASide;
     _LinkedAnchorSide? bestBSide;
-    var bestA = srcRect.center;
-    var bestB = tgtRect.center;
+    var bestA = sourceRect.center;
+    var bestB = targetRect.center;
     var bestDist = double.infinity;
 
     for (final aSide in _LinkedAnchorSide.values) {
-      final aPt = _anchorOn(src, srcRect, aSide, sourceField);
-      final aDir = aSide.direction;
+      final aPoint = _anchorOn(source, sourceRect, aSide, sourceField);
+      final aDirection = aSide.direction;
       for (final bSide in _LinkedAnchorSide.values) {
-        final bPt = _anchorOn(tgt, tgtRect, bSide, targetField);
-        final ab = bPt - aPt;
-        final aForward = aDir.dx * ab.dx + aDir.dy * ab.dy;
+        final bPoint = _anchorOn(target, targetRect, bSide, targetField);
+        final ab = bPoint - aPoint;
+        final aForward = aDirection.dx * ab.dx + aDirection.dy * ab.dy;
         if (aForward < 0) continue;
-        final bDir = bSide.direction;
-        final bForward = bDir.dx * (-ab.dx) + bDir.dy * (-ab.dy);
+        final bDirection = bSide.direction;
+        final bForward = bDirection.dx * (-ab.dx) + bDirection.dy * (-ab.dy);
         if (bForward < 0) continue;
         final dist = ab.distance;
         if (dist < bestDist) {
           bestDist = dist;
           bestASide = aSide;
           bestBSide = bSide;
-          bestA = aPt;
-          bestB = bPt;
+          bestA = aPoint;
+          bestB = bPoint;
         }
       }
     }
 
     if (bestASide == null || bestBSide == null) {
-      final sourceOnRight = srcRect.center.dx <= tgtRect.center.dx;
+      final sourceOnRight = sourceRect.center.dx <= targetRect.center.dx;
       bestASide = sourceOnRight
           ? _LinkedAnchorSide.right
           : _LinkedAnchorSide.left;
       bestBSide = sourceOnRight
           ? _LinkedAnchorSide.left
           : _LinkedAnchorSide.right;
-      bestA = _anchorOn(src, srcRect, bestASide, sourceField);
-      bestB = _anchorOn(tgt, tgtRect, bestBSide, targetField);
+      bestA = _anchorOn(source, sourceRect, bestASide, sourceField);
+      bestB = _anchorOn(target, targetRect, bestBSide, targetField);
     }
 
     return (aSide: bestASide, bSide: bestBSide, a: bestA, b: bestB);
@@ -156,7 +156,7 @@ class _EdgePainter extends CustomPainter {
 
   @override
   void paint(Canvas canvas, Size size) {
-    final byId = {for (final n in tab.nodes) n.id: n};
+    final byId = {for (final node in tab.nodes) node.id: node};
     final selectedId = tab.selectedNodeId;
     final highlighted = <String>{};
     if (selectedId != null) {
@@ -175,10 +175,10 @@ class _EdgePainter extends CustomPainter {
       final fromRect = _rectOf(from);
       final toRect = _rectOf(to);
       final pick = _pickBestPair(
-        src: from,
-        srcRect: fromRect,
-        tgt: to,
-        tgtRect: toRect,
+        source: from,
+        sourceRect: fromRect,
+        target: to,
+        targetRect: toRect,
         sourceField: edge.fromColumn,
         targetField: edge.toColumn,
       );
@@ -203,11 +203,11 @@ class _EdgePainter extends CustomPainter {
         ),
       );
     }
-    for (final g in geoms) {
-      _drawStroke(canvas, g);
+    for (final geom in geoms) {
+      _drawStroke(canvas, geom);
     }
-    for (final g in geoms) {
-      _drawChevrons(canvas, g);
+    for (final geom in geoms) {
+      _drawChevrons(canvas, geom);
     }
   }
 
@@ -239,31 +239,31 @@ class _EdgePainter extends CustomPainter {
       final phase = (tickerValue + i / _kChevronCount) % 1.0;
       final at = phase * total;
       var remaining = at;
-      Offset? pos;
+      Offset? position;
       double tangentAngle = 0;
-      for (final m in metrics) {
-        if (remaining <= m.length) {
-          final t = m.getTangentForOffset(remaining);
-          if (t != null) {
-            pos = t.position;
-            tangentAngle = math.atan2(t.vector.dy, t.vector.dx);
+      for (final metric in metrics) {
+        if (remaining <= metric.length) {
+          final tangent = metric.getTangentForOffset(remaining);
+          if (tangent != null) {
+            position = tangent.position;
+            tangentAngle = math.atan2(tangent.vector.dy, tangent.vector.dx);
           }
           break;
         }
-        remaining -= m.length;
+        remaining -= metric.length;
       }
-      if (pos == null) continue;
+      if (position == null) continue;
       canvas.save();
-      canvas.translate(pos.dx, pos.dy);
+      canvas.translate(position.dx, position.dy);
       canvas.rotate(tangentAngle);
       final paint = Paint()..color = g.toColor.withValues(alpha: alpha);
-      final s = _kChevronSize * scale;
-      final p = Path()
-        ..moveTo(-s, -s * 0.7)
+      final chevronSize = _kChevronSize * scale;
+      final chevronPath = Path()
+        ..moveTo(-chevronSize, -chevronSize * 0.7)
         ..lineTo(0, 0)
-        ..lineTo(-s, s * 0.7)
+        ..lineTo(-chevronSize, chevronSize * 0.7)
         ..close();
-      canvas.drawPath(p, paint);
+      canvas.drawPath(chevronPath, paint);
       canvas.restore();
     }
   }
@@ -282,22 +282,22 @@ class _EdgePainter extends CustomPainter {
     _LinkedAnchorSide bSide,
   ) {
     const curvature = 0.35;
-    final aDir = aSide.direction;
-    final bDir = bSide.direction;
-    final aDist = (b.dx - a.dx) * aDir.dx + (b.dy - a.dy) * aDir.dy;
-    final bDist = (a.dx - b.dx) * bDir.dx + (a.dy - b.dy) * bDir.dy;
+    final aDirection = aSide.direction;
+    final bDirection = bSide.direction;
+    final aDist = (b.dx - a.dx) * aDirection.dx + (b.dy - a.dy) * aDirection.dy;
+    final bDist = (a.dx - b.dx) * bDirection.dx + (a.dy - b.dy) * bDirection.dy;
     double offsetFor(double dist) {
       if (dist >= 0) return 0.5 * dist;
       return curvature * 25 * math.sqrt(-dist);
     }
 
     final c1 = Offset(
-      a.dx + aDir.dx * offsetFor(aDist),
-      a.dy + aDir.dy * offsetFor(aDist),
+      a.dx + aDirection.dx * offsetFor(aDist),
+      a.dy + aDirection.dy * offsetFor(aDist),
     );
     final c2 = Offset(
-      b.dx + bDir.dx * offsetFor(bDist),
-      b.dy + bDir.dy * offsetFor(bDist),
+      b.dx + bDirection.dx * offsetFor(bDist),
+      b.dy + bDirection.dy * offsetFor(bDist),
     );
     return Path()
       ..moveTo(a.dx, a.dy)

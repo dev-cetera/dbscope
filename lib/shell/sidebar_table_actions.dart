@@ -41,10 +41,11 @@ class SidebarTableAction {
 
   /// Predicate gating visibility. Most actions return true unconditionally;
   /// plugins may want to check connection kind, schema, etc. Optional.
-  final bool Function(SidebarTableActionContext ctx)? visibleWhen;
+  final bool Function(SidebarTableActionContext actionContext)? visibleWhen;
 
   /// What to do when the user picks the action.
-  final Future<void> Function(SidebarTableActionContext ctx) onSelected;
+  final Future<void> Function(SidebarTableActionContext actionContext)
+  onSelected;
 }
 
 /// Process-wide registry. Built-ins register from `main.dart`; plugins
@@ -57,25 +58,30 @@ class SidebarTableActionRegistry {
 
   /// Providers compute extra actions per table at menu time (e.g. schema
   /// metadata actions, which depend on the connection and table).
-  final List<List<SidebarTableAction> Function(SidebarTableActionContext ctx)>
+  final List<
+    List<SidebarTableAction> Function(SidebarTableActionContext actionContext)
+  >
   _providers = [];
 
   void registerProvider(
-    List<SidebarTableAction> Function(SidebarTableActionContext ctx) provider,
+    List<SidebarTableAction> Function(SidebarTableActionContext actionContext)
+    provider,
   ) {
     _providers.add(provider);
   }
 
   void register(SidebarTableAction action) {
-    _actions.removeWhere((a) => a.id == action.id);
+    _actions.removeWhere((existing) => existing.id == action.id);
     _actions.add(action);
   }
 
   /// All actions, in registration order, filtered by [SidebarTableAction.visibleWhen].
-  List<SidebarTableAction> visibleFor(SidebarTableActionContext ctx) {
+  List<SidebarTableAction> visibleFor(SidebarTableActionContext actionContext) {
     return [
-      ..._actions.where((a) => a.visibleWhen?.call(ctx) ?? true),
-      for (final provider in _providers) ...provider(ctx),
+      ..._actions.where(
+        (action) => action.visibleWhen?.call(actionContext) ?? true,
+      ),
+      for (final provider in _providers) ...provider(actionContext),
     ];
   }
 }

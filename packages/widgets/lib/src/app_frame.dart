@@ -12,7 +12,7 @@ class AppFrame extends StatelessWidget {
     required this.child,
     this.title,
     this.actions = const [],
-    this.padding = const EdgeInsets.all(4),
+    this.padding = const EdgeInsets.all(4.0),
   });
 
   final Widget child;
@@ -22,39 +22,39 @@ class AppFrame extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final p = AppPalette.of(context);
+    final palette = AppPalette.of(context);
     final body = Column(
       mainAxisSize: MainAxisSize.min,
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        if (title != null) _titleBar(p, title!),
+        if (title != null) _titleBar(palette, title!),
         Padding(padding: padding, child: child),
       ],
     );
-    return p.isBevel
+    return palette.isBevel
         ? bevelBox(
-          palette: p,
+          palette: palette,
           sunken: false,
-          background: p.surface,
+          background: palette.surface,
           child: body,
         )
-        : flatBox(palette: p, background: p.surface, child: body);
+        : flatBox(palette: palette, background: palette.surface, child: body);
   }
 
-  Widget _titleBar(AppPalette p, String text) {
+  Widget _titleBar(AppPalette palette, String text) {
     return Container(
-      height: 18,
-      color: p.isBevel ? p.accent : p.surfaceRaised,
-      padding: const EdgeInsets.symmetric(horizontal: 4),
+      height: 18.0,
+      color: palette.isBevel ? palette.accent : palette.surfaceRaised,
+      padding: const EdgeInsets.symmetric(horizontal: 4.0),
       child: Row(
         children: [
           Expanded(
             child: Text(
               text,
               style: TextStyle(
-                color: p.isBevel ? p.onAccent : p.text,
-                fontSize: p.bodyFontSize,
-                fontFamily: p.uiFontFamily,
+                color: palette.isBevel ? palette.onAccent : palette.text,
+                fontSize: palette.bodyFontSize,
+                fontFamily: palette.uiFontFamily,
                 fontWeight: FontWeight.w700,
               ),
               overflow: TextOverflow.ellipsis,
@@ -73,7 +73,7 @@ class AppInset extends StatelessWidget {
   const AppInset({
     super.key,
     required this.child,
-    this.padding = const EdgeInsets.all(2),
+    this.padding = const EdgeInsets.all(2.0),
     this.background,
   });
 
@@ -83,16 +83,21 @@ class AppInset extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final p = AppPalette.of(context);
-    final bg = background ?? p.field;
-    return p.isBevel
+    final palette = AppPalette.of(context);
+    final fill = background ?? palette.field;
+    return palette.isBevel
         ? bevelBox(
-          palette: p,
+          palette: palette,
           sunken: true,
-          background: bg,
+          background: fill,
           padding: padding,
           child: child,
         )
-        : flatBox(palette: p, background: bg, padding: padding, child: child);
+        : flatBox(
+          palette: palette,
+          background: fill,
+          padding: padding,
+          child: child,
+        );
   }
 }

@@ -51,10 +51,10 @@ class _VResizableState extends State<VResizable> {
         onVerticalDragEnd: (_) => _dragHeight = null,
         onVerticalDragCancel: () => _dragHeight = null,
         child: Container(
-          height: 5,
+          height: 5.0,
           color: Colors.transparent,
           alignment: Alignment.center,
-          child: Container(height: 1, color: theme.dividerColor),
+          child: Container(height: 1.0, color: theme.dividerColor),
         ),
       ),
     );

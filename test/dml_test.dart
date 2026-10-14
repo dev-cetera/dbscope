@@ -44,9 +44,9 @@ EditPolicy _policy({
 void main() {
   group('CellEditor.updateCell', () {
     test('builds UPDATE with quoted identifiers + optimistic guard', () async {
-      final exec = FakeDbExecutor();
-      exec.enqueueAffected(1);
-      final editor = CellEditor(exec);
+      final executor = FakeDbExecutor();
+      executor.enqueueAffected(1);
+      final editor = CellEditor(executor);
 
       final result = await editor.updateCell(
         policy: _policy(),
@@ -57,9 +57,9 @@ void main() {
 
       expect(result.affectedRows, 1);
       expect(result.newValue, 'Bob');
-      expect(exec.calls, hasLength(1));
+      expect(executor.calls, hasLength(1));
 
-      final call = exec.calls.single;
+      final call = executor.calls.single;
       expect(call.sql, contains('UPDATE "public"."users"'));
       expect(call.sql, contains(r'SET "name" = $1'));
       expect(call.sql, contains(r'WHERE "id" = $2'));
@@ -69,9 +69,9 @@ void main() {
     });
 
     test('handles composite primary keys', () async {
-      final exec = FakeDbExecutor();
-      exec.enqueueAffected(1);
-      final editor = CellEditor(exec);
+      final executor = FakeDbExecutor();
+      executor.enqueueAffected(1);
+      final editor = CellEditor(executor);
 
       await editor.updateCell(
         policy: _policy(pkColumns: ['tenant_id', 'id']),
@@ -80,7 +80,7 @@ void main() {
         newValueRaw: '6',
       );
 
-      final call = exec.calls.single;
+      final call = executor.calls.single;
       expect(call.sql, contains(r'"tenant_id" = $2'));
       expect(call.sql, contains(r'"id" = $3'));
       expect(call.sql, contains(r'IS NOT DISTINCT FROM $4'));
@@ -89,9 +89,9 @@ void main() {
     });
 
     test('escapes embedded double quotes in identifiers', () async {
-      final exec = FakeDbExecutor();
-      exec.enqueueAffected(1);
-      final editor = CellEditor(exec);
+      final executor = FakeDbExecutor();
+      executor.enqueueAffected(1);
+      final editor = CellEditor(executor);
 
       await editor.updateCell(
         policy: _policy(
@@ -105,16 +105,16 @@ void main() {
         newValueRaw: 'v',
       );
 
-      final call = exec.calls.single;
+      final call = executor.calls.single;
       expect(call.sql, contains('"we""ird"."tbl""e"'));
       expect(call.sql, contains('"col"""'));
       expect(call.sql, contains('"id"""'));
     });
 
     test('zero affected rows means concurrent update was detected', () async {
-      final exec = FakeDbExecutor();
-      exec.enqueueAffected(0);
-      final editor = CellEditor(exec);
+      final executor = FakeDbExecutor();
+      executor.enqueueAffected(0);
+      final editor = CellEditor(executor);
 
       final result = await editor.updateCell(
         policy: _policy(),
@@ -130,27 +130,27 @@ void main() {
 
   group('CellEditor.deleteRow', () {
     test('quotes identifiers and uses positional pk params', () async {
-      final exec = FakeDbExecutor();
-      exec.enqueueAffected(1);
-      final editor = CellEditor(exec);
+      final executor = FakeDbExecutor();
+      executor.enqueueAffected(1);
+      final editor = CellEditor(executor);
 
-      final n = await editor.deleteRow(
+      final deletedCount = await editor.deleteRow(
         schema: 'public',
         table: 'users',
         pkColumns: ['id'],
         pkValues: {'id': 7},
       );
 
-      expect(n, 1);
-      final call = exec.calls.single;
+      expect(deletedCount, 1);
+      final call = executor.calls.single;
       expect(call.sql, r'DELETE FROM "public"."users" WHERE "id" = $1');
       expect(call.positional, [7]);
     });
 
     test('composite PK builds a chained WHERE', () async {
-      final exec = FakeDbExecutor();
-      exec.enqueueAffected(1);
-      final editor = CellEditor(exec);
+      final executor = FakeDbExecutor();
+      executor.enqueueAffected(1);
+      final editor = CellEditor(executor);
 
       await editor.deleteRow(
         schema: 'public',
@@ -159,7 +159,7 @@ void main() {
         pkValues: {'group_id': 'g', 'user_id': 'u'},
       );
 
-      final call = exec.calls.single;
+      final call = executor.calls.single;
       expect(
         call.sql,
         r'DELETE FROM "public"."memberships" WHERE "group_id" = $1 AND "user_id" = $2',
@@ -170,9 +170,9 @@ void main() {
 
   group('CellEditor.insertRow', () {
     test('produces INSERT ... RETURNING * and returns the first row', () async {
-      final exec = FakeDbExecutor();
-      exec.enqueueRow([1, 'Alice'], columns: ['id', 'name']);
-      final editor = CellEditor(exec);
+      final executor = FakeDbExecutor();
+      executor.enqueueRow([1, 'Alice'], columns: ['id', 'name']);
+      final editor = CellEditor(executor);
 
       final returned = await editor.insertRow(
         schema: 'public',
@@ -185,7 +185,7 @@ void main() {
       );
 
       expect(returned, [1, 'Alice']);
-      final call = exec.calls.single;
+      final call = executor.calls.single;
       expect(
         call.sql,
         r'INSERT INTO "public"."users" ("id", "name") VALUES ($1, $2) RETURNING *',
@@ -195,9 +195,9 @@ void main() {
     });
 
     test('skips columns absent from values map', () async {
-      final exec = FakeDbExecutor();
-      exec.enqueueRow([1], columns: ['id']);
-      final editor = CellEditor(exec);
+      final executor = FakeDbExecutor();
+      executor.enqueueRow([1], columns: ['id']);
+      final editor = CellEditor(executor);
 
       await editor.insertRow(
         schema: 'public',
@@ -209,15 +209,15 @@ void main() {
         values: {'id': '1'},
       );
 
-      final call = exec.calls.single;
+      final call = executor.calls.single;
       expect(call.sql, contains('("id")'));
       expect(call.sql, isNot(contains('"name"')));
       expect(call.positional, [1]);
     });
 
     test('throws when no columns are provided', () async {
-      final exec = FakeDbExecutor();
-      final editor = CellEditor(exec);
+      final executor = FakeDbExecutor();
+      final editor = CellEditor(executor);
 
       expect(
         () => editor.insertRow(
@@ -228,7 +228,7 @@ void main() {
         ),
         throwsA(isA<FormatException>()),
       );
-      expect(exec.calls, isEmpty);
+      expect(executor.calls, isEmpty);
     });
   });
 

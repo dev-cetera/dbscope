@@ -85,7 +85,7 @@ class _JobTabViewState extends State<JobTabView> {
       title: tab.title,
       titleIcon: Icons.dynamic_form,
       child: Padding(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.all(16.0),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -96,16 +96,16 @@ class _JobTabViewState extends State<JobTabView> {
             if (tab.total != null) _row('Total', tab.total.toString()),
             if (tab.error != null)
               Padding(
-                padding: const EdgeInsets.only(top: 8),
+                padding: const EdgeInsets.only(top: 8.0),
                 child: Text(
                   tab.error!,
                   style: TextStyle(color: theme.colorScheme.error),
                 ),
               ),
-            const SizedBox(height: 16),
+            const SizedBox(height: 16.0),
             if (!tab.finished)
               FilledButton.icon(
-                icon: const Icon(Icons.cancel_outlined, size: 16),
+                icon: const Icon(Icons.cancel_outlined, size: 16.0),
                 onPressed: _cancel,
                 label: const Text('Cancel'),
               )
@@ -123,12 +123,12 @@ class _JobTabViewState extends State<JobTabView> {
   }
 
   Widget _row(String label, String value) => Padding(
-    padding: const EdgeInsets.only(bottom: 4),
+    padding: const EdgeInsets.only(bottom: 4.0),
     child: Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         SizedBox(
-          width: 100,
+          width: 100.0,
           child: Text(
             label,
             style: TextStyle(color: Theme.of(context).hintColor),

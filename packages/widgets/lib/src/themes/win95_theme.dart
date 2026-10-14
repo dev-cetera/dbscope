@@ -123,7 +123,7 @@ ThemeData buildWin95Theme({String? fontFamily}) {
       titleLarge: TextStyle(
         color: palette.text,
         fontFamily: palette.uiFontFamily,
-        fontSize: 13,
+        fontSize: 13.0,
         fontWeight: FontWeight.bold,
         height: 1.2,
       ),
@@ -153,7 +153,7 @@ ThemeData buildWin95Theme({String? fontFamily}) {
       titleTextStyle: TextStyle(
         color: palette.text,
         fontFamily: palette.uiFontFamily,
-        fontSize: 13,
+        fontSize: 13.0,
         fontWeight: FontWeight.bold,
       ),
       contentTextStyle: bodyText,
@@ -162,24 +162,27 @@ ThemeData buildWin95Theme({String? fontFamily}) {
       filled: true,
       fillColor: palette.field,
       isDense: true,
-      contentPadding: const EdgeInsets.symmetric(horizontal: 6, vertical: 8),
+      contentPadding: const EdgeInsets.symmetric(
+        horizontal: 6.0,
+        vertical: 8.0,
+      ),
       border: outline,
       enabledBorder: outline,
       focusedBorder: focusOutline,
       labelStyle: TextStyle(
         color: palette.text,
         fontFamily: palette.uiFontFamily,
-        fontSize: 12,
+        fontSize: 12.0,
       ),
       hintStyle: TextStyle(
         color: palette.mutedText,
         fontFamily: palette.uiFontFamily,
-        fontSize: 12,
+        fontSize: 12.0,
       ),
       floatingLabelStyle: TextStyle(
         color: palette.text,
         fontFamily: palette.uiFontFamily,
-        fontSize: 12,
+        fontSize: 12.0,
       ),
     ),
     popupMenuTheme: PopupMenuThemeData(
@@ -188,7 +191,7 @@ ThemeData buildWin95Theme({String? fontFamily}) {
         side: BorderSide(),
       ),
       textStyle: bodyText,
-      elevation: 0,
+      elevation: 0.0,
     ),
     menuTheme: const MenuThemeData(
       style: MenuStyle(
@@ -201,7 +204,7 @@ ThemeData buildWin95Theme({String? fontFamily}) {
     ),
     cardTheme: CardThemeData(
       color: palette.surface,
-      elevation: 0,
+      elevation: 0.0,
       shape: const RoundedRectangleBorder(),
     ),
     elevatedButtonTheme: ElevatedButtonThemeData(
@@ -209,9 +212,9 @@ ThemeData buildWin95Theme({String? fontFamily}) {
         backgroundColor: palette.surface,
         foregroundColor: palette.text,
         shape: const RoundedRectangleBorder(),
-        elevation: 0,
+        elevation: 0.0,
         side: const BorderSide(),
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+        padding: const EdgeInsets.symmetric(horizontal: 14.0, vertical: 6.0),
         textStyle: boldText,
       ),
     ),
@@ -220,9 +223,9 @@ ThemeData buildWin95Theme({String? fontFamily}) {
         backgroundColor: palette.surface,
         foregroundColor: palette.text,
         shape: const RoundedRectangleBorder(),
-        elevation: 0,
+        elevation: 0.0,
         side: const BorderSide(),
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+        padding: const EdgeInsets.symmetric(horizontal: 14.0, vertical: 6.0),
         textStyle: boldText,
       ),
     ),
@@ -240,18 +243,18 @@ ThemeData buildWin95Theme({String? fontFamily}) {
         backgroundColor: Colors.transparent,
       ),
     ),
-    iconTheme: IconThemeData(color: palette.text, size: 16),
+    iconTheme: IconThemeData(color: palette.text, size: 16.0),
     dividerTheme: DividerThemeData(
       color: palette.border,
       space: 1,
-      thickness: 1,
+      thickness: 1.0,
     ),
     snackBarTheme: SnackBarThemeData(
       backgroundColor: palette.accent,
       contentTextStyle: TextStyle(
         color: palette.onAccent,
         fontFamily: palette.uiFontFamily,
-        fontSize: 12,
+        fontSize: 12.0,
       ),
       shape: const RoundedRectangleBorder(),
       behavior: SnackBarBehavior.fixed,
@@ -264,7 +267,7 @@ ThemeData buildWin95Theme({String? fontFamily}) {
     appBarTheme: AppBarTheme(
       backgroundColor: palette.accent,
       foregroundColor: palette.onAccent,
-      elevation: 0,
+      elevation: 0.0,
     ),
     tooltipTheme: TooltipThemeData(
       decoration: const BoxDecoration(
@@ -276,24 +279,24 @@ ThemeData buildWin95Theme({String? fontFamily}) {
       textStyle: TextStyle(
         color: palette.text,
         fontFamily: palette.uiFontFamily,
-        fontSize: 11,
+        fontSize: 11.0,
       ),
-      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
+      padding: const EdgeInsets.symmetric(horizontal: 6.0, vertical: 3.0),
     ),
     switchTheme: SwitchThemeData(
-      thumbColor: WidgetStateProperty.resolveWith((s) {
-        if (s.contains(WidgetState.selected)) return palette.accent;
+      thumbColor: WidgetStateProperty.resolveWith((states) {
+        if (states.contains(WidgetState.selected)) return palette.accent;
         return palette.surface;
       }),
-      trackColor: WidgetStateProperty.resolveWith((s) {
-        if (s.contains(WidgetState.selected)) {
+      trackColor: WidgetStateProperty.resolveWith((states) {
+        if (states.contains(WidgetState.selected)) {
           return palette.accent.withValues(alpha: 0.4);
         }
         return palette.border;
       }),
     ),
     listTileTheme: ListTileThemeData(
-      contentPadding: const EdgeInsets.symmetric(horizontal: 8),
+      contentPadding: const EdgeInsets.symmetric(horizontal: 8.0),
       minVerticalPadding: 0,
       dense: true,
       textColor: palette.text,

@@ -19,24 +19,24 @@ class JsonTabView extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         PanelHeader(
-          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+          padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 4.0),
           titleIcon: Icons.data_object,
           title: tab.columnName,
           subtitle: 'JSON',
           trailing: IconButton(
             tooltip: 'Copy JSON',
-            icon: const Icon(Icons.copy_all_outlined, size: 18),
+            icon: const Icon(Icons.copy_all_outlined, size: 18.0),
             onPressed: () async {
               await Clipboard.setData(ClipboardData(text: tab.content));
               if (context.mounted) showToast(context, 'Copied to clipboard');
             },
           ),
         ),
-        const Divider(height: 1),
+        const Divider(height: 1.0),
         Expanded(
           child: Container(
             color: palette.field,
-            padding: const EdgeInsets.all(12),
+            padding: const EdgeInsets.all(12.0),
             child: SingleChildScrollView(
               child: SelectableText.rich(
                 TextSpan(children: spans),

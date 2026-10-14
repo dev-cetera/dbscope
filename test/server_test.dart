@@ -137,8 +137,10 @@ void main() {
         controller.addError(StateError('boom'));
         await Future<void>.delayed(Duration.zero);
 
-        final err = replies.singleWhere((e) => e.kind == EnvelopeKind.err);
-        expect(err.error?.code, 'handler_error');
+        final errorReply = replies.singleWhere(
+          (e) => e.kind == EnvelopeKind.err,
+        );
+        expect(errorReply.error?.code, 'handler_error');
 
         await controller.close();
       },

@@ -47,7 +47,7 @@ class KeysetPager {
   final bool explicitColumns;
 
   List<Object?>? _lastSortVals;
-  List<Object?>? _lastPkVals;
+  List<Object?>? _lastPrimaryKeyValues;
   var _done = false;
   var _started = false;
 
@@ -60,9 +60,9 @@ class KeysetPager {
   /// is taken.
   String get _selectList => columns
       .map(
-        (c) => c.isMasked && !pkColumns.contains(c.name)
-            ? 'NULL AS ${quoteIdent(c.name)}'
-            : quoteIdent(c.name),
+        (column) => column.isMasked && !pkColumns.contains(column.name)
+            ? 'NULL AS ${quoteIdent(column.name)}'
+            : quoteIdent(column.name),
       )
       .join(', ');
 
@@ -86,7 +86,7 @@ class KeysetPager {
           : '*';
       final sql =
           'SELECT $selectList FROM $qualified$whereSql$sortClause LIMIT $pageSize';
-      final res = baseWhereParams.isEmpty
+      final result = baseWhereParams.isEmpty
           ? await conn.execute(sql, cancelToken: cancelToken)
           : await conn.execute(
               sql,
@@ -94,7 +94,7 @@ class KeysetPager {
               cancelToken: cancelToken,
             );
       _done = true;
-      yield Page(rows: maskRows(res.rows, _maskedIndexes));
+      yield Page(rows: maskRows(result.rows, _maskedIndexes));
       return;
     }
     while (!_done) {
@@ -106,7 +106,7 @@ class KeysetPager {
         return;
       }
       _lastSortVals = result.lastSortVals;
-      _lastPkVals = result.lastPkVals;
+      _lastPrimaryKeyValues = result.lastPkVals;
       if (result.rows.length < pageSize) {
         _done = true;
       }
@@ -116,27 +116,27 @@ class KeysetPager {
 
   Future<Page> fetchNext({CancelToken? cancelToken}) async {
     if (_done) return Page(rows: <List<Object?>>[]);
-    final p = await _fetchOne(cancelToken: cancelToken);
-    if (p.rows.isEmpty || p.rows.length < pageSize) _done = true;
-    _lastSortVals = p.lastSortVals;
-    _lastPkVals = p.lastPkVals;
-    return p;
+    final page = await _fetchOne(cancelToken: cancelToken);
+    if (page.rows.isEmpty || page.rows.length < pageSize) _done = true;
+    _lastSortVals = page.lastSortVals;
+    _lastPrimaryKeyValues = page.lastPkVals;
+    return page;
   }
 
   Future<Page> _fetchOne({CancelToken? cancelToken}) async {
     _started = true;
     final qualified = quoteQualified(schema, table);
     final colsSql = _selectList;
-    final orderCols = <String>[
+    final orderColumns = <String>[
       if (sortColumn != null) quoteIdent(sortColumn!),
-      for (final pk in pkColumns) quoteIdent(pk),
+      for (final primaryKey in pkColumns) quoteIdent(primaryKey),
     ];
     final direction = descending ? 'DESC' : 'ASC';
     // Views in information_schema and arbitrary unkeyed relations can have
     // no PK and no explicit sort — omit ORDER BY entirely in that case.
-    final orderClause = orderCols.isEmpty
+    final orderClause = orderColumns.isEmpty
         ? ''
-        : ' ORDER BY ${orderCols.map((c) => '$c $direction').join(', ')}';
+        : ' ORDER BY ${orderColumns.map((orderColumn) => '$orderColumn $direction').join(', ')}';
     final params = <Object?>[];
     final whereParts = <String>[];
 
@@ -151,20 +151,20 @@ class KeysetPager {
     // would build the same `() > ()` tuple — skip the keyset and emit a
     // single LIMIT page instead (the no-PK branch in pages() does the
     // same thing for the streaming API).
-    if (pkColumns.isNotEmpty && _lastPkVals != null && _started) {
+    if (pkColumns.isNotEmpty && _lastPrimaryKeyValues != null && _started) {
       // Build keyset WHERE clause: tuple-compare for stable seek.
-      final tupleCols = orderCols.join(', ');
+      final tupleColumns = orderColumns.join(', ');
       final placeholders = <String>[];
       if (sortColumn != null) {
         params.add(_lastSortVals?.first);
         placeholders.add('\$${params.length}');
       }
-      for (final v in _lastPkVals!) {
-        params.add(v);
+      for (final value in _lastPrimaryKeyValues!) {
+        params.add(value);
         placeholders.add('\$${params.length}');
       }
       final op = descending ? '<' : '>';
-      whereParts.add('($tupleCols) $op (${placeholders.join(', ')})');
+      whereParts.add('($tupleColumns) $op (${placeholders.join(', ')})');
     }
 
     final whereClause = whereParts.isEmpty
@@ -189,23 +189,26 @@ class KeysetPager {
       return Page(rows: maskRows(rows, _maskedIndexes));
     }
     final last = rows.last;
-    final colNames = columns.map((c) => c.name).toList();
-    final pkVals = [
-      for (final pk in pkColumns)
-        if (colNames.contains(pk)) last[colNames.indexOf(pk)] else null,
+    final columnNames = columns.map((column) => column.name).toList();
+    final primaryKeyValues = [
+      for (final primaryKey in pkColumns)
+        if (columnNames.contains(primaryKey))
+          last[columnNames.indexOf(primaryKey)]
+        else
+          null,
     ];
-    final sortVals = sortColumn == null
+    final sortValues = sortColumn == null
         ? null
         : [
-            if (colNames.contains(sortColumn))
-              last[colNames.indexOf(sortColumn!)]
+            if (columnNames.contains(sortColumn))
+              last[columnNames.indexOf(sortColumn!)]
             else
               null,
           ];
     return Page(
       rows: maskRows(rows, _maskedIndexes),
-      lastSortVals: sortVals,
-      lastPkVals: pkVals,
+      lastSortVals: sortValues,
+      lastPkVals: primaryKeyValues,
     );
   }
 }

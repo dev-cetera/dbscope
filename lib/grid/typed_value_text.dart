@@ -117,37 +117,37 @@ class TypedValueText extends StatelessWidget {
 
   /// Returns the palette color for a PG type. Public so callers
   /// (typed-coloring policies elsewhere) can share the same mapping.
-  static Color colorFor(AppPalette p, PgType t) {
-    switch (t) {
+  static Color colorFor(AppPalette palette, PgType type) {
+    switch (type) {
       case PgType.text:
       case PgType.varchar:
       case PgType.name:
-        return p.typeString;
+        return palette.typeString;
       case PgType.int2:
       case PgType.int4:
       case PgType.int8:
       case PgType.numeric:
       case PgType.real:
       case PgType.doublePrecision:
-        return p.typeNumber;
+        return palette.typeNumber;
       case PgType.bool_:
-        return p.typeBool;
+        return palette.typeBool;
       case PgType.date:
       case PgType.time:
       case PgType.timestamp:
       case PgType.timestamptz:
       case PgType.interval:
-        return p.typeDate;
+        return palette.typeDate;
       case PgType.uuid:
-        return p.typeUuid;
+        return palette.typeUuid;
       case PgType.json:
       case PgType.jsonb:
-        return p.typeJson;
+        return palette.typeJson;
       case PgType.bytea:
-        return p.typeBinary;
+        return palette.typeBinary;
       case PgType.array:
       case PgType.unknown:
-        return p.text;
+        return palette.text;
     }
   }
 }
@@ -197,8 +197,8 @@ class _Match {
   final String launchUri;
 }
 
-bool _isTextLike(PgType t) {
-  switch (t) {
+bool _isTextLike(PgType type) {
+  switch (type) {
     case PgType.text:
     case PgType.varchar:
     case PgType.name:
@@ -232,21 +232,23 @@ List<InlineSpan>? _buildSpansWithUrls(
   bool allowEmailPhone,
 ) {
   final matches = <_Match>[];
-  for (final m in _urlPattern.allMatches(text)) {
-    matches.add(_Match(m.start, m.end, m.group(0)!, m.group(0)!));
+  for (final match in _urlPattern.allMatches(text)) {
+    matches.add(
+      _Match(match.start, match.end, match.group(0)!, match.group(0)!),
+    );
   }
   if (allowEmailPhone) {
-    for (final m in _emailPattern.allMatches(text)) {
-      if (_overlaps(matches, m.start, m.end)) continue;
-      final raw = m.group(0)!;
-      matches.add(_Match(m.start, m.end, raw, 'mailto:$raw'));
+    for (final match in _emailPattern.allMatches(text)) {
+      if (_overlaps(matches, match.start, match.end)) continue;
+      final raw = match.group(0)!;
+      matches.add(_Match(match.start, match.end, raw, 'mailto:$raw'));
     }
-    for (final m in _phonePattern.allMatches(text)) {
-      if (_overlaps(matches, m.start, m.end)) continue;
-      final raw = m.group(0)!;
+    for (final match in _phonePattern.allMatches(text)) {
+      if (_overlaps(matches, match.start, match.end)) continue;
+      final raw = match.group(0)!;
       final digits = raw.replaceAll(RegExp(r'[^\d\+]'), '');
       if (digits.length < 7) continue;
-      matches.add(_Match(m.start, m.end, raw, 'tel:$digits'));
+      matches.add(_Match(match.start, match.end, raw, 'tel:$digits'));
     }
   }
   if (matches.isEmpty) return null;
@@ -254,25 +256,26 @@ List<InlineSpan>? _buildSpansWithUrls(
 
   final spans = <InlineSpan>[];
   var cursor = 0;
-  for (final m in matches) {
-    if (m.start < cursor) continue;
-    if (m.start > cursor) {
+  for (final match in matches) {
+    if (match.start < cursor) continue;
+    if (match.start > cursor) {
       spans.add(
-        TextSpan(text: text.substring(cursor, m.start), style: baseStyle),
+        TextSpan(text: text.substring(cursor, match.start), style: baseStyle),
       );
     }
     spans.add(
       TextSpan(
-        text: m.text,
+        text: match.text,
         style: baseStyle.copyWith(
           color: palette.accent,
           decoration: TextDecoration.underline,
         ),
-        recognizer: TapGestureRecognizer()..onTap = () => _open(m.launchUri),
+        recognizer: TapGestureRecognizer()
+          ..onTap = () => _open(match.launchUri),
         mouseCursor: SystemMouseCursors.click,
       ),
     );
-    cursor = m.end;
+    cursor = match.end;
   }
   if (cursor < text.length) {
     spans.add(TextSpan(text: text.substring(cursor), style: baseStyle));
@@ -281,8 +284,8 @@ List<InlineSpan>? _buildSpansWithUrls(
 }
 
 bool _overlaps(List<_Match> matches, int start, int end) {
-  for (final m in matches) {
-    if (m.start < end && start < m.end) return true;
+  for (final match in matches) {
+    if (match.start < end && start < match.end) return true;
   }
   return false;
 }

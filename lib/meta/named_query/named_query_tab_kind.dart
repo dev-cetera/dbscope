@@ -13,16 +13,16 @@ final namedQueryTabKind = TabKind(
   buildView: (tab) =>
       NamedQueryView(key: ValueKey(tab.id), tab: tab as NamedQueryTab),
   serialize: (tab) {
-    final t = tab as NamedQueryTab;
-    final queryId = t.queryId;
+    final namedQueryTab = tab as NamedQueryTab;
+    final queryId = namedQueryTab.queryId;
     if (queryId == null) return null;
     return {
       'kind': 'named_query',
-      'id': t.id,
-      'connectionId': t.connectionId,
+      'id': namedQueryTab.id,
+      'connectionId': namedQueryTab.connectionId,
       'queryId': queryId,
-      'label': t.label,
-      'pinned': t.pinned,
+      'label': namedQueryTab.label,
+      'pinned': namedQueryTab.pinned,
     };
   },
   deserialize: (j) {
@@ -38,15 +38,15 @@ final namedQueryTabKind = TabKind(
   },
   isRunning: (tab) => (tab as NamedQueryTab).isLoading,
   footerSummary: (tab) {
-    final t = tab as NamedQueryTab;
-    final rows = t.data?.rows.length ?? 0;
-    var s = '$rows rows';
-    if (t.truncated) s += ' • truncated at 10k';
-    if (t.error != null) {
-      s += ' • error';
-    } else if (t.elapsed != null && !t.isLoading) {
-      s += ' • ${t.elapsed!.inMilliseconds}ms';
+    final namedQueryTab = tab as NamedQueryTab;
+    final rows = namedQueryTab.data?.rows.length ?? 0;
+    var summary = '$rows rows';
+    if (namedQueryTab.truncated) summary += ' • truncated at 10k';
+    if (namedQueryTab.error != null) {
+      summary += ' • error';
+    } else if (namedQueryTab.elapsed != null && !namedQueryTab.isLoading) {
+      summary += ' • ${namedQueryTab.elapsed!.inMilliseconds}ms';
     }
-    return s;
+    return summary;
   },
 );

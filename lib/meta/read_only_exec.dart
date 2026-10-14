@@ -81,11 +81,11 @@ Future<void> ensureNoOpenTransaction(DbExecutor executor) async {
     "SELECT set_config('dbscope.xact_probe', @token, true)",
     named: {'token': token},
   );
-  final res = await executor.execute(
+  final result = await executor.execute(
     "SELECT current_setting('dbscope.xact_probe', true) = @token",
     named: {'token': token},
   );
-  if (res.rows.isNotEmpty && res.rows.first.first == true) {
+  if (result.rows.isNotEmpty && result.rows.first.first == true) {
     throw const MetaSessionBusy(
       'A transaction is open on this connection (BEGIN without COMMIT in a '
       'Query tab?). Commit or roll it back first.',

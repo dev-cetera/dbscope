@@ -33,7 +33,9 @@ class ResultExporter {
     );
     if (location == null) return null;
     final buffer = StringBuffer();
-    buffer.writeln(data.columns.map((c) => _csvEscape(c.name)).join(','));
+    buffer.writeln(
+      data.columns.map((column) => _csvEscape(column.name)).join(','),
+    );
     for (final row in data.rows) {
       buffer.writeln(row.map(_csvCell).join(','));
     }
@@ -50,7 +52,7 @@ class ResultExporter {
       ],
     );
     if (location == null) return null;
-    final colNames = data.columns.map((c) => c.name).toList();
+    final colNames = data.columns.map((column) => column.name).toList();
     final out = <Map<String, Object?>>[];
     for (final row in data.rows) {
       final entry = <String, Object?>{};
@@ -90,28 +92,30 @@ class ResultExporter {
       // numeric becomes TEXT to avoid lossy coercions; numerics get
       // INTEGER/REAL so casts in downstream tools work.
       final colDefs = <String>[];
-      for (final c in data.columns) {
-        colDefs.add('${quoteIdent(c.name)} ${_sqliteAffinityFor(c)}');
+      for (final column in data.columns) {
+        colDefs.add('${quoteIdent(column.name)} ${_sqliteAffinityFor(column)}');
       }
       final table = quoteIdent(tableName);
       db.execute('CREATE TABLE $table (${colDefs.join(', ')})');
       if (data.rows.isNotEmpty) {
-        final cols = data.columns.map((c) => quoteIdent(c.name)).join(', ');
+        final columns = data.columns
+            .map((column) => quoteIdent(column.name))
+            .join(', ');
         final placeholders = List.generate(
           data.columns.length,
           (i) => '?',
         ).join(', ');
-        final stmt = db.prepare(
-          'INSERT INTO $table ($cols) VALUES ($placeholders)',
+        final statement = db.prepare(
+          'INSERT INTO $table ($columns) VALUES ($placeholders)',
         );
         try {
           db.execute('BEGIN');
           for (final row in data.rows) {
-            stmt.execute([for (final v in row) _toSqliteValue(v)]);
+            statement.execute([for (final value in row) _toSqliteValue(value)]);
           }
           db.execute('COMMIT');
         } finally {
-          stmt.dispose();
+          statement.dispose();
         }
       }
     } finally {
@@ -120,11 +124,11 @@ class ResultExporter {
     return location.path;
   }
 
-  static String _sqliteAffinityFor(GridColumnSpec c) {
+  static String _sqliteAffinityFor(GridColumnSpec column) {
     // Match SQLite's type-affinity rules: INTEGER for ints, REAL for
     // floats, BLOB for bytea, TEXT for everything else. This mirrors
     // how SQLite itself classifies declared types.
-    switch (c.type) {
+    switch (column.type) {
       case PgType.int2:
       case PgType.int4:
       case PgType.int8:
@@ -154,25 +158,25 @@ class ResultExporter {
     }
   }
 
-  static Object? _toSqliteValue(Object? v) {
-    if (v == null) return null;
-    if (v is String || v is num || v is bool) return v;
-    if (v is DateTime) return v.toUtc().toIso8601String();
-    if (v is BigInt) return v.toString();
-    if (v is List<int>) return v;
-    return v.toString();
+  static Object? _toSqliteValue(Object? value) {
+    if (value == null) return null;
+    if (value is String || value is num || value is bool) return value;
+    if (value is DateTime) return value.toUtc().toIso8601String();
+    if (value is BigInt) return value.toString();
+    if (value is List<int>) return value;
+    return value.toString();
   }
 
   static String _csvCell(Object? value) {
     if (value == null) return '';
-    final s = value.toString();
-    return _csvEscape(s);
+    final text = value.toString();
+    return _csvEscape(text);
   }
 
-  static String _csvEscape(String s) {
-    if (s.contains(',') || s.contains('"') || s.contains('\n')) {
-      return '"${s.replaceAll('"', '""')}"';
+  static String _csvEscape(String text) {
+    if (text.contains(',') || text.contains('"') || text.contains('\n')) {
+      return '"${text.replaceAll('"', '""')}"';
     }
-    return s;
+    return text;
   }
 }

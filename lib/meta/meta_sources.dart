@@ -209,7 +209,7 @@ class MetaTableNames {
     required bool sqlite,
   }) {
     final isOurs = logical.any(
-      (l) => table == physical(l, settings, sqlite: sqlite),
+      (logicalName) => table == physical(logicalName, settings, sqlite: sqlite),
     );
     if (sqlite) return isOurs;
     return schema == settings.postgresSchema && isOurs;
@@ -251,10 +251,10 @@ class DbTableSource {
 
     try {
       if (present.contains(MetaTableNames.metadata)) {
-        final res = await executor.execute(
+        final result = await executor.execute(
           'SELECT id, target, kind, spec, priority, enabled FROM ${names.meta}',
         );
-        for (final row in res.rows) {
+        for (final row in result.rows) {
           builder.addMetaEntry({
             'id': row[0],
             'target': row[1],
@@ -266,11 +266,11 @@ class DbTableSource {
         }
       }
       if (present.contains(MetaTableNames.accessRoles)) {
-        final res = await executor.execute(
+        final result = await executor.execute(
           'SELECT id, label, description, inherits, capabilities, db_role, spec '
           'FROM ${names.roles}',
         );
-        for (final row in res.rows) {
+        for (final row in result.rows) {
           builder.addRole({
             'id': row[0],
             'label': row[1],
@@ -283,10 +283,10 @@ class DbTableSource {
         }
       }
       if (present.contains(MetaTableNames.accessRoleMembers)) {
-        final res = await executor.execute(
+        final result = await executor.execute(
           'SELECT role_id, principal FROM ${names.members}',
         );
-        for (final row in res.rows) {
+        for (final row in result.rows) {
           builder.addMember({
             'role_id': row[0],
             'principal': row[1],
@@ -294,11 +294,11 @@ class DbTableSource {
         }
       }
       if (present.contains(MetaTableNames.accessGrants)) {
-        final res = await executor.execute(
+        final result = await executor.execute(
           'SELECT id, role_id, target, level, default_hidden, note, enabled, spec '
           'FROM ${names.grants}',
         );
-        for (final row in res.rows) {
+        for (final row in result.rows) {
           builder.addGrant({
             'id': row[0],
             'role_id': row[1],
@@ -328,20 +328,23 @@ class DbTableSource {
     final sqlite = isSqliteExecutor(executor);
     // Physical name → logical name.
     final byPhysical = {
-      for (final l in MetaTableNames.logical)
-        MetaTableNames.physical(l, settings, sqlite: sqlite): l,
+      for (final logicalName in MetaTableNames.logical)
+        MetaTableNames.physical(logicalName, settings, sqlite: sqlite):
+            logicalName,
     };
     if (sqlite) {
-      final res = await executor.execute(
+      final result = await executor.execute(
         "SELECT name FROM sqlite_master WHERE type = 'table' AND name IN "
         '(?1, ?2, ?3, ?4)',
         positional: byPhysical.keys.toList(),
       );
-      return {for (final row in res.rows) ?byPhysical[row[0]! as String]};
+      return {for (final row in result.rows) ?byPhysical[row[0]! as String]};
     }
     // The names are our own constants, so listing them inline is safe.
-    final inList = byPhysical.keys.map((n) => "'$n'").join(', ');
-    final res = await executor.execute(
+    final inList = byPhysical.keys
+        .map((physicalName) => "'$physicalName'")
+        .join(', ');
+    final result = await executor.execute(
       '''
  SELECT c.relname
  FROM pg_class c
@@ -352,7 +355,7 @@ class DbTableSource {
  ''',
       named: {'schema': settings.postgresSchema},
     );
-    return {for (final row in res.rows) ?byPhysical[row[0]! as String]};
+    return {for (final row in result.rows) ?byPhysical[row[0]! as String]};
   }
 }
 

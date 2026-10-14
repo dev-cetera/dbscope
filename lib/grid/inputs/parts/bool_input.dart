@@ -20,13 +20,13 @@ class _BoolInput extends StatelessWidget {
     );
     return _Field(
       enabled: enabled,
-      padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+      padding: const EdgeInsets.symmetric(horizontal: 4.0, vertical: 2.0),
       child: DropdownButtonHideUnderline(
         child: DropdownButton<bool>(
           value: value,
           isDense: true,
           isExpanded: true,
-          icon: const Icon(Icons.arrow_drop_down, size: 16),
+          icon: const Icon(Icons.arrow_drop_down, size: 16.0),
           style: textStyle,
           dropdownColor: palette.surface,
           hint: Text(

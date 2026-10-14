@@ -27,11 +27,11 @@ class DeviceSqliteExecutor implements DbExecutor {
   DeviceSqliteExecutor._({
     required this.backend,
     required this.remoteDbPath,
-    required Directory tmpDir,
+    required Directory temporaryDirectory,
     required SqliteExecutor inner,
     required sq.Database db,
     required String localDbPath,
-  })  : _tmpDir = tmpDir,
+  })  : _temporaryDirectory = temporaryDirectory,
         _inner = inner,
         _db = db,
         _localDbPath = localDbPath;
@@ -39,7 +39,7 @@ class DeviceSqliteExecutor implements DbExecutor {
   final Backend backend;
   final String remoteDbPath;
 
-  final Directory _tmpDir;
+  final Directory _temporaryDirectory;
   final SqliteExecutor _inner;
   final sq.Database _db;
   final String _localDbPath;
@@ -56,8 +56,9 @@ class DeviceSqliteExecutor implements DbExecutor {
     required Backend backend,
     required String remoteDbPath,
   }) async {
-    final tmpDir = await Directory.systemTemp.createTemp('dbscope_device_');
-    final localDbPath = '${tmpDir.path}/${_basename(remoteDbPath)}';
+    final temporaryDirectory =
+        await Directory.systemTemp.createTemp('dbscope_device_');
+    final localDbPath = '${temporaryDirectory.path}/${_basename(remoteDbPath)}';
     final walPath = '$localDbPath-wal';
     try {
       await backend.pull(remoteDbPath, localDbPath);
@@ -85,14 +86,14 @@ class DeviceSqliteExecutor implements DbExecutor {
       return DeviceSqliteExecutor._(
         backend: backend,
         remoteDbPath: remoteDbPath,
-        tmpDir: tmpDir,
+        temporaryDirectory: temporaryDirectory,
         inner: SqliteExecutor(db),
         db: db,
         localDbPath: localDbPath,
       );
     } catch (_) {
       try {
-        await tmpDir.delete(recursive: true);
+        await temporaryDirectory.delete(recursive: true);
       } catch (_) {}
       rethrow;
     }
@@ -169,7 +170,7 @@ class DeviceSqliteExecutor implements DbExecutor {
       await _inner.close(force: force);
     } catch (_) {}
     try {
-      await _tmpDir.delete(recursive: true);
+      await _temporaryDirectory.delete(recursive: true);
     } catch (_) {}
   }
 
@@ -218,18 +219,18 @@ class DeviceSqliteExecutor implements DbExecutor {
   }
 
   static String _strip(String sql) {
-    var s = sql.trimLeft();
+    var remaining = sql.trimLeft();
     // Strip single-line comments.
-    while (s.startsWith('--')) {
-      final nl = s.indexOf('\n');
+    while (remaining.startsWith('--')) {
+      final nl = remaining.indexOf('\n');
       if (nl < 0) return '';
-      s = s.substring(nl + 1).trimLeft();
+      remaining = remaining.substring(nl + 1).trimLeft();
     }
-    return s;
+    return remaining;
   }
 
-  static String _basename(String p) {
-    final i = p.lastIndexOf('/');
-    return i < 0 ? p : p.substring(i + 1);
+  static String _basename(String path) {
+    final i = path.lastIndexOf('/');
+    return i < 0 ? path : path.substring(i + 1);
   }
 }

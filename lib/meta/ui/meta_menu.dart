@@ -67,8 +67,9 @@ class MetaClickContext {
       column: column,
       row: row,
       primaryKey: {
-        for (final pk in pkColumns)
-          if (row.containsKey(pk)) pk: row[pk],
+        for (final primaryKeyColumn in pkColumns)
+          if (row.containsKey(primaryKeyColumn))
+            primaryKeyColumn: row[primaryKeyColumn],
       },
       cell: cell,
       selection: selection,
@@ -154,9 +155,9 @@ List<MetaMenuItem> buildMetaMenuItems(
     }
   }
   group([
-    for (final a in actions)
-      if (whenHolds(a, click.binding()) && !_globMissesRow(a, click))
-        actionMenuItem(context, a, click),
+    for (final action in actions)
+      if (whenHolds(action, click.binding()) && !_globMissesRow(action, click))
+        actionMenuItem(context, action, click),
   ]);
 
   // Links on the clicked column.
@@ -263,10 +264,12 @@ String? actionUnavailableReason(ActionSpec action, MetaClickContext click) {
     if (ConnectionRegistry.instance.isReadOnlyFor(click.connectionId)) {
       return 'The connection is read-only.';
     }
-    final exec = ConnectionRegistry.instance.connectionFor(click.connectionId);
+    final executor = ConnectionRegistry.instance.connectionFor(
+      click.connectionId,
+    );
     if (action.expectRows != null &&
-        exec != null &&
-        !exec.capabilities.transactions) {
+        executor != null &&
+        !executor.capabilities.transactions) {
       return 'This backend has no transactions, so expectRows cannot be '
           'checked.';
     }
@@ -277,7 +280,7 @@ String? actionUnavailableReason(ActionSpec action, MetaClickContext click) {
   if (text != null) {
     final missing = missingRowPlaceholders(text, click.binding());
     if (missing.isNotEmpty) {
-      return 'Needs ${missing.map((m) => '@$m').join(', ')}, which this row '
+      return 'Needs ${missing.map((name) => '@$name').join(', ')}, which this row '
           'does not have.';
     }
   }
@@ -404,13 +407,15 @@ Future<void> _openRow(
 ) async {
   final executor = ConnectionRegistry.instance.connectionFor(connectionId);
   if (executor == null) return;
-  var pk = const <String>[];
+  var primaryKeyColumns = const <String>[];
   try {
-    pk = await SchemaCatalog.unfiltered(executor).primaryKey(schema, table);
+    primaryKeyColumns = await SchemaCatalog.unfiltered(
+      executor,
+    ).primaryKey(schema, table);
   } catch (_) {
     // Unknown key: fall through to the filtered table.
   }
-  if (pk.length == 1 && pk.single == column) {
+  if (primaryKeyColumns.length == 1 && primaryKeyColumns.single == column) {
     final tab = NavigatorTab(connectionId: connectionId);
     tab.steps.add(
       RowDetailStep(

@@ -31,7 +31,7 @@ class _CacheEntry {
   const _CacheEntry._({this.dbml, this.inFlight, this.error});
   const _CacheEntry.ready(String value) : this._(dbml: value);
   const _CacheEntry.pending(Future<String> future) : this._(inFlight: future);
-  const _CacheEntry.failed(Object err) : this._(error: err);
+  const _CacheEntry.failed(Object error) : this._(error: error);
   final String? dbml;
   final Future<String>? inFlight;
   final Object? error;
@@ -51,17 +51,17 @@ class DbmlCache extends ChangeNotifier {
   final Map<String, _CacheEntry> _entries = {};
 
   /// Returns the cached DBML for [profileId], generating it via
-  /// [exec] if not present. Concurrent calls share the same in-flight
+  /// [executor] if not present. Concurrent calls share the same in-flight
   /// future. Throws if generation fails.
   Future<String> get(
     String profileId,
-    DbExecutor exec, {
+    DbExecutor executor, {
     String databaseName = 'dbscope',
   }) {
     final existing = _entries[profileId];
     if (existing?.dbml != null) return Future.value(existing!.dbml!);
     if (existing?.inFlight != null) return existing!.inFlight!;
-    return _generate(profileId, exec, databaseName);
+    return _generate(profileId, executor, databaseName);
   }
 
   /// Fire-and-forget warm-up — used at connection time so the cache is
@@ -69,7 +69,7 @@ class DbmlCache extends ChangeNotifier {
   /// entry as `failed` so the UI can show an error state.
   void warm(
     String profileId,
-    DbExecutor exec, {
+    DbExecutor executor, {
     String databaseName = 'dbscope',
   }) {
     final existing = _entries[profileId];
@@ -77,7 +77,7 @@ class DbmlCache extends ChangeNotifier {
     unawaited(
       _generate(
         profileId,
-        exec,
+        executor,
         databaseName,
       ).catchError((_) => ''), // swallow at the warm callsite
     );
@@ -111,7 +111,7 @@ class DbmlCache extends ChangeNotifier {
 
   Future<String> _generate(
     String profileId,
-    DbExecutor exec,
+    DbExecutor executor,
     String databaseName,
   ) async {
     // Future is constructed eagerly so we can store it as `inFlight`
@@ -122,7 +122,7 @@ class DbmlCache extends ChangeNotifier {
     future = () async {
       try {
         final dbml = await DbmlExporter(
-          exec,
+          executor,
           databaseName: databaseName,
         ).generate();
         if (current()) {

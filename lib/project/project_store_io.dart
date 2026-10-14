@@ -22,19 +22,19 @@ class ProjectStore {
   static final instance = ProjectStore._();
 
   static const fileName = 'default.dbscopeproj';
-  static const _appDirName = 'dbscopeproj';
+  static const _appDirectoryName = 'dbscopeproj';
 
   File? _file;
-  var _doc = ProjectDocument();
+  var _document = ProjectDocument();
   var _loaded = false;
   Future<void>? _writeQueue;
 
   Future<File> _resolveFile() async {
     if (_file != null) return _file!;
     final base = await getApplicationSupportDirectory();
-    final dir = Directory('${base.path}/$_appDirName');
-    if (!dir.existsSync()) await dir.create(recursive: true);
-    _file = File('${dir.path}/$fileName');
+    final directory = Directory('${base.path}/$_appDirectoryName');
+    if (!directory.existsSync()) await directory.create(recursive: true);
+    _file = File('${directory.path}/$fileName');
     return _file!;
   }
 
@@ -44,41 +44,43 @@ class ProjectStore {
   }
 
   Future<ProjectDocument> load() async {
-    if (_loaded) return _doc;
+    if (_loaded) return _document;
     final file = await _resolveFile();
     if (!file.existsSync()) {
-      _doc = ProjectDocument();
+      _document = ProjectDocument();
       await _writeNow();
     } else {
       try {
         final raw = await file.readAsString();
-        _doc = raw.trim().isEmpty
+        _document = raw.trim().isEmpty
             ? ProjectDocument()
             : ProjectDocument.fromJson(jsonDecode(raw) as Map<String, Object?>);
       } catch (_) {
         // Corrupt file: keep an empty doc rather than crashing. The
         // user can rebuild by re-adding connections; the old broken
         // file stays on disk for forensics.
-        _doc = ProjectDocument();
+        _document = ProjectDocument();
       }
     }
     _loaded = true;
-    return _doc;
+    return _document;
   }
 
   Future<void> _writeNow() async {
     final file = await _resolveFile();
     await file.writeAsString(
-      const JsonEncoder.withIndent(' ').convert(_doc.toJson()),
+      const JsonEncoder.withIndent(' ').convert(_document.toJson()),
       flush: true,
     );
   }
 
-  Future<void> _mutate(void Function(ProjectDocument doc) fn) async {
-    final prev = _writeQueue;
+  Future<void> _mutate(
+    void Function(ProjectDocument projectDocument) fn,
+  ) async {
+    final previousWrite = _writeQueue;
     final task = () async {
       try {
-        await prev;
+        await previousWrite;
       } catch (_) {}
       // Re-read disk so another isolate's update to a different slice
       // is preserved.
@@ -87,7 +89,7 @@ class ProjectStore {
         if (_file!.existsSync()) {
           final raw = await _file!.readAsString();
           if (raw.trim().isNotEmpty) {
-            _doc = ProjectDocument.fromJson(
+            _document = ProjectDocument.fromJson(
               jsonDecode(raw) as Map<String, Object?>,
             );
           }
@@ -95,7 +97,7 @@ class ProjectStore {
       } catch (_) {
         /* keep prior in-memory doc */
       }
-      fn(_doc);
+      fn(_document);
       await _writeNow();
     }();
     _writeQueue = task;
@@ -104,33 +106,33 @@ class ProjectStore {
 
   // ---- Accessors used by the facade stores ---------------------------
 
-  ProjectDocument get document => _doc;
+  ProjectDocument get document => _document;
 
   Future<void> setProfiles(List<Map<String, Object?>> profiles) =>
-      _mutate((d) => d.profiles = profiles);
+      _mutate((projectDocument) => projectDocument.profiles = profiles);
 
   Future<void> setSavedQueries(
     String connectionId,
     List<SavedQuery> queries,
-  ) => _mutate((d) {
+  ) => _mutate((projectDocument) {
     if (queries.isEmpty) {
-      d.savedQueries.remove(connectionId);
+      projectDocument.savedQueries.remove(connectionId);
     } else {
-      d.savedQueries[connectionId] = queries;
+      projectDocument.savedQueries[connectionId] = queries;
     }
   });
 
   Future<void> setSavedAiQueries(
     String connectionId,
     List<SavedAiQuery> queries,
-  ) => _mutate((d) {
+  ) => _mutate((projectDocument) {
     if (queries.isEmpty) {
-      d.savedAiQueries.remove(connectionId);
+      projectDocument.savedAiQueries.remove(connectionId);
     } else {
-      d.savedAiQueries[connectionId] = queries;
+      projectDocument.savedAiQueries[connectionId] = queries;
     }
   });
 
   Future<void> setAiSettings(AiSettings settings) =>
-      _mutate((d) => d.ai = settings);
+      _mutate((projectDocument) => projectDocument.ai = settings);
 }

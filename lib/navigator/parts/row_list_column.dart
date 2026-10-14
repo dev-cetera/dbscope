@@ -4,6 +4,9 @@ part of '../navigator_view.dart';
 // Row-list column (column 2 onward when listing rows of a table)
 // ---------------------------------------------------------------------------
 
+/// How long to wait after the last keystroke before re-running the filter.
+const _kFilterDebounce = Duration(milliseconds: 300);
+
 class RowListColumn extends StatefulWidget {
   const RowListColumn({
     super.key,
@@ -35,9 +38,9 @@ class _RowListColumnState extends State<RowListColumn> {
   }
 
   @override
-  void didUpdateWidget(covariant RowListColumn old) {
-    super.didUpdateWidget(old);
-    if (old.step.id != widget.step.id) {
+  void didUpdateWidget(covariant RowListColumn oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.step.id != widget.step.id) {
       _filterController.text = widget.step.filterPattern;
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (mounted) unawaited(_loadIfNeeded());
@@ -54,13 +57,15 @@ class _RowListColumnState extends State<RowListColumn> {
     super.dispose();
   }
 
-  DbExecutor? _conn() =>
+  DbExecutor? _executor() =>
       ConnectionRegistry.instance.connectionFor(widget.tab.connectionId);
 
   void _onScroll() {
     if (!_vScroll.hasClients) return;
-    final pos = _vScroll.position;
-    if (pos.pixels > pos.maxScrollExtent - 200) unawaited(_loadMore());
+    final position = _vScroll.position;
+    if (position.pixels > position.maxScrollExtent - 200) {
+      unawaited(_loadMore());
+    }
   }
 
   /// Builds the base WHERE clause from inbound-FK filter and regex filter.
@@ -69,31 +74,35 @@ class _RowListColumnState extends State<RowListColumn> {
     final wheres = <String>[];
     final params = <Object?>[];
 
-    final inb = step.inboundFilter;
-    if (inb != null && inb.source.isNotEmpty) {
+    final inboundFilter = step.inboundFilter;
+    if (inboundFilter != null && inboundFilter.source.isNotEmpty) {
       final placeholders = <String>[];
-      for (var i = 0; i < inb.source.length; i++) {
-        params.add(inb.values[i]);
+      for (var i = 0; i < inboundFilter.source.length; i++) {
+        params.add(inboundFilter.values[i]);
         placeholders.add('\$${params.length}');
       }
-      final cols = inb.source.map((s) => quoteIdent(s.fromColumn)).join(', ');
-      wheres.add('($cols) = (${placeholders.join(', ')})');
+      final columns = inboundFilter.source
+          .map((foreignKey) => quoteIdent(foreignKey.fromColumn))
+          .join(', ');
+      wheres.add('($columns) = (${placeholders.join(', ')})');
     }
 
     // [AI Infer] mode: dropdown shows the sentinel (filterColumn==null),
     // but the actual SQL uses whatever the inferrer most recently picked.
-    final col = step.filterColumn ?? step.inferredColumn;
-    final pat = step.filterPattern;
+    final column = step.filterColumn ?? step.inferredColumn;
+    final pattern = step.filterPattern;
     // Only a readable column may filter: a regex on a masked one is an
     // oracle for its value. (Covers the AI-inferred pick too.)
     final readable =
-        col != null &&
+        column != null &&
         step.columns.any(
-          (c) => c.name == col && c.accessLevel.index >= AccessLevel.read.index,
+          (stepColumn) =>
+              stepColumn.name == column &&
+              stepColumn.accessLevel.index >= AccessLevel.read.index,
         );
-    if (col != null && pat.isNotEmpty && readable) {
-      params.add(pat);
-      wheres.add('(${quoteIdent(col)})::text ~* \$${params.length}');
+    if (column != null && pattern.isNotEmpty && readable) {
+      params.add(pattern);
+      wheres.add('(${quoteIdent(column)})::text ~* \$${params.length}');
     }
 
     return (
@@ -113,8 +122,8 @@ class _RowListColumnState extends State<RowListColumn> {
   /// re-fetches the full row when the user picks one.
   Future<void> _load({bool reset = true}) async {
     final step = widget.step;
-    final conn = _conn();
-    if (conn == null) {
+    final executor = _executor();
+    if (executor == null) {
       step.error = 'No connection.';
       AppState.instance.notifyChange();
       return;
@@ -125,19 +134,19 @@ class _RowListColumnState extends State<RowListColumn> {
     AppState.instance.notifyChange();
 
     try {
-      final catalog = SchemaCatalog(conn);
-      List<ColumnInfo> allCols;
-      List<String> pkCols;
+      final catalog = SchemaCatalog(executor);
+      List<ColumnInfo> allColumns;
+      List<String> primaryKeyColumns;
       Set<String> indexed;
       try {
-        allCols = await catalog.listColumns(step.schema, step.table);
+        allColumns = await catalog.listColumns(step.schema, step.table);
       } catch (e) {
         throw StateError(
           'listColumns(${step.schema}.${step.table}) failed: $e',
         );
       }
       try {
-        pkCols = await catalog.primaryKey(step.schema, step.table);
+        primaryKeyColumns = await catalog.primaryKey(step.schema, step.table);
       } catch (e) {
         throw StateError('primaryKey(${step.schema}.${step.table}) failed: $e');
       }
@@ -150,60 +159,64 @@ class _RowListColumnState extends State<RowListColumn> {
       // keys into readable rows; fetch the label's columns alongside the
       // PK (still cheap — a handful of columns, never the whole row).
       final labelTemplate = MetadataCache.instance
-          .snapshotForExecutor(conn)
+          .snapshotForExecutor(executor)
           ?.index
           .displayTable(step.schema, step.table)
           .rowLabel;
       final labelColumns = labelTemplate == null
           ? const <String>{}
           : {
-              for (final m in RegExp(
+              for (final match in RegExp(
                 r'\{([A-Za-z0-9_]+)\}',
               ).allMatches(labelTemplate))
-                m.group(1)!,
+                match.group(1)!,
             };
-      final pkInfos = allCols
+      final pkInfos = allColumns
           .where(
-            (c) => pkCols.contains(c.name) || labelColumns.contains(c.name),
+            (column) =>
+                primaryKeyColumns.contains(column.name) ||
+                labelColumns.contains(column.name),
           )
           .toList();
       step.rowLabelTemplate = labelTemplate;
 
       final base = _buildBaseWhere();
       final pager = KeysetPager(
-        conn: conn,
+        conn: executor,
         schema: step.schema,
         table: step.table,
-        columns: pkInfos.isEmpty ? allCols : pkInfos,
-        pkColumns: pkCols,
+        columns: pkInfos.isEmpty ? allColumns : pkInfos,
+        pkColumns: primaryKeyColumns,
         baseWhere: base.where,
         baseWhereParams: base.params,
-        explicitColumns: MetadataCache.instance.policyForExecutor(conn).active,
+        explicitColumns: MetadataCache.instance
+            .policyForExecutor(executor)
+            .active,
       );
       final firstPage = await pager.fetchNext();
 
       if (!mounted) return;
-      step.columns = allCols;
-      step.pkColumns = pkCols;
+      step.columns = allColumns;
+      step.pkColumns = primaryKeyColumns;
       step.indexedColumns = indexed;
       step.editPolicies = buildEditPolicies(
-        conn: conn,
+        conn: executor,
         schema: step.schema,
         table: step.table,
-        columns: allCols,
-        pkColumns: pkCols,
+        columns: allColumns,
+        pkColumns: primaryKeyColumns,
       );
       step.catalogLoaded = true;
       step.pager = pager;
       step.data = GridData(
         columns: [
-          for (final c in pkInfos.isEmpty ? allCols : pkInfos)
+          for (final column in pkInfos.isEmpty ? allColumns : pkInfos)
             gridColumn(
-              name: c.name,
-              type: c.type,
-              typeName: c.typeName,
-              primaryKey: pkCols.contains(c.name),
-              indexed: indexed.contains(c.name),
+              name: column.name,
+              type: column.type,
+              typeName: column.typeName,
+              primaryKey: primaryKeyColumns.contains(column.name),
+              indexed: indexed.contains(column.name),
             ),
         ],
         rows: firstPage.rows,
@@ -246,28 +259,30 @@ class _RowListColumnState extends State<RowListColumn> {
     AppState.instance.notifyChange();
   }
 
-  void _onFilterColumnChanged(String? col) {
+  void _onFilterColumnChanged(String? column) {
     // null is the explicit [AI Infer] sentinel — accept it.
-    widget.step.filterColumn = col;
+    widget.step.filterColumn = column;
     // Drop the prior AI pick whenever the dropdown changes so the
     // fallback in _buildBaseWhere doesn't accidentally use a stale
     // target. A new Enter in AI Infer mode re-infers.
     widget.step.inferredColumn = null;
-    if (widget.step.filterPattern.isNotEmpty && col != null) unawaited(_load());
+    if (widget.step.filterPattern.isNotEmpty && column != null) {
+      unawaited(_load());
+    }
   }
 
-  void _onFilterPatternChanged(String pat) {
+  void _onFilterPatternChanged(String pattern) {
     _filterDebounce?.cancel();
     // In [AI Infer] mode (filterColumn == null) keystrokes never auto-fire
     // — the user has to click the wand. This avoids leaking every keystroke
     // to the LLM and keeps token spend predictable.
     if (widget.step.filterColumn == null) {
-      widget.step.filterPattern = pat.trim();
+      widget.step.filterPattern = pattern.trim();
       return;
     }
-    _filterDebounce = Timer(const Duration(milliseconds: 300), () {
+    _filterDebounce = Timer(_kFilterDebounce, () {
       if (!mounted) return;
-      widget.step.filterPattern = pat.trim();
+      widget.step.filterPattern = pattern.trim();
       unawaited(_load());
     });
   }
@@ -278,19 +293,19 @@ class _RowListColumnState extends State<RowListColumn> {
   /// it picks, and load.
   Future<void> _runAiInfer() async {
     final step = widget.step;
-    final pat = _filterController.text.trim();
-    if (pat.isEmpty) {
+    final pattern = _filterController.text.trim();
+    if (pattern.isEmpty) {
       showToast(context, 'Type a search term first.');
       return;
     }
-    final cols = step.columns;
-    if (cols.isEmpty) return;
-    final conn = _conn();
-    if (conn == null) {
+    final columns = step.columns;
+    if (columns.isEmpty) return;
+    final executor = _executor();
+    if (executor == null) {
       showToast(context, 'No connection.');
       return;
     }
-    final snapshot = MetadataCache.instance.snapshotForExecutor(conn);
+    final snapshot = MetadataCache.instance.snapshotForExecutor(executor);
     if (snapshot != null && !snapshot.policy.can(Capability.ai)) {
       showToast(context, 'Your role on this connection cannot use AI.');
       return;
@@ -301,39 +316,41 @@ class _RowListColumnState extends State<RowListColumn> {
       // can read and the metadata lets leave the machine are sampled; the
       // rest are sent as NULL.
       final sampled = [
-        for (final c in cols)
-          if (c.accessLevel.atLeast(AccessLevel.read) &&
+        for (final column in columns)
+          if (column.accessLevel.atLeast(AccessLevel.read) &&
               !(snapshot?.index
-                      .sensitiveColumn(step.schema, step.table, c.name)
+                      .sensitiveColumn(step.schema, step.table, column.name)
                       .excludeFromAi ??
                   false))
-            c.name,
+            column.name,
       ];
       if (sampled.isEmpty) {
         showToast(context, 'AI: no columns may be sampled here.');
         return;
       }
       final qualified = quoteQualified(step.schema, step.table);
-      final sampleRes = await conn.execute(
+      final sampleResult = await executor.execute(
         'SELECT ${sampled.map(quoteIdent).join(', ')} FROM $qualified LIMIT 5',
       );
       final colByName = <String, int>{};
-      for (var i = 0; i < sampleRes.columns.length; i++) {
-        colByName[sampleRes.columns[i].name] = i;
+      for (var i = 0; i < sampleResult.columns.length; i++) {
+        colByName[sampleResult.columns[i].name] = i;
       }
-      // Realign sample rows so column[i] from `cols` lines up with
+      // Realign sample rows so column[i] from `columns` lines up with
       // values at the same i — drops columns the sample didn't return
       // (shouldn't happen for SELECT * but keeps the inferrer honest).
       final alignedRows = <List<Object?>>[
-        for (final row in sampleRes.rows)
+        for (final row in sampleResult.rows)
           [
-            for (final c in cols)
-              colByName[c.name] != null ? row[colByName[c.name]!] : null,
+            for (final column in columns)
+              colByName[column.name] != null
+                  ? row[colByName[column.name]!]
+                  : null,
           ],
       ];
       final picked = await RegexInferrer.infer(
-        term: pat,
-        columns: cols,
+        term: pattern,
+        columns: columns,
         sampleRows: alignedRows,
       );
       if (!mounted) return;
@@ -347,7 +364,7 @@ class _RowListColumnState extends State<RowListColumn> {
       // remains on `[AI Infer]` and the next Enter re-runs inference.
       setState(() {
         step.inferredColumn = picked;
-        step.filterPattern = pat;
+        step.filterPattern = pattern;
       });
       await _load();
     } catch (e) {
@@ -356,18 +373,18 @@ class _RowListColumnState extends State<RowListColumn> {
     }
   }
 
-  String _rowLabel(List<Object?> rowVals, List<GridColumnSpec> cols) {
-    if (cols.isEmpty) return '(row)';
+  String _rowLabel(List<Object?> rowValues, List<GridColumnSpec> columns) {
+    if (columns.isEmpty) return '(row)';
     final template = widget.step.rowLabelTemplate;
     if (template != null) {
       final label = renderRowLabel(template, {
-        for (var i = 0; i < cols.length; i++) cols[i].name: rowVals[i],
+        for (var i = 0; i < columns.length; i++) columns[i].name: rowValues[i],
       });
       if (label.isNotEmpty) return label;
     }
     return [
-      for (var i = 0; i < cols.length; i++)
-        '${cols[i].name}=${_short(rowVals[i])}',
+      for (var i = 0; i < columns.length; i++)
+        '${columns[i].name}=${_short(rowValues[i])}',
     ].join(', ');
   }
 
@@ -381,11 +398,11 @@ class _RowListColumnState extends State<RowListColumn> {
     }
     final row = data.rows[rowIdx];
     final pkValues = <Object?>[];
-    for (final pk in step.pkColumns) {
-      final i = data.columns.indexWhere((c) => c.name == pk);
+    for (final primaryKey in step.pkColumns) {
+      final i = data.columns.indexWhere((column) => column.name == primaryKey);
       pkValues.add(i >= 0 ? row[i] : null);
     }
-    if (pkValues.any((v) => v is MaskedValue)) {
+    if (pkValues.any((value) => value is MaskedValue)) {
       showToast(
         context,
         "The primary key is masked for you, so this row can't be opened.",
@@ -411,11 +428,11 @@ class _RowListColumnState extends State<RowListColumn> {
 
   Future<void> _insertRow() async {
     final step = widget.step;
-    final conn = _conn();
-    if (conn == null) return;
+    final executor = _executor();
+    if (executor == null) return;
     if (!step.catalogLoaded) return;
     final rules = writeRulesFor(
-      conn,
+      executor,
       schema: step.schema,
       table: step.table,
       columns: step.columns,
@@ -434,11 +451,13 @@ class _RowListColumnState extends State<RowListColumn> {
     );
     if (values == null) return;
     try {
-      final editor = CellEditor(conn);
+      final editor = CellEditor(executor);
       await editor.insertRow(
         schema: step.schema,
         table: step.table,
-        editable: step.editPolicies.where((p) => !p.readOnly).toList(),
+        editable: step.editPolicies
+            .where((policy) => !policy.readOnly)
+            .toList(),
         values: values,
         returning: rules.returningList,
       );
@@ -456,18 +475,20 @@ class _RowListColumnState extends State<RowListColumn> {
     final theme = Theme.of(context);
     final step = widget.step;
     final data = step.data;
-    final selectedPk = widget.tab.selectedRowPkValuesAt(widget.index);
+    final selectedPrimaryKey = widget.tab.selectedRowPkValuesAt(widget.index);
 
     String? subtitle;
-    final inb = step.inboundFilter;
-    if (inb != null) {
-      if (inb.source.length == 1) {
+    final inboundFilter = step.inboundFilter;
+    if (inboundFilter != null) {
+      if (inboundFilter.source.length == 1) {
         subtitle =
-            'where ${inb.source.first.fromColumn} = ${_short(inb.values.first)}';
+            'where ${inboundFilter.source.first.fromColumn} = ${_short(inboundFilter.values.first)}';
       } else {
-        final cols = inb.source.map((s) => s.fromColumn).join(', ');
-        final vals = inb.values.map(_short).join(', ');
-        subtitle = 'where ($cols) = ($vals)';
+        final columns = inboundFilter.source
+            .map((foreignKey) => foreignKey.fromColumn)
+            .join(', ');
+        final filterValuesText = inboundFilter.values.map(_short).join(', ');
+        subtitle = 'where ($columns) = ($filterValuesText)';
       }
     }
 
@@ -476,15 +497,15 @@ class _RowListColumnState extends State<RowListColumn> {
         : Row(
             children: [
               SizedBox(
-                width: 130,
+                width: 130.0,
                 child: DropdownButtonFormField<String?>(
                   // A column that stopped being readable (metadata reload,
                   // View as…) is no longer an item; fall back to AI Infer.
                   initialValue:
                       step.columns.any(
-                        (c) =>
-                            c.name == step.filterColumn &&
-                            c.accessLevel.index >= AccessLevel.read.index,
+                        (column) =>
+                            column.name == step.filterColumn &&
+                            column.accessLevel.index >= AccessLevel.read.index,
                       )
                       ? step.filterColumn
                       : null,
@@ -493,8 +514,8 @@ class _RowListColumnState extends State<RowListColumn> {
                     isDense: true,
                     border: OutlineInputBorder(),
                     contentPadding: EdgeInsets.symmetric(
-                      horizontal: 6,
-                      vertical: 6,
+                      horizontal: 6.0,
+                      vertical: 6.0,
                     ),
                   ),
                   items: [
@@ -502,20 +523,21 @@ class _RowListColumnState extends State<RowListColumn> {
                       child: Text(
                         '[AI Infer]',
                         style: TextStyle(
-                          fontSize: 11,
+                          fontSize: 11.0,
                           fontStyle: FontStyle.italic,
                         ),
                         overflow: TextOverflow.ellipsis,
                       ),
                     ),
-                    for (final c in step.columns.where(
-                      (c) => c.accessLevel.index >= AccessLevel.read.index,
+                    for (final column in step.columns.where(
+                      (column) =>
+                          column.accessLevel.index >= AccessLevel.read.index,
                     ))
                       DropdownMenuItem<String?>(
-                        value: c.name,
+                        value: column.name,
                         child: Text(
-                          c.name,
-                          style: const TextStyle(fontSize: 11),
+                          column.name,
+                          style: const TextStyle(fontSize: 11.0),
                           overflow: TextOverflow.ellipsis,
                         ),
                       ),
@@ -523,7 +545,7 @@ class _RowListColumnState extends State<RowListColumn> {
                   onChanged: _onFilterColumnChanged,
                 ),
               ),
-              const SizedBox(width: 6),
+              const SizedBox(width: 6.0),
               // Cap the regex field width so it doesn't balloon when the
               // column is the trailing one and absorbs the remaining
               // viewport width (see _computeWidths). LayoutBuilder lets us
@@ -532,23 +554,23 @@ class _RowListColumnState extends State<RowListColumn> {
                 child: Align(
                   alignment: Alignment.centerLeft,
                   child: LayoutBuilder(
-                    builder: (_, c) => SizedBox(
-                      width: c.maxWidth.clamp(0.0, 240.0),
+                    builder: (_, constraints) => SizedBox(
+                      width: constraints.maxWidth.clamp(0.0, 240.0),
                       child: TextField(
                         controller: _filterController,
                         decoration: const InputDecoration(
                           hintText: 'regex…',
                           isDense: true,
-                          prefixIcon: Icon(Icons.search, size: 14),
+                          prefixIcon: Icon(Icons.search, size: 14.0),
                           border: OutlineInputBorder(),
                           contentPadding: EdgeInsets.symmetric(
-                            horizontal: 6,
-                            vertical: 6,
+                            horizontal: 6.0,
+                            vertical: 6.0,
                           ),
                         ),
                         style: const TextStyle(
                           fontFamily: 'Menlo',
-                          fontSize: 11,
+                          fontSize: 11.0,
                         ),
                         onChanged: _onFilterPatternChanged,
                         onSubmitted: (_) {
@@ -572,7 +594,7 @@ class _RowListColumnState extends State<RowListColumn> {
     } else if (data == null || (step.isLoading && data.rows.isEmpty)) {
       body = const Center(
         child: Padding(
-          padding: EdgeInsets.all(24),
+          padding: EdgeInsets.all(24.0),
           child: CircularProgressIndicator(),
         ),
       );
@@ -592,24 +614,27 @@ class _RowListColumnState extends State<RowListColumn> {
               itemBuilder: (_, i) {
                 if (i >= data.rows.length) {
                   return const Padding(
-                    padding: EdgeInsets.all(8),
+                    padding: EdgeInsets.all(8.0),
                     child: Center(
                       child: SizedBox(
-                        height: 16,
-                        width: 16,
-                        child: CircularProgressIndicator(strokeWidth: 2),
+                        height: 16.0,
+                        width: 16.0,
+                        child: CircularProgressIndicator(strokeWidth: 2.0),
                       ),
                     ),
                   );
                 }
                 final row = data.rows[i];
                 final pkValuesForRow = <Object?>[];
-                for (final pk in step.pkColumns) {
-                  final j = data.columns.indexWhere((c) => c.name == pk);
+                for (final primaryKey in step.pkColumns) {
+                  final j = data.columns.indexWhere(
+                    (column) => column.name == primaryKey,
+                  );
                   pkValuesForRow.add(j >= 0 ? row[j] : null);
                 }
                 final isSel =
-                    selectedPk != null && _listEq(selectedPk, pkValuesForRow);
+                    selectedPrimaryKey != null &&
+                    _listEq(selectedPrimaryKey, pkValuesForRow);
                 return InkWell(
                   onTap: () => _openRow(i),
                   child: Container(
@@ -617,17 +642,17 @@ class _RowListColumnState extends State<RowListColumn> {
                         ? theme.colorScheme.primaryContainer
                         : Colors.transparent,
                     padding: const EdgeInsets.symmetric(
-                      horizontal: 8,
-                      vertical: 5,
+                      horizontal: 8.0,
+                      vertical: 5.0,
                     ),
                     child: Row(
                       children: [
                         Icon(
                           Icons.vpn_key,
-                          size: 11,
+                          size: 11.0,
                           color: theme.colorScheme.primary,
                         ),
-                        const SizedBox(width: 6),
+                        const SizedBox(width: 6.0),
                         Expanded(
                           child: Text(
                             _rowLabel(row, data.columns),
@@ -638,7 +663,7 @@ class _RowListColumnState extends State<RowListColumn> {
                             overflow: TextOverflow.ellipsis,
                           ),
                         ),
-                        const Icon(Icons.chevron_right, size: 14),
+                        const Icon(Icons.chevron_right, size: 14.0),
                       ],
                     ),
                   ),
@@ -648,7 +673,7 @@ class _RowListColumnState extends State<RowListColumn> {
           ),
           if (data.rows.isNotEmpty && !step.hasNextPage && !step.isLoadingMore)
             Padding(
-              padding: const EdgeInsets.all(6),
+              padding: const EdgeInsets.all(6.0),
               child: Text(
                 'End of results (${data.rows.length})',
                 style: theme.textTheme.labelSmall?.copyWith(
@@ -670,20 +695,20 @@ class _RowListColumnState extends State<RowListColumn> {
         children: [
           IconButton(
             tooltip: 'Insert row',
-            icon: const Icon(Icons.add, size: 16),
+            icon: const Icon(Icons.add, size: 16.0),
             onPressed: !step.catalogLoaded || step.pkColumns.isEmpty
                 ? null
                 : _insertRow,
           ),
           IconButton(
             tooltip: 'Reload',
-            icon: const Icon(Icons.refresh, size: 16),
+            icon: const Icon(Icons.refresh, size: 16.0),
             onPressed: step.isLoading ? null : _load,
           ),
           if (widget.index > 0)
             IconButton(
               tooltip: 'Close column',
-              icon: const Icon(Icons.close, size: 16),
+              icon: const Icon(Icons.close, size: 16.0),
               onPressed: () {
                 widget.tab.truncateTo(widget.index - 1);
                 AppState.instance.notifyChange();

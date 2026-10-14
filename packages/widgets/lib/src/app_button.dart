@@ -11,7 +11,7 @@ class AppButton extends StatefulWidget {
     super.key,
     required this.onPressed,
     required this.child,
-    this.padding = const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
+    this.padding = const EdgeInsets.symmetric(horizontal: 10.0, vertical: 3.0),
     this.minHeight = 22,
   });
 
@@ -30,16 +30,16 @@ class _AppButtonState extends State<AppButton> {
 
   @override
   Widget build(BuildContext context) {
-    final p = AppPalette.of(context);
+    final palette = AppPalette.of(context);
     final enabled = widget.onPressed != null;
     final pressed = _down && enabled;
     final centered = Center(
       widthFactor: 1,
       child: DefaultTextStyle.merge(
         style: TextStyle(
-          fontSize: p.bodyFontSize,
-          fontFamily: p.uiFontFamily,
-          color: p.text,
+          fontSize: palette.bodyFontSize,
+          fontFamily: palette.uiFontFamily,
+          color: palette.text,
         ),
         child: widget.child,
       ),
@@ -65,22 +65,22 @@ class _AppButtonState extends State<AppButton> {
           child: ConstrainedBox(
             constraints: BoxConstraints(minHeight: widget.minHeight),
             child:
-                p.isBevel
+                palette.isBevel
                     ? bevelBox(
-                      palette: p,
+                      palette: palette,
                       sunken: pressed,
-                      background: p.surface,
+                      background: palette.surface,
                       padding: widget.padding,
                       child: centered,
                     )
                     : flatBox(
-                      palette: p,
+                      palette: palette,
                       background:
                           pressed
-                              ? p.accentSoft
+                              ? palette.accentSoft
                               : _hover && enabled
-                              ? p.rowHover
-                              : p.surfaceRaised,
+                              ? palette.rowHover
+                              : palette.surfaceRaised,
                       padding: widget.padding,
                       child: centered,
                     ),
@@ -98,7 +98,7 @@ class AppToggleButton extends StatefulWidget {
     required this.selected,
     required this.onPressed,
     required this.child,
-    this.padding = const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+    this.padding = const EdgeInsets.symmetric(horizontal: 8.0, vertical: 3.0),
   });
 
   final bool selected;
@@ -115,7 +115,7 @@ class _AppToggleButtonState extends State<AppToggleButton> {
 
   @override
   Widget build(BuildContext context) {
-    final p = AppPalette.of(context);
+    final palette = AppPalette.of(context);
     final enabled = widget.onPressed != null;
     final centered = Center(widthFactor: 1, child: widget.child);
 
@@ -129,23 +129,24 @@ class _AppToggleButtonState extends State<AppToggleButton> {
         child: Opacity(
           opacity: enabled ? 1.0 : 0.5,
           child:
-              p.isBevel
+              palette.isBevel
                   ? bevelBox(
-                    palette: p,
+                    palette: palette,
                     sunken: widget.selected,
-                    background: p.surface,
+                    background: palette.surface,
                     padding: widget.padding,
                     child: centered,
                   )
                   : flatBox(
-                    palette: p,
+                    palette: palette,
                     background:
                         widget.selected
-                            ? p.accentSoft
+                            ? palette.accentSoft
                             : _hover && enabled
-                            ? p.rowHover
-                            : p.surfaceRaised,
-                    borderColor: widget.selected ? p.accent : p.border,
+                            ? palette.rowHover
+                            : palette.surfaceRaised,
+                    borderColor:
+                        widget.selected ? palette.accent : palette.border,
                     padding: widget.padding,
                     child: centered,
                   ),

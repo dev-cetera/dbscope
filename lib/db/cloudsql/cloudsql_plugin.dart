@@ -10,6 +10,12 @@ import 'cloudsql_dialog.dart';
 import 'cloudsql_executor.dart';
 import 'cloudsql_proxy_manager.dart';
 
+/// How long to keep retrying while a freshly-assigned public IP warms up.
+const _kOpenRetryWindow = Duration(seconds: 75);
+
+/// Pause between open attempts while retrying.
+const _kOpenRetryDelay = Duration(seconds: 2);
+
 /// Universal-plugin wrapper for the Cloud SQL kind. Registered on IO
 /// platforms only (it shells out to `cloud-sql-proxy` / `gcloud`).
 class CloudSqlPlugin extends DbscopePlugin {
@@ -42,8 +48,8 @@ class CloudSqlKindPlugin implements ConnectionKindPlugin {
     ConnectionProfile profile, {
     BuildContext? context,
   }) async {
-    final cfg = CloudSqlConfig.fromProfile(profile);
-    if (cfg.instanceConnectionName.isEmpty) {
+    final config = CloudSqlConfig.fromProfile(profile);
+    if (config.instanceConnectionName.isEmpty) {
       throw const CloudSqlProxyException(
         'This Cloud SQL connection has no instance connection name '
         '(project:region:instance).',
@@ -51,17 +57,17 @@ class CloudSqlKindPlugin implements ConnectionKindPlugin {
     }
 
     await CloudSqlProxyManager.instance.acquire(
-      cfg,
-      onStatus: (s) => debugPrint('[cloudsql] $s'),
+      config,
+      onStatus: (status) => debugPrint('[cloudsql] $status'),
     );
 
     try {
-      final conn = await _openWithRetry(cfg, profile);
-      return OpenResult(executor: CloudSqlExecutor(conn, cfg));
+      final connection = await _openWithRetry(config, profile);
+      return OpenResult(executor: CloudSqlExecutor(connection, config));
     } catch (_) {
       // Opening the DB failed — hand the tunnel back so it's torn down if we
       // were the only user.
-      await CloudSqlProxyManager.instance.release(cfg);
+      await CloudSqlProxyManager.instance.release(config);
       rethrow;
     }
   }
@@ -72,17 +78,17 @@ class CloudSqlKindPlugin implements ConnectionKindPlugin {
   /// transient failures until the deadline, but fail fast on auth errors so
   /// a wrong password doesn't hang for a minute.
   Future<pg.Connection> _openWithRetry(
-    CloudSqlConfig cfg,
+    CloudSqlConfig config,
     ConnectionProfile profile,
   ) async {
-    final deadline = DateTime.now().add(const Duration(seconds: 75));
+    final deadline = DateTime.now().add(_kOpenRetryWindow);
     var attempt = 0;
     while (true) {
       attempt++;
       try {
         return await PostgresKindPlugin.openConnection(
           host: '127.0.0.1',
-          port: cfg.localPort,
+          port: config.localPort,
           database: profile.database,
           username: profile.username,
           password: profile.password,
@@ -92,13 +98,13 @@ class CloudSqlKindPlugin implements ConnectionKindPlugin {
           rethrow;
         }
         debugPrint('[cloudsql] open attempt $attempt failed, retrying: $e');
-        await Future<void>.delayed(const Duration(seconds: 2));
+        await Future<void>.delayed(_kOpenRetryDelay);
       }
     }
   }
 
   bool _isTransient(Object e) {
-    final msg = e.toString().toLowerCase();
+    final message = e.toString().toLowerCase();
     // Auth / config problems won't fix themselves — don't retry them.
     const fatal = [
       'password authentication',
@@ -106,7 +112,7 @@ class CloudSqlKindPlugin implements ConnectionKindPlugin {
       'does not exist', // missing role/database
       'no pg_hba',
     ];
-    return !fatal.any(msg.contains);
+    return !fatal.any(message.contains);
   }
 
   @override

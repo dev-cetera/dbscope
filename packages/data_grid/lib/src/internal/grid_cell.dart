@@ -67,12 +67,12 @@ class _GridCellState<TypeTag> extends State<GridCell<TypeTag>> {
   }
 
   @override
-  void didUpdateWidget(covariant GridCell<TypeTag> old) {
-    super.didUpdateWidget(old);
-    if (!widget.isEditing && old.value != widget.value) {
+  void didUpdateWidget(covariant GridCell<TypeTag> oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (!widget.isEditing && oldWidget.value != widget.value) {
       _pending = widget.value;
     }
-    if (widget.isEditing && !old.isEditing) {
+    if (widget.isEditing && !oldWidget.isEditing) {
       _pending = widget.value;
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (mounted && widget.isEditing) _editFocus.requestFocus();
@@ -97,7 +97,7 @@ class _GridCellState<TypeTag> extends State<GridCell<TypeTag>> {
   @override
   Widget build(BuildContext context) {
     final style = widget.style;
-    final bg = widget.isFocused
+    final background = widget.isFocused
         ? style.focusBackground
         : (widget.isSelected
             ? style.selectionBackground
@@ -120,8 +120,8 @@ class _GridCellState<TypeTag> extends State<GridCell<TypeTag>> {
         onTap: widget.onTap,
         onDoubleTap: widget.isEditable ? widget.onDoubleTap : null,
         child: Container(
-          decoration: BoxDecoration(color: bg, border: border),
-          padding: const EdgeInsets.symmetric(horizontal: 6),
+          decoration: BoxDecoration(color: background, border: border),
+          padding: const EdgeInsets.symmetric(horizontal: 6.0),
           alignment: Alignment.centerLeft,
           child: cellChild,
         ),
@@ -173,8 +173,8 @@ class _GridCellState<TypeTag> extends State<GridCell<TypeTag>> {
           CellEditContext<TypeTag>(
             value: _pending,
             column: widget.column,
-            onCommit: (v) {
-              _pending = v;
+            onCommit: (value) {
+              _pending = value;
               _commit();
             },
             onCancel: _cancel,

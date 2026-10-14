@@ -197,7 +197,7 @@ class MetaIndex {
     return out;
   }
 
-  static bool _isColumnSelector(Selector s) => s.isColumnLevel;
+  static bool _isColumnSelector(Selector selector) => selector.isColumnLevel;
 
   // ─── Describe ─────────────────────────────────────────────────────
 
@@ -317,15 +317,15 @@ class MetaIndex {
   // ─── Lists ────────────────────────────────────────────────────────
 
   NamedQuerySpec? queryById(String id) {
-    for (final q in queries) {
-      if (q.id == id) return q;
+    for (final query in queries) {
+      if (query.id == id) return query;
     }
     return null;
   }
 
   ChartSpec? chartById(String id) {
-    for (final c in charts) {
-      if (c.id == id) return c;
+    for (final chart in charts) {
+      if (chart.id == id) return chart;
     }
     return null;
   }
@@ -333,17 +333,17 @@ class MetaIndex {
   /// Links whose target matches this column (virtual FKs, polymorphic
   /// links, JSON-path links and URL links).
   List<LinkSpec> linksForColumn(String schema, String table, String column) => [
-    for (final l in links)
-      if (l.target.isColumnLevel &&
-          l.target.matchesColumn(schema, table, column))
-        l,
+    for (final link in links)
+      if (link.target.isColumnLevel &&
+          link.target.matchesColumn(schema, table, column))
+        link,
   ];
 
   List<LinkSpec> linksForQueryColumn(String queryId, String column) => [
-    for (final l in links)
-      if (l.target.matchesQueryColumn(queryId, column) &&
-          l.target.exactColumnName != null)
-        l,
+    for (final link in links)
+      if (link.target.matchesQueryColumn(queryId, column) &&
+          link.target.exactColumnName != null)
+        link,
   ];
 
   /// Actions of [scope] that apply to a table (scope table/row/selection)
@@ -353,53 +353,54 @@ class MetaIndex {
     String schema,
     String table,
   ) => [
-    for (final a in actions)
-      if (a.scope == scope && a.target.matchesTable(schema, table)) a,
+    for (final action in actions)
+      if (action.scope == scope && action.target.matchesTable(schema, table))
+        action,
   ];
 
   List<ActionSpec> actionsForCell(String schema, String table, String column) =>
       [
-        for (final a in actions)
-          if (a.scope == ActionScope.cell &&
-              a.target.matchesColumn(schema, table, column))
-            a,
+        for (final action in actions)
+          if (action.scope == ActionScope.cell &&
+              action.target.matchesColumn(schema, table, column))
+            action,
       ];
 
   List<ActionSpec> actionsForQuery(ActionScope scope, String queryId) => [
-    for (final a in actions)
-      if (a.scope == scope && a.target.matchesQuery(queryId)) a,
+    for (final action in actions)
+      if (action.scope == scope && action.target.matchesQuery(queryId)) action,
   ];
 
   List<ActionSpec> actionsForQueryCell(String queryId, String column) => [
-    for (final a in actions)
-      if (a.scope == ActionScope.cell &&
-          a.target.matchesQueryColumn(queryId, column))
-        a,
+    for (final action in actions)
+      if (action.scope == ActionScope.cell &&
+          action.target.matchesQueryColumn(queryId, column))
+        action,
   ];
 
   List<ActionSpec> get globalActions => [
-    for (final a in actions)
-      if (a.scope == ActionScope.global) a,
+    for (final action in actions)
+      if (action.scope == ActionScope.global) action,
   ];
 
   /// Charts shown on a table's Charts strip (not row-scoped).
   List<ChartSpec> chartsForTable(String schema, String table) => [
-    for (final c in charts)
-      if (!c.rowScoped && _chartBelongsToTable(c, schema, table)) c,
+    for (final chart in charts)
+      if (!chart.rowScoped && _chartBelongsToTable(chart, schema, table)) chart,
   ];
 
   /// Row-scoped charts for a row of [schema].[table].
   List<ChartSpec> rowChartsForTable(String schema, String table) => [
-    for (final c in charts)
-      if (c.rowScoped && c.target.matchesTable(schema, table)) c,
+    for (final chart in charts)
+      if (chart.rowScoped && chart.target.matchesTable(schema, table)) chart,
   ];
 
   List<ChartSpec> chartsForQuery(String queryId) => [
-    for (final c in charts)
-      if (!c.rowScoped &&
-          c.source is ChartQuerySource &&
-          (c.source as ChartQuerySource).queryId == queryId)
-        c,
+    for (final chart in charts)
+      if (!chart.rowScoped &&
+          chart.source is ChartQuerySource &&
+          (chart.source as ChartQuerySource).queryId == queryId)
+        chart,
   ];
 
   bool _chartBelongsToTable(ChartSpec chart, String schema, String table) {
@@ -412,8 +413,9 @@ class MetaIndex {
   }
 
   List<CheckSpec> checksForTable(String schema, String table) => [
-    for (final c in checks)
-      if (c.target.exactTable != null && c.target.matchesTable(schema, table))
-        c,
+    for (final check in checks)
+      if (check.target.exactTable != null &&
+          check.target.matchesTable(schema, table))
+        check,
   ];
 }

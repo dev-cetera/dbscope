@@ -23,6 +23,9 @@ import '../util/pg_errors.dart';
 
 enum _ExportFormat { sql, csv, json, sqlite }
 
+/// How many recent queries the history rail lists.
+const _kMaxRailHistoryEntries = 100;
+
 class QueryTabView extends StatefulWidget {
   const QueryTabView({super.key, required this.tab});
   final QueryTab tab;
@@ -34,14 +37,14 @@ class QueryTabView extends StatefulWidget {
 class _QueryTabViewState extends State<QueryTabView> {
   List<HistoryEntry> _history = [];
   List<SavedQuery> _saved = [];
-  late final TextEditingController _promptCtrl;
+  late final TextEditingController _promptController;
 
   static const double _historyRailWidth = 220;
 
   @override
   void initState() {
     super.initState();
-    _promptCtrl = TextEditingController(text: widget.tab.prompt);
+    _promptController = TextEditingController(text: widget.tab.prompt);
     DbmlCache.instance.addListener(_onCacheChanged);
     unawaited(_loadHistoryAndSaved());
     if (widget.tab.autoRun &&
@@ -57,7 +60,7 @@ class _QueryTabViewState extends State<QueryTabView> {
 
   @override
   void dispose() {
-    _promptCtrl.dispose();
+    _promptController.dispose();
     DbmlCache.instance.removeListener(_onCacheChanged);
     super.dispose();
   }
@@ -67,21 +70,25 @@ class _QueryTabViewState extends State<QueryTabView> {
   }
 
   Future<void> _loadHistoryAndSaved() async {
-    final h = await HistoryStore.instance.loadHistory(widget.tab.connectionId);
-    final s = await HistoryStore.instance.loadSaved(widget.tab.connectionId);
+    final history = await HistoryStore.instance.loadHistory(
+      widget.tab.connectionId,
+    );
+    final saved = await HistoryStore.instance.loadSaved(
+      widget.tab.connectionId,
+    );
     if (!mounted) return;
     setState(() {
-      _history = h;
-      _saved = s;
+      _history = history;
+      _saved = saved;
     });
   }
 
-  DbExecutor? _conn() =>
+  DbExecutor? _executor() =>
       ConnectionRegistry.instance.connectionFor(widget.tab.connectionId);
 
   Future<void> _run() async {
-    final conn = _conn();
-    if (conn == null) {
+    final executor = _executor();
+    if (executor == null) {
       setState(() => widget.tab.error = 'No connection.');
       AppState.instance.notifyChange();
       return;
@@ -90,7 +97,7 @@ class _QueryTabViewState extends State<QueryTabView> {
     // Access control: free SQL can't be policed column by column, so it is
     // its own capability. Named queries are the alternative for roles
     // without it.
-    final policy = MetadataCache.instance.policyForExecutor(conn);
+    final policy = MetadataCache.instance.policyForExecutor(executor);
     if (!policy.can(Capability.query)) {
       setState(
         () => widget.tab.error =
@@ -108,7 +115,7 @@ class _QueryTabViewState extends State<QueryTabView> {
     });
     AppState.instance.notifyChange();
     try {
-      final runner = QueryRunner(conn);
+      final runner = QueryRunner(executor);
       final result = await runner.runSql(widget.tab.sql, cancelToken: token);
       if (!mounted) return;
       setState(() {
@@ -136,10 +143,10 @@ class _QueryTabViewState extends State<QueryTabView> {
   }
 
   Future<void> _askAi() async {
-    final prompt = _promptCtrl.text.trim();
+    final prompt = _promptController.text.trim();
     if (prompt.isEmpty) return;
-    final conn = _conn();
-    if (conn == null) {
+    final executor = _executor();
+    if (executor == null) {
       showToast(context, 'Connect first.');
       return;
     }
@@ -150,7 +157,10 @@ class _QueryTabViewState extends State<QueryTabView> {
     });
     AppState.instance.notifyChange();
     try {
-      final assistant = SqlAssistant(conn, profileId: widget.tab.connectionId);
+      final assistant = SqlAssistant(
+        executor,
+        profileId: widget.tab.connectionId,
+      );
       final sql = await assistant.askSql(
         prompt,
         focusSchema: widget.tab.focusSchema,
@@ -201,13 +211,13 @@ class _QueryTabViewState extends State<QueryTabView> {
     );
     if (name == null || name.isEmpty) return;
     final list = List<SavedQuery>.from(_saved);
-    final existingIdx = list.indexWhere((s) => s.name == name);
-    final id = existingIdx >= 0
-        ? list[existingIdx].id
+    final existingIndex = list.indexWhere((saved) => saved.name == name);
+    final id = existingIndex >= 0
+        ? list[existingIndex].id
         : DateTime.now().millisecondsSinceEpoch.toString();
     final entry = SavedQuery(id: id, name: name, sql: widget.tab.sql);
-    if (existingIdx >= 0) {
-      list[existingIdx] = entry;
+    if (existingIndex >= 0) {
+      list[existingIndex] = entry;
     } else {
       list.add(entry);
     }
@@ -219,18 +229,18 @@ class _QueryTabViewState extends State<QueryTabView> {
     AppState.instance.notifyChange();
   }
 
-  Future<void> _deleteSaved(SavedQuery q) async {
+  Future<void> _deleteSaved(SavedQuery query) async {
     final list = List<SavedQuery>.from(_saved)
-      ..removeWhere((s) => s.id == q.id);
+      ..removeWhere((saved) => saved.id == query.id);
     await HistoryStore.instance.saveSaved(widget.tab.connectionId, list);
     setState(() => _saved = list);
   }
 
   Future<void> _export(_ExportFormat format) async {
-    final conn = _conn();
-    if (conn != null &&
+    final executor = _executor();
+    if (executor != null &&
         !MetadataCache.instance
-            .policyForExecutor(conn)
+            .policyForExecutor(executor)
             .can(Capability.export)) {
       showToast(context, 'Your role on this connection cannot export.');
       return;
@@ -264,10 +274,10 @@ class _QueryTabViewState extends State<QueryTabView> {
     AppState.instance.notifyChange();
   }
 
-  void _loadSavedQuery(SavedQuery q) {
+  void _loadSavedQuery(SavedQuery query) {
     setState(() {
-      widget.tab.sql = q.sql;
-      widget.tab.savedName = q.name;
+      widget.tab.sql = query.sql;
+      widget.tab.savedName = query.name;
     });
     AppState.instance.notifyChange();
   }
@@ -279,7 +289,7 @@ class _QueryTabViewState extends State<QueryTabView> {
     return Column(
       children: [
         PanelHeader(
-          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+          padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 4.0),
           titleIcon: Icons.code,
           title: 'Query',
           subtitle: tab.focusTable != null
@@ -292,25 +302,25 @@ class _QueryTabViewState extends State<QueryTabView> {
                 tooltip: tab.historyRailOpen ? 'Hide history' : 'Show history',
                 icon: Icon(
                   tab.historyRailOpen ? Icons.history : Icons.history_outlined,
-                  size: 18,
+                  size: 18.0,
                 ),
                 onPressed: _toggleHistoryRail,
               ),
               IconButton(
                 tooltip: 'Save query',
-                icon: const Icon(Icons.bookmark_add_outlined, size: 18),
+                icon: const Icon(Icons.bookmark_add_outlined, size: 18.0),
                 onPressed: tab.sql.trim().isEmpty ? null : _save,
               ),
               IconButton(
                 tooltip: 'Download .sql',
-                icon: const Icon(Icons.file_download_outlined, size: 18),
+                icon: const Icon(Icons.file_download_outlined, size: 18.0),
                 onPressed: tab.sql.trim().isEmpty
                     ? null
                     : () => _export(_ExportFormat.sql),
               ),
               if (hasResultData) ...[
                 TextButton.icon(
-                  icon: const Icon(Icons.table_chart_outlined, size: 14),
+                  icon: const Icon(Icons.table_chart_outlined, size: 14.0),
                   label: const Text('CSV'),
                   style: TextButton.styleFrom(
                     visualDensity: VisualDensity.compact,
@@ -318,7 +328,7 @@ class _QueryTabViewState extends State<QueryTabView> {
                   onPressed: () => _export(_ExportFormat.csv),
                 ),
                 TextButton.icon(
-                  icon: const Icon(Icons.data_object, size: 14),
+                  icon: const Icon(Icons.data_object, size: 14.0),
                   label: const Text('JSON'),
                   style: TextButton.styleFrom(
                     visualDensity: VisualDensity.compact,
@@ -326,7 +336,7 @@ class _QueryTabViewState extends State<QueryTabView> {
                   onPressed: () => _export(_ExportFormat.json),
                 ),
                 TextButton.icon(
-                  icon: const Icon(Icons.storage, size: 14),
+                  icon: const Icon(Icons.storage, size: 14.0),
                   label: const Text('.db'),
                   style: TextButton.styleFrom(
                     visualDensity: VisualDensity.compact,
@@ -336,7 +346,7 @@ class _QueryTabViewState extends State<QueryTabView> {
               ],
               FilledButton.icon(
                 onPressed: tab.isLoading ? null : _run,
-                icon: const Icon(Icons.play_arrow, size: 18),
+                icon: const Icon(Icons.play_arrow, size: 18.0),
                 label: const Text('Run'),
                 style: FilledButton.styleFrom(
                   visualDensity: VisualDensity.compact,
@@ -350,17 +360,17 @@ class _QueryTabViewState extends State<QueryTabView> {
                   AppState.instance.propertyInspectorCollapsed
                       ? Icons.view_sidebar_outlined
                       : Icons.view_sidebar,
-                  size: 18,
+                  size: 18.0,
                 ),
                 onPressed: AppState.instance.togglePropertyInspector,
               ),
             ],
           ),
         ),
-        const Divider(height: 1),
+        const Divider(height: 1.0),
         _AiPromptStrip(
           tab: tab,
-          controller: _promptCtrl,
+          controller: _promptController,
           onAsk: _askAi,
           onClearFocus: () {
             setState(() {
@@ -391,37 +401,68 @@ class _QueryTabViewState extends State<QueryTabView> {
                     onDeleteSaved: _deleteSaved,
                   ),
                 ),
-                const VerticalDivider(width: 1, thickness: 1),
-                Expanded(child: _buildEditorAndGrid(tab)),
+                const VerticalDivider(width: 1.0, thickness: 1.0),
+                Expanded(
+                  child: _EditorAndGrid(
+                    tab: tab,
+                    onRun: _run,
+                    onRowSelected: _selectRow,
+                  ),
+                ),
               ],
             ),
           )
         else
-          Expanded(child: _buildEditorAndGrid(tab)),
+          Expanded(
+            child: _EditorAndGrid(
+              tab: tab,
+              onRun: _run,
+              onRowSelected: _selectRow,
+            ),
+          ),
       ],
     );
   }
 
-  Widget _buildEditorAndGrid(QueryTab tab) {
+  void _selectRow(int? rowIndex) {
+    if (widget.tab.selectedRowIndex == rowIndex) return;
+    setState(() => widget.tab.selectedRowIndex = rowIndex);
+    AppState.instance.notifyChange();
+  }
+}
+
+/// The SQL editor stacked above the result grid and its row inspector.
+class _EditorAndGrid extends StatelessWidget {
+  const _EditorAndGrid({
+    required this.tab,
+    required this.onRun,
+    required this.onRowSelected,
+  });
+  final QueryTab tab;
+  final VoidCallback onRun;
+  final void Function(int? rowIndex) onRowSelected;
+
+  @override
+  Widget build(BuildContext context) {
     return Column(
       children: [
         VResizable(
           height: AppState.instance.sqlEditorHeight,
-          minHeight: 120,
-          maxHeight: 800,
+          minHeight: 120.0,
+          maxHeight: 800.0,
           onResized: AppState.instance.setSqlEditorHeight,
           child: Padding(
-            padding: const EdgeInsets.all(8),
+            padding: const EdgeInsets.all(8.0),
             child: SqlEditor(
-              initialText: widget.tab.sql,
+              initialText: tab.sql,
               onChanged: (text) {
-                widget.tab.sql = text;
+                tab.sql = text;
               },
-              onRun: _run,
+              onRun: onRun,
             ),
           ),
         ),
-        const Divider(height: 1),
+        const Divider(height: 1.0),
         Expanded(
           child: GridWithInspector(
             grid: DataGrid(
@@ -430,11 +471,7 @@ class _QueryTabViewState extends State<QueryTabView> {
               isLoading: tab.isLoading,
               error: tab.error,
               viewMode: tab.viewMode,
-              onRowSelected: (idx) {
-                if (widget.tab.selectedRowIndex == idx) return;
-                setState(() => widget.tab.selectedRowIndex = idx);
-                AppState.instance.notifyChange();
-              },
+              onRowSelected: onRowSelected,
             ),
             inspector: ResultInspectorPanel(
               schema: tab.focusSchema,
@@ -469,7 +506,7 @@ class _AiPromptStrip extends StatelessWidget {
     final ready = status == DbmlStatus.ready;
     final pending = status == DbmlStatus.pending;
     return Container(
-      padding: const EdgeInsets.fromLTRB(12, 8, 12, 8),
+      padding: const EdgeInsets.fromLTRB(12.0, 8.0, 12.0, 8.0),
       color: palette.surfaceRaised,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -505,10 +542,10 @@ class _AiPromptStrip extends StatelessWidget {
                     decoration: InputDecoration(
                       border: const OutlineInputBorder(),
                       isDense: true,
-                      prefixIcon: const Icon(Icons.auto_awesome, size: 16),
+                      prefixIcon: const Icon(Icons.auto_awesome, size: 16.0),
                       contentPadding: const EdgeInsets.symmetric(
-                        horizontal: 8,
-                        vertical: 10,
+                        horizontal: 8.0,
+                        vertical: 10.0,
                       ),
                       hintText: ready
                           ? 'Ask in plain English · Enter to generate'
@@ -517,22 +554,22 @@ class _AiPromptStrip extends StatelessWidget {
                           : 'Connect to a database to start',
                       hintStyle: TextStyle(color: palette.mutedText),
                     ),
-                    onChanged: (v) {
-                      tab.prompt = v;
+                    onChanged: (prompt) {
+                      tab.prompt = prompt;
                     },
                   ),
                 ),
               ),
-              const SizedBox(width: 8),
+              const SizedBox(width: 8.0),
               FilledButton.icon(
                 onPressed: (!ready || tab.isAsking) ? null : onAsk,
                 icon: tab.isAsking
                     ? const SizedBox(
-                        width: 14,
-                        height: 14,
-                        child: CircularProgressIndicator(strokeWidth: 2),
+                        width: 14.0,
+                        height: 14.0,
+                        child: CircularProgressIndicator(strokeWidth: 2.0),
                       )
-                    : const Icon(Icons.bolt, size: 16),
+                    : const Icon(Icons.bolt, size: 16.0),
                 label: const Text('Generate'),
                 style: FilledButton.styleFrom(
                   visualDensity: VisualDensity.compact,
@@ -541,16 +578,16 @@ class _AiPromptStrip extends StatelessWidget {
             ],
           ),
           if (tab.focusTable != null || pending) ...[
-            const SizedBox(height: 6),
+            const SizedBox(height: 6.0),
             Row(
               children: [
                 if (tab.focusTable != null) ...[
                   Icon(
                     Icons.center_focus_strong,
-                    size: 13,
+                    size: 13.0,
                     color: palette.mutedText,
                   ),
-                  const SizedBox(width: 4),
+                  const SizedBox(width: 4.0),
                   Text(
                     '${tab.focusSchema}.${tab.focusTable}',
                     style: TextStyle(
@@ -559,12 +596,12 @@ class _AiPromptStrip extends StatelessWidget {
                       fontFamily: palette.uiFontFamily,
                     ),
                   ),
-                  const SizedBox(width: 4),
+                  const SizedBox(width: 4.0),
                   InkWell(
                     onTap: onClearFocus,
                     child: Icon(
                       Icons.close,
-                      size: 12,
+                      size: 12.0,
                       color: palette.mutedText,
                     ),
                   ),
@@ -574,11 +611,11 @@ class _AiPromptStrip extends StatelessWidget {
                   Row(
                     children: [
                       const SizedBox(
-                        width: 12,
-                        height: 12,
-                        child: CircularProgressIndicator(strokeWidth: 2),
+                        width: 12.0,
+                        height: 12.0,
+                        child: CircularProgressIndicator(strokeWidth: 2.0),
                       ),
-                      const SizedBox(width: 6),
+                      const SizedBox(width: 6.0),
                       Text(
                         'Indexing schema…',
                         style: TextStyle(
@@ -628,9 +665,9 @@ class _HistoryRailState extends State<_HistoryRail> {
         ? widget.saved
         : widget.saved
               .where(
-                (q) =>
-                    q.name.toLowerCase().contains(filter) ||
-                    q.sql.toLowerCase().contains(filter),
+                (query) =>
+                    query.name.toLowerCase().contains(filter) ||
+                    query.sql.toLowerCase().contains(filter),
               )
               .toList();
     final history = filter.isEmpty
@@ -644,11 +681,11 @@ class _HistoryRailState extends State<_HistoryRail> {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           Padding(
-            padding: const EdgeInsets.fromLTRB(8, 6, 8, 6),
+            padding: const EdgeInsets.fromLTRB(8.0, 6.0, 8.0, 6.0),
             child: TextField(
               decoration: InputDecoration(
                 isDense: true,
-                prefixIcon: const Icon(Icons.search, size: 14),
+                prefixIcon: const Icon(Icons.search, size: 14.0),
                 hintText: 'Filter…',
                 hintStyle: TextStyle(
                   fontSize: palette.smallFontSize,
@@ -656,18 +693,18 @@ class _HistoryRailState extends State<_HistoryRail> {
                 ),
                 border: const OutlineInputBorder(),
                 contentPadding: const EdgeInsets.symmetric(
-                  horizontal: 6,
-                  vertical: 8,
+                  horizontal: 6.0,
+                  vertical: 8.0,
                 ),
               ),
               style: TextStyle(
                 fontSize: palette.smallFontSize,
                 fontFamily: palette.uiFontFamily,
               ),
-              onChanged: (v) => setState(() => _filter = v),
+              onChanged: (text) => setState(() => _filter = text),
             ),
           ),
-          const Divider(height: 1),
+          const Divider(height: 1.0),
           Expanded(
             child: ListView(
               padding: EdgeInsets.zero,
@@ -677,26 +714,26 @@ class _HistoryRailState extends State<_HistoryRail> {
                     label: 'Saved (${saved.length})',
                     icon: Icons.bookmark_outline,
                   ),
-                for (final q in saved)
+                for (final query in saved)
                   _SavedRow(
-                    q: q,
-                    active: q.name == widget.activeSavedName,
-                    onTap: () => widget.onSelectSaved(q),
-                    onDelete: () => widget.onDeleteSaved(q),
+                    q: query,
+                    active: query.name == widget.activeSavedName,
+                    onTap: () => widget.onSelectSaved(query),
+                    onDelete: () => widget.onDeleteSaved(query),
                   ),
                 if (history.isNotEmpty)
                   _RailSection(
                     label: 'Recent (${history.length})',
                     icon: Icons.history,
                   ),
-                for (final e in history.take(100))
+                for (final e in history.take(_kMaxRailHistoryEntries))
                   _HistoryRow(
                     sql: e.sql,
                     onTap: () => widget.onSelectHistory(e.sql),
                   ),
                 if (saved.isEmpty && history.isEmpty)
                   Padding(
-                    padding: const EdgeInsets.all(16),
+                    padding: const EdgeInsets.all(16.0),
                     child: Text(
                       'No queries yet. Saved queries and recent runs will show up here.',
                       style: TextStyle(
@@ -723,11 +760,11 @@ class _RailSection extends StatelessWidget {
   Widget build(BuildContext context) {
     final palette = AppPalette.of(context);
     return Padding(
-      padding: const EdgeInsets.fromLTRB(8, 8, 8, 4),
+      padding: const EdgeInsets.fromLTRB(8.0, 8.0, 8.0, 4.0),
       child: Row(
         children: [
-          Icon(icon, size: 12, color: palette.mutedText),
-          const SizedBox(width: 4),
+          Icon(icon, size: 12.0, color: palette.mutedText),
+          const SizedBox(width: 4.0),
           Text(
             label,
             style: TextStyle(
@@ -762,11 +799,11 @@ class _SavedRow extends StatelessWidget {
       onTap: onTap,
       child: Container(
         color: active ? palette.surfaceRaised : null,
-        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+        padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 6.0),
         child: Row(
           children: [
-            Icon(Icons.bookmark, size: 12, color: palette.accent),
-            const SizedBox(width: 6),
+            Icon(Icons.bookmark, size: 12.0, color: palette.accent),
+            const SizedBox(width: 6.0),
             Expanded(
               child: Text(
                 q.name,
@@ -780,7 +817,7 @@ class _SavedRow extends StatelessWidget {
             ),
             InkWell(
               onTap: onDelete,
-              child: Icon(Icons.close, size: 12, color: palette.mutedText),
+              child: Icon(Icons.close, size: 12.0, color: palette.mutedText),
             ),
           ],
         ),
@@ -801,7 +838,7 @@ class _HistoryRow extends StatelessWidget {
     return InkWell(
       onTap: onTap,
       child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+        padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 4.0),
         child: Text(
           summary,
           maxLines: 1,

@@ -48,115 +48,134 @@ grants:
 }
 
 AccessPolicy policyFor(
-  MetaDocument doc, {
+  MetaDocument metaDocument, {
   Set<String> pg = const {},
   String? claimed,
 }) => AccessPolicy.resolve(
-  document: doc,
+  document: metaDocument,
   settings: const RbacSettings(),
   identity: AccessIdentity(postgresRoles: pg, claimedUser: claimed),
 );
 
 void main() {
-  late MetaDocument doc;
-  setUp(() => doc = worked());
+  late MetaDocument metaDocument;
+  setUp(() => metaDocument = worked());
 
   test('support never sees password_hash (revision-1 regression)', () {
-    final p = policyFor(doc, pg: {'bob', 'support_team'});
+    final policy = policyFor(metaDocument, pg: {'bob', 'support_team'});
     expect(
-      p.forColumn('public', 'users', 'password_hash').level,
+      policy.forColumn('public', 'users', 'password_hash').level,
       AccessLevel.none,
     );
   });
 
   test('support: email read (tie, generous wins), internals hidden', () {
-    final p = policyFor(doc, pg: {'bob', 'support_team'});
-    expect(p.forColumn('public', 'users', 'email').level, AccessLevel.read);
-    final internal = p.forColumn('public', 'users', 'notes_internal');
+    final policy = policyFor(metaDocument, pg: {'bob', 'support_team'});
+    expect(
+      policy.forColumn('public', 'users', 'email').level,
+      AccessLevel.read,
+    );
+    final internal = policy.forColumn('public', 'users', 'notes_internal');
     expect(internal.level, AccessLevel.read);
     expect(internal.defaultHidden, isTrue);
-    expect(p.forTable('public', 'users').level, AccessLevel.read);
-    expect(p.can(Capability.export), isTrue);
-    expect(p.can(Capability.query), isFalse);
+    expect(policy.forTable('public', 'users').level, AccessLevel.read);
+    expect(policy.can(Capability.export), isTrue);
+    expect(policy.can(Capability.query), isFalse);
   });
 
   test('intern who is also support: billing is none', () {
-    final p = policyFor(doc, pg: {'support_team'}, claimed: 'Sam@X.com');
-    expect(p.forTable('public', 'billing').level, AccessLevel.none);
-    expect(p.forColumn('public', 'billing', 'amount').level, AccessLevel.none);
-    expect(p.forTable('public', 'users').level, AccessLevel.read);
+    final policy = policyFor(
+      metaDocument,
+      pg: {'support_team'},
+      claimed: 'Sam@X.com',
+    );
+    expect(policy.forTable('public', 'billing').level, AccessLevel.none);
+    expect(
+      policy.forColumn('public', 'billing', 'amount').level,
+      AccessLevel.none,
+    );
+    expect(policy.forTable('public', 'users').level, AccessLevel.read);
   });
 
   test('engineer: masked email, read billing_events, full elsewhere', () {
-    final p = policyFor(doc, pg: {'eve', 'engineers'});
-    expect(p.forColumn('public', 'users', 'email').level, AccessLevel.masked);
-    expect(p.forTable('public', 'billing_events').level, AccessLevel.read);
-    expect(p.forTable('public', 'users').level, AccessLevel.full);
-    expect(p.forColumn('public', 'users', 'name').level, AccessLevel.full);
+    final policy = policyFor(metaDocument, pg: {'eve', 'engineers'});
     expect(
-      p.forColumn('public', 'users', 'notes_internal').level,
+      policy.forColumn('public', 'users', 'email').level,
+      AccessLevel.masked,
+    );
+    expect(policy.forTable('public', 'billing_events').level, AccessLevel.read);
+    expect(policy.forTable('public', 'users').level, AccessLevel.full);
+    expect(
+      policy.forColumn('public', 'users', 'name').level,
+      AccessLevel.full,
+    );
+    expect(
+      policy.forColumn('public', 'users', 'notes_internal').level,
       AccessLevel.read,
     );
-    expect(p.can(Capability.exec), isTrue);
-    expect(p.can(Capability.manage), isFalse);
+    expect(policy.can(Capability.exec), isTrue);
+    expect(policy.can(Capability.manage), isFalse);
   });
 
   test('admin lifts password_hash with one equally specific row', () {
-    final p = policyFor(doc, pg: {'alice'});
-    expect(p.roleIds, containsAll(['admin', 'engineer', 'everyone']));
+    final policy = policyFor(metaDocument, pg: {'alice'});
+    expect(policy.roleIds, containsAll(['admin', 'engineer', 'everyone']));
     expect(
-      p.forColumn('public', 'users', 'password_hash').level,
+      policy.forColumn('public', 'users', 'password_hash').level,
       AccessLevel.read,
     );
-    expect(p.can(Capability.manage), isTrue);
-    expect(p.can(Capability.query), isTrue);
+    expect(policy.can(Capability.manage), isTrue);
+    expect(policy.can(Capability.query), isTrue);
   });
 
   test('unlisted user gets the default, masked email, no hashes', () {
-    final p = policyFor(doc, pg: {'mallory'});
-    expect(p.forTable('public', 'orders').level, AccessLevel.read);
-    expect(p.forColumn('public', 'users', 'email').level, AccessLevel.masked);
+    final policy = policyFor(metaDocument, pg: {'mallory'});
+    expect(policy.forTable('public', 'orders').level, AccessLevel.read);
     expect(
-      p.forColumn('public', 'users', 'password_hash').level,
+      policy.forColumn('public', 'users', 'email').level,
+      AccessLevel.masked,
+    );
+    expect(
+      policy.forColumn('public', 'users', 'password_hash').level,
       AccessLevel.none,
     );
-    expect(p.can(Capability.export), isFalse);
+    expect(policy.can(Capability.export), isFalse);
   });
 
   test('primary keys floor at masked', () {
-    final p = policyFor(doc, pg: {'mallory'});
-    final d = p.forColumn(
+    final policy = policyFor(metaDocument, pg: {'mallory'});
+    final decision = policy.forColumn(
       'public',
       'users',
       'password_hash',
       isPrimaryKey: true,
     );
-    expect(d.level, AccessLevel.masked);
+    expect(decision.level, AccessLevel.masked);
   });
 
   test('claimed identity ignored when identity is verified', () {
-    final p = AccessPolicy.resolve(
-      document: doc,
+    final policy = AccessPolicy.resolve(
+      document: metaDocument,
       settings: const RbacSettings(identity: IdentityMode.verified),
       identity: const AccessIdentity(claimedUser: 'sam@x.com'),
     );
-    expect(p.roleIds, isNot(contains('intern')));
-    expect(p.forTable('public', 'billing').level, AccessLevel.read);
+    expect(policy.roleIds, isNot(contains('intern')));
+    expect(policy.forTable('public', 'billing').level, AccessLevel.read);
   });
 
   test('no access control → unrestricted', () {
-    final p = policyFor(MetaDocument.empty);
-    expect(p.active, isFalse);
-    expect(p.forTable('a', 'b').level, AccessLevel.full);
-    expect(p.can(Capability.manage), isTrue);
+    final policy = policyFor(MetaDocument.empty);
+    expect(policy.active, isFalse);
+    expect(policy.forTable('a', 'b').level, AccessLevel.full);
+    expect(policy.can(Capability.manage), isTrue);
   });
 
   test('fail closed: read-only and no capabilities', () {
-    final p = AccessPolicy.failClosed('permission denied');
-    expect(p.forTable('a', 'b').level, AccessLevel.read);
-    expect(p.forColumn('a', 'b', 'c').level, AccessLevel.read);
-    for (final c in Capability.values) {
-      expect(p.can(c), isFalse, reason: c.name);
+    final policy = AccessPolicy.failClosed('permission denied');
+    expect(policy.forTable('a', 'b').level, AccessLevel.read);
+    expect(policy.forColumn('a', 'b', 'c').level, AccessLevel.read);
+    for (final capability in Capability.values) {
+      expect(policy.can(capability), isFalse, reason: capability.name);
     }
   });
 
@@ -168,7 +187,7 @@ void main() {
       sqlite: false,
     );
     AccessPolicy resolve(Set<String> pg) => AccessPolicy.resolve(
-      document: doc,
+      document: metaDocument,
       settings: const RbacSettings(),
       identity: AccessIdentity(postgresRoles: pg),
       isMetaTable: isMeta,
@@ -204,8 +223,8 @@ void main() {
   });
 
   test('Postgres privileges cap the decision', () {
-    final p = AccessPolicy.resolve(
-      document: doc,
+    final policy = AccessPolicy.resolve(
+      document: metaDocument,
       settings: const RbacSettings(),
       identity: const AccessIdentity(postgresRoles: {'engineers'}),
       ceilings: PrivilegeCeilings(
@@ -219,8 +238,11 @@ void main() {
         },
       ),
     );
-    expect(p.forTable('public', 'users').level, AccessLevel.read);
-    expect(p.forColumn('public', 'users', 'name').level, AccessLevel.read);
+    expect(policy.forTable('public', 'users').level, AccessLevel.read);
+    expect(
+      policy.forColumn('public', 'users', 'name').level,
+      AccessLevel.read,
+    );
   });
 
   test('role inheritance cycles are reported, not fatal', () {
@@ -233,9 +255,9 @@ members:
 grants:
   - { id: g, role: b, target: "*.*", level: full }
 ''');
-    final p = policyFor(mergeMetaSources([data]));
-    expect(p.problems, isNotEmpty);
-    expect(p.forTable('x', 'y').level, AccessLevel.full);
+    final policy = policyFor(mergeMetaSources([data]));
+    expect(policy.problems, isNotEmpty);
+    expect(policy.forTable('x', 'y').level, AccessLevel.full);
   });
 
   test('named queries resolve through query: grants', () {
@@ -247,10 +269,13 @@ grants:
   - { id: q1, role: analyst, target: "query:signups", level: read }
   - { id: q2, role: analyst, target: "query:signups.email", level: masked }
 ''');
-    final p = policyFor(mergeMetaSources([data]), pg: {'ana'});
-    expect(p.forQuery('signups').level, AccessLevel.read);
-    expect(p.forQuery('other').level, AccessLevel.none);
-    expect(p.forQueryColumn('signups', 'email').level, AccessLevel.masked);
-    expect(p.forQueryColumn('signups', 'day').level, AccessLevel.read);
+    final policy = policyFor(mergeMetaSources([data]), pg: {'ana'});
+    expect(policy.forQuery('signups').level, AccessLevel.read);
+    expect(policy.forQuery('other').level, AccessLevel.none);
+    expect(
+      policy.forQueryColumn('signups', 'email').level,
+      AccessLevel.masked,
+    );
+    expect(policy.forQueryColumn('signups', 'day').level, AccessLevel.read);
   });
 }

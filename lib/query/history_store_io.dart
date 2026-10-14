@@ -14,9 +14,12 @@ class HistoryStore {
   HistoryStore._();
   static final instance = HistoryStore._();
 
+  /// How many of the most recent queries are kept per connection.
+  static const _kMaxHistoryEntries = 200;
+
   Future<File> _historyFile(String connectionId) async {
-    final dir = await ProjectStore.instance.appDir();
-    return File('${dir.path}/history_$connectionId.json');
+    final directory = await ProjectStore.instance.appDir();
+    return File('${directory.path}/history_$connectionId.json');
   }
 
   Future<List<HistoryEntry>> loadHistory(String connectionId) async {
@@ -34,7 +37,7 @@ class HistoryStore {
   Future<void> appendHistory(String connectionId, String sql) async {
     final existing = await loadHistory(connectionId);
     existing.insert(0, HistoryEntry(sql, DateTime.now()));
-    final trimmed = existing.take(200).toList();
+    final trimmed = existing.take(_kMaxHistoryEntries).toList();
     final file = await _historyFile(connectionId);
     await file.writeAsString(
       jsonEncode([for (final e in trimmed) e.toJson()]),
@@ -42,17 +45,19 @@ class HistoryStore {
   }
 
   Future<List<SavedQuery>> loadSaved(String connectionId) async {
-    final doc = await ProjectStore.instance.load();
-    return List<SavedQuery>.from(doc.savedQueries[connectionId] ?? const []);
+    final projectDocument = await ProjectStore.instance.load();
+    return List<SavedQuery>.from(
+      projectDocument.savedQueries[connectionId] ?? const [],
+    );
   }
 
   Future<void> saveSaved(String connectionId, List<SavedQuery> queries) =>
       ProjectStore.instance.setSavedQueries(connectionId, queries);
 
   Future<List<SavedAiQuery>> loadSavedAi(String connectionId) async {
-    final doc = await ProjectStore.instance.load();
+    final projectDocument = await ProjectStore.instance.load();
     return List<SavedAiQuery>.from(
-      doc.savedAiQueries[connectionId] ?? const [],
+      projectDocument.savedAiQueries[connectionId] ?? const [],
     );
   }
 

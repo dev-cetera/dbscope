@@ -52,8 +52,8 @@ class _NoTxExecutor extends FakeDbExecutor {
 void main() {
   group('pager masking', () {
     test('masked non-key columns are selected as NULL and masked', () async {
-      final exec = FakeDbExecutor();
-      exec.enqueue(
+      final executor = FakeDbExecutor();
+      executor.enqueue(
         const DbResult(
           columns: [],
           rows: [
@@ -62,7 +62,7 @@ void main() {
         ),
       );
       final pager = KeysetPager(
-        conn: exec,
+        conn: executor,
         schema: 'public',
         table: 'users',
         columns: [
@@ -73,7 +73,7 @@ void main() {
         pkColumns: const ['id'],
       );
       final page = await pager.fetchNext();
-      expect(exec.calls.single.sql, contains('NULL AS "email"'));
+      expect(executor.calls.single.sql, contains('NULL AS "email"'));
       expect(page.rows.single[1], isA<MaskedValue>());
       expect(page.rows.single[2], 'Ann');
     });
@@ -81,8 +81,8 @@ void main() {
     test(
       'a masked primary key is fetched for the cursor, then masked',
       () async {
-        final exec = FakeDbExecutor();
-        exec.enqueue(
+        final executor = FakeDbExecutor();
+        executor.enqueue(
           const DbResult(
             columns: [],
             rows: [
@@ -91,7 +91,7 @@ void main() {
           ),
         );
         final pager = KeysetPager(
-          conn: exec,
+          conn: executor,
           schema: 'public',
           table: 't',
           columns: [
@@ -102,7 +102,7 @@ void main() {
           pageSize: 1,
         );
         final page = await pager.fetchNext();
-        expect(exec.calls.single.sql, isNot(contains('NULL AS "id"')));
+        expect(executor.calls.single.sql, isNot(contains('NULL AS "id"')));
         expect(page.rows.single.first, isA<MaskedValue>());
         expect(page.lastPkVals, [42]);
       },
@@ -111,13 +111,13 @@ void main() {
 
   group('executeReadOnly', () {
     test('checks for an open transaction, then fences read-only', () async {
-      final exec = FakeDbExecutor();
+      final executor = FakeDbExecutor();
       await executeReadOnly(
-        exec,
+        executor,
         'SELECT 1',
         timeout: const Duration(seconds: 2),
       );
-      final sql = [for (final c in exec.calls) c.sql];
+      final sql = [for (final call in executor.calls) call.sql];
       expect(sql[0], contains('set_config'));
       expect(sql[1], contains('current_setting'));
       expect(sql.skip(2), [
@@ -130,27 +130,27 @@ void main() {
 
     test('refuses when a transaction is already open', () async {
       // The probe's setting survived into the next statement.
-      final exec = FakeDbExecutor()
+      final executor = FakeDbExecutor()
         ..enqueue(const DbResult(columns: [], rows: []))
         ..enqueueRow(const [true], columns: const ['open']);
       await expectLater(
-        executeReadOnly(exec, 'SELECT 1'),
+        executeReadOnly(executor, 'SELECT 1'),
         throwsA(isA<MetaSessionBusy>()),
       );
       // Never BEGINs: a nested BEGIN would be a no-op, and our COMMIT
       // would commit the user's open work.
-      expect(exec.calls, hasLength(2));
+      expect(executor.calls, hasLength(2));
     });
 
     test('fenced statements on one executor never interleave', () async {
-      final exec = FakeDbExecutor();
+      final executor = FakeDbExecutor();
       await Future.wait([
-        executeReadOnly(exec, 'SELECT 1'),
-        executeReadOnly(exec, 'SELECT 2'),
+        executeReadOnly(executor, 'SELECT 1'),
+        executeReadOnly(executor, 'SELECT 2'),
       ]);
       final sql = [
-        for (final c in exec.calls)
-          if (!c.sql.contains('dbscope.xact_probe')) c.sql,
+        for (final call in executor.calls)
+          if (!call.sql.contains('dbscope.xact_probe')) call.sql,
       ];
       expect(sql, [
         'BEGIN TRANSACTION READ ONLY',
@@ -163,18 +163,18 @@ void main() {
     });
 
     test('rolls back when the statement fails', () async {
-      final exec = _ThrowingExecutor();
+      final executor = _ThrowingExecutor();
       await expectLater(
-        executeReadOnly(exec, 'SELECT boom'),
+        executeReadOnly(executor, 'SELECT boom'),
         throwsA(isA<StateError>()),
       );
-      expect(exec.calls.last.sql, 'ROLLBACK');
+      expect(executor.calls.last.sql, 'ROLLBACK');
     });
 
     test('runs unfenced where transactions are unsupported', () async {
-      final exec = _NoTxExecutor();
-      await executeReadOnly(exec, 'SELECT 1');
-      expect([for (final c in exec.calls) c.sql], ['SELECT 1']);
+      final executor = _NoTxExecutor();
+      await executeReadOnly(executor, 'SELECT 1');
+      expect([for (final call in executor.calls) call.sql], ['SELECT 1']);
     });
   });
 
@@ -209,7 +209,7 @@ void main() {
   });
 
   group('enforcement plan', () {
-    MetaDocument doc() => mergeMetaSources([
+    MetaDocument metaDocument() => mergeMetaSources([
       FileSource.parseText('''
 rbac: { default: read }
 roles:
@@ -245,10 +245,10 @@ grants:
     ];
 
     test('per-column SELECT when columns are hidden; full grants DML', () {
-      final d = doc();
+      final document = metaDocument();
       final plan = buildEnforcementPlan(
-        document: d,
-        settings: MetaIndex.build(d).rbac,
+        document: document,
+        settings: MetaIndex.build(document).rbac,
         tables: tables,
       );
       final script = plan.script;
@@ -275,10 +275,10 @@ grants:
     });
 
     test('views get SELECT only; inserts get the schema sequences', () {
-      final d = doc();
+      final document = metaDocument();
       final script = buildEnforcementPlan(
-        document: d,
-        settings: MetaIndex.build(d).rbac,
+        document: document,
+        settings: MetaIndex.build(document).rbac,
         tables: [
           ...tables,
           const EnforcementTable(
@@ -307,7 +307,7 @@ grants:
     });
 
     test('roles sharing a db_role get one block with their union', () {
-      final d = mergeMetaSources([
+      final document = mergeMetaSources([
         FileSource.parseText('''
 rbac: { default: none }
 roles:
@@ -319,8 +319,8 @@ grants:
 '''),
       ]);
       final script = buildEnforcementPlan(
-        document: d,
-        settings: MetaIndex.build(d).rbac,
+        document: document,
+        settings: MetaIndex.build(document).rbac,
         tables: tables,
       ).script;
       // One REVOKE per table — a second block would revoke the first's
@@ -351,8 +351,8 @@ meta:
     test('read covers queries and default filters; exec covers writes', () {
       final read = trustItems(index('SELECT 1'), TrustScope.read);
       expect([for (final i in read) i.kind], ['default filter', 'query']);
-      final exec = trustItems(index('SELECT 1'), TrustScope.exec);
-      expect([for (final i in exec) i.id], ['a']);
+      final execItems = trustItems(index('SELECT 1'), TrustScope.exec);
+      expect([for (final i in execItems) i.id], ['a']);
     });
 
     test('any change to the SQL changes the hash', () {

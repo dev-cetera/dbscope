@@ -31,8 +31,8 @@ class GridWithInspector extends StatelessWidget {
         if (!appState.propertyInspectorCollapsed)
           Resizable(
             width: appState.propertyInspectorWidth,
-            minWidth: 220,
-            maxWidth: 700,
+            minWidth: 220.0,
+            maxWidth: 700.0,
             side: ResizeSide.left,
             onResized: appState.setPropertyInspectorWidth,
             child: inspector,

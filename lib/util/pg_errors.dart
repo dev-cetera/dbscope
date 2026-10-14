@@ -43,8 +43,8 @@ class ClassifiedError {
     // (postgres, sqlite, the pg proxy), which share no type; the try/catch
     // absorbs a missing field.
     // ignore: avoid_dynamic_calls
-    final c = dyn.code;
-    if (c is String) code = c;
+    final rawCode = dyn.code;
+    if (rawCode is String) code = rawCode;
   } catch (_) {}
   try {
     final dyn = error as dynamic;
@@ -52,8 +52,8 @@ class ClassifiedError {
     // (postgres, sqlite, the pg proxy), which share no type; the try/catch
     // absorbs a missing field.
     // ignore: avoid_dynamic_calls
-    final m = dyn.message;
-    if (m is String) message = m;
+    final rawMessage = dyn.message;
+    if (rawMessage is String) message = rawMessage;
   } catch (_) {}
   try {
     final dyn = error as dynamic;
@@ -61,8 +61,8 @@ class ClassifiedError {
     // (postgres, sqlite, the pg proxy), which share no type; the try/catch
     // absorbs a missing field.
     // ignore: avoid_dynamic_calls
-    final n = dyn.constraintName;
-    if (n is String) constraint = n;
+    final rawConstraintName = dyn.constraintName;
+    if (rawConstraintName is String) constraint = rawConstraintName;
   } catch (_) {}
   return (code: code, message: message, constraintName: constraint);
 }
@@ -71,11 +71,11 @@ ClassifiedError classify(Object error) {
   final typeName = error.runtimeType.toString();
   final probed = _probe(error);
   final code = probed.code ?? '';
-  final msg = probed.message ?? error.toString();
+  final message = probed.message ?? error.toString();
   final constraint = probed.constraintName;
 
   if (typeName.contains('ServerException')) {
-    if (code == '25006' || msg.contains('read-only transaction')) {
+    if (code == '25006' || message.contains('read-only transaction')) {
       return ClassifiedError(
         PgErrorKind.readOnlyTransaction,
         'This connection is read-only.',
@@ -84,8 +84,8 @@ ClassifiedError classify(Object error) {
     }
     if (code == '23514') {
       final friendly = constraint != null
-          ? 'Check constraint "$constraint" failed: $msg'
-          : 'Check constraint failed: $msg';
+          ? 'Check constraint "$constraint" failed: $message'
+          : 'Check constraint failed: $message';
       return ClassifiedError(
         PgErrorKind.checkViolation,
         friendly,
@@ -96,7 +96,7 @@ ClassifiedError classify(Object error) {
     if (code.startsWith('42')) {
       return ClassifiedError(
         PgErrorKind.syntax,
-        msg,
+        message,
         error,
         constraintName: constraint,
       );
@@ -104,20 +104,20 @@ ClassifiedError classify(Object error) {
     if (code.startsWith('28') || code.startsWith('42501')) {
       return ClassifiedError(
         PgErrorKind.permission,
-        msg,
+        message,
         error,
         constraintName: constraint,
       );
     }
     return ClassifiedError(
       PgErrorKind.other,
-      msg,
+      message,
       error,
       constraintName: constraint,
     );
   }
   if (typeName.contains('PgException')) {
-    return ClassifiedError(PgErrorKind.connection, msg, error);
+    return ClassifiedError(PgErrorKind.connection, message, error);
   }
-  return ClassifiedError(PgErrorKind.other, msg, error);
+  return ClassifiedError(PgErrorKind.other, message, error);
 }

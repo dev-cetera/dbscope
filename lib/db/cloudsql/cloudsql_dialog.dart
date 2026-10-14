@@ -32,23 +32,23 @@ class _CloudSqlDialogState extends State<CloudSqlDialog> {
   @override
   void initState() {
     super.initState();
-    final i = widget.initial;
-    final cfg = i == null ? null : CloudSqlConfig.fromProfile(i);
-    _name = TextEditingController(text: i?.name ?? 'cloud sql');
+    final initial = widget.initial;
+    final config = initial == null ? null : CloudSqlConfig.fromProfile(initial);
+    _name = TextEditingController(text: initial?.name ?? 'cloud sql');
     _instance = TextEditingController(
-      text: cfg?.instanceConnectionName ?? '',
+      text: config?.instanceConnectionName ?? '',
     );
-    _project = TextEditingController(text: cfg?.gcpProject ?? '');
-    _database = TextEditingController(text: i?.database ?? 'postgres');
-    _username = TextEditingController(text: i?.username ?? 'postgres');
-    _password = TextEditingController(text: i?.password ?? '');
+    _project = TextEditingController(text: config?.gcpProject ?? '');
+    _database = TextEditingController(text: initial?.database ?? 'postgres');
+    _username = TextEditingController(text: initial?.username ?? 'postgres');
+    _password = TextEditingController(text: initial?.password ?? '');
     _localPort = TextEditingController(
-      text: (cfg?.localPort ?? 9480).toString(),
+      text: (config?.localPort ?? 9480).toString(),
     );
-    _proxyPath = TextEditingController(text: cfg?.cloudSqlProxyPath ?? '');
-    _gcloudPath = TextEditingController(text: cfg?.gcloudPath ?? '');
-    _assignPublicIp = cfg?.assignPublicIp ?? true;
-    _readOnly = i?.readOnly ?? true;
+    _proxyPath = TextEditingController(text: config?.cloudSqlProxyPath ?? '');
+    _gcloudPath = TextEditingController(text: config?.gcloudPath ?? '');
+    _assignPublicIp = config?.assignPublicIp ?? true;
+    _readOnly = initial?.readOnly ?? true;
     // Auto-fill the project from the instance name until the user edits it.
     _instance.addListener(_maybeSyncProject);
   }
@@ -86,7 +86,7 @@ class _CloudSqlDialogState extends State<CloudSqlDialog> {
         : (segs.isNotEmpty ? segs.first : '');
     final instanceName = segs.isNotEmpty ? segs.last : '';
     final port = int.parse(_localPort.text.trim());
-    final cfg = CloudSqlConfig(
+    final config = CloudSqlConfig(
       instanceConnectionName: instance,
       gcpProject: project,
       instanceName: instanceName,
@@ -105,7 +105,7 @@ class _CloudSqlDialogState extends State<CloudSqlDialog> {
       username: _username.text.trim(),
       password: _password.text,
       readOnly: _readOnly,
-      extra: cfg.toExtra(),
+      extra: config.toExtra(),
       tenantFilter: widget.initial?.tenantFilter,
       tableOverrides: widget.initial?.tableOverrides,
     );
@@ -129,31 +129,31 @@ class _CloudSqlDialogState extends State<CloudSqlDialog> {
             TextFormField(
               controller: _name,
               decoration: const InputDecoration(labelText: 'Name'),
-              validator: _req,
+              validator: _requiredValidator,
             ),
-            const SizedBox(height: 12),
+            const SizedBox(height: 12.0),
             TextFormField(
               controller: _instance,
               decoration: const InputDecoration(
                 labelText: 'Instance connection name',
                 hintText: 'project:region:instance',
               ),
-              validator: (v) {
-                if (v == null || v.trim().isEmpty) return 'required';
-                if (v.trim().split(':').length != 3) {
+              validator: (value) {
+                if (value == null || value.trim().isEmpty) return 'required';
+                if (value.trim().split(':').length != 3) {
                   return 'expected project:region:instance';
                 }
                 return null;
               },
             ),
-            const SizedBox(height: 12),
+            const SizedBox(height: 12.0),
             TextFormField(
               controller: _project,
               decoration: const InputDecoration(
                 labelText: 'GCP project (for public-IP toggle)',
               ),
             ),
-            const SizedBox(height: 12),
+            const SizedBox(height: 12.0),
             Row(
               children: [
                 Expanded(
@@ -161,31 +161,35 @@ class _CloudSqlDialogState extends State<CloudSqlDialog> {
                   child: TextFormField(
                     controller: _database,
                     decoration: const InputDecoration(labelText: 'Database'),
-                    validator: _req,
+                    validator: _requiredValidator,
                   ),
                 ),
-                const SizedBox(width: 12),
+                const SizedBox(width: 12.0),
                 Expanded(
                   child: TextFormField(
                     controller: _localPort,
                     decoration: const InputDecoration(labelText: 'Local port'),
                     keyboardType: TextInputType.number,
-                    validator: (v) {
-                      final p = int.tryParse(v?.trim() ?? '');
-                      if (p == null || p <= 0 || p > 65535) return 'invalid';
+                    validator: (value) {
+                      final portNumber = int.tryParse(value?.trim() ?? '');
+                      if (portNumber == null ||
+                          portNumber <= 0 ||
+                          portNumber > 65535) {
+                        return 'invalid';
+                      }
                       return null;
                     },
                   ),
                 ),
               ],
             ),
-            const SizedBox(height: 12),
+            const SizedBox(height: 12.0),
             TextFormField(
               controller: _username,
               decoration: const InputDecoration(labelText: 'Username'),
-              validator: _req,
+              validator: _requiredValidator,
             ),
-            const SizedBox(height: 12),
+            const SizedBox(height: 12.0),
             TextFormField(
               controller: _password,
               obscureText: !_passwordVisible,
@@ -200,10 +204,10 @@ class _CloudSqlDialogState extends State<CloudSqlDialog> {
                 ),
               ),
             ),
-            const SizedBox(height: 12),
+            const SizedBox(height: 12.0),
             SwitchListTile(
               value: _assignPublicIp,
-              onChanged: (v) => setState(() => _assignPublicIp = v),
+              onChanged: (value) => setState(() => _assignPublicIp = value),
               title: const Text('Assign public IP on connect'),
               subtitle: const Text(
                 'Needed for private-only instances reached from a laptop. '
@@ -213,25 +217,25 @@ class _CloudSqlDialogState extends State<CloudSqlDialog> {
             ),
             SwitchListTile(
               value: _readOnly,
-              onChanged: (v) => setState(() => _readOnly = v),
+              onChanged: (value) => setState(() => _readOnly = value),
               title: const Text('Read-only'),
               subtitle: const Text(
                 'Enforced via SET default_transaction_read_only',
               ),
               contentPadding: EdgeInsets.zero,
             ),
-            const SizedBox(height: 4),
+            const SizedBox(height: 4.0),
             InkWell(
               onTap: () => setState(() => _showAdvanced = !_showAdvanced),
               child: Padding(
-                padding: const EdgeInsets.symmetric(vertical: 6),
+                padding: const EdgeInsets.symmetric(vertical: 6.0),
                 child: Row(
                   children: [
                     Icon(
                       _showAdvanced ? Icons.expand_less : Icons.expand_more,
-                      size: 18,
+                      size: 18.0,
                     ),
-                    const SizedBox(width: 4),
+                    const SizedBox(width: 4.0),
                     const Text('Advanced (binary paths)'),
                   ],
                 ),
@@ -245,7 +249,7 @@ class _CloudSqlDialogState extends State<CloudSqlDialog> {
                   hintText: 'auto-detected from PATH if blank',
                 ),
               ),
-              const SizedBox(height: 12),
+              const SizedBox(height: 12.0),
               TextFormField(
                 controller: _gcloudPath,
                 decoration: const InputDecoration(
@@ -260,6 +264,6 @@ class _CloudSqlDialogState extends State<CloudSqlDialog> {
     );
   }
 
-  String? _req(String? v) =>
-      (v == null || v.trim().isEmpty) ? 'required' : null;
+  String? _requiredValidator(String? value) =>
+      (value == null || value.trim().isEmpty) ? 'required' : null;
 }

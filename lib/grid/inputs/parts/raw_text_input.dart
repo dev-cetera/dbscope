@@ -29,37 +29,37 @@ class _RawTextInput extends StatefulWidget {
 }
 
 class _RawTextInputState extends State<_RawTextInput> {
-  late final TextEditingController _ctrl;
+  late final TextEditingController _textController;
 
   @override
   void initState() {
     super.initState();
-    _ctrl = TextEditingController(text: widget.value ?? '');
-    _ctrl.addListener(_handleChange);
+    _textController = TextEditingController(text: widget.value ?? '');
+    _textController.addListener(_handleChange);
   }
 
   void _handleChange() {
-    widget.onChanged(_ctrl.text);
+    widget.onChanged(_textController.text);
   }
 
   @override
   void didUpdateWidget(covariant _RawTextInput oldWidget) {
     super.didUpdateWidget(oldWidget);
     final incoming = widget.value ?? '';
-    if (incoming != _ctrl.text) {
-      _ctrl.removeListener(_handleChange);
-      _ctrl.value = TextEditingValue(
+    if (incoming != _textController.text) {
+      _textController.removeListener(_handleChange);
+      _textController.value = TextEditingValue(
         text: incoming,
         selection: TextSelection.collapsed(offset: incoming.length),
       );
-      _ctrl.addListener(_handleChange);
+      _textController.addListener(_handleChange);
     }
   }
 
   @override
   void dispose() {
-    _ctrl.removeListener(_handleChange);
-    _ctrl.dispose();
+    _textController.removeListener(_handleChange);
+    _textController.dispose();
     super.dispose();
   }
 
@@ -74,7 +74,7 @@ class _RawTextInputState extends State<_RawTextInput> {
           : palette.uiFontFamily,
     );
     final field = TextField(
-      controller: _ctrl,
+      controller: _textController,
       enabled: widget.enabled,
       maxLines: widget.multiLine ? 5 : 1,
       minLines: widget.multiLine ? 3 : 1,
@@ -85,7 +85,10 @@ class _RawTextInputState extends State<_RawTextInput> {
       cursorWidth: 1,
       decoration: InputDecoration(
         isCollapsed: true,
-        contentPadding: const EdgeInsets.symmetric(vertical: 6, horizontal: 4),
+        contentPadding: const EdgeInsets.symmetric(
+          vertical: 6.0,
+          horizontal: 4.0,
+        ),
         border: InputBorder.none,
         enabledBorder: InputBorder.none,
         focusedBorder: InputBorder.none,
@@ -106,7 +109,7 @@ class _RawTextInputState extends State<_RawTextInput> {
         children: [
           if (widget.prefix != null)
             Padding(
-              padding: const EdgeInsets.only(right: 4),
+              padding: const EdgeInsets.only(right: 4.0),
               child: widget.prefix,
             ),
           Expanded(child: field),

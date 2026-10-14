@@ -46,7 +46,7 @@ class _StateProbeState extends State<_StateProbe> {
 Widget _host(Widget child) {
   return MaterialApp(
     home: Scaffold(
-      body: SizedBox(width: 900, height: 600, child: child),
+      body: SizedBox(width: 900.0, height: 600.0, child: child),
     ),
   );
 }
@@ -112,7 +112,7 @@ void main() {
         schema: 'public',
         tableName: 'b',
         fields: const [SchemaFieldSpec(name: 'id', typeLabel: 'int', pk: true)],
-        position: const Offset(600, 400),
+        position: const Offset(600.0, 400.0),
       ),
     ];
 
@@ -127,11 +127,11 @@ void main() {
         edges: const [],
         pan: pan,
         scale: scale,
-        onPanChanged: (p) {
-          pan = p;
+        onPanChanged: (newPan) {
+          pan = newPan;
           fits++;
         },
-        onScaleChanged: (s) => scale = s,
+        onScaleChanged: (newScale) => scale = newScale,
         selectedId: null,
         onSelectedChanged: (_) {},
       ),
@@ -162,7 +162,7 @@ void main() {
         schema: 'public',
         tableName: 'a',
         fields: const [SchemaFieldSpec(name: 'id', typeLabel: 'int', pk: true)],
-        position: const Offset(40, 40),
+        position: const Offset(40.0, 40.0),
       ),
     ];
 
@@ -174,14 +174,14 @@ void main() {
       MaterialApp(
         home: Scaffold(
           body: SizedBox(
-            width: 900,
-            height: 600,
+            width: 900.0,
+            height: 600.0,
             child: StatefulBuilder(
               builder: (context, setState) {
                 setOuter = setState;
                 return Row(
                   children: [
-                    if (paneOpen) const SizedBox(width: 250),
+                    if (paneOpen) const SizedBox(width: 250.0),
                     Expanded(
                       child: SchemaCanvas(
                         nodes: nodes,
@@ -190,7 +190,7 @@ void main() {
                         scale: 1.0,
                         // Off so the assertion is about anchoring alone.
                         autoFitOnFirstLayout: false,
-                        onPanChanged: (p) => setState(() => pan = p),
+                        onPanChanged: (newPan) => setState(() => pan = newPan),
                         onScaleChanged: (_) {},
                         selectedId: null,
                         onSelectedChanged: (_) {},

@@ -48,27 +48,27 @@ List<InlineSpan> highlightJsonInline(
   return spans;
 }
 
-TextStyle _base(AppPalette p) => TextStyle(
-  fontFamily: p.monoFontFamily,
-  fontSize: p.bodyFontSize,
-  color: p.text,
+TextStyle _base(AppPalette palette) => TextStyle(
+  fontFamily: palette.monoFontFamily,
+  fontSize: palette.bodyFontSize,
+  color: palette.text,
   height: 1.4,
 );
 
 TextStyle _styleWith(
-  AppPalette p,
-  Color c, {
+  AppPalette palette,
+  Color color, {
   FontWeight? weight,
   TextStyle? override,
 }) {
-  final base = override ?? _base(p);
-  return base.copyWith(color: c, fontWeight: weight);
+  final base = override ?? _base(palette);
+  return base.copyWith(color: color, fontWeight: weight);
 }
 
 void _emit(
   List<InlineSpan> spans,
   Object? value,
-  AppPalette p,
+  AppPalette palette,
   int indent, {
   required bool inline,
   TextStyle? override,
@@ -83,27 +83,32 @@ void _emit(
   if (value is Map) {
     if (value.isEmpty) {
       spans.add(
-        TextSpan(text: '{}', style: _styleWith(p, p.text, override: override)),
+        TextSpan(
+          text: '{}',
+          style: _styleWith(palette, palette.text, override: override),
+        ),
       );
       return;
     }
     spans.add(
       TextSpan(
         text: '{$newline',
-        style: _styleWith(p, p.text, override: override),
+        style: _styleWith(palette, palette.text, override: override),
       ),
     );
     final entries = value.entries.toList();
     for (var i = 0; i < entries.length; i++) {
       if (!inline) {
-        spans.add(TextSpan(text: indentNext, style: override ?? _base(p)));
+        spans.add(
+          TextSpan(text: indentNext, style: override ?? _base(palette)),
+        );
       }
       spans.add(
         TextSpan(
           text: jsonEncode(entries[i].key),
           style: _styleWith(
-            p,
-            p.accent,
+            palette,
+            palette.accent,
             weight: FontWeight.w600,
             override: override,
           ),
@@ -112,13 +117,13 @@ void _emit(
       spans.add(
         TextSpan(
           text: keyColonSep,
-          style: _styleWith(p, p.mutedText, override: override),
+          style: _styleWith(palette, palette.mutedText, override: override),
         ),
       );
       _emit(
         spans,
         entries[i].value,
-        p,
+        palette,
         indent + 1,
         inline: inline,
         override: override,
@@ -127,75 +132,87 @@ void _emit(
         spans.add(
           TextSpan(
             text: '$commaSep$spaceAfterComma',
-            style: _styleWith(p, p.mutedText, override: override),
+            style: _styleWith(palette, palette.mutedText, override: override),
           ),
         );
       }
       if (!inline) {
-        spans.add(TextSpan(text: '\n', style: override ?? _base(p)));
+        spans.add(TextSpan(text: '\n', style: override ?? _base(palette)));
       }
     }
     spans.add(
       TextSpan(
         text: '$indentClose}',
-        style: _styleWith(p, p.text, override: override),
+        style: _styleWith(palette, palette.text, override: override),
       ),
     );
   } else if (value is List) {
     if (value.isEmpty) {
       spans.add(
-        TextSpan(text: '[]', style: _styleWith(p, p.text, override: override)),
+        TextSpan(
+          text: '[]',
+          style: _styleWith(palette, palette.text, override: override),
+        ),
       );
       return;
     }
     spans.add(
       TextSpan(
         text: '[$newline',
-        style: _styleWith(p, p.text, override: override),
+        style: _styleWith(palette, palette.text, override: override),
       ),
     );
     for (var i = 0; i < value.length; i++) {
       if (!inline) {
-        spans.add(TextSpan(text: indentNext, style: override ?? _base(p)));
+        spans.add(
+          TextSpan(text: indentNext, style: override ?? _base(palette)),
+        );
       }
-      _emit(spans, value[i], p, indent + 1, inline: inline, override: override);
+      _emit(
+        spans,
+        value[i],
+        palette,
+        indent + 1,
+        inline: inline,
+        override: override,
+      );
       if (i < value.length - 1) {
         spans.add(
           TextSpan(
             text: '$commaSep$spaceAfterComma',
-            style: _styleWith(p, p.mutedText, override: override),
+            style: _styleWith(palette, palette.mutedText, override: override),
           ),
         );
       }
       if (!inline) {
-        spans.add(TextSpan(text: '\n', style: override ?? _base(p)));
+        spans.add(TextSpan(text: '\n', style: override ?? _base(palette)));
       }
     }
     spans.add(
       TextSpan(
         text: '$indentClose]',
-        style: _styleWith(p, p.text, override: override),
+        style: _styleWith(palette, palette.text, override: override),
       ),
     );
   } else if (value is String) {
     spans.add(
       TextSpan(
         text: jsonEncode(value),
-        style: _styleWith(p, p.typeString, override: override),
+        style: _styleWith(palette, palette.typeString, override: override),
       ),
     );
   } else if (value is num) {
     spans.add(
       TextSpan(
         text: '$value',
-        style: _styleWith(p, p.typeNumber, override: override),
+        style: _styleWith(palette, palette.typeNumber, override: override),
       ),
     );
   } else if (value is bool) {
     spans.add(
       TextSpan(
         text: '$value',
-        style: _styleWith(p, p.typeBool, override: override),
+        style: _styleWith(palette, palette.typeBool, override: override),
       ),
     );
   } else if (value == null) {
@@ -203,13 +220,15 @@ void _emit(
       TextSpan(
         text: 'null',
         style: _styleWith(
-          p,
-          p.typeNull,
+          palette,
+          palette.typeNull,
           override: override,
         ).copyWith(fontStyle: FontStyle.italic),
       ),
     );
   } else {
-    spans.add(TextSpan(text: value.toString(), style: override ?? _base(p)));
+    spans.add(
+      TextSpan(text: value.toString(), style: override ?? _base(palette)),
+    );
   }
 }

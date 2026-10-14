@@ -34,11 +34,15 @@ List<ForeignKey> _stableSorted(List<ForeignKey> edges) {
   });
   final seen = <String>{};
   final out = <ForeignKey>[];
-  for (final fk in sorted) {
-    if (fk.fromKey == fk.toKey) continue;
-    final lo = fk.fromKey.compareTo(fk.toKey) <= 0 ? fk.fromKey : fk.toKey;
-    final hi = fk.fromKey.compareTo(fk.toKey) <= 0 ? fk.toKey : fk.fromKey;
-    if (seen.add('$lo|$hi')) out.add(fk);
+  for (final foreignKey in sorted) {
+    if (foreignKey.fromKey == foreignKey.toKey) continue;
+    final lo = foreignKey.fromKey.compareTo(foreignKey.toKey) <= 0
+        ? foreignKey.fromKey
+        : foreignKey.toKey;
+    final hi = foreignKey.fromKey.compareTo(foreignKey.toKey) <= 0
+        ? foreignKey.toKey
+        : foreignKey.fromKey;
+    if (seen.add('$lo|$hi')) out.add(foreignKey);
   }
   return out;
 }
@@ -49,12 +53,12 @@ List<ForeignKey> _stableSorted(List<ForeignKey> edges) {
 Set<String> relatedTables(List<ForeignKey> edges, String? selectedKey) {
   if (selectedKey == null) return const {};
   final out = <String>{};
-  for (final fk in edges) {
-    if (fk.fromKey == fk.toKey) continue;
-    if (fk.fromKey == selectedKey) {
-      out.add(fk.toKey);
-    } else if (fk.toKey == selectedKey) {
-      out.add(fk.fromKey);
+  for (final foreignKey in edges) {
+    if (foreignKey.fromKey == foreignKey.toKey) continue;
+    if (foreignKey.fromKey == selectedKey) {
+      out.add(foreignKey.toKey);
+    } else if (foreignKey.toKey == selectedKey) {
+      out.add(foreignKey.fromKey);
     }
   }
   return out;
@@ -98,8 +102,8 @@ class RelationshipGutterPainter extends CustomPainter {
 
     final keyToIndex = <String, int>{};
     for (var i = 0; i < items.length; i++) {
-      final k = items[i].tableKey;
-      if (k != null) keyToIndex[k] = i;
+      final key = items[i].tableKey;
+      if (key != null) keyToIndex[key] = i;
     }
 
     final sorted = _stableSorted(edges);
@@ -116,9 +120,10 @@ class RelationshipGutterPainter extends CustomPainter {
     final incident = <int>[];
     if (selectedKey != null) {
       for (var i = 0; i < sorted.length; i++) {
-        final fk = sorted[i];
-        if (fk.fromKey == fk.toKey) continue;
-        if (fk.fromKey == selectedKey || fk.toKey == selectedKey) {
+        final foreignKey = sorted[i];
+        if (foreignKey.fromKey == foreignKey.toKey) continue;
+        if (foreignKey.fromKey == selectedKey ||
+            foreignKey.toKey == selectedKey) {
           incident.add(i);
         }
       }
@@ -148,9 +153,9 @@ class RelationshipGutterPainter extends CustomPainter {
         return;
       }
       final cpX = laneMin + (laneIndex % laneCount) * laneSpacing;
-      const r = cornerRadius;
+      const radius = cornerRadius;
       final path = Path()..moveTo(anchorX, y1);
-      if ((y2 - y1).abs() < 2 * r) {
+      if ((y2 - y1).abs() < 2 * radius) {
         path
           ..lineTo(cpX, y1)
           ..lineTo(cpX, y2)
@@ -158,10 +163,15 @@ class RelationshipGutterPainter extends CustomPainter {
       } else {
         final goingDown = y2 > y1;
         path
-          ..lineTo(cpX + r, y1)
-          ..quadraticBezierTo(cpX, y1, cpX, goingDown ? y1 + r : y1 - r)
-          ..lineTo(cpX, goingDown ? y2 - r : y2 + r)
-          ..quadraticBezierTo(cpX, y2, cpX + r, y2)
+          ..lineTo(cpX + radius, y1)
+          ..quadraticBezierTo(
+            cpX,
+            y1,
+            cpX,
+            goingDown ? y1 + radius : y1 - radius,
+          )
+          ..lineTo(cpX, goingDown ? y2 - radius : y2 + radius)
+          ..quadraticBezierTo(cpX, y2, cpX + radius, y2)
           ..lineTo(anchorX, y2);
       }
       final paint = Paint()
@@ -182,10 +192,10 @@ class RelationshipGutterPainter extends CustomPainter {
           : usable.floor().clamp(1, sorted.length);
       const faint = Color(0x33808080);
       for (var i = 0; i < sorted.length; i++) {
-        final fk = sorted[i];
-        if (fk.fromKey == fk.toKey) continue;
-        final from = keyToIndex[fk.fromKey];
-        final to = keyToIndex[fk.toKey];
+        final foreignKey = sorted[i];
+        if (foreignKey.fromKey == foreignKey.toKey) continue;
+        final from = keyToIndex[foreignKey.fromKey];
+        final to = keyToIndex[foreignKey.toKey];
         if (from == null || to == null) continue;
         drawLine(
           from: from,
@@ -204,11 +214,13 @@ class RelationshipGutterPainter extends CustomPainter {
           : usable.floor().clamp(1, incident.length);
       for (var drawn = 0; drawn < incident.length; drawn++) {
         final i = incident[drawn];
-        final fk = sorted[i];
-        final from = keyToIndex[fk.fromKey];
-        final to = keyToIndex[fk.toKey];
+        final foreignKey = sorted[i];
+        final from = keyToIndex[foreignKey.fromKey];
+        final to = keyToIndex[foreignKey.toKey];
         if (from == null || to == null) continue;
-        final other = fk.fromKey == selectedKey ? fk.toKey : fk.fromKey;
+        final other = foreignKey.fromKey == selectedKey
+            ? foreignKey.toKey
+            : foreignKey.fromKey;
         drawLine(
           from: from,
           to: to,

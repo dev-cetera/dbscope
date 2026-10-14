@@ -47,8 +47,8 @@ class ProjectDocument {
       version: (json['version'] as int?) ?? 1,
       name: (json['name'] as String?) ?? 'Default Project',
       profiles: [
-        for (final p in (json['profiles'] as List? ?? const []))
-          if (p is Map<String, Object?>) p,
+        for (final profile in (json['profiles'] as List? ?? const []))
+          if (profile is Map<String, Object?>) profile,
       ],
       savedQueries: mapOf(json['savedQueries'], SavedQuery.fromJson),
       savedAiQueries: mapOf(json['savedAiQueries'], SavedAiQuery.fromJson),
@@ -71,11 +71,11 @@ class ProjectDocument {
     'profiles': profiles,
     'savedQueries': {
       for (final e in savedQueries.entries)
-        e.key: [for (final q in e.value) q.toJson()],
+        e.key: [for (final query in e.value) query.toJson()],
     },
     'savedAiQueries': {
       for (final e in savedAiQueries.entries)
-        e.key: [for (final q in e.value) q.toJson()],
+        e.key: [for (final query in e.value) query.toJson()],
     },
     'ai': ai.toJson(),
   };

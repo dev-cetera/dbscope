@@ -79,24 +79,24 @@ class PropertyInspector extends StatelessWidget {
   onFollowOutbound;
   final void Function(List<ForeignKey> group)? onOpenInbound;
 
-  EditPolicy _policyFor(ColumnInfo c) {
-    for (final p in editPolicies) {
-      if (p.column == c.name) return p;
+  EditPolicy _policyFor(ColumnInfo column) {
+    for (final policy in editPolicies) {
+      if (policy.column == column.name) return policy;
     }
     return EditPolicy(
       schema: schema,
       table: table,
       pkColumns: pkColumns,
-      column: c.name,
-      type: c.type,
-      typeName: c.typeName,
-      nullable: c.nullable,
-      isGenerated: c.isGenerated,
-      isIdentity: c.isIdentity,
+      column: column.name,
+      type: column.type,
+      typeName: column.typeName,
+      nullable: column.nullable,
+      isGenerated: column.isGenerated,
+      isIdentity: column.isIdentity,
       readOnly: true,
       multiLine: false,
-      nullIfBlank: c.nullable,
-      enumValues: c.enumValues,
+      nullIfBlank: column.nullable,
+      enumValues: column.enumValues,
     );
   }
 
@@ -106,13 +106,19 @@ class PropertyInspector extends StatelessWidget {
     final outboundByConstraint = <String, List<ForeignKey>>{};
     final inboundByConstraint = <String, List<ForeignKey>>{};
     final inboundByColumn = <String, List<ForeignKey>>{};
-    for (final fk in foreignKeys) {
-      if (fk.fromSchema == schema && fk.fromTable == table) {
-        outboundByConstraint.putIfAbsent(fk.constraintKey, () => []).add(fk);
+    for (final foreignKey in foreignKeys) {
+      if (foreignKey.fromSchema == schema && foreignKey.fromTable == table) {
+        outboundByConstraint
+            .putIfAbsent(foreignKey.constraintKey, () => [])
+            .add(foreignKey);
       }
-      if (fk.toSchema == schema && fk.toTable == table) {
-        inboundByConstraint.putIfAbsent(fk.constraintKey, () => []).add(fk);
-        inboundByColumn.putIfAbsent(fk.toColumn, () => []).add(fk);
+      if (foreignKey.toSchema == schema && foreignKey.toTable == table) {
+        inboundByConstraint
+            .putIfAbsent(foreignKey.constraintKey, () => [])
+            .add(foreignKey);
+        inboundByColumn
+            .putIfAbsent(foreignKey.toColumn, () => [])
+            .add(foreignKey);
       }
     }
     final outboundByColumn = <String, ForeignKey>{};
@@ -124,13 +130,18 @@ class PropertyInspector extends StatelessWidget {
       }
     }
 
-    void onLink(ForeignKey fk, {required bool incoming}) {
+    void onLink(ForeignKey foreignKey, {required bool incoming}) {
       if (incoming) {
-        onOpenInbound?.call([fk]);
+        onOpenInbound?.call([foreignKey]);
       } else {
         if (onFollowOutbound != null) {
-          final group = outboundGroupByColumn[fk.fromColumn] ?? [fk];
-          onFollowOutbound!(fk.fromColumn, row[fk.fromColumn], group);
+          final group =
+              outboundGroupByColumn[foreignKey.fromColumn] ?? [foreignKey];
+          onFollowOutbound!(
+            foreignKey.fromColumn,
+            row[foreignKey.fromColumn],
+            group,
+          );
         }
       }
     }
@@ -138,15 +149,15 @@ class PropertyInspector extends StatelessWidget {
     return SelectionArea(
       child: ListView(
         children: [
-          for (final c in columns)
+          for (final column in columns)
             PropertyFieldRow(
-              column: c,
-              value: row[c.name],
-              policy: _policyFor(c),
-              isPk: pkColumns.contains(c.name),
-              outboundFk: outboundByColumn[c.name],
-              inboundRefs: inboundByColumn[c.name] ?? const [],
-              isFollowed: selectedFollowedColumn == c.name,
+              column: column,
+              value: row[column.name],
+              policy: _policyFor(column),
+              isPk: pkColumns.contains(column.name),
+              outboundFk: outboundByColumn[column.name],
+              inboundRefs: inboundByColumn[column.name] ?? const [],
+              isFollowed: selectedFollowedColumn == column.name,
               onFollowLink: onFollowOutbound == null && onOpenInbound == null
                   ? null
                   : onLink,
@@ -160,7 +171,7 @@ class PropertyInspector extends StatelessWidget {
           if (inboundByConstraint.isNotEmpty && onOpenInbound != null) ...[
             const Divider(),
             Padding(
-              padding: const EdgeInsets.fromLTRB(8, 8, 8, 4),
+              padding: const EdgeInsets.fromLTRB(8.0, 8.0, 8.0, 4.0),
               child: Text(
                 'INBOUND RELATIONS',
                 style: theme.textTheme.labelSmall?.copyWith(
@@ -210,7 +221,8 @@ class PropertyFieldRow extends StatefulWidget {
   final ForeignKey? outboundFk;
   final List<ForeignKey> inboundRefs;
   final bool isFollowed;
-  final void Function(ForeignKey fk, {required bool incoming})? onFollowLink;
+  final void Function(ForeignKey foreignKey, {required bool incoming})?
+  onFollowLink;
   final Future<void> Function(EditPolicy, Object?) onSave;
 
   /// Table identification — passed to the AI Info path so it can scope
@@ -247,9 +259,9 @@ class _PropertyFieldRowState extends State<PropertyFieldRow> {
   }
 
   @override
-  void didUpdateWidget(covariant PropertyFieldRow old) {
-    super.didUpdateWidget(old);
-    if (!_editing && old.value != widget.value) {
+  void didUpdateWidget(covariant PropertyFieldRow oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (!_editing && oldWidget.value != widget.value) {
       _initial = widget.value;
       _pending = widget.value;
     }
@@ -268,8 +280,8 @@ class _PropertyFieldRowState extends State<PropertyFieldRow> {
       if (reason != null) showToast(context, reason);
       return;
     }
-    final t = widget.column.type;
-    if (t == PgType.json || t == PgType.jsonb) {
+    final type = widget.column.type;
+    if (type == PgType.json || type == PgType.jsonb) {
       unawaited(_startJsonDialogEdit());
       return;
     }
@@ -308,7 +320,7 @@ class _PropertyFieldRowState extends State<PropertyFieldRow> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final isFk = widget.outboundFk != null;
+    final isForeignKey = widget.outboundFk != null;
 
     return Container(
       decoration: BoxDecoration(
@@ -317,7 +329,7 @@ class _PropertyFieldRowState extends State<PropertyFieldRow> {
           bottom: BorderSide(color: theme.dividerColor, width: 0.5),
         ),
       ),
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 4.0),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
@@ -325,19 +337,19 @@ class _PropertyFieldRowState extends State<PropertyFieldRow> {
             children: [
               if (widget.isPk)
                 Padding(
-                  padding: const EdgeInsets.only(right: 4),
+                  padding: const EdgeInsets.only(right: 4.0),
                   child: Icon(
                     Icons.vpn_key,
-                    size: 11,
+                    size: 11.0,
                     color: theme.colorScheme.primary,
                   ),
                 ),
-              if (isFk)
+              if (isForeignKey)
                 Padding(
-                  padding: const EdgeInsets.only(right: 4),
+                  padding: const EdgeInsets.only(right: 4.0),
                   child: Icon(
                     Icons.link,
-                    size: 11,
+                    size: 11.0,
                     color: theme.colorScheme.secondary,
                   ),
                 ),
@@ -363,7 +375,7 @@ class _PropertyFieldRowState extends State<PropertyFieldRow> {
                   message: 'Masked for you. Right-click for why.',
                   child: Icon(
                     Icons.visibility_off_outlined,
-                    size: 11,
+                    size: 11.0,
                     color: theme.hintColor,
                   ),
                 )
@@ -372,21 +384,21 @@ class _PropertyFieldRowState extends State<PropertyFieldRow> {
                   message: widget.policy.readOnlyReason,
                   child: Icon(
                     Icons.lock_outline,
-                    size: 11,
+                    size: 11.0,
                     color: theme.hintColor,
                   ),
                 ),
-              const SizedBox(width: 4),
+              const SizedBox(width: 4.0),
               Text(
                 widget.column.typeName,
                 style: theme.textTheme.labelSmall?.copyWith(
                   color: theme.hintColor,
-                  fontSize: 9,
+                  fontSize: 9.0,
                 ),
               ),
             ],
           ),
-          const SizedBox(height: 2),
+          const SizedBox(height: 2.0),
           if (_editing) _editor(theme) else _display(theme),
         ],
       ),
@@ -406,27 +418,27 @@ class _PropertyFieldRowState extends State<PropertyFieldRow> {
             child: ColumnInput.forPolicy(
               policy: widget.policy,
               value: _pending,
-              onChanged: (v) => setState(() => _pending = v),
+              onChanged: (value) => setState(() => _pending = value),
             ),
           ),
           Padding(
-            padding: const EdgeInsets.only(top: 18),
+            padding: const EdgeInsets.only(top: 18.0),
             child: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
                 IconButton(
                   tooltip: 'Save (Cmd+Enter)',
-                  icon: const Icon(Icons.check, size: 16),
+                  icon: const Icon(Icons.check, size: 16.0),
                   visualDensity: VisualDensity.compact,
-                  padding: const EdgeInsets.all(2),
+                  padding: const EdgeInsets.all(2.0),
                   constraints: const BoxConstraints(),
                   onPressed: _commit,
                 ),
                 IconButton(
                   tooltip: 'Cancel (Esc)',
-                  icon: const Icon(Icons.close, size: 16),
+                  icon: const Icon(Icons.close, size: 16.0),
                   visualDensity: VisualDensity.compact,
-                  padding: const EdgeInsets.all(2),
+                  padding: const EdgeInsets.all(2.0),
                   constraints: const BoxConstraints(),
                   onPressed: _cancel,
                 ),
@@ -481,7 +493,7 @@ class _PropertyFieldRowState extends State<PropertyFieldRow> {
                 ? SystemMouseCursors.text
                 : SystemMouseCursors.basic,
             child: Padding(
-              padding: const EdgeInsets.symmetric(vertical: 2),
+              padding: const EdgeInsets.symmetric(vertical: 2.0),
               child: display,
             ),
           ),
@@ -576,23 +588,23 @@ class InboundRelationRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final fk = group.first;
+    final foreignKey = group.first;
     final label = group.length == 1
-        ? '${fk.fromTable}.${fk.fromColumn}'
-        : '${fk.fromTable}.(${group.map((g) => g.fromColumn).join(', ')})';
+        ? '${foreignKey.fromTable}.${foreignKey.fromColumn}'
+        : '${foreignKey.fromTable}.(${group.map((g) => g.fromColumn).join(', ')})';
     return InkWell(
       onTap: onTap,
       child: Container(
         color: isSelected ? theme.colorScheme.primaryContainer : null,
-        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+        padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 4.0),
         child: Row(
           children: [
             Icon(
               Icons.subdirectory_arrow_right,
-              size: 12,
+              size: 12.0,
               color: theme.colorScheme.secondary,
             ),
-            const SizedBox(width: 6),
+            const SizedBox(width: 6.0),
             Expanded(
               child: Text(
                 label,
@@ -603,7 +615,7 @@ class InboundRelationRow extends StatelessWidget {
                 overflow: TextOverflow.ellipsis,
               ),
             ),
-            const Icon(Icons.chevron_right, size: 14),
+            const Icon(Icons.chevron_right, size: 14.0),
           ],
         ),
       ),

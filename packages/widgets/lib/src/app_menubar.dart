@@ -45,14 +45,17 @@ class _AppMenuBarState extends State<AppMenuBar> {
 
   @override
   Widget build(BuildContext context) {
-    final p = AppPalette.of(context);
+    final palette = AppPalette.of(context);
     return Container(
       decoration: BoxDecoration(
-        color: p.surface,
-        border: p.isBevel ? null : Border(bottom: BorderSide(color: p.border)),
+        color: palette.surface,
+        border:
+            palette.isBevel
+                ? null
+                : Border(bottom: BorderSide(color: palette.border)),
       ),
-      height: 20,
-      padding: const EdgeInsets.symmetric(horizontal: 2),
+      height: 20.0,
+      padding: const EdgeInsets.symmetric(horizontal: 2.0),
       child: Row(
         children: [
           for (var i = 0; i < widget.menus.length; i++)
@@ -62,23 +65,23 @@ class _AppMenuBarState extends State<AppMenuBar> {
     );
   }
 
-  Widget _menuButton(int idx, AppMenu m) {
-    final p = AppPalette.of(context);
-    final active = _open == idx;
+  Widget _menuButton(int index, AppMenu m) {
+    final palette = AppPalette.of(context);
+    final active = _open == index;
     return MouseRegion(
       cursor: SystemMouseCursors.click,
       child: GestureDetector(
         behavior: HitTestBehavior.opaque,
-        onTapDown: (d) => _show(idx, d.globalPosition, m),
+        onTapDown: (details) => _show(index, details.globalPosition, m),
         child: Container(
-          decoration: BoxDecoration(color: active ? p.accent : null),
-          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+          decoration: BoxDecoration(color: active ? palette.accent : null),
+          padding: const EdgeInsets.symmetric(horizontal: 6.0, vertical: 2.0),
           child: Text(
             m.label,
             style: TextStyle(
-              fontSize: p.bodyFontSize,
-              fontFamily: p.uiFontFamily,
-              color: active ? p.onAccent : p.text,
+              fontSize: palette.bodyFontSize,
+              fontFamily: palette.uiFontFamily,
+              color: active ? palette.onAccent : palette.text,
             ),
           ),
         ),
@@ -86,18 +89,18 @@ class _AppMenuBarState extends State<AppMenuBar> {
     );
   }
 
-  Future<void> _show(int idx, Offset where, AppMenu m) async {
-    final p = AppPalette.of(context);
-    setState(() => _open = idx);
+  Future<void> _show(int index, Offset where, AppMenu m) async {
+    final palette = AppPalette.of(context);
+    setState(() => _open = index);
     final overlay =
         Overlay.of(context).context.findRenderObject()! as RenderBox;
-    final radius = BorderRadius.circular(p.cornerRadius);
+    final radius = BorderRadius.circular(palette.cornerRadius);
     final selected = await showMenu<int>(
       context: context,
-      color: p.surface,
-      elevation: p.isBevel ? 0 : 4,
+      color: palette.surface,
+      elevation: palette.isBevel ? 0 : 4,
       shape: RoundedRectangleBorder(
-        side: BorderSide(color: p.border),
+        side: BorderSide(color: palette.border),
         borderRadius: radius,
       ),
       position: RelativeRect.fromRect(
@@ -107,40 +110,40 @@ class _AppMenuBarState extends State<AppMenuBar> {
       items: [
         for (var i = 0; i < m.items.length; i++)
           if (m.items[i].divider)
-            const PopupMenuDivider(height: 4)
+            const PopupMenuDivider(height: 4.0)
           else
             PopupMenuItem<int>(
               value: i,
               enabled: m.items[i].onPressed != null,
-              height: 22,
-              padding: const EdgeInsets.symmetric(horizontal: 8),
+              height: 22.0,
+              padding: const EdgeInsets.symmetric(horizontal: 8.0),
               child: Row(
                 children: [
                   SizedBox(
-                    width: 14,
+                    width: 14.0,
                     child:
                         m.items[i].checked
-                            ? Icon(Icons.check, size: 12, color: p.text)
+                            ? Icon(Icons.check, size: 12.0, color: palette.text)
                             : null,
                   ),
                   Expanded(
                     child: Text(
                       m.items[i].label,
                       style: TextStyle(
-                        fontSize: p.bodyFontSize,
-                        fontFamily: p.uiFontFamily,
-                        color: p.text,
+                        fontSize: palette.bodyFontSize,
+                        fontFamily: palette.uiFontFamily,
+                        color: palette.text,
                       ),
                     ),
                   ),
                   if (m.items[i].shortcut != null) ...[
-                    const SizedBox(width: 16),
+                    const SizedBox(width: 16.0),
                     Text(
                       m.items[i].shortcut!,
                       style: TextStyle(
-                        fontSize: p.bodyFontSize,
-                        fontFamily: p.uiFontFamily,
-                        color: p.mutedText,
+                        fontSize: palette.bodyFontSize,
+                        fontFamily: palette.uiFontFamily,
+                        color: palette.mutedText,
                       ),
                     ),
                   ],

@@ -13,10 +13,10 @@ import 'dbml_save.dart';
 class DbmlExportFlow {
   static Future<void> run(BuildContext context) async {
     final registry = ConnectionRegistry.instance;
-    final conn = registry.connection;
+    final executor = registry.connection;
     final profile = registry.profile;
     final messenger = ScaffoldMessenger.of(context);
-    if (conn == null || profile == null) {
+    if (executor == null || profile == null) {
       messenger.showSnackBar(
         const SnackBar(content: Text('Connect to a database first.')),
       );
@@ -44,7 +44,7 @@ class DbmlExportFlow {
         // subsequent invocation hits the fast path.
         dbml = await DbmlCache.instance.get(
           profile.id,
-          conn,
+          executor,
           databaseName: safeName,
         );
       } catch (e) {
@@ -135,8 +135,8 @@ class DbmlExportFlow {
     }
   }
 
-  static String _safeProjectName(String s) {
-    final cleaned = s.replaceAll(RegExp('[^A-Za-z0-9_]'), '_');
+  static String _safeProjectName(String name) {
+    final cleaned = name.replaceAll(RegExp('[^A-Za-z0-9_]'), '_');
     if (cleaned.isEmpty || RegExp('^[0-9]').hasMatch(cleaned)) {
       return 'db_$cleaned';
     }
@@ -188,27 +188,29 @@ class _ProgressDialog extends StatelessWidget {
       title: const Text('Exporting DBML…'),
       content: ValueListenableBuilder<DbmlExportProgress?>(
         valueListenable: progress,
-        builder: (context, p, _) {
-          if (p == null) {
+        builder: (context, exportProgress, _) {
+          if (exportProgress == null) {
             return const SizedBox(
-              width: 280,
-              height: 56,
+              width: 280.0,
+              height: 56.0,
               child: Center(child: CircularProgressIndicator()),
             );
           }
-          final value = p.total == 0 ? null : p.completed / p.total;
+          final value = exportProgress.total == 0
+              ? null
+              : exportProgress.completed / exportProgress.total;
           return SizedBox(
-            width: 320,
+            width: 320.0,
             child: Column(
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 LinearProgressIndicator(value: value),
-                const SizedBox(height: 8),
+                const SizedBox(height: 8.0),
                 Text(
-                  p.currentTable.isEmpty
-                      ? '${p.completed}/${p.total} tables'
-                      : '${p.completed}/${p.total} ${p.currentTable}',
+                  exportProgress.currentTable.isEmpty
+                      ? '${exportProgress.completed}/${exportProgress.total} tables'
+                      : '${exportProgress.completed}/${exportProgress.total} ${exportProgress.currentTable}',
                   style: const TextStyle(fontFamily: 'Menlo', fontSize: 11),
                   overflow: TextOverflow.ellipsis,
                 ),

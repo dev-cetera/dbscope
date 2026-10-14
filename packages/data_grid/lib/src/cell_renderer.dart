@@ -49,7 +49,7 @@ class CellRenderContext<TypeTag> {
 /// inner content widget.
 abstract class CellRenderer<TypeTag> {
   const CellRenderer();
-  Widget build(BuildContext context, CellRenderContext<TypeTag> ctx);
+  Widget build(BuildContext context, CellRenderContext<TypeTag> renderContext);
 }
 
 /// Boring default: renders `value.toString()` as plain text. Useful
@@ -58,15 +58,15 @@ class DefaultCellRenderer<TypeTag> extends CellRenderer<TypeTag> {
   const DefaultCellRenderer();
 
   @override
-  Widget build(BuildContext context, CellRenderContext<TypeTag> ctx) {
-    final v = ctx.value;
-    if (v == null) {
+  Widget build(BuildContext context, CellRenderContext<TypeTag> renderContext) {
+    final value = renderContext.value;
+    if (value == null) {
       return const Text(
         'NULL',
         style: TextStyle(fontStyle: FontStyle.italic),
         overflow: TextOverflow.ellipsis,
       );
     }
-    return Text(v.toString(), overflow: TextOverflow.ellipsis);
+    return Text(value.toString(), overflow: TextOverflow.ellipsis);
   }
 }

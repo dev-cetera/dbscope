@@ -110,7 +110,7 @@ EnforcementPlan buildEnforcementPlan({
   final dbRoles = rolesByDbRole.keys.toList()..sort();
   for (final dbRole in dbRoles) {
     final roleIds = rolesByDbRole[dbRole]!;
-    final r = quoteIdent(dbRole);
+    final quotedRole = quoteIdent(dbRole);
     final policy = AccessPolicy.resolve(
       document: document,
       settings: settings,
@@ -120,24 +120,35 @@ EnforcementPlan buildEnforcementPlan({
     statements.add('-- ${roleIds.join(', ')} → $dbRole');
     final usageSchemas = <String>{};
     final insertSchemas = <String>{};
-    for (final t in tables) {
-      if (isMetaTable?.call(t.schema, t.table) ?? false) continue;
-      final qualified = quoteQualified(t.schema, t.table);
+    for (final enforcementTable in tables) {
+      if (isMetaTable?.call(enforcementTable.schema, enforcementTable.table) ??
+          false) {
+        continue;
+      }
+      final qualified = quoteQualified(
+        enforcementTable.schema,
+        enforcementTable.table,
+      );
       // Per object (tables AND views), so nothing outside this plan's list
       // is revoked and every listed relation is re-granted below.
-      statements.add('REVOKE ALL ON $qualified FROM $r;');
-      final tableLevel = policy.forTable(t.schema, t.table).level;
-      void expect(Privilege p, {required bool granted, String? column}) =>
-          expectations.add(
-            PrivilegeExpectation(
-              dbRole: dbRole,
-              schema: t.schema,
-              table: t.table,
-              column: column,
-              privilege: p,
-              granted: granted,
-            ),
-          );
+      statements.add('REVOKE ALL ON $qualified FROM $quotedRole;');
+      final tableLevel = policy
+          .forTable(enforcementTable.schema, enforcementTable.table)
+          .level;
+      void expect(
+        Privilege privilege, {
+        required bool granted,
+        String? column,
+      }) => expectations.add(
+        PrivilegeExpectation(
+          dbRole: dbRole,
+          schema: enforcementTable.schema,
+          table: enforcementTable.table,
+          column: column,
+          privilege: privilege,
+          granted: granted,
+        ),
+      );
 
       if (tableLevel == AccessLevel.none) {
         expect(Privilege.select, granted: false);
@@ -145,20 +156,22 @@ EnforcementPlan buildEnforcementPlan({
       }
       final readable = <String>[];
       final editable = <String>[];
-      for (final column in t.columns) {
+      for (final column in enforcementTable.columns) {
         final level = policy
             .forColumn(
-              t.schema,
-              t.table,
+              enforcementTable.schema,
+              enforcementTable.table,
               column,
-              isPrimaryKey: t.primaryKey.contains(column),
+              isPrimaryKey: enforcementTable.primaryKey.contains(column),
             )
             .level;
         // Primary keys floor at masked in dbscope (paging needs them); in
         // Postgres the login must SELECT them for anything to work.
-        final isPk = t.primaryKey.contains(column);
-        if (level.atLeast(AccessLevel.read) || isPk) readable.add(column);
-        if (!t.isView &&
+        final isPrimaryKey = enforcementTable.primaryKey.contains(column);
+        if (level.atLeast(AccessLevel.read) || isPrimaryKey) {
+          readable.add(column);
+        }
+        if (!enforcementTable.isView &&
             level.atLeast(AccessLevel.edit) &&
             tableLevel.atLeast(AccessLevel.edit)) {
           editable.add(column);
@@ -168,29 +181,41 @@ EnforcementPlan buildEnforcementPlan({
         expect(Privilege.select, granted: false);
         continue;
       }
-      usageSchemas.add(t.schema);
-      final allReadable = readable.length == t.columns.length;
+      usageSchemas.add(enforcementTable.schema);
+      final allReadable = readable.length == enforcementTable.columns.length;
       if (allReadable) {
-        statements.add('GRANT SELECT ON $qualified TO $r;');
+        statements.add('GRANT SELECT ON $qualified TO $quotedRole;');
         expect(Privilege.select, granted: true);
       } else {
-        final cols = readable.map(quoteIdent).join(', ');
-        statements.add('GRANT SELECT ($cols) ON $qualified TO $r;');
+        final columnList = readable.map(quoteIdent).join(', ');
+        statements.add(
+          'GRANT SELECT ($columnList) ON $qualified TO $quotedRole;',
+        );
         expect(Privilege.select, granted: false);
-        for (final c in t.columns) {
-          expect(Privilege.select, granted: readable.contains(c), column: c);
+        for (final column in enforcementTable.columns) {
+          expect(
+            Privilege.select,
+            granted: readable.contains(column),
+            column: column,
+          );
         }
       }
-      if (t.isView) continue;
+      if (enforcementTable.isView) continue;
       if (editable.isNotEmpty) {
-        if (editable.length == t.columns.length) {
-          statements.add('GRANT UPDATE ON $qualified TO $r;');
+        if (editable.length == enforcementTable.columns.length) {
+          statements.add('GRANT UPDATE ON $qualified TO $quotedRole;');
           expect(Privilege.update, granted: true);
         } else {
-          final cols = editable.map(quoteIdent).join(', ');
-          statements.add('GRANT UPDATE ($cols) ON $qualified TO $r;');
-          for (final c in t.columns) {
-            expect(Privilege.update, granted: editable.contains(c), column: c);
+          final columnList = editable.map(quoteIdent).join(', ');
+          statements.add(
+            'GRANT UPDATE ($columnList) ON $qualified TO $quotedRole;',
+          );
+          for (final column in enforcementTable.columns) {
+            expect(
+              Privilege.update,
+              granted: editable.contains(column),
+              column: column,
+            );
           }
         }
       } else {
@@ -198,39 +223,50 @@ EnforcementPlan buildEnforcementPlan({
       }
       final full = tableLevel.atLeast(AccessLevel.full);
       if (full) {
-        statements.add('GRANT INSERT, DELETE ON $qualified TO $r;');
-        insertSchemas.add(t.schema);
+        statements.add('GRANT INSERT, DELETE ON $qualified TO $quotedRole;');
+        insertSchemas.add(enforcementTable.schema);
       }
       expect(Privilege.insert, granted: full);
       expect(Privilege.delete, granted: full);
     }
     for (final schema in usageSchemas.toList()..sort()) {
-      statements.add('GRANT USAGE ON SCHEMA ${quoteIdent(schema)} TO $r;');
+      statements.add(
+        'GRANT USAGE ON SCHEMA ${quoteIdent(schema)} TO $quotedRole;',
+      );
     }
     // INSERT into a serial/identity table needs the sequence too.
     for (final schema in insertSchemas.toList()..sort()) {
       statements.add(
-        'GRANT USAGE ON ALL SEQUENCES IN SCHEMA ${quoteIdent(schema)} TO $r;',
+        'GRANT USAGE ON ALL SEQUENCES IN SCHEMA ${quoteIdent(schema)} '
+        'TO $quotedRole;',
       );
     }
     if (metaTables.isNotEmpty) {
       final canManage = policy.can(Capability.manage);
-      final metaSchemas = {for (final m in metaTables) m.schema};
+      final metaSchemas = {
+        for (final metaTable in metaTables) metaTable.schema,
+      };
       for (final schema in metaSchemas) {
-        statements.add('GRANT USAGE ON SCHEMA ${quoteIdent(schema)} TO $r;');
+        statements.add(
+          'GRANT USAGE ON SCHEMA ${quoteIdent(schema)} TO $quotedRole;',
+        );
       }
-      for (final m in metaTables) {
-        final q = quoteQualified(m.schema, m.table);
+      for (final metaTable in metaTables) {
+        final qualifiedMetaTable = quoteQualified(
+          metaTable.schema,
+          metaTable.table,
+        );
         statements.add(
           canManage
-              ? 'GRANT SELECT, INSERT, UPDATE, DELETE ON $q TO $r;'
-              : 'GRANT SELECT ON $q TO $r;',
+              ? 'GRANT SELECT, INSERT, UPDATE, DELETE ON $qualifiedMetaTable '
+                    'TO $quotedRole;'
+              : 'GRANT SELECT ON $qualifiedMetaTable TO $quotedRole;',
         );
       }
     }
     statements.add('');
   }
-  if (document.roles.every((r) => r.dbRole == null)) {
+  if (document.roles.every((role) => role.dbRole == null)) {
     notes.add(
       'No role has a db_role, so there is nothing to enforce in '
       'Postgres yet.',

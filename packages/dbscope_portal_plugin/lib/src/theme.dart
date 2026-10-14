@@ -127,7 +127,7 @@ ThemeData buildPortalTheme({String? fontFamily}) {
       titleLarge: TextStyle(
         color: palette.text,
         fontFamily: palette.uiFontFamily,
-        fontSize: 14,
+        fontSize: 14.0,
         fontWeight: FontWeight.w700,
         letterSpacing: 0.4,
         height: 1.2,
@@ -168,7 +168,7 @@ ThemeData buildPortalTheme({String? fontFamily}) {
       titleTextStyle: TextStyle(
         color: palette.text,
         fontFamily: palette.uiFontFamily,
-        fontSize: 14,
+        fontSize: 14.0,
         fontWeight: FontWeight.w700,
         letterSpacing: 0.4,
       ),
@@ -178,7 +178,10 @@ ThemeData buildPortalTheme({String? fontFamily}) {
       filled: true,
       fillColor: palette.field,
       isDense: true,
-      contentPadding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+      contentPadding: const EdgeInsets.symmetric(
+        horizontal: 8.0,
+        vertical: 8.0,
+      ),
       border: outline(palette.border),
       enabledBorder: outline(palette.border),
       focusedBorder: outline(palette.accent),
@@ -206,7 +209,7 @@ ThemeData buildPortalTheme({String? fontFamily}) {
         side: BorderSide(color: palette.border),
       ),
       textStyle: bodyText,
-      elevation: 4,
+      elevation: 4.0,
     ),
     menuTheme: MenuThemeData(
       style: MenuStyle(
@@ -222,7 +225,7 @@ ThemeData buildPortalTheme({String? fontFamily}) {
     ),
     cardTheme: CardThemeData(
       color: palette.surfaceRaised,
-      elevation: 0,
+      elevation: 0.0,
       shape: RoundedRectangleBorder(
         borderRadius: radius,
         side: BorderSide(color: palette.border),
@@ -233,8 +236,8 @@ ThemeData buildPortalTheme({String? fontFamily}) {
         backgroundColor: palette.accent,
         foregroundColor: palette.onAccent,
         shape: RoundedRectangleBorder(borderRadius: radius),
-        elevation: 0,
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+        elevation: 0.0,
+        padding: const EdgeInsets.symmetric(horizontal: 14.0, vertical: 8.0),
         textStyle: TextStyle(
           color: palette.onAccent,
           fontFamily: palette.uiFontFamily,
@@ -249,8 +252,8 @@ ThemeData buildPortalTheme({String? fontFamily}) {
         backgroundColor: palette.accent,
         foregroundColor: palette.onAccent,
         shape: RoundedRectangleBorder(borderRadius: radius),
-        elevation: 0,
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+        elevation: 0.0,
+        padding: const EdgeInsets.symmetric(horizontal: 14.0, vertical: 8.0),
         textStyle: TextStyle(
           color: palette.onAccent,
           fontFamily: palette.uiFontFamily,
@@ -274,11 +277,11 @@ ThemeData buildPortalTheme({String? fontFamily}) {
         backgroundColor: Colors.transparent,
       ),
     ),
-    iconTheme: IconThemeData(color: palette.text, size: 16),
+    iconTheme: IconThemeData(color: palette.text, size: 16.0),
     dividerTheme: DividerThemeData(
       color: palette.border,
       space: 1,
-      thickness: 1,
+      thickness: 1.0,
     ),
     snackBarTheme: SnackBarThemeData(
       backgroundColor: palette.accent,
@@ -299,7 +302,7 @@ ThemeData buildPortalTheme({String? fontFamily}) {
     appBarTheme: AppBarTheme(
       backgroundColor: palette.surfaceRecessed,
       foregroundColor: palette.text,
-      elevation: 0,
+      elevation: 0.0,
       shape: Border(bottom: BorderSide(color: palette.border)),
     ),
     tooltipTheme: TooltipThemeData(
@@ -309,20 +312,20 @@ ThemeData buildPortalTheme({String? fontFamily}) {
         fontFamily: palette.uiFontFamily,
         fontSize: palette.smallFontSize,
       ),
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 4.0),
     ),
     switchTheme: SwitchThemeData(
-      thumbColor: WidgetStateProperty.resolveWith((s) {
-        if (s.contains(WidgetState.selected)) return palette.onAccent;
+      thumbColor: WidgetStateProperty.resolveWith((states) {
+        if (states.contains(WidgetState.selected)) return palette.onAccent;
         return palette.surface;
       }),
-      trackColor: WidgetStateProperty.resolveWith((s) {
-        if (s.contains(WidgetState.selected)) return palette.accent;
+      trackColor: WidgetStateProperty.resolveWith((states) {
+        if (states.contains(WidgetState.selected)) return palette.accent;
         return palette.border;
       }),
     ),
     listTileTheme: ListTileThemeData(
-      contentPadding: const EdgeInsets.symmetric(horizontal: 10),
+      contentPadding: const EdgeInsets.symmetric(horizontal: 10.0),
       minVerticalPadding: 2,
       dense: true,
       textColor: palette.text,

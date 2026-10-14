@@ -152,8 +152,12 @@ class SchemaCatalog {
     if (!policy.active || snapshot == null || snapshot.isSqlite) return all;
     if (policy.can(Capability.manage)) return all;
     return [
-      for (final s in all)
-        if (!MetaTableNames.isDedicatedMetaSchema(s.name, snapshot.settings)) s,
+      for (final schema in all)
+        if (!MetaTableNames.isDedicatedMetaSchema(
+          schema.name,
+          snapshot.settings,
+        ))
+          schema,
     ];
   }
 
@@ -185,8 +189,8 @@ class SchemaCatalog {
     final policy = _policy;
     if (!policy.active) return all;
     return [
-      for (final t in all)
-        if (!policy.forTable(t.schema, t.name).isNone) t,
+      for (final table in all)
+        if (!policy.forTable(table.schema, table.name).isNone) table,
     ];
   }
 
@@ -250,22 +254,25 @@ class SchemaCatalog {
     final policy = _policy;
     if (!policy.active) return all;
     if (policy.forTable(schema, table).isNone) return const [];
-    Set<String>? pk;
+    Set<String>? primaryKeyNames;
     final out = <ColumnInfo>[];
-    for (final c in all) {
-      var decision = policy.forColumn(schema, table, c.name);
+    for (final column in all) {
+      var decision = policy.forColumn(schema, table, column.name);
       if (decision.isNone) {
-        pk ??= (await primaryKey(schema, table)).toSet();
-        if (!pk.contains(c.name)) continue;
+        primaryKeyNames ??= (await primaryKey(schema, table)).toSet();
+        if (!primaryKeyNames.contains(column.name)) continue;
         decision = policy.forColumn(
           schema,
           table,
-          c.name,
+          column.name,
           isPrimaryKey: true,
         );
       }
       out.add(
-        c.withAccess(decision.level, defaultHidden: decision.defaultHidden),
+        column.withAccess(
+          decision.level,
+          defaultHidden: decision.defaultHidden,
+        ),
       );
     }
     return out;
@@ -322,17 +329,17 @@ class SchemaCatalog {
     }
     final enumValues = await _loadEnumValues(enumLookups.keys.toList());
     return [
-      for (final r in raw)
+      for (final rawColumn in raw)
         ColumnInfo(
-          name: r.name,
-          type: pgTypeFromUdt(r.udtName),
-          typeName: r.udtName,
-          nullable: r.nullable,
-          defaultExpr: r.defaultExpr,
-          isGenerated: r.isGenerated,
-          isIdentity: r.isIdentity,
-          enumValues: r.isEnum && r.udtSchema != null
-              ? enumValues[(r.udtSchema!, r.udtName)]
+          name: rawColumn.name,
+          type: pgTypeFromUdt(rawColumn.udtName),
+          typeName: rawColumn.udtName,
+          nullable: rawColumn.nullable,
+          defaultExpr: rawColumn.defaultExpr,
+          isGenerated: rawColumn.isGenerated,
+          isIdentity: rawColumn.isIdentity,
+          enumValues: rawColumn.isEnum && rawColumn.udtSchema != null
+              ? enumValues[(rawColumn.udtSchema!, rawColumn.udtName)]
               : null,
         ),
     ];
@@ -438,19 +445,19 @@ class SchemaCatalog {
         'SELECT name FROM pragma_index_list(?)',
         positional: [table],
       );
-      final cols = <String>{};
-      for (final r in indexes.rows) {
-        final idxName = r[0]! as String;
+      final columns = <String>{};
+      for (final indexRow in indexes.rows) {
+        final idxName = indexRow[0]! as String;
         final info = await conn.execute(
           'SELECT name FROM pragma_index_info(?)',
           positional: [idxName],
         );
         for (final ir in info.rows) {
           final name = ir[0];
-          if (name is String) cols.add(name);
+          if (name is String) columns.add(name);
         }
       }
-      return cols;
+      return columns;
     }
     final result = await conn.execute(
       '''
@@ -478,10 +485,18 @@ class SchemaCatalog {
     bool visible(String schema, String table, String column) =>
         !policy.forColumn(schema, table, column).isNone;
     return [
-      for (final fk in all)
-        if (visible(fk.fromSchema, fk.fromTable, fk.fromColumn) &&
-            visible(fk.toSchema, fk.toTable, fk.toColumn))
-          fk,
+      for (final foreignKey in all)
+        if (visible(
+              foreignKey.fromSchema,
+              foreignKey.fromTable,
+              foreignKey.fromColumn,
+            ) &&
+            visible(
+              foreignKey.toSchema,
+              foreignKey.toTable,
+              foreignKey.toColumn,
+            ))
+          foreignKey,
     ];
   }
 
@@ -491,12 +506,14 @@ class SchemaCatalog {
   /// per row instead.
   Future<List<ForeignKey>> _virtualForeignKeys(MetaSnapshot snapshot) async {
     final links = [
-      for (final l in snapshot.index.links)
-        if (l.to?.exactColumn != null && l.target.isColumnLevel) l,
+      for (final link in snapshot.index.links)
+        if (link.to?.exactColumn != null && link.target.isColumnLevel) link,
     ];
     if (links.isEmpty) return const [];
     final out = <ForeignKey>[];
-    final needsExpansion = links.any((l) => l.target.exactColumn == null);
+    final needsExpansion = links.any(
+      (link) => link.target.exactColumn == null,
+    );
     var allColumns = const <(String, String, String)>[];
     if (needsExpansion) allColumns = await _allColumnTriples();
     for (final link in links) {
@@ -505,8 +522,13 @@ class SchemaCatalog {
       final sources = exact != null
           ? [(exact.schema, exact.table, exact.column)]
           : [
-              for (final c in allColumns)
-                if (link.target.matchesColumn(c.$1, c.$2, c.$3)) c,
+              for (final columnTriple in allColumns)
+                if (link.target.matchesColumn(
+                  columnTriple.$1,
+                  columnTriple.$2,
+                  columnTriple.$3,
+                ))
+                  columnTriple,
             ];
       for (final source in sources) {
         out.add(
@@ -529,25 +551,25 @@ class SchemaCatalog {
   Future<List<(String, String, String)>> _allColumnTriples() async {
     if (_isSqlite) {
       final out = <(String, String, String)>[];
-      for (final t in await _sqliteListTables(_kSqliteMainSchema)) {
-        final cols = await conn.execute(
+      for (final table in await _sqliteListTables(_kSqliteMainSchema)) {
+        final columnRows = await conn.execute(
           'SELECT name FROM pragma_table_info(?)',
-          positional: [t.name],
+          positional: [table.name],
         );
-        for (final r in cols.rows) {
-          out.add((_kSqliteMainSchema, t.name, r[0]! as String));
+        for (final row in columnRows.rows) {
+          out.add((_kSqliteMainSchema, table.name, row[0]! as String));
         }
       }
       return out;
     }
-    final res = await conn.execute('''
+    final result = await conn.execute('''
  SELECT table_schema::text, table_name::text, column_name::text
  FROM information_schema.columns
  WHERE table_schema NOT IN ('pg_catalog', 'information_schema')
  ''');
     return [
-      for (final r in res.rows)
-        (r[0]! as String, r[1]! as String, r[2]! as String),
+      for (final row in result.rows)
+        (row[0]! as String, row[1]! as String, row[2]! as String),
     ];
   }
 
@@ -601,35 +623,40 @@ class SchemaCatalog {
     // gutter math (constraintKey) groups composite edges correctly.
     final tables = await _sqliteListTables(_kSqliteMainSchema);
     final out = <ForeignKey>[];
-    for (final t in tables) {
-      if (t.kind != 'BASE TABLE') continue;
-      final res = await conn.execute(
+    for (final table in tables) {
+      if (table.kind != 'BASE TABLE') continue;
+      final result = await conn.execute(
         'SELECT id, seq, "table", "from", "to" '
         'FROM pragma_foreign_key_list(?) ORDER BY id, seq',
-        positional: [t.name],
+        positional: [table.name],
       );
-      for (final r in res.rows) {
-        final id = toInt(r[0]) ?? 0;
-        final seq = toInt(r[1]) ?? 0;
-        final refTable = r[2]! as String;
-        final fromCol = r[3]! as String;
+      for (final row in result.rows) {
+        final id = toInt(row[0]) ?? 0;
+        final seq = toInt(row[1]) ?? 0;
+        final refTable = row[2]! as String;
+        final fromColumn = row[3]! as String;
         // `to` is null when the FK targets the PK implicitly. In that
         // case we resolve via the target table's PK column at position
         // [seq]. Falling back to empty produces a still-readable edge.
-        var toCol = r[4] as String?;
-        if (toCol == null || toCol.isEmpty) {
-          final pk = await primaryKey(_kSqliteMainSchema, refTable);
-          toCol = (seq >= 0 && seq < pk.length) ? pk[seq] : '';
+        var toColumn = row[4] as String?;
+        if (toColumn == null || toColumn.isEmpty) {
+          final primaryKeyColumns = await primaryKey(
+            _kSqliteMainSchema,
+            refTable,
+          );
+          toColumn = (seq >= 0 && seq < primaryKeyColumns.length)
+              ? primaryKeyColumns[seq]
+              : '';
         }
         out.add(
           ForeignKey(
-            constraintName: 'fk_${t.name}_$id',
+            constraintName: 'fk_${table.name}_$id',
             fromSchema: _kSqliteMainSchema,
-            fromTable: t.name,
-            fromColumn: fromCol,
+            fromTable: table.name,
+            fromColumn: fromColumn,
             toSchema: _kSqliteMainSchema,
             toTable: refTable,
-            toColumn: toCol,
+            toColumn: toColumn,
           ),
         );
       }
@@ -695,15 +722,15 @@ class SchemaCatalog {
       final columns = await listColumns(schema, table);
       if (columns.isEmpty) return null;
       selectList = [
-        for (final c in columns)
-          if (c.isMasked && !pkColumns.contains(c.name))
-            'NULL AS ${quoteIdent(c.name)}'
+        for (final column in columns)
+          if (column.isMasked && !pkColumns.contains(column.name))
+            'NULL AS ${quoteIdent(column.name)}'
           else
-            quoteIdent(c.name),
+            quoteIdent(column.name),
       ].join(', ');
       masked.addAll([
-        for (final c in columns)
-          if (c.isMasked) c.name,
+        for (final column in columns)
+          if (column.isMasked) column.name,
       ]);
     }
     final sql =

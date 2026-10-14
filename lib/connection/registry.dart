@@ -78,22 +78,22 @@ class ConnectionRegistry extends ChangeNotifier {
   /// server-side keychain). Used by connection-link export, which needs a
   /// self-contained profile. Returns null if the profile is unknown.
   Future<ConnectionProfile?> profileWithPassword(String id) async {
-    final p = _states[id]?.profile ?? profileById(id);
-    if (p == null) return null;
-    if (p.password.isNotEmpty) return p;
+    final profile = _states[id]?.profile ?? profileById(id);
+    if (profile == null) return null;
+    if (profile.password.isNotEmpty) return profile;
     final client = _profileClient;
-    if (client == null) return p;
+    if (client == null) return profile;
     try {
       final pw = await client.password(id);
-      return pw.isEmpty ? p : p.copyWith(password: pw);
+      return pw.isEmpty ? profile : profile.copyWith(password: pw);
     } catch (_) {
-      return p;
+      return profile;
     }
   }
 
   ConnectionProfile? profileById(String id) =>
       _profiles.cast<ConnectionProfile?>().firstWhere(
-        (p) => p?.id == id,
+        (profile) => profile?.id == id,
         orElse: () => null,
       );
 
@@ -140,11 +140,11 @@ class ConnectionRegistry extends ChangeNotifier {
     String profileId, {
     required bool broadcast,
   }) async {
-    final exec = _states[profileId]?.executor;
-    if (exec == null) return;
+    final executor = _states[profileId]?.executor;
+    if (executor == null) return;
     await MetadataCache.instance.reload(profileId, broadcast: broadcast);
     DbmlCache.instance.invalidate(profileId);
-    DbmlCache.instance.warm(profileId, exec);
+    DbmlCache.instance.warm(profileId, executor);
     notifyListeners();
   }
 
@@ -166,42 +166,43 @@ class ConnectionRegistry extends ChangeNotifier {
       ..clear()
       ..addAll(fresh);
     // Drop states whose profile vanished.
-    final keep = _profiles.map((p) => p.id).toSet();
+    final keep = _profiles.map((profile) => profile.id).toSet();
     _states.removeWhere((id, _) => !keep.contains(id));
     // Update existing states; create new ones so switching to a saved
     // profile actually has somewhere to open a connection from.
-    for (final p in fresh) {
-      final s = _states[p.id];
-      if (s != null) {
+    for (final freshProfile in fresh) {
+      final state = _states[freshProfile.id];
+      if (state != null) {
         // If another window flipped readOnly on a profile we have open,
         // re-apply it to the executor here so this window stops issuing
         // writes (or starts allowing them) without needing a reconnect.
-        final readOnlyChanged = s.isReadOnlyOverride != p.readOnly;
+        final readOnlyChanged =
+            state.isReadOnlyOverride != freshProfile.readOnly;
         final metadataChanged =
-            s.profile.metadata.toJson().toString() !=
-            p.metadata.toJson().toString();
-        s.profile = p;
-        if (metadataChanged && s.executor != null) {
-          final exec = s.executor!;
+            state.profile.metadata.toJson().toString() !=
+            freshProfile.metadata.toJson().toString();
+        state.profile = freshProfile;
+        if (metadataChanged && state.executor != null) {
+          final executor = state.executor!;
           unawaited(
-            MetadataCache.instance.profileChanged(p).then((_) {
-              DbmlCache.instance.invalidate(p.id);
-              DbmlCache.instance.warm(p.id, exec);
+            MetadataCache.instance.profileChanged(freshProfile).then((_) {
+              DbmlCache.instance.invalidate(freshProfile.id);
+              DbmlCache.instance.warm(freshProfile.id, executor);
               notifyListeners();
             }),
           );
         }
         if (readOnlyChanged) {
-          s.isReadOnlyOverride = p.readOnly;
-          final exec = s.executor;
-          if (exec != null &&
-              exec.isOpen &&
-              exec.capabilities.sessionReadOnly) {
-            unawaited(exec.setReadOnly(readOnly: p.readOnly));
+          state.isReadOnlyOverride = freshProfile.readOnly;
+          final executor = state.executor;
+          if (executor != null &&
+              executor.isOpen &&
+              executor.capabilities.sessionReadOnly) {
+            unawaited(executor.setReadOnly(readOnly: freshProfile.readOnly));
           }
         }
       } else {
-        _states[p.id] = _ConnState(p);
+        _states[freshProfile.id] = _ConnState(freshProfile);
       }
     }
     if (_activeId != null && !keep.contains(_activeId)) {
@@ -237,15 +238,17 @@ class ConnectionRegistry extends ChangeNotifier {
     final cached = stored.password.isEmpty
         ? ConnectionProfile.fromJson(stored.toJson(), profile.password)
         : stored;
-    final existing = _profiles.indexWhere((p) => p.id == cached.id);
+    final existing = _profiles.indexWhere(
+      (profile) => profile.id == cached.id,
+    );
     if (existing >= 0) {
       _profiles[existing] = cached;
     } else {
       _profiles.add(cached);
     }
-    final s = _states[cached.id];
-    if (s != null) {
-      s.profile = cached;
+    final state = _states[cached.id];
+    if (state != null) {
+      state.profile = cached;
     } else {
       _states[cached.id] = _ConnState(cached);
     }
@@ -261,7 +264,7 @@ class ConnectionRegistry extends ChangeNotifier {
     if (client == null) return;
     await _closeState(_states[id]);
     _states.remove(id);
-    _profiles.removeWhere((p) => p.id == id);
+    _profiles.removeWhere((profile) => profile.id == id);
     if (_activeId == id) _activeId = null;
     DbmlCache.instance.invalidate(id);
     MetadataCache.instance.invalidate(id);
@@ -336,11 +339,14 @@ class ConnectionRegistry extends ChangeNotifier {
           state.profile = profile;
         }
       }
-      var ctx = context;
-      if (ctx != null && !ctx.mounted) ctx = null;
-      // `ctx` was nulled out just above if it unmounted during the awaits.
+      var mountedContext = context;
+      if (mountedContext != null && !mountedContext.mounted) {
+        mountedContext = null;
+      }
+      // `mountedContext` was nulled out just above if it unmounted during
+      // the awaits.
       // ignore: use_build_context_synchronously
-      final opened = await plugin.open(profile, context: ctx);
+      final opened = await plugin.open(profile, context: mountedContext);
       if (opened.updatedProfile != null) {
         state.profile = opened.updatedProfile!;
         // Persist plugin-driven mutations (e.g. new refresh-token blob).
@@ -380,11 +386,11 @@ class ConnectionRegistry extends ChangeNotifier {
 
   Future<void> _closeState(_ConnState? state) async {
     if (state == null) return;
-    final c = state.executor;
+    final executor = state.executor;
     state.executor = null;
-    if (c != null) {
+    if (executor != null) {
       try {
-        await c.close();
+        await executor.close();
       } catch (_) {}
     }
   }
@@ -401,11 +407,11 @@ class ConnectionRegistry extends ChangeNotifier {
     if (id == null) return;
     final state = _states[id];
     if (state == null) return;
-    final c = state.executor;
+    final executor = state.executor;
     state.executor = null;
-    if (c != null) {
+    if (executor != null) {
       try {
-        await c.close(force: true);
+        await executor.close(force: true);
       } catch (_) {}
     }
     notifyListeners();
@@ -422,10 +428,14 @@ class ConnectionRegistry extends ChangeNotifier {
     String table,
     TableOverrides? overrides,
   ) async {
-    final idx = _profiles.indexWhere((p) => p.id == profileId);
-    if (idx < 0) return;
-    final updated = _profiles[idx].withTableOverride(schema, table, overrides);
-    _profiles[idx] = updated;
+    final index = _profiles.indexWhere((profile) => profile.id == profileId);
+    if (index < 0) return;
+    final updated = _profiles[index].withTableOverride(
+      schema,
+      table,
+      overrides,
+    );
+    _profiles[index] = updated;
     final state = _states[profileId];
     if (state != null) state.profile = updated;
     if (_profileClient != null) {
@@ -446,10 +456,10 @@ class ConnectionRegistry extends ChangeNotifier {
     String profileId,
     TenantFilter? filter,
   ) async {
-    final idx = _profiles.indexWhere((p) => p.id == profileId);
-    if (idx < 0) return;
-    final updated = _profiles[idx].copyWith(tenantFilter: filter);
-    _profiles[idx] = updated;
+    final index = _profiles.indexWhere((profile) => profile.id == profileId);
+    if (index < 0) return;
+    final updated = _profiles[index].copyWith(tenantFilter: filter);
+    _profiles[index] = updated;
     final state = _states[profileId];
     if (state != null) state.profile = updated;
     if (_profileClient != null) {
@@ -464,14 +474,16 @@ class ConnectionRegistry extends ChangeNotifier {
     final state = _states[profileId];
     if (state == null) return;
     state.isReadOnlyOverride = readOnly;
-    final exec = state.executor;
-    if (exec != null && exec.isOpen && exec.capabilities.sessionReadOnly) {
-      await exec.setReadOnly(readOnly: readOnly);
+    final executor = state.executor;
+    if (executor != null &&
+        executor.isOpen &&
+        executor.capabilities.sessionReadOnly) {
+      await executor.setReadOnly(readOnly: readOnly);
     }
-    final idx = _profiles.indexWhere((p) => p.id == profileId);
-    if (idx >= 0) {
-      final updated = _profiles[idx].copyWith(readOnly: readOnly);
-      _profiles[idx] = updated;
+    final index = _profiles.indexWhere((profile) => profile.id == profileId);
+    if (index >= 0) {
+      final updated = _profiles[index].copyWith(readOnly: readOnly);
+      _profiles[index] = updated;
       state.profile = updated;
       // Push back to server so other windows see it.
       if (_profileClient != null) {
@@ -484,8 +496,8 @@ class ConnectionRegistry extends ChangeNotifier {
   }
 
   Future<void> disconnectAll() async {
-    for (final s in _states.values) {
-      await _closeState(s);
+    for (final state in _states.values) {
+      await _closeState(state);
     }
     _activeId = null;
     unawaited(_profileSub?.cancel());
@@ -501,10 +513,10 @@ class ConnectionRegistry extends ChangeNotifier {
     String profileId,
     MetadataSettings settings,
   ) async {
-    final idx = _profiles.indexWhere((p) => p.id == profileId);
-    if (idx < 0) return;
-    final updated = _profiles[idx].copyWith(metadata: settings);
-    _profiles[idx] = updated;
+    final index = _profiles.indexWhere((profile) => profile.id == profileId);
+    if (index < 0) return;
+    final updated = _profiles[index].copyWith(metadata: settings);
+    _profiles[index] = updated;
     final state = _states[profileId];
     if (state != null) state.profile = updated;
     if (_profileClient != null) {
@@ -512,11 +524,11 @@ class ConnectionRegistry extends ChangeNotifier {
         await _profileClient!.upsert(updated);
       } catch (_) {}
     }
-    final exec = state?.executor;
-    if (exec != null) {
+    final executor = state?.executor;
+    if (executor != null) {
       await MetadataCache.instance.profileChanged(updated);
       DbmlCache.instance.invalidate(profileId);
-      DbmlCache.instance.warm(profileId, exec);
+      DbmlCache.instance.warm(profileId, executor);
     }
     notifyListeners();
   }

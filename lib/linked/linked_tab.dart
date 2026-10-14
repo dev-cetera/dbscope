@@ -11,7 +11,7 @@ import '../navigator/navigator_tab.dart';
 import '../query/pager.dart';
 import '../shell/app_state.dart';
 
-bool _samePk(List<Object?> a, List<Object?> b) {
+bool _samePrimaryKey(List<Object?> a, List<Object?> b) {
   if (a.length != b.length) return false;
   for (var i = 0; i < a.length; i++) {
     if (a[i] != b[i]) return false;
@@ -74,9 +74,13 @@ class LinkedRowNode extends LinkedNode {
   var isLoading = false;
   String? error;
 
-  bool sameRowAs(String otherSchema, String otherTable, List<Object?> otherPk) {
+  bool sameRowAs(
+    String otherSchema,
+    String otherTable,
+    List<Object?> otherPrimaryKey,
+  ) {
     if (otherSchema != schema || otherTable != table) return false;
-    return _samePk(pkValues, otherPk);
+    return _samePrimaryKey(pkValues, otherPrimaryKey);
   }
 
   /// Ordered list of columns the node renders in its body. PK columns
@@ -84,16 +88,18 @@ class LinkedRowNode extends LinkedNode {
   /// followed by outbound FK columns (so outbound edges can anchor to
   /// the FK row). Used by both the node body and the edge painter so
   /// anchor Y positions stay in sync.
-  List<String> bodyColumnOrder(List<ForeignKey> allFks) {
+  List<String> bodyColumnOrder(List<ForeignKey> allForeignKeys) {
     final out = <String>[];
     final seen = <String>{};
-    for (final pk in pkColumns) {
-      if (seen.add(pk)) out.add(pk);
+    for (final primaryKey in pkColumns) {
+      if (seen.add(primaryKey)) out.add(primaryKey);
     }
-    for (final fk in allFks) {
-      if (fk.fromSchema != schema || fk.fromTable != table) continue;
-      if (!seen.add(fk.fromColumn)) continue;
-      out.add(fk.fromColumn);
+    for (final foreignKey in allForeignKeys) {
+      if (foreignKey.fromSchema != schema || foreignKey.fromTable != table) {
+        continue;
+      }
+      if (!seen.add(foreignKey.fromColumn)) continue;
+      out.add(foreignKey.fromColumn);
     }
     return out;
   }
@@ -152,9 +158,13 @@ class LinkedRowRef {
   var isLoading = false;
   String? error;
 
-  bool sameRowAs(String otherSchema, String otherTable, List<Object?> otherPk) {
+  bool sameRowAs(
+    String otherSchema,
+    String otherTable,
+    List<Object?> otherPrimaryKey,
+  ) {
     if (otherSchema != schema || otherTable != table) return false;
-    return _samePk(pkValues, otherPk);
+    return _samePrimaryKey(pkValues, otherPrimaryKey);
   }
 }
 
@@ -253,9 +263,9 @@ class LinkedTab extends TabModel {
   /// used by the view to focus an existing node instead of opening a
   /// duplicate.
   LinkedRowNode? findRow(String schema, String table, List<Object?> pkValues) {
-    for (final n in nodes) {
-      if (n is LinkedRowNode && n.sameRowAs(schema, table, pkValues)) {
-        return n;
+    for (final node in nodes) {
+      if (node is LinkedRowNode && node.sameRowAs(schema, table, pkValues)) {
+        return node;
       }
     }
     return null;
@@ -266,17 +276,17 @@ class LinkedTab extends TabModel {
     String table, {
     String? inboundConstraintKey,
   }) {
-    for (final n in nodes) {
-      if (n is! LinkedListNode) continue;
-      if (n.schema != schema || n.table != table) continue;
-      final cKey = n.inboundFilter?.constraintKey;
-      if (cKey == inboundConstraintKey) return n;
+    for (final node in nodes) {
+      if (node is! LinkedListNode) continue;
+      if (node.schema != schema || node.table != table) continue;
+      final cKey = node.inboundFilter?.constraintKey;
+      if (cKey == inboundConstraintKey) return node;
     }
     return null;
   }
 
   void removeNode(String id) {
-    nodes.removeWhere((n) => n.id == id);
+    nodes.removeWhere((node) => node.id == id);
     edges.removeWhere((e) => e.fromNodeId == id || e.toNodeId == id);
     if (selectedNodeId == id) selectedNodeId = null;
   }
@@ -286,7 +296,7 @@ class LinkedTab extends TabModel {
   /// Used by "Remove chain" so picking any node in a chain drops the
   /// whole chain.
   Set<String> connectedComponentOf(String startId) {
-    final byId = {for (final n in nodes) n.id};
+    final byId = {for (final node in nodes) node.id};
     if (!byId.contains(startId)) return const {};
     final adj = <String, Set<String>>{
       for (final id in byId) id: <String>{},
@@ -299,10 +309,10 @@ class LinkedTab extends TabModel {
     final out = <String>{};
     final queue = <String>[startId];
     while (queue.isNotEmpty) {
-      final cur = queue.removeLast();
-      if (!out.add(cur)) continue;
-      for (final n in adj[cur] ?? const <String>{}) {
-        if (!out.contains(n)) queue.add(n);
+      final current = queue.removeLast();
+      if (!out.add(current)) continue;
+      for (final neighbourId in adj[current] ?? const <String>{}) {
+        if (!out.contains(neighbourId)) queue.add(neighbourId);
       }
     }
     return out;
@@ -314,7 +324,7 @@ class LinkedTab extends TabModel {
   void removeChain(String startId) {
     final ids = connectedComponentOf(startId);
     if (ids.isEmpty) return;
-    nodes.removeWhere((n) => ids.contains(n.id));
+    nodes.removeWhere((node) => ids.contains(node.id));
     edges.removeWhere(
       (e) => ids.contains(e.fromNodeId) || ids.contains(e.toNodeId),
     );
@@ -326,8 +336,8 @@ class LinkedTab extends TabModel {
   LinkedRowNode? get selectedRowNode {
     final id = selectedNodeId;
     if (id == null) return null;
-    for (final n in nodes) {
-      if (n.id == id && n is LinkedRowNode) return n;
+    for (final node in nodes) {
+      if (node.id == id && node is LinkedRowNode) return node;
     }
     return null;
   }

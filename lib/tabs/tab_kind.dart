@@ -80,7 +80,7 @@ class TabKindRegistry {
 
   void register(TabKind kind) {
     if (_byId.containsKey(kind.id)) {
-      _all.removeWhere((k) => k.id == kind.id);
+      _all.removeWhere((registered) => registered.id == kind.id);
       _byModelType.remove(_byId[kind.id]!.modelType);
     }
     _all.add(kind);

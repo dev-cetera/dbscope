@@ -200,7 +200,7 @@ class _PassphraseDialogState extends State<_PassphraseDialog> {
           children: [
             if (widget.showError)
               Padding(
-                padding: const EdgeInsets.only(bottom: 8),
+                padding: const EdgeInsets.only(bottom: 8.0),
                 child: Text(
                   'Wrong passphrase — try again.',
                   style: TextStyle(color: Theme.of(context).colorScheme.error),
@@ -214,7 +214,7 @@ class _PassphraseDialogState extends State<_PassphraseDialog> {
                         'to unlock and connect.',
               style: Theme.of(context).textTheme.bodySmall,
             ),
-            const SizedBox(height: 12),
+            const SizedBox(height: 12.0),
             TextFormField(
               controller: _pass,
               autofocus: true,
@@ -228,21 +228,22 @@ class _PassphraseDialogState extends State<_PassphraseDialog> {
                   ),
                 ),
               ),
-              validator: (v) => (v == null || v.isEmpty) ? 'required' : null,
+              validator: (text) =>
+                  (text == null || text.isEmpty) ? 'required' : null,
               onFieldSubmitted: (_) {
                 if (!widget.confirm) _submit();
               },
             ),
             if (widget.confirm) ...[
-              const SizedBox(height: 12),
+              const SizedBox(height: 12.0),
               TextFormField(
                 controller: _confirm,
                 obscureText: !_visible,
                 decoration: const InputDecoration(
                   labelText: 'Confirm passphrase',
                 ),
-                validator: (v) =>
-                    v != _pass.text ? 'passphrases do not match' : null,
+                validator: (text) =>
+                    text != _pass.text ? 'passphrases do not match' : null,
               ),
             ],
           ],

@@ -122,8 +122,8 @@ class Selector {
   /// Sum of segment scores (literal 2, partial glob 1, `*` 0).
   int get score {
     var total = 0;
-    for (final s in _segments) {
-      total += s.score;
+    for (final segment in _segments) {
+      total += segment.score;
     }
     return total;
   }
@@ -213,14 +213,14 @@ class Selector {
   /// as a chart's source or an action's table.
   ({String schema, String table})? get exactTable {
     if (scope != SelectorScope.relation || _segments.length != 2) return null;
-    if (_segments.any((s) => s.glob != null)) return null;
+    if (_segments.any((segment) => segment.glob != null)) return null;
     return (schema: _segments[0].text, table: _segments[1].text);
   }
 
   /// The literal column this selector names, when it names exactly one.
   ({String schema, String table, String column})? get exactColumn {
     if (scope != SelectorScope.relation || _segments.length != 3) return null;
-    if (_segments.any((s) => s.glob != null)) return null;
+    if (_segments.any((segment) => segment.glob != null)) return null;
     return (
       schema: _segments[0].text,
       table: _segments[1].text,

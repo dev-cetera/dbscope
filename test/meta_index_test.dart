@@ -22,11 +22,11 @@ import 'package:dbscope/meta/meta_sources.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 MetaSourceData dbSource(List<Map<String, Object?>> rows) {
-  final b = MetaSourceBuilder(MetaSourceKind.database);
-  for (final r in rows) {
-    b.addMetaEntry(r, where: 'db');
+  final builder = MetaSourceBuilder(MetaSourceKind.database);
+  for (final row in rows) {
+    builder.addMetaEntry(row, where: 'db');
   }
-  return b.build();
+  return builder.build();
 }
 
 void main() {
@@ -69,9 +69,12 @@ meta:
   - { id: general, target: "*.*.email", kind: describe, description: general from file, unit: text }
 ''');
     final index = MetaIndex.build(mergeMetaSources([db, file]));
-    final d = index.describeColumn('public', 'users', 'email');
-    expect(d.description, 'specific from db');
-    expect(d.unit, 'text'); // field-by-field: the general row still fills gaps
+    final description = index.describeColumn('public', 'users', 'email');
+    expect(description.description, 'specific from db');
+    expect(
+      description.unit,
+      'text',
+    ); // field-by-field: the general row still fills gaps
   });
 
   test("a table's description does not leak onto its columns", () {
@@ -97,9 +100,9 @@ meta:
   - { id: d3, target: "*.*.duration_ms", kind: display, renderer: duration }
 ''');
     final index = MetaIndex.build(mergeMetaSources([file]));
-    final t = index.displayTable('public', 'users');
-    expect(t.rowLabel, '{name}');
-    expect(t.parsedDefaultSort, (column: 'created_at', descending: true));
+    final table = index.displayTable('public', 'users');
+    expect(table.rowLabel, '{name}');
+    expect(table.parsedDefaultSort, (column: 'created_at', descending: true));
     expect(
       index.displayColumn('public', 'runs', 'duration_ms').renderer,
       ValueRenderer.duration,
@@ -128,14 +131,14 @@ meta:
   });
 
   test('an including file can disable a row its include defines', () async {
-    final dir = await Directory.systemTemp.createTemp('dbscope_meta_');
-    addTearDown(() => dir.delete(recursive: true));
-    await File('${dir.path}/base.yaml').writeAsString('''
+    final directory = await Directory.systemTemp.createTemp('dbscope_meta_');
+    addTearDown(() => directory.delete(recursive: true));
+    await File('${directory.path}/base.yaml').writeAsString('''
 meta:
   - { id: q.keep, kind: query, label: Keep, sql: SELECT 1 }
   - { id: q.drop, kind: query, label: Drop, sql: SELECT 2 }
 ''');
-    final top = File('${dir.path}/top.yaml');
+    final top = File('${directory.path}/top.yaml');
     await top.writeAsString('''
 include: [base.yaml]
 meta:
@@ -144,7 +147,7 @@ meta:
     final index = MetaIndex.build(
       mergeMetaSources([await FileSource.load(top.path)]),
     );
-    expect([for (final q in index.queries) q.id], ['q.keep']);
+    expect([for (final query in index.queries) query.id], ['q.keep']);
   });
 
   test('list kinds parse; bad entries become problems', () {
@@ -161,14 +164,19 @@ meta:
   - { id: x1, kind: mystery }
 ''');
     final index = MetaIndex.build(mergeMetaSources([file]));
-    expect(index.queries.map((q) => q.id), ['q1']);
+    expect(index.queries.map((query) => query.id), ['q1']);
     expect(
       index
           .actionsForTable(ActionScope.row, 'public', 'users')
-          .map((a) => a.id),
+          .map((action) => action.id),
       ['a1'],
     );
-    expect(index.chartsForTable('public', 'accounts').map((c) => c.id), ['c1']);
+    expect(
+      index.chartsForTable('public', 'accounts').map((chart) => chart.id),
+      [
+        'c1',
+      ],
+    );
     expect(
       index
           .linksForColumn('public', 'assets', 'entity_id')
@@ -177,7 +185,7 @@ meta:
       TableNameTransform.lower,
     );
     expect(index.checks.single.label, 'Orphans');
-    final messages = index.allProblems.map((p) => p.where).toList();
+    final messages = index.allProblems.map((problem) => problem.where).toList();
     expect(messages, containsAll(['q2', 'a2', 'c2', 'x1']));
   });
 

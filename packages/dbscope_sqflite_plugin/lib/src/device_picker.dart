@@ -56,24 +56,26 @@ Future<DeviceDiscovery> discoverDevices() async {
   final out = <DiscoveredDevice>[];
   String? hint;
   final android = await detectAndroidDevices();
-  for (final d in android.devices) {
+  for (final device in android.devices) {
     out.add(
       DiscoveredDevice(
         kind: 'android',
-        id: d.serial,
-        label: d.model == null ? d.serial : '${d.model} (${d.serial})',
-        model: d.model,
+        id: device.serial,
+        label: device.model == null
+            ? device.serial
+            : '${device.model} (${device.serial})',
+        model: device.model,
       ),
     );
   }
   if (android.hint != null) hint = android.hint;
   final ios = await detectIosDevices();
-  for (final d in ios) {
+  for (final device in ios) {
     out.add(
       DiscoveredDevice(
         kind: 'ios',
-        id: d.identifier,
-        label: d.name,
+        id: device.identifier,
+        label: device.name,
       ),
     );
   }
@@ -104,14 +106,14 @@ Future<List<DiscoveredApp>> discoverApps(DiscoveredDevice device) async {
     final apps = await listIosApps(device.id);
     final out = <DiscoveredApp>[];
     final probes = <Future<void>>[];
-    for (final a in apps) {
+    for (final app in apps) {
       probes.add(() async {
-        final ok = await iosAppHasData(device.id, a.bundleId);
+        final ok = await iosAppHasData(device.id, app.bundleId);
         if (ok) {
           out.add(
             DiscoveredApp(
-              id: a.bundleId,
-              displayName: a.name,
+              id: app.bundleId,
+              displayName: app.name,
               debuggable: true,
             ),
           );

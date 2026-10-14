@@ -23,13 +23,13 @@ class _EnumInput extends StatelessWidget {
     );
     return _Field(
       enabled: enabled,
-      padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+      padding: const EdgeInsets.symmetric(horizontal: 4.0, vertical: 2.0),
       child: DropdownButtonHideUnderline(
         child: DropdownButton<String>(
           value: present ? value : null,
           isDense: true,
           isExpanded: true,
-          icon: const Icon(Icons.arrow_drop_down, size: 16),
+          icon: const Icon(Icons.arrow_drop_down, size: 16.0),
           style: textStyle,
           dropdownColor: palette.surface,
           hint: Text(
@@ -37,7 +37,8 @@ class _EnumInput extends StatelessWidget {
             style: textStyle.copyWith(color: palette.mutedText),
           ),
           items: [
-            for (final v in values) DropdownMenuItem(value: v, child: Text(v)),
+            for (final option in values)
+              DropdownMenuItem(value: option, child: Text(option)),
           ],
           onChanged: enabled ? onChanged : null,
         ),

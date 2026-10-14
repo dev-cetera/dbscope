@@ -123,7 +123,7 @@ class _CodeEditorSubwindowScreenState extends State<CodeEditorSubwindowScreen> {
       backgroundColor: palette.surface,
       appBar: AppBar(title: Text(widget.payload.title)),
       body: Padding(
-        padding: const EdgeInsets.fromLTRB(12, 12, 12, 8),
+        padding: const EdgeInsets.fromLTRB(12.0, 12.0, 12.0, 8.0),
         child: CodeEditorPanel(
           key: _panelKey,
           initialText: widget.payload.initialText,
@@ -131,8 +131,8 @@ class _CodeEditorSubwindowScreenState extends State<CodeEditorSubwindowScreen> {
           validator: _validator,
           formatter: _formatter,
           onChanged: (_) {
-            final v = _panelKey.currentState?.isValid ?? true;
-            if (v != _isValid) setState(() => _isValid = v);
+            final isValid = _panelKey.currentState?.isValid ?? true;
+            if (isValid != _isValid) setState(() => _isValid = isValid);
           },
           onSaveRequested: (_) => _save(),
           onCancelRequested: _cancel,
@@ -140,7 +140,7 @@ class _CodeEditorSubwindowScreenState extends State<CodeEditorSubwindowScreen> {
       ),
       bottomNavigationBar: SafeArea(
         child: Padding(
-          padding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
+          padding: const EdgeInsets.fromLTRB(12.0, 0.0, 12.0, 12.0),
           child: Row(
             mainAxisAlignment: MainAxisAlignment.end,
             children: [
@@ -149,13 +149,13 @@ class _CodeEditorSubwindowScreenState extends State<CodeEditorSubwindowScreen> {
                   onPressed: () => _panelKey.currentState?.format(),
                   child: Text(widget.payload.formatLabel ?? 'Format'),
                 ),
-                const SizedBox(width: 8),
+                const SizedBox(width: 8.0),
               ],
               TextButton(
                 onPressed: _cancel,
                 child: Text(widget.payload.cancelLabel),
               ),
-              const SizedBox(width: 8),
+              const SizedBox(width: 8.0),
               FilledButton(
                 onPressed: _isValid ? _save : null,
                 child: Text(widget.payload.saveLabel),

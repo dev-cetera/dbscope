@@ -29,15 +29,15 @@ Future<ConnectionProfile?> showAddConnectionDialog(
   }
   final picked = await showDialog<ConnectionKindPlugin>(
     context: context,
-    builder: (ctx) => SimpleDialog(
+    builder: (dialogContext) => SimpleDialog(
       title: const Text('New connection'),
       children: [
-        for (final k in kinds)
+        for (final kind in kinds)
           SimpleDialogOption(
-            onPressed: () => Navigator.of(ctx).pop(k),
+            onPressed: () => Navigator.of(dialogContext).pop(kind),
             child: Padding(
-              padding: const EdgeInsets.symmetric(vertical: 6),
-              child: Text(k.label),
+              padding: const EdgeInsets.symmetric(vertical: 6.0),
+              child: Text(kind.label),
             ),
           ),
       ],

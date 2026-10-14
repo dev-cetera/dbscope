@@ -71,19 +71,21 @@ class PrivilegeCeilings {
       '$schema\u0000$table\u0000$column';
 
   AccessLevel? tableCeiling(String schema, String table) {
-    final p = tables[tableKey(schema, table)];
-    if (p == null) return null;
-    if (!p.select) return AccessLevel.none;
-    if (p.update && p.insert && p.delete) return AccessLevel.full;
-    if (p.update) return AccessLevel.edit;
+    final privileges = tables[tableKey(schema, table)];
+    if (privileges == null) return null;
+    if (!privileges.select) return AccessLevel.none;
+    if (privileges.update && privileges.insert && privileges.delete) {
+      return AccessLevel.full;
+    }
+    if (privileges.update) return AccessLevel.edit;
     return AccessLevel.read;
   }
 
   AccessLevel? columnCeiling(String schema, String table, String column) {
-    final p = columns[columnKey(schema, table, column)];
-    if (p == null) return null;
-    if (!p.select) return AccessLevel.none;
-    if (p.update) return AccessLevel.edit;
+    final privileges = columns[columnKey(schema, table, column)];
+    if (privileges == null) return null;
+    if (!privileges.select) return AccessLevel.none;
+    if (privileges.update) return AccessLevel.edit;
     return AccessLevel.read;
   }
 }
@@ -163,7 +165,7 @@ class AccessPolicy {
     }
 
     // 2. Roles.
-    final rolesById = {for (final r in document.roles) r.id: r};
+    final rolesById = {for (final role in document.roles) role.id: role};
     final Set<String> direct;
     if (viewAsRoleIds != null) {
       direct = {...viewAsRoleIds};
@@ -191,8 +193,8 @@ class AccessPolicy {
     };
 
     final grants = [
-      for (final g in document.grants)
-        if (g.enabled && held.contains(g.roleId)) g,
+      for (final grant in document.grants)
+        if (grant.enabled && held.contains(grant.roleId)) grant,
     ];
 
     return AccessPolicy._(
@@ -316,7 +318,7 @@ class AccessPolicy {
       }
     }
     var decision = _decide(
-      (s) => s.matchesTable(schema, table),
+      (selector) => selector.matchesTable(schema, table),
       '$schema.$table',
     );
     // No table-level grant applied (the default decided): a column-level
@@ -326,10 +328,12 @@ class AccessPolicy {
     // falling to the default.
     if (decision.grant == null) {
       MetaGrant? opener;
-      for (final g in _grants) {
-        if (!g.target.isColumnLevel) continue;
-        if (!g.target.namesColumnOfTable(schema, table)) continue;
-        if (opener == null || g.level.index > opener.level.index) opener = g;
+      for (final grant in _grants) {
+        if (!grant.target.isColumnLevel) continue;
+        if (!grant.target.namesColumnOfTable(schema, table)) continue;
+        if (opener == null || grant.level.index > opener.level.index) {
+          opener = grant;
+        }
       }
       if (opener != null && opener.level.index > decision.level.index) {
         decision = AccessDecision(
@@ -362,7 +366,7 @@ class AccessPolicy {
     if (tableDecision.isNone) return tableDecision;
     if (failedClosed) return _failedClosedDecision;
     var decision = _decide(
-      (s) => s.matchesColumn(schema, table, column),
+      (selector) => selector.matchesColumn(schema, table, column),
       '$schema.$table.$column',
     );
     final ceiling = _ceilings?.columnCeiling(schema, table, column);
@@ -391,7 +395,10 @@ class AccessPolicy {
   AccessDecision forQuery(String queryId) {
     if (!active) return AccessDecision.unrestricted;
     if (failedClosed) return _failedClosedDecision;
-    return _decide((s) => s.matchesQuery(queryId), 'query:$queryId');
+    return _decide(
+      (selector) => selector.matchesQuery(queryId),
+      'query:$queryId',
+    );
   }
 
   AccessDecision forQueryColumn(String queryId, String column) {
@@ -400,7 +407,7 @@ class AccessPolicy {
     if (queryDecision.isNone) return queryDecision;
     if (failedClosed) return _failedClosedDecision;
     return _decide(
-      (s) => s.matchesQueryColumn(queryId, column),
+      (selector) => selector.matchesQueryColumn(queryId, column),
       'query:$queryId.$column',
     );
   }
@@ -440,8 +447,8 @@ class AccessPolicy {
       );
     }
     final winningLevel = best.level;
-    final atWinningLevel = tied.where((g) => g.level == winningLevel);
-    final hidden = atWinningLevel.every((g) => g.defaultHidden);
+    final atWinningLevel = tied.where((grant) => grant.level == winningLevel);
+    final hidden = atWinningLevel.every((grant) => grant.defaultHidden);
     final note = best.note == null ? '' : ' — ${best.note}';
     return AccessDecision(
       level: winningLevel,

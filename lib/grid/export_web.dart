@@ -21,7 +21,9 @@ class ResultExporter {
 
   static Future<String?> exportCsv(GridData data) async {
     final buffer = StringBuffer();
-    buffer.writeln(data.columns.map((c) => _csvEscape(c.name)).join(','));
+    buffer.writeln(
+      data.columns.map((column) => _csvEscape(column.name)).join(','),
+    );
     for (final row in data.rows) {
       buffer.writeln(row.map(_csvCell).join(','));
     }
@@ -30,7 +32,7 @@ class ResultExporter {
   }
 
   static Future<String?> exportJson(GridData data) async {
-    final colNames = data.columns.map((c) => c.name).toList();
+    final colNames = data.columns.map((column) => column.name).toList();
     final out = <Map<String, Object?>>[];
     for (final row in data.rows) {
       final entry = <String, Object?>{};
@@ -56,14 +58,14 @@ class ResultExporter {
 
   static String _csvCell(Object? value) {
     if (value == null) return '';
-    final s = value.toString();
-    return _csvEscape(s);
+    final text = value.toString();
+    return _csvEscape(text);
   }
 
-  static String _csvEscape(String s) {
-    if (s.contains(',') || s.contains('"') || s.contains('\n')) {
-      return '"${s.replaceAll('"', '""')}"';
+  static String _csvEscape(String text) {
+    if (text.contains(',') || text.contains('"') || text.contains('\n')) {
+      return '"${text.replaceAll('"', '""')}"';
     }
-    return s;
+    return text;
   }
 }

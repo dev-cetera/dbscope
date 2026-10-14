@@ -36,9 +36,9 @@ class GridBodyRow<TypeTag> extends StatelessWidget {
   final CellOverlayProvider<TypeTag>? overlay;
   final double rowHeight;
 
-  final void Function(int row, int col, {required bool extend}) onCellTap;
-  final void Function(int row, int col) onCellDoubleTap;
-  final void Function(int row, int col, Object? newValue) onCommit;
+  final void Function(int row, int column, {required bool extend}) onCellTap;
+  final void Function(int row, int column) onCellDoubleTap;
+  final void Function(int row, int column, Object? newValue) onCommit;
   final void Function() onCancelEdit;
 
   @override
@@ -46,23 +46,24 @@ class GridBodyRow<TypeTag> extends StatelessWidget {
     final cells = <Widget>[];
     final selection = model.selection;
     final editingRow = model.editingRow;
-    final editingCol = model.editingCol;
+    final editingColumn = model.editingCol;
 
-    for (var v = 0; v < model.order.length; v++) {
-      final originalIdx = model.viewToOriginal(v);
-      final col = data.columns[originalIdx];
-      final value = originalIdx < values.length ? values[originalIdx] : null;
-      final isSelected = selection?.contains(rowIdx, v) ?? false;
+    for (var viewIndex = 0; viewIndex < model.order.length; viewIndex++) {
+      final originalIndex = model.viewToOriginal(viewIndex);
+      final column = data.columns[originalIndex];
+      final value =
+          originalIndex < values.length ? values[originalIndex] : null;
+      final isSelected = selection?.contains(rowIdx, viewIndex) ?? false;
       final isFocused = selection != null &&
           selection.focusRow == rowIdx &&
-          selection.focusCol == v;
-      final isEditing = editingRow == rowIdx && editingCol == v;
+          selection.focusCol == viewIndex;
+      final isEditing = editingRow == rowIdx && editingColumn == viewIndex;
       cells.add(
         GridCell<TypeTag>(
           value: value,
           rowIdx: rowIdx,
-          originalIdx: originalIdx,
-          column: col,
+          originalIdx: originalIndex,
+          column: column,
           renderer: renderer,
           editor: editor,
           overlay: overlay,
@@ -70,13 +71,13 @@ class GridBodyRow<TypeTag> extends StatelessWidget {
           isSelected: isSelected,
           isFocused: isFocused,
           isEditing: isEditing,
-          width: model.widthAt(v),
+          width: model.widthAt(viewIndex),
           height: rowHeight,
-          onTap: () => onCellTap(rowIdx, v, extend: _isShiftPressed()),
-          onDoubleTap: (editor?.canEdit(col) ?? false)
-              ? () => onCellDoubleTap(rowIdx, v)
+          onTap: () => onCellTap(rowIdx, viewIndex, extend: _isShiftPressed()),
+          onDoubleTap: (editor?.canEdit(column) ?? false)
+              ? () => onCellDoubleTap(rowIdx, viewIndex)
               : null,
-          onCommit: (newValue) => onCommit(rowIdx, v, newValue),
+          onCommit: (newValue) => onCommit(rowIdx, viewIndex, newValue),
           onCancel: onCancelEdit,
         ),
       );

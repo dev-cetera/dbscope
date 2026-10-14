@@ -42,14 +42,14 @@ void main() {
     late ConnectionProfile profile;
 
     setUpAll(() async {
-      final conn = await PostgresKindPlugin.openConnection(
+      final connection = await PostgresKindPlugin.openConnection(
         host: _env('PGHOST', 'localhost'),
         port: int.parse(_env('PGPORT', '5432')),
         database: _env('PGDATABASE', 'postgres'),
         username: _env('PGUSER', 'postgres'),
         password: _env('PGPASSWORD', ''),
       );
-      executor = PostgresExecutor(conn);
+      executor = PostgresExecutor(connection);
       profile = ConnectionProfile(
         id: 'live-test',
         name: 'live test',
@@ -67,62 +67,66 @@ void main() {
     MetaSnapshot snapshot() => MetadataCache.instance.snapshotFor(profile.id)!;
 
     test('metadata tables load without problems', () {
-      final s = snapshot();
-      expect(s.tablesOutcome, MetaTablesOutcome.loaded);
-      expect(s.problems, isEmpty, reason: s.problems.join('\n'));
-      expect(s.index.document.rows, isNotEmpty);
+      final metaSnapshot = snapshot();
+      expect(metaSnapshot.tablesOutcome, MetaTablesOutcome.loaded);
+      expect(
+        metaSnapshot.problems,
+        isEmpty,
+        reason: metaSnapshot.problems.join('\n'),
+      );
+      expect(metaSnapshot.index.document.rows, isNotEmpty);
     });
 
     test('every named query runs read-only', () async {
-      for (final q in snapshot().index.queries) {
+      for (final query in snapshot().index.queries) {
         final bound = bindSql(
-          q.sql,
-          BindingContext(inputs: {for (final i in q.inputs) i.name: null}),
+          query.sql,
+          BindingContext(inputs: {for (final i in query.inputs) i.name: null}),
         );
         await executeReadOnly(
           executor,
           'SELECT * FROM (${bound.sql}) AS q LIMIT 1',
           named: bound.named,
-        ).catchError((Object e) => fail('query ${q.id}: $e'));
+        ).catchError((Object e) => fail('query ${query.id}: $e'));
       }
     });
 
     test('every check runs read-only', () async {
-      for (final c in snapshot().index.checks) {
+      for (final check in snapshot().index.checks) {
         await executeReadOnly(
           executor,
-          'SELECT count(*) FROM (${c.sql}) AS dbscope_check',
-        ).catchError((Object e) => fail('check ${c.id}: $e'));
+          'SELECT count(*) FROM (${check.sql}) AS dbscope_check',
+        ).catchError((Object e) => fail('check ${check.id}: $e'));
       }
     });
 
     test('every chart runs', () async {
-      for (final c in snapshot().index.charts) {
-        final placeholders = c.source is ChartSqlSource
-            ? findPlaceholders((c.source as ChartSqlSource).sql)
+      for (final chart in snapshot().index.charts) {
+        final placeholders = chart.source is ChartSqlSource
+            ? findPlaceholders((chart.source as ChartSqlSource).sql)
             : const <String>[];
         final row = {
-          for (final p in placeholders)
-            if (p.startsWith('row_')) p.substring(4): null,
+          for (final placeholder in placeholders)
+            if (placeholder.startsWith('row_')) placeholder.substring(4): null,
         };
         await runChart(
-          c,
+          chart,
           executor: executor,
           row: BindingContext(row: row),
-        ).catchError((Object e) => fail('chart ${c.id}: $e'));
+        ).catchError((Object e) => fail('chart ${chart.id}: $e'));
       }
     });
 
     test('every action is valid SQL against the schema', () async {
-      for (final a in snapshot().index.actions) {
-        final text = a.sql ?? a.filter;
+      for (final action in snapshot().index.actions) {
+        final text = action.sql ?? action.filter;
         if (text == null) continue;
         // Bind every placeholder to NULL; EXPLAIN proves the statement
         // parses and resolves without running it.
         final names = findPlaceholders(text);
-        final named = {for (final n in names) n: null};
-        final table = a.table?.exactTable ?? a.target.exactTable;
-        final sql = a.sql != null
+        final named = {for (final name in names) name: null};
+        final table = action.table?.exactTable ?? action.target.exactTable;
+        final sql = action.sql != null
             ? 'EXPLAIN $text'
             : 'EXPLAIN SELECT 1 FROM "${table!.schema}"."${table.table}" '
                   'WHERE $text';
@@ -130,29 +134,29 @@ void main() {
           executor,
           sql,
           named: named,
-        ).catchError((Object e) => fail('action ${a.id}: $e'));
+        ).catchError((Object e) => fail('action ${action.id}: $e'));
       }
     });
 
     test('native facts load for every table and its first column', () async {
       final catalog = SchemaCatalog.unfiltered(executor);
       var withComment = 0;
-      for (final s in await catalog.listSchemas()) {
-        if (s.isSystem) continue;
-        for (final t in await catalog.listTables(s.name)) {
+      for (final schema in await catalog.listSchemas()) {
+        if (schema.isSystem) continue;
+        for (final table in await catalog.listTables(schema.name)) {
           final tableFacts = await loadTableFacts(
             executor,
-            schema: t.schema,
-            table: t.name,
+            schema: table.schema,
+            table: table.name,
           );
-          expect(tableFacts.attributes, isNotEmpty, reason: t.name);
-          final columns = await catalog.listColumns(t.schema, t.name);
-          for (final c in columns) {
+          expect(tableFacts.attributes, isNotEmpty, reason: table.name);
+          final columns = await catalog.listColumns(table.schema, table.name);
+          for (final column in columns) {
             final facts = await loadColumnFacts(
               executor,
-              schema: t.schema,
-              table: t.name,
-              column: c.name,
+              schema: table.schema,
+              table: table.name,
+              column: column.name,
             );
             if (facts.comment != null) withComment++;
           }
@@ -167,25 +171,38 @@ void main() {
       final policy = snapshot().policy;
       if (!policy.active) return;
       final catalog = SchemaCatalog(executor);
-      for (final s in await SchemaCatalog.unfiltered(executor).listSchemas()) {
-        if (s.isSystem) continue;
-        for (final t in await SchemaCatalog.unfiltered(
+      for (final schema in await SchemaCatalog.unfiltered(
+        executor,
+      ).listSchemas()) {
+        if (schema.isSystem) continue;
+        for (final table in await SchemaCatalog.unfiltered(
           executor,
-        ).listTables(s.name)) {
+        ).listTables(schema.name)) {
           final all = await SchemaCatalog.unfiltered(
             executor,
-          ).listColumns(t.schema, t.name);
+          ).listColumns(table.schema, table.name);
           final visible = {
-            for (final c in await catalog.listColumns(t.schema, t.name)) c.name,
+            for (final column in await catalog.listColumns(
+              table.schema,
+              table.name,
+            ))
+              column.name,
           };
-          for (final c in all) {
-            final decision = policy.forColumn(t.schema, t.name, c.name);
+          for (final column in all) {
+            final decision = policy.forColumn(
+              table.schema,
+              table.name,
+              column.name,
+            );
             if (decision.isNone) {
               expect(
-                visible.contains(c.name),
+                visible.contains(column.name),
                 // Primary keys stay (masked) by design.
-                (await catalog.primaryKey(t.schema, t.name)).contains(c.name),
-                reason: '${t.schema}.${t.name}.${c.name}',
+                (await catalog.primaryKey(
+                  table.schema,
+                  table.name,
+                )).contains(column.name),
+                reason: '${table.schema}.${table.name}.${column.name}',
               );
             }
           }

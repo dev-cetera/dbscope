@@ -30,11 +30,11 @@ class _NumberInput extends StatelessWidget {
         FilteringTextInputFormatter.allow(
           allowDecimal ? RegExp(r'[0-9\.\-]') : RegExp(r'[0-9\-]'),
         ),
-        TextInputFormatter.withFunction((oldVal, newVal) {
-          if (newVal.text.isEmpty || pattern.hasMatch(newVal.text)) {
-            return newVal;
+        TextInputFormatter.withFunction((oldValue, newValue) {
+          if (newValue.text.isEmpty || pattern.hasMatch(newValue.text)) {
+            return newValue;
           }
-          return oldVal;
+          return oldValue;
         }),
       ],
       onChanged: onChanged,

@@ -23,6 +23,10 @@ import '../meta_models.dart';
 import '../meta_sources.dart';
 import '../read_only_exec.dart';
 
+/// How long the client waits past the chart's own timeout before giving up,
+/// so the server's cancellation normally arrives first.
+const _kClientTimeoutGrace = Duration(seconds: 5);
+
 class ChartSeriesData {
   const ChartSeriesData(this.name, this.values);
   final String name;
@@ -47,7 +51,8 @@ class ChartData {
   /// For `stat`: the single value.
   final double? stat;
 
-  bool get isEmpty => series.every((s) => s.values.isEmpty) && stat == null;
+  bool get isEmpty =>
+      series.every((entry) => entry.values.isEmpty) && stat == null;
 }
 
 class ChartRunError implements Exception {
@@ -59,29 +64,29 @@ class ChartRunError implements Exception {
 
 /// A finite double, or null. NaN/Infinity (legal in float columns) would
 /// break histogram binning and every fl_chart axis.
-double? _toDouble(Object? v) {
-  if (v == null || v is MaskedValue) return null;
-  final double? d;
-  if (v is num) {
-    d = v.toDouble();
-  } else if (v is DateTime) {
-    d = v.millisecondsSinceEpoch.toDouble();
+double? _toDouble(Object? value) {
+  if (value == null || value is MaskedValue) return null;
+  final double? result;
+  if (value is num) {
+    result = value.toDouble();
+  } else if (value is DateTime) {
+    result = value.millisecondsSinceEpoch.toDouble();
   } else {
-    d = double.tryParse(v.toString());
+    result = double.tryParse(value.toString());
   }
-  return d != null && d.isFinite ? d : null;
+  return result != null && result.isFinite ? result : null;
 }
 
-String _label(Object? v) {
-  if (v == null) return '∅';
-  if (v is DateTime) {
-    final t = v.toUtc();
-    String two(int n) => n.toString().padLeft(2, '0');
-    final date = '${t.year}-${two(t.month)}-${two(t.day)}';
-    if (t.hour == 0 && t.minute == 0 && t.second == 0) return date;
-    return '$date ${two(t.hour)}:${two(t.minute)}';
+String _label(Object? value) {
+  if (value == null) return '∅';
+  if (value is DateTime) {
+    final utc = value.toUtc();
+    String two(int number) => number.toString().padLeft(2, '0');
+    final date = '${utc.year}-${two(utc.month)}-${two(utc.day)}';
+    if (utc.hour == 0 && utc.minute == 0 && utc.second == 0) return date;
+    return '$date ${two(utc.hour)}:${two(utc.minute)}';
   }
-  return v.toString();
+  return value.toString();
 }
 
 /// Runs [chart] against [executor]. [row] supplies `@row_<col>` values for
@@ -103,7 +108,7 @@ Future<ChartData> runChart(
   // can't be fenced.
   Future<DbResult> run(String sql, [Map<String, Object?>? named]) =>
       executeReadOnly(executor, sql, named: named, timeout: timeout).timeout(
-        timeout + const Duration(seconds: 5),
+        timeout + _kClientTimeoutGrace,
         onTimeout: () => throw ChartRunError(
           'Chart "${chart.label}" took longer than '
           '${timeout.inSeconds}s and was abandoned.',
@@ -119,8 +124,8 @@ Future<ChartData> runChart(
       }
       final columns = await SchemaCatalog(executor).listColumns(schema, table);
       final readable = {
-        for (final c in columns)
-          if (c.accessLevel.atLeast(AccessLevel.read)) c.name,
+        for (final column in columns)
+          if (column.accessLevel.atLeast(AccessLevel.read)) column.name,
       };
       final softDelete = snapshot?.index.policyTable(schema, table).softDelete;
       final extraWhere = softDelete != null && readable.contains(softDelete)
@@ -158,7 +163,7 @@ Future<ChartData> runChart(
       final plotted = [
         ?chart.x,
         ?chart.series,
-        for (final m in chart.y) ?m.column,
+        for (final measure in chart.y) ?measure.column,
       ];
       for (final column in plotted) {
         if (!policy.forQueryColumn(queryId, column).canSeeValues) {
@@ -179,7 +184,7 @@ Future<ChartData> runChart(
         xName: chart.x,
         seriesName: chart.series,
         measureNames: [
-          for (final m in chart.y) m.column ?? m.label ?? 'y',
+          for (final measure in chart.y) measure.column ?? measure.label ?? 'y',
         ],
       );
     case ChartSqlSource(:final sql):
@@ -196,7 +201,7 @@ Future<ChartData> runChart(
         xName: chart.x,
         seriesName: chart.series,
         measureNames: [
-          for (final m in chart.y) m.column ?? m.label ?? 'y',
+          for (final measure in chart.y) measure.column ?? measure.label ?? 'y',
         ],
       );
   }
@@ -209,7 +214,7 @@ ChartData _shape(
   required String? seriesName,
   required List<String> measureNames,
 }) {
-  final names = [for (final c in result.columns) c.name];
+  final names = [for (final column in result.columns) column.name];
   int indexOf(String? name, {int? fallback}) {
     if (name == null) return fallback ?? -1;
     final i = names.indexOf(name);
@@ -219,8 +224,8 @@ ChartData _shape(
   if (chart.type == ChartType.histogram) {
     final xi = indexOf(xName, fallback: 0);
     final values = [
-      for (final r in result.rows)
-        if (xi >= 0 && xi < r.length) ?_toDouble(r[xi]),
+      for (final row in result.rows)
+        if (xi >= 0 && xi < row.length) ?_toDouble(row[xi]),
     ];
     return _histogram(values);
   }
@@ -232,11 +237,16 @@ ChartData _shape(
 
   if (chart.type == ChartType.stat || xName == null) {
     final first = result.rows.isEmpty ? null : result.rows.first;
-    final mi = measureIndexes.isEmpty ? 0 : measureIndexes.first;
+    final measureColumnIndex = measureIndexes.isEmpty
+        ? 0
+        : measureIndexes.first;
     return ChartData(
-      stat: first == null || mi < 0 || mi >= first.length
+      stat:
+          first == null ||
+              measureColumnIndex < 0 ||
+              measureColumnIndex >= first.length
           ? null
-          : _toDouble(first[mi]),
+          : _toDouble(first[measureColumnIndex]),
     );
   }
 
@@ -246,25 +256,27 @@ ChartData _shape(
   final xNumbers = <double>[];
   var allNumericX = true;
   final bySeries = <String, Map<String, double?>>{};
-  for (final r in _ascendingByX(result.rows, xi)) {
-    final xValue = xi >= 0 && xi < r.length ? r[xi] : null;
+  for (final row in _ascendingByX(result.rows, xi)) {
+    final xValue = xi >= 0 && xi < row.length ? row[xi] : null;
     final xKey = _label(xValue);
     if (!xKeys.contains(xKey)) {
       xKeys.add(xKey);
-      final n = _toDouble(xValue);
-      if (n == null || xValue is DateTime) {
+      final xNumber = _toDouble(xValue);
+      if (xNumber == null || xValue is DateTime) {
         allNumericX = false;
       } else {
-        xNumbers.add(n);
+        xNumbers.add(xNumber);
       }
     }
-    for (var m = 0; m < measureIndexes.length; m++) {
-      final mi = measureIndexes[m];
+    for (var measure = 0; measure < measureIndexes.length; measure++) {
+      final measureColumnIndex = measureIndexes[measure];
       final seriesKey = si >= 0
-          ? _label(r[si])
-          : (chart.y[m].label ?? measureNames[m]);
-      final y = mi >= 0 && mi < r.length ? _toDouble(r[mi]) : null;
-      (bySeries[seriesKey] ??= {})[xKey] = y;
+          ? _label(row[si])
+          : (chart.y[measure].label ?? measureNames[measure]);
+      final value = measureColumnIndex >= 0 && measureColumnIndex < row.length
+          ? _toDouble(row[measureColumnIndex])
+          : null;
+      (bySeries[seriesKey] ??= {})[xKey] = value;
     }
   }
   return ChartData(
@@ -272,7 +284,7 @@ ChartData _shape(
     xNumbers: allNumericX && xNumbers.length == xKeys.length ? xNumbers : null,
     series: [
       for (final e in bySeries.entries)
-        ChartSeriesData(e.key, [for (final k in xKeys) e.value[k]]),
+        ChartSeriesData(e.key, [for (final xKey in xKeys) e.value[xKey]]),
     ],
   );
 }
@@ -282,15 +294,15 @@ ChartData _shape(
 /// (labels, categories) keeps the query's own order.
 List<List<Object?>> _ascendingByX(List<List<Object?>> rows, int xi) {
   if (xi < 0 || rows.isEmpty) return rows;
-  Object? xOf(List<Object?> r) => xi < r.length ? r[xi] : null;
-  final allTimes = rows.every((r) => xOf(r) is DateTime);
-  final allNumbers = rows.every((r) => xOf(r) is num);
+  Object? xOf(List<Object?> row) => xi < row.length ? row[xi] : null;
+  final allTimes = rows.every((row) => xOf(row) is DateTime);
+  final allNumbers = rows.every((row) => xOf(row) is num);
   if (!allTimes && !allNumbers) return rows;
-  double keyOf(List<Object?> r) {
-    final v = xOf(r);
-    return v is DateTime
-        ? v.microsecondsSinceEpoch.toDouble()
-        : (v! as num).toDouble();
+  double keyOf(List<Object?> row) {
+    final value = xOf(row);
+    return value is DateTime
+        ? value.microsecondsSinceEpoch.toDouble()
+        : (value! as num).toDouble();
   }
 
   // List.sort isn't stable; the index tie-break keeps equal x values (one
@@ -320,8 +332,8 @@ ChartData _histogram(List<double> values) {
   final bins = (1 + values.length.bitLength).clamp(5, 40);
   final width = (max - min) / bins;
   final counts = List<double>.filled(bins, 0);
-  for (final v in values) {
-    var i = ((v - min) / width).floor();
+  for (final value in values) {
+    var i = ((value - min) / width).floor();
     if (i >= bins) i = bins - 1;
     counts[i]++;
   }
@@ -333,7 +345,9 @@ ChartData _histogram(List<double> values) {
   );
 }
 
-String _fmt(double v) {
-  if (v.abs() >= 1000 || v == v.roundToDouble()) return v.toStringAsFixed(0);
-  return v.toStringAsFixed(2);
+String _fmt(double value) {
+  if (value.abs() >= 1000 || value == value.roundToDouble()) {
+    return value.toStringAsFixed(0);
+  }
+  return value.toStringAsFixed(2);
 }

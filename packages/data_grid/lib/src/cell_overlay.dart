@@ -11,7 +11,10 @@ abstract class CellOverlayProvider<TypeTag> {
 
   /// Build the overlay for this cell, or return null to skip it. The
   /// grid layers the result on top of the cell renderer's output.
-  Widget? build(BuildContext context, CellOverlayContext<TypeTag> ctx);
+  Widget? build(
+    BuildContext context,
+    CellOverlayContext<TypeTag> overlayContext,
+  );
 }
 
 class CellOverlayContext<TypeTag> {

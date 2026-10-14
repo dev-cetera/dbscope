@@ -6,11 +6,11 @@
 // guarantees the column's semantic type, so a lenient parse here is
 // safe.
 
-int? toInt(Object? v) {
-  if (v == null) return null;
-  if (v is num) return v.toInt();
-  if (v is String) {
-    final parsed = num.tryParse(v);
+int? toInt(Object? value) {
+  if (value == null) return null;
+  if (value is num) return value.toInt();
+  if (value is String) {
+    final parsed = num.tryParse(value);
     return parsed?.toInt();
   }
   return null;
@@ -19,12 +19,12 @@ int? toInt(Object? v) {
 /// Lenient bool parse. Python `str(True)` is `"True"`; flitescope's
 /// gzipped JSON path may also send `"true"` or `1`. Treat unrecognised
 /// values as false (catalog queries always select a `bool` cast).
-bool toBool(Object? v) {
-  if (v is bool) return v;
-  if (v is num) return v != 0;
-  if (v is String) {
-    final s = v.toLowerCase();
-    return s == 'true' || s == 't' || s == '1';
+bool toBool(Object? value) {
+  if (value is bool) return value;
+  if (value is num) return value != 0;
+  if (value is String) {
+    final lower = value.toLowerCase();
+    return lower == 'true' || lower == 't' || lower == '1';
   }
   return false;
 }

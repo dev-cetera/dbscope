@@ -44,12 +44,12 @@ class SidebarFocusController {
   }
 
   void requestFilterFocus() {
-    final n = _filterFocus;
-    if (n == null) return;
+    final focusNode = _filterFocus;
+    if (focusNode == null) return;
     // Defer to after the current frame so the sidebar has rebuilt
     // (e.g. when we just toggled visibility on).
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      n.requestFocus();
+      focusNode.requestFocus();
     });
   }
 }
@@ -86,7 +86,7 @@ class _SidebarState extends State<Sidebar> with ListenableStateMixin {
   List<SchemaInfo> _schemas = [];
   final Map<String, List<TableInfo>> _tablesBySchema = {};
   final _expanded = <String>{};
-  List<ForeignKey> _fks = const [];
+  List<ForeignKey> _foreignKeys = const [];
   var _loading = false;
   String? _error;
   var _filter = '';
@@ -125,7 +125,7 @@ class _SidebarState extends State<Sidebar> with ListenableStateMixin {
         _schemas = [];
         _tablesBySchema.clear();
         _expanded.clear();
-        _fks = const [];
+        _foreignKeys = const [];
         _error = _registry.lastError;
         _loadedFor = null;
       });
@@ -135,41 +135,45 @@ class _SidebarState extends State<Sidebar> with ListenableStateMixin {
   /// [keepExpansion]: a metadata refresh of the SAME connection keeps the
   /// schemas the user collapsed or expanded.
   Future<void> _reload({bool keepExpansion = false}) async {
-    final conn = _registry.connection;
+    final executor = _registry.connection;
     final activeId = _registry.activeId;
-    if (conn == null || activeId == null) return;
+    if (executor == null || activeId == null) return;
     setState(() {
       _loading = true;
       _error = null;
       _loadedFor = activeId;
     });
     try {
-      final catalog = SchemaCatalog(conn);
+      final catalog = SchemaCatalog(executor);
       final schemas = await catalog.listSchemas();
       if (!mounted) return;
       setState(() {
         _schemas = schemas;
         _tablesBySchema.clear();
         if (keepExpansion) {
-          final names = {for (final s in schemas) s.name};
+          final names = {for (final schemaInfo in schemas) schemaInfo.name};
           _expanded.removeWhere((name) => !names.contains(name));
         } else {
           _expanded.clear();
-          for (final s in schemas.where((s) => !s.isSystem)) {
-            _expanded.add(s.name);
+          for (final schemaInfo in schemas.where(
+            (schemaInfo) => !schemaInfo.isSystem,
+          )) {
+            _expanded.add(schemaInfo.name);
           }
         }
       });
-      for (final s in schemas.where((s) => !s.isSystem)) {
-        await _loadTables(s.name);
+      for (final schemaInfo in schemas.where(
+        (schemaInfo) => !schemaInfo.isSystem,
+      )) {
+        await _loadTables(schemaInfo.name);
       }
       try {
-        final fks = await catalog.listForeignKeys();
+        final foreignKeys = await catalog.listForeignKeys();
         if (!mounted) return;
-        setState(() => _fks = fks);
+        setState(() => _foreignKeys = foreignKeys);
       } catch (_) {
         if (!mounted) return;
-        setState(() => _fks = const []);
+        setState(() => _foreignKeys = const []);
       }
     } catch (e) {
       if (!mounted) return;
@@ -180,10 +184,10 @@ class _SidebarState extends State<Sidebar> with ListenableStateMixin {
   }
 
   Future<void> _loadTables(String schema) async {
-    final conn = _registry.connection;
-    if (conn == null) return;
+    final executor = _registry.connection;
+    if (executor == null) return;
     try {
-      final catalog = SchemaCatalog(conn);
+      final catalog = SchemaCatalog(executor);
       final tables = await catalog.listTables(schema);
       if (!mounted) return;
       setState(() => _tablesBySchema[schema] = tables);
@@ -224,31 +228,31 @@ class _SidebarState extends State<Sidebar> with ListenableStateMixin {
         children: [
           _ConnectionPicker(registry: _registry, onReload: _reload),
           Padding(
-            padding: const EdgeInsets.fromLTRB(8, 0, 8, 8),
+            padding: const EdgeInsets.fromLTRB(8.0, 0.0, 8.0, 8.0),
             child: TextField(
               controller: _filterController,
               focusNode: _filterFocus,
               decoration: InputDecoration(
                 hintText: 'Filter tables… (Cmd+F)',
                 isDense: true,
-                prefixIcon: const Icon(Icons.search, size: 18),
+                prefixIcon: const Icon(Icons.search, size: 18.0),
                 border: const OutlineInputBorder(),
                 suffixIcon: _filter.isEmpty
                     ? null
                     : IconButton(
-                        icon: const Icon(Icons.clear, size: 18),
+                        icon: const Icon(Icons.clear, size: 18.0),
                         onPressed: () {
                           _filterController.clear();
                           setState(() => _filter = '');
                         },
                       ),
               ),
-              onChanged: (v) => setState(() => _filter = v.trim()),
+              onChanged: (value) => setState(() => _filter = value.trim()),
             ),
           ),
-          if (_loading) const LinearProgressIndicator(minHeight: 2),
+          if (_loading) const LinearProgressIndicator(minHeight: 2.0),
           if (_error != null) ErrorView(message: _error!, onRetry: _reload),
-          Expanded(child: _buildList(theme)),
+          Expanded(child: _buildList()),
         ],
       ),
     );
@@ -265,14 +269,14 @@ class _SidebarState extends State<Sidebar> with ListenableStateMixin {
     return null;
   }
 
-  Widget _buildList(ThemeData theme) {
+  Widget _buildList() {
     final activeId = _registry.activeId;
     if (activeId == null || !_registry.isConnected) {
       return EmptyState(
         icon: _registry.profiles.isEmpty
             ? Icons.power_settings_new
             : Icons.power,
-        iconSize: 36,
+        iconSize: 36.0,
         message: _registry.profiles.isEmpty
             ? 'No connection.\nUse Connection > Add…'
             : 'Pick a connection above.',
@@ -284,70 +288,70 @@ class _SidebarState extends State<Sidebar> with ListenableStateMixin {
       final tables = _filteredTables(schema.name);
       if (_filter.isNotEmpty && tables.isEmpty) continue;
       rows.add(_FlatRow.schema(schema));
-      if (_expanded.contains(schema.name)) {
-        // Metadata `display.group` folds tables into labelled groups;
-        // ungrouped tables follow.
-        final grouped = <String, List<TableInfo>>{};
-        final ungrouped = <TableInfo>[];
-        for (final t in tables) {
-          final group = snapshot?.index.groupOf(schema.name, t.name);
-          if (group == null) {
-            ungrouped.add(t);
-          } else {
-            (grouped[group] ??= []).add(t);
-          }
+      if (!_expanded.contains(schema.name)) continue;
+      // Metadata `display.group` folds tables into labelled groups;
+      // ungrouped tables follow.
+      final grouped = <String, List<TableInfo>>{};
+      final ungrouped = <TableInfo>[];
+      for (final table in tables) {
+        final group = snapshot?.index.groupOf(schema.name, table.name);
+        if (group == null) {
+          ungrouped.add(table);
+        } else {
+          (grouped[group] ??= []).add(table);
         }
-        final groupNames = grouped.keys.toList()..sort();
-        for (final g in groupNames) {
-          rows.add(_FlatRow.group(g));
-          for (final t in grouped[g]!) {
-            rows.add(_FlatRow.table(schema.name, t));
-          }
+      }
+      final groupNames = grouped.keys.toList()..sort();
+      for (final groupName in groupNames) {
+        rows.add(_FlatRow.group(groupName));
+        for (final table in grouped[groupName]!) {
+          rows.add(_FlatRow.table(schema.name, table));
         }
-        if (groupNames.isNotEmpty && ungrouped.isNotEmpty) {
-          rows.add(const _FlatRow.group('Other'));
-        }
-        for (final t in ungrouped) {
-          rows.add(_FlatRow.table(schema.name, t));
-        }
+      }
+      if (groupNames.isNotEmpty && ungrouped.isNotEmpty) {
+        rows.add(const _FlatRow.group('Other'));
+      }
+      for (final table in ungrouped) {
+        rows.add(_FlatRow.table(schema.name, table));
       }
     }
     if (snapshot != null) {
       final policy = snapshot.policy;
-      final f = _filter.toLowerCase();
+      final filterText = _filter.toLowerCase();
       final queries = [
-        for (final q in snapshot.index.queries)
-          if (policy.forQuery(q.id).canSeeValues &&
-              (f.isEmpty || q.label.toLowerCase().contains(f)))
-            q,
+        for (final query in snapshot.index.queries)
+          if (policy.forQuery(query.id).canSeeValues &&
+              (filterText.isEmpty ||
+                  query.label.toLowerCase().contains(filterText)))
+            query,
       ];
       final dashboards = snapshot.index.dashboards;
-      final hasCharts = snapshot.index.charts.any((c) => !c.rowScoped);
+      final hasCharts = snapshot.index.charts.any((chart) => !chart.rowScoped);
       if (queries.isNotEmpty || dashboards.isNotEmpty || hasCharts) {
         rows.add(const _FlatRow.metaHeader());
-        for (final d in dashboards) {
-          rows.add(_FlatRow.dashboard(d.id, d.label));
+        for (final dashboard in dashboards) {
+          rows.add(_FlatRow.dashboard(dashboard.id, dashboard.label));
         }
         if (hasCharts && dashboards.isEmpty) {
           rows.add(const _FlatRow.dashboard(null, 'All charts'));
         }
-        for (final q in queries) {
-          rows.add(_FlatRow.query(q));
+        for (final query in queries) {
+          rows.add(_FlatRow.query(query));
         }
       }
     }
 
     final gutterItems = [
-      for (final r in rows) GutterItem(tableKey: r.tableKey),
+      for (final row in rows) GutterItem(tableKey: row.tableKey),
     ];
     final selectedKey = _selectedKey();
-    final related = relatedTables(_fks, selectedKey);
+    final related = relatedTables(_foreignKeys, selectedKey);
     // Walk the visible rows in display order so adjacent-row collision
     // avoidance happens against what the user actually sees next to each
     // other (schema headers are skipped — tables across a header are still
     // visually adjacent).
     final tableColors = buildTableColorMap(
-      rows.map((r) => r.tableKey).whereType<String>(),
+      rows.map((row) => row.tableKey).whereType<String>(),
     );
 
     return Stack(
@@ -358,34 +362,42 @@ class _SidebarState extends State<Sidebar> with ListenableStateMixin {
             controller: _scrollController,
             itemCount: rows.length,
             itemExtent: kGutterRowHeight,
-            itemBuilder: (ctx, i) {
-              final r = rows[i];
-              if (r.schema != null) {
-                return _buildSchemaRow(theme, r.schema!);
-              }
-              if (r.groupLabel != null) {
-                return _GroupHeaderRow(label: r.groupLabel!);
-              }
-              if (r.isMetaHeader) {
-                return const _GroupHeaderRow(
-                  label: 'Queries & dashboards',
-                  indent: 8,
+            itemBuilder: (_, i) {
+              final row = rows[i];
+              final rowSchema = row.schema;
+              if (rowSchema != null) {
+                return _SchemaRow(
+                  schema: rowSchema,
+                  connectionId: activeId,
+                  isExpanded: _expanded.contains(rowSchema.name),
+                  onToggle: () => _toggleSchema(rowSchema),
+                  onSecondaryTapDown: (globalPosition) =>
+                      _showSchemaContextMenu(rowSchema, globalPosition),
                 );
               }
-              if (r.query != null) {
-                return _QueryRow(query: r.query!, connectionId: activeId);
+              if (row.groupLabel != null) {
+                return _GroupHeaderRow(label: row.groupLabel!);
               }
-              if (r.isDashboard) {
+              if (row.isMetaHeader) {
+                return const _GroupHeaderRow(
+                  label: 'Queries & dashboards',
+                  indent: 8.0,
+                );
+              }
+              if (row.query != null) {
+                return _QueryRow(query: row.query!, connectionId: activeId);
+              }
+              if (row.isDashboard) {
                 return _DashboardRow(
-                  dashboardId: r.dashboardId,
-                  label: r.dashboardLabel!,
+                  dashboardId: row.dashboardId,
+                  label: row.dashboardLabel!,
                   connectionId: activeId,
                 );
               }
-              final tableKey = '${r.tableSchema!}.${r.table!.name}';
+              final tableKey = '${row.tableSchema!}.${row.table!.name}';
               return _TableRow(
-                schema: r.tableSchema!,
-                table: r.table!,
+                schema: row.tableSchema!,
+                table: row.table!,
                 connectionId: activeId,
                 isSelected: tableKey == selectedKey,
                 isRelated: related.contains(tableKey),
@@ -395,9 +407,9 @@ class _SidebarState extends State<Sidebar> with ListenableStateMixin {
           ),
         ),
         Positioned(
-          left: 0,
-          top: 0,
-          bottom: 0,
+          left: 0.0,
+          top: 0.0,
+          bottom: 0.0,
           width: kGutterWidth,
           child: IgnorePointer(
             child: _ScrollAwarePaint(
@@ -405,7 +417,7 @@ class _SidebarState extends State<Sidebar> with ListenableStateMixin {
               builder: (position) => CustomPaint(
                 painter: RelationshipGutterPainter(
                   items: gutterItems,
-                  edges: _fks,
+                  edges: _foreignKeys,
                   selectedKey: selectedKey,
                   scroll: position,
                   tableColors: tableColors,
@@ -418,69 +430,13 @@ class _SidebarState extends State<Sidebar> with ListenableStateMixin {
     );
   }
 
-  Widget _buildSchemaRow(ThemeData theme, SchemaInfo schema) {
-    final description = MetadataCache.instance
-        .snapshotFor(_registry.activeId)
-        ?.index
-        .describeSchema(schema.name)
-        .toMarkdown();
-    final row = _buildSchemaRowBody(theme, schema);
-    if (description == null || description.isEmpty) return row;
-    return DescriptionTooltip(markdown: description, child: row);
-  }
-
-  Widget _buildSchemaRowBody(ThemeData theme, SchemaInfo schema) {
-    return GestureDetector(
-      onSecondaryTapDown: (d) =>
-          _showSchemaContextMenu(schema, d.globalPosition),
-      child: InkWell(
-        onTap: () => _toggleSchema(schema),
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-          child: Row(
-            children: [
-              Icon(
-                _expanded.contains(schema.name)
-                    ? Icons.keyboard_arrow_down
-                    : Icons.keyboard_arrow_right,
-                size: 16,
-                color: theme.hintColor,
-              ),
-              const SizedBox(width: 4),
-              Icon(
-                schema.isSystem ? Icons.folder_outlined : Icons.folder,
-                size: 14,
-                color: schema.isSystem
-                    ? theme.hintColor
-                    : theme.colorScheme.primary,
-              ),
-              const SizedBox(width: 6),
-              Expanded(
-                child: Text(
-                  schema.name,
-                  style: TextStyle(
-                    fontWeight: schema.isSystem
-                        ? FontWeight.normal
-                        : FontWeight.w600,
-                    color: schema.isSystem ? theme.hintColor : null,
-                  ),
-                  overflow: TextOverflow.ellipsis,
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
   Future<void> _showSchemaContextMenu(
     SchemaInfo schema,
-    Offset globalPos,
+    Offset globalPosition,
   ) async {
     final picked = await showAppContextMenu<String>(
       context: context,
-      globalPosition: globalPos,
+      globalPosition: globalPosition,
       items: const [
         AppMenuEntry(
           value: 'copy',
@@ -507,8 +463,81 @@ class _SidebarState extends State<Sidebar> with ListenableStateMixin {
   List<TableInfo> _filteredTables(String schema) {
     final all = _tablesBySchema[schema] ?? const [];
     if (_filter.isEmpty) return all;
-    final f = _filter.toLowerCase();
-    return all.where((t) => t.name.toLowerCase().contains(f)).toList();
+    final filterText = _filter.toLowerCase();
+    return all
+        .where((table) => table.name.toLowerCase().contains(filterText))
+        .toList();
+  }
+}
+
+/// One schema header row in the sidebar list: expand arrow, folder icon and
+/// name, wrapped in a metadata description tooltip when the schema has one.
+class _SchemaRow extends StatelessWidget {
+  const _SchemaRow({
+    required this.schema,
+    required this.connectionId,
+    required this.isExpanded,
+    required this.onToggle,
+    required this.onSecondaryTapDown,
+  });
+  final SchemaInfo schema;
+  final String connectionId;
+  final bool isExpanded;
+  final VoidCallback onToggle;
+  final void Function(Offset globalPosition) onSecondaryTapDown;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final description = MetadataCache.instance
+        .snapshotFor(connectionId)
+        ?.index
+        .describeSchema(schema.name)
+        .toMarkdown();
+    final row = GestureDetector(
+      onSecondaryTapDown: (details) =>
+          onSecondaryTapDown(details.globalPosition),
+      child: InkWell(
+        onTap: onToggle,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 4.0),
+          child: Row(
+            children: [
+              Icon(
+                isExpanded
+                    ? Icons.keyboard_arrow_down
+                    : Icons.keyboard_arrow_right,
+                size: 16.0,
+                color: theme.hintColor,
+              ),
+              const SizedBox(width: 4.0),
+              Icon(
+                schema.isSystem ? Icons.folder_outlined : Icons.folder,
+                size: 14.0,
+                color: schema.isSystem
+                    ? theme.hintColor
+                    : theme.colorScheme.primary,
+              ),
+              const SizedBox(width: 6.0),
+              Expanded(
+                child: Text(
+                  schema.name,
+                  style: TextStyle(
+                    fontWeight: schema.isSystem
+                        ? FontWeight.normal
+                        : FontWeight.w600,
+                    color: schema.isSystem ? theme.hintColor : null,
+                  ),
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+    if (description == null || description.isEmpty) return row;
+    return DescriptionTooltip(markdown: description, child: row);
   }
 }
 
@@ -524,12 +553,12 @@ class _FlatRow {
     this.dashboardId,
     this.dashboardLabel,
   });
-  _FlatRow.schema(SchemaInfo s) : this._(schema: s);
-  _FlatRow.table(String schema, TableInfo t)
-    : this._(tableSchema: schema, table: t);
+  _FlatRow.schema(SchemaInfo schemaInfo) : this._(schema: schemaInfo);
+  _FlatRow.table(String schema, TableInfo table)
+    : this._(tableSchema: schema, table: table);
   const _FlatRow.group(String label) : this._(groupLabel: label);
   const _FlatRow.metaHeader() : this._(isMetaHeader: true);
-  const _FlatRow.query(NamedQuerySpec q) : this._(query: q);
+  const _FlatRow.query(NamedQuerySpec query) : this._(query: query);
   const _FlatRow.dashboard(String? id, String label)
     : this._(isDashboard: true, dashboardId: id, dashboardLabel: label);
   final SchemaInfo? schema;

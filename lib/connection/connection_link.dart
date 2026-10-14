@@ -56,8 +56,8 @@ class ConnectionLink {
 
   static final _rng = Random.secure();
 
-  static List<int> _randomBytes(int n) =>
-      List<int>.generate(n, (_) => _rng.nextInt(256));
+  static List<int> _randomBytes(int length) =>
+      List<int>.generate(length, (_) => _rng.nextInt(256));
 
   /// Encode [profile] (with its password) into the JSON text of a
   /// `.dbscopeconn` file, encrypting the password under [passphrase].
@@ -76,7 +76,7 @@ class ConnectionLink {
       secretKey: key,
       nonce: gcm.newNonce(),
     );
-    final doc = <String, Object?>{
+    final linkDocument = <String, Object?>{
       'dbscopeConnection': formatVersion,
       // toJson() deliberately omits the password — it lives in `secret`.
       'profile': profile.toJson(),
@@ -90,7 +90,7 @@ class ConnectionLink {
         'mac': base64.encode(box.mac.bytes),
       },
     };
-    return const JsonEncoder.withIndent(' ').convert(doc);
+    return const JsonEncoder.withIndent(' ').convert(linkDocument);
   }
 
   /// Decode a `.dbscopeconn` [jsonText] and decrypt its password with
@@ -163,10 +163,10 @@ class ConnectionLink {
     );
   }
 
-  static List<int>? _decodeB64(Object? v) {
-    if (v is! String) return null;
+  static List<int>? _decodeB64(Object? value) {
+    if (value is! String) return null;
     try {
-      return base64.decode(v);
+      return base64.decode(value);
     } catch (_) {
       return null;
     }

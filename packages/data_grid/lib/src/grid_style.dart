@@ -23,27 +23,27 @@ class GridStyle {
 
   /// Sensible defaults derived from a material [ThemeData].
   factory GridStyle.fromTheme(ThemeData theme) {
-    final cs = theme.colorScheme;
-    final textColor = cs.onSurface;
-    final muted = cs.onSurfaceVariant;
+    final colorScheme = theme.colorScheme;
+    final textColor = colorScheme.onSurface;
+    final muted = colorScheme.onSurfaceVariant;
     return GridStyle(
-      cellBackground: cs.surface,
-      selectionBackground: cs.primary.withValues(alpha: 0.10),
-      focusBackground: cs.primary.withValues(alpha: 0.18),
-      cellBorder: cs.outlineVariant,
-      headerBorderStrong: cs.outline,
-      accent: cs.primary,
-      accentSoft: cs.primary.withValues(alpha: 0.15),
-      headerBackground: cs.surfaceContainerHigh,
+      cellBackground: colorScheme.surface,
+      selectionBackground: colorScheme.primary.withValues(alpha: 0.10),
+      focusBackground: colorScheme.primary.withValues(alpha: 0.18),
+      cellBorder: colorScheme.outlineVariant,
+      headerBorderStrong: colorScheme.outline,
+      accent: colorScheme.primary,
+      accentSoft: colorScheme.primary.withValues(alpha: 0.15),
+      headerBackground: colorScheme.surfaceContainerHigh,
       textColor: textColor,
       mutedTextColor: muted,
-      cellTextStyle: TextStyle(color: textColor, fontSize: 12),
+      cellTextStyle: TextStyle(color: textColor, fontSize: 12.0),
       headerTitleStyle: TextStyle(
         color: textColor,
-        fontSize: 12,
+        fontSize: 12.0,
         fontWeight: FontWeight.bold,
       ),
-      headerSubtitleStyle: TextStyle(color: muted, fontSize: 11),
+      headerSubtitleStyle: TextStyle(color: muted, fontSize: 11.0),
     );
   }
 

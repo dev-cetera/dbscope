@@ -101,8 +101,12 @@ class TableLoadResult {
 
   GridData toGridData() => GridData(
     columns: [
-      for (final c in columns)
-        gridColumn(name: c.name, type: c.type, typeName: c.typeName),
+      for (final column in columns)
+        gridColumn(
+          name: column.name,
+          type: column.type,
+          typeName: column.typeName,
+        ),
     ],
     rows: firstRows,
   );
@@ -145,12 +149,12 @@ class TableLoader {
       catalog.indexedColumns(schema, table),
     ]);
     final columns = catalogResults[0] as List<ColumnInfo>;
-    final pk = catalogResults[1] as List<String>;
+    final primaryKeyColumns = catalogResults[1] as List<String>;
     final indexed = catalogResults[2] as Set<String>;
-    final columnNames = {for (final c in columns) c.name};
+    final columnNames = {for (final column in columns) column.name};
     final maskedNames = {
-      for (final c in columns)
-        if (c.isMasked) c.name,
+      for (final column in columns)
+        if (column.isMasked) column.name,
     };
 
     final index = snapshot?.index;
@@ -190,7 +194,7 @@ class TableLoader {
       schema: schema,
       table: table,
       columns: columns,
-      pkColumns: pk,
+      pkColumns: primaryKeyColumns,
       sortColumn: sort?.column,
       descending: sort?.descending ?? false,
       pageSize: pageSize,
@@ -206,21 +210,21 @@ class TableLoader {
       schema: schema,
       table: table,
       columns: columns,
-      pkColumns: pk,
+      pkColumns: primaryKeyColumns,
       connectionReadOnly: connectionReadOnly,
     );
 
     final returningList = [
-      for (final c in columns)
-        if (c.isMasked && !pk.contains(c.name))
-          'NULL AS ${quoteIdent(c.name)}'
+      for (final column in columns)
+        if (column.isMasked && !primaryKeyColumns.contains(column.name))
+          'NULL AS ${quoteIdent(column.name)}'
         else
-          quoteIdent(c.name),
+          quoteIdent(column.name),
     ].join(', ');
 
     return TableLoadResult(
       columns: columns,
-      pkColumns: pk,
+      pkColumns: primaryKeyColumns,
       indexedColumns: indexed,
       editPolicies: policies,
       pager: pager,
@@ -285,7 +289,7 @@ _ComposedWhere _composeBaseWhere({
   required String? callerWhere,
   required List<Object?> callerParams,
 }) {
-  final colNames = {for (final c in columns) c.name};
+  final columnNames = {for (final column in columns) column.name};
   final params = <Object?>[...callerParams];
   final parts = <String>[];
   if (callerWhere != null && callerWhere.isNotEmpty) {
@@ -296,7 +300,7 @@ _ComposedWhere _composeBaseWhere({
 
   var tenantApplied = false;
   final tenant = profile?.tenantFilter;
-  if (tenant != null && colNames.contains(tenant.column)) {
+  if (tenant != null && columnNames.contains(tenant.column)) {
     params.add(tenant.value);
     parts.add('${quoteIdent(tenant.column)} = \$${params.length}');
     tenantApplied = true;
@@ -307,11 +311,11 @@ _ComposedWhere _composeBaseWhere({
   // since the metadata snapshot was taken); metadata's `softDelete` applies
   // when the profile sets none.
   final overrides = profile?.overridesFor(schema, table);
-  final softDeleteCol = overrides?.softDeleteColumn ?? metaSoftDelete;
-  if (softDeleteCol != null && colNames.contains(softDeleteCol)) {
-    effectiveSoftDelete = softDeleteCol;
+  final softDeleteColumn = overrides?.softDeleteColumn ?? metaSoftDelete;
+  if (softDeleteColumn != null && columnNames.contains(softDeleteColumn)) {
+    effectiveSoftDelete = softDeleteColumn;
     if (!showDeleted) {
-      parts.add('${quoteIdent(softDeleteCol)} IS NULL');
+      parts.add('${quoteIdent(softDeleteColumn)} IS NULL');
     }
   }
 
@@ -375,11 +379,11 @@ class QueryRunner {
     }
 
     final specs = <GridColumnSpec>[
-      for (final c in result.columns)
+      for (final column in result.columns)
         gridColumn(
-          name: c.name,
-          type: pgTypeFromTypeName(c.typeName),
-          typeName: c.typeName ?? '',
+          name: column.name,
+          type: pgTypeFromTypeName(column.typeName),
+          typeName: column.typeName ?? '',
         ),
     ];
 

@@ -88,8 +88,8 @@ class _PgProxyDialogState extends State<_PgProxyDialog> {
     Navigator.of(context).pop(profile);
   }
 
-  String? _req(String? v) =>
-      (v == null || v.trim().isEmpty) ? 'required' : null;
+  String? _validateRequired(String? value) =>
+      (value == null || value.trim().isEmpty) ? 'required' : null;
 
   @override
   Widget build(BuildContext context) {
@@ -100,7 +100,7 @@ class _PgProxyDialogState extends State<_PgProxyDialog> {
             : 'Edit PostgreSQL connection (via proxy)',
       ),
       content: SizedBox(
-        width: 520,
+        width: 520.0,
         child: SingleChildScrollView(
           child: Form(
             key: _formKey,
@@ -111,23 +111,23 @@ class _PgProxyDialogState extends State<_PgProxyDialog> {
                 TextFormField(
                   controller: _name,
                   decoration: const InputDecoration(labelText: 'Name'),
-                  validator: _req,
+                  validator: _validateRequired,
                 ),
-                const SizedBox(height: 16),
+                const SizedBox(height: 16.0),
                 const Text(
                   'Proxy',
                   style: TextStyle(fontWeight: FontWeight.bold),
                 ),
-                const SizedBox(height: 4),
+                const SizedBox(height: 4.0),
                 TextFormField(
                   controller: _proxyUrl,
                   decoration: const InputDecoration(
                     labelText: 'Proxy WebSocket URL',
                     hintText: 'ws://127.0.0.1:8765 or wss://your.host',
                   ),
-                  validator: _req,
+                  validator: _validateRequired,
                 ),
-                const SizedBox(height: 8),
+                const SizedBox(height: 8.0),
                 TextFormField(
                   controller: _sharedSecret,
                   decoration: const InputDecoration(
@@ -136,12 +136,12 @@ class _PgProxyDialogState extends State<_PgProxyDialog> {
                   ),
                   obscureText: true,
                 ),
-                const SizedBox(height: 16),
+                const SizedBox(height: 16.0),
                 const Text(
                   'Postgres',
                   style: TextStyle(fontWeight: FontWeight.bold),
                 ),
-                const SizedBox(height: 4),
+                const SizedBox(height: 4.0),
                 Row(
                   children: [
                     Expanded(
@@ -149,10 +149,10 @@ class _PgProxyDialogState extends State<_PgProxyDialog> {
                       child: TextFormField(
                         controller: _host,
                         decoration: const InputDecoration(labelText: 'Host'),
-                        validator: _req,
+                        validator: _validateRequired,
                       ),
                     ),
-                    const SizedBox(width: 8),
+                    const SizedBox(width: 8.0),
                     Expanded(
                       child: TextFormField(
                         controller: _port,
@@ -161,25 +161,25 @@ class _PgProxyDialogState extends State<_PgProxyDialog> {
                     ),
                   ],
                 ),
-                const SizedBox(height: 8),
+                const SizedBox(height: 8.0),
                 TextFormField(
                   controller: _database,
                   decoration: const InputDecoration(labelText: 'Database'),
-                  validator: _req,
+                  validator: _validateRequired,
                 ),
-                const SizedBox(height: 8),
+                const SizedBox(height: 8.0),
                 TextFormField(
                   controller: _username,
                   decoration: const InputDecoration(labelText: 'Username'),
-                  validator: _req,
+                  validator: _validateRequired,
                 ),
-                const SizedBox(height: 8),
+                const SizedBox(height: 8.0),
                 TextFormField(
                   controller: _password,
                   decoration: const InputDecoration(labelText: 'Password'),
                   obscureText: true,
                 ),
-                const SizedBox(height: 8),
+                const SizedBox(height: 8.0),
                 DropdownButtonFormField<SslMode>(
                   initialValue: _ssl,
                   decoration: const InputDecoration(labelText: 'SSL mode'),
@@ -197,12 +197,13 @@ class _PgProxyDialogState extends State<_PgProxyDialog> {
                       child: Text('verify-full'),
                     ),
                   ],
-                  onChanged: (v) => setState(() => _ssl = v ?? SslMode.require),
+                  onChanged: (mode) =>
+                      setState(() => _ssl = mode ?? SslMode.require),
                 ),
-                const SizedBox(height: 8),
+                const SizedBox(height: 8.0),
                 SwitchListTile(
                   value: _readOnly,
-                  onChanged: (v) => setState(() => _readOnly = v),
+                  onChanged: (value) => setState(() => _readOnly = value),
                   title: const Text('Read-only'),
                   contentPadding: EdgeInsets.zero,
                 ),

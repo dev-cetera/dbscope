@@ -67,25 +67,25 @@ class AiInfoBlock extends StatelessWidget {
       builder: (_, _) {
         if (!controller.isVisible) return const SizedBox.shrink();
         return Container(
-          margin: const EdgeInsets.only(top: 4, bottom: 2),
-          padding: const EdgeInsets.fromLTRB(8, 6, 8, 6),
+          margin: const EdgeInsets.only(top: 4.0, bottom: 2.0),
+          padding: const EdgeInsets.fromLTRB(8.0, 6.0, 8.0, 6.0),
           decoration: BoxDecoration(
             color: theme.colorScheme.primaryContainer.withValues(alpha: 0.35),
             border: Border.all(
               color: theme.colorScheme.primary.withValues(alpha: 0.4),
               width: 0.5,
             ),
-            borderRadius: BorderRadius.circular(4),
+            borderRadius: BorderRadius.circular(4.0),
           ),
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Icon(
                 Icons.auto_awesome,
-                size: 13,
+                size: 13.0,
                 color: theme.colorScheme.primary,
               ),
-              const SizedBox(width: 6),
+              const SizedBox(width: 6.0),
               Expanded(
                 child: controller.isLoading
                     ? _ThinkingRow(hint: theme.hintColor)
@@ -98,10 +98,10 @@ class AiInfoBlock extends StatelessWidget {
                 InkWell(
                   onTap: controller.dismiss,
                   child: Padding(
-                    padding: const EdgeInsets.only(left: 4, top: 1),
+                    padding: const EdgeInsets.only(left: 4.0, top: 1.0),
                     child: Icon(
                       Icons.close,
-                      size: 12,
+                      size: 12.0,
                       color: theme.hintColor,
                     ),
                   ),
@@ -124,11 +124,11 @@ class _ThinkingRow extends StatelessWidget {
     return Row(
       children: [
         const SizedBox(
-          width: 12,
-          height: 12,
-          child: CircularProgressIndicator(strokeWidth: 2),
+          width: 12.0,
+          height: 12.0,
+          child: CircularProgressIndicator(strokeWidth: 2.0),
         ),
-        const SizedBox(width: 8),
+        const SizedBox(width: 8.0),
         Text(
           'Thinking…',
           style: theme.textTheme.bodySmall?.copyWith(color: hint),

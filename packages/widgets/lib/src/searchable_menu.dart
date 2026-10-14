@@ -64,7 +64,7 @@ Future<T?> showSearchableMenu<T>({
     context: context,
     barrierColor: Colors.transparent,
     builder:
-        (ctx) => _SearchablePopup<T>(
+        (_) => _SearchablePopup<T>(
           anchor: Offset(x, y),
           items: items,
           hint: hint,
@@ -96,7 +96,7 @@ class _SearchablePopup<T> extends StatefulWidget {
 }
 
 class _SearchablePopupState<T> extends State<_SearchablePopup<T>> {
-  final _filterCtrl = TextEditingController();
+  final _filterController = TextEditingController();
   final _filterFocus = FocusNode();
   var _filter = '';
   var _highlight = 0;
@@ -113,16 +113,16 @@ class _SearchablePopupState<T> extends State<_SearchablePopup<T>> {
 
   @override
   void dispose() {
-    _filterCtrl.dispose();
+    _filterController.dispose();
     _filterFocus.dispose();
     super.dispose();
   }
 
   List<SearchableMenuItem<T>> get _matches {
     if (_filter.isEmpty) return widget.items;
-    final f = _filter.toLowerCase();
+    final filterText = _filter.toLowerCase();
     return widget.items
-        .where((e) => e.searchKey.toLowerCase().contains(f))
+        .where((e) => e.searchKey.toLowerCase().contains(filterText))
         .toList();
   }
 
@@ -133,11 +133,14 @@ class _SearchablePopupState<T> extends State<_SearchablePopup<T>> {
         if (matches[i].value != null && matches[i].enabled) i,
     ];
     if (selectable.isEmpty) return;
-    final currentIdxInSelectable = selectable.indexOf(_highlight);
+    final currentIndexInSelectable = selectable.indexOf(_highlight);
     final next =
-        currentIdxInSelectable < 0
+        currentIndexInSelectable < 0
             ? 0
-            : (currentIdxInSelectable + delta).clamp(0, selectable.length - 1);
+            : (currentIndexInSelectable + delta).clamp(
+              0,
+              selectable.length - 1,
+            );
     setState(() => _highlight = selectable[next]);
   }
 
@@ -166,8 +169,8 @@ class _SearchablePopupState<T> extends State<_SearchablePopup<T>> {
           left: widget.anchor.dx,
           top: widget.anchor.dy,
           child: Material(
-            elevation: 8,
-            borderRadius: BorderRadius.circular(6),
+            elevation: 8.0,
+            borderRadius: BorderRadius.circular(6.0),
             color: theme.colorScheme.surface,
             child: SizedBox(
               width: widget.width,
@@ -190,34 +193,34 @@ class _SearchablePopupState<T> extends State<_SearchablePopup<T>> {
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       Padding(
-                        padding: const EdgeInsets.fromLTRB(6, 6, 6, 4),
+                        padding: const EdgeInsets.fromLTRB(6.0, 6.0, 6.0, 4.0),
                         child: TextField(
-                          controller: _filterCtrl,
+                          controller: _filterController,
                           focusNode: _filterFocus,
                           decoration: InputDecoration(
                             hintText: widget.hint,
                             isDense: true,
-                            prefixIcon: const Icon(Icons.search, size: 16),
+                            prefixIcon: const Icon(Icons.search, size: 16.0),
                             border: const OutlineInputBorder(),
                             contentPadding: const EdgeInsets.symmetric(
-                              horizontal: 8,
-                              vertical: 8,
+                              horizontal: 8.0,
+                              vertical: 8.0,
                             ),
                           ),
-                          onChanged: (v) {
+                          onChanged: (text) {
                             setState(() {
-                              _filter = v;
+                              _filter = text;
                               _highlight = 0;
                             });
                           },
                         ),
                       ),
-                      const Divider(height: 1),
+                      const Divider(height: 1.0),
                       Flexible(
                         child:
                             matches.isEmpty
                                 ? Padding(
-                                  padding: const EdgeInsets.all(16),
+                                  padding: const EdgeInsets.all(16.0),
                                   child: Text(
                                     widget.emptyLabel,
                                     style: TextStyle(color: theme.hintColor),
@@ -247,21 +250,22 @@ class _SearchablePopupState<T> extends State<_SearchablePopup<T>> {
                                                     .withValues(alpha: 0.4)
                                                 : null,
                                         padding: const EdgeInsets.symmetric(
-                                          horizontal: 8,
-                                          vertical: 6,
+                                          horizontal: 8.0,
+                                          vertical: 6.0,
                                         ),
                                         child: Row(
                                           children: [
                                             Expanded(child: item.child),
                                             if (item.onSecondary != null) ...[
-                                              const SizedBox(width: 4),
+                                              const SizedBox(width: 4.0),
                                               GestureDetector(
                                                 behavior:
                                                     HitTestBehavior.opaque,
                                                 onTap: () {
-                                                  final cb = item.onSecondary!;
+                                                  final onSecondary =
+                                                      item.onSecondary!;
                                                   Navigator.of(context).pop();
-                                                  cb();
+                                                  onSecondary();
                                                 },
                                                 child: Tooltip(
                                                   message:
@@ -269,11 +273,13 @@ class _SearchablePopupState<T> extends State<_SearchablePopup<T>> {
                                                       '',
                                                   child: Padding(
                                                     padding:
-                                                        const EdgeInsets.all(4),
+                                                        const EdgeInsets.all(
+                                                          4.0,
+                                                        ),
                                                     child: Icon(
                                                       item.secondaryIcon ??
                                                           Icons.close,
-                                                      size: 14,
+                                                      size: 14.0,
                                                       color: theme.hintColor,
                                                     ),
                                                   ),

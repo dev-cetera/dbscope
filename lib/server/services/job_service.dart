@@ -29,9 +29,9 @@ class JobService {
   void register(Server server) {
     server.onRequest('job.submit', _submit);
     server.onRequest('job.list', (_) async => _listJson());
-    server.onRequest('job.get', (p) async {
-      _ensureMap(p);
-      final id = (p! as Map<String, Object?>)['id'] as String?;
+    server.onRequest('job.get', (rawParams) async {
+      _ensureMap(rawParams);
+      final id = (rawParams! as Map<String, Object?>)['id'] as String?;
       if (id == null) {
         throw const RpcError('bad_params', 'id required');
       }
@@ -39,9 +39,9 @@ class JobService {
       if (job == null) throw RpcError('not_found', 'job $id');
       return job.toJson();
     });
-    server.onRequest('job.cancel', (p) async {
-      _ensureMap(p);
-      final id = (p! as Map<String, Object?>)['id'] as String?;
+    server.onRequest('job.cancel', (rawParams) async {
+      _ensureMap(rawParams);
+      final id = (rawParams! as Map<String, Object?>)['id'] as String?;
       if (id == null) {
         throw const RpcError('bad_params', 'id required');
       }
@@ -52,8 +52,8 @@ class JobService {
 
   Future<Object?> _submit(Object? params) async {
     _ensureMap(params);
-    final p = params! as Map<String, Object?>;
-    final spec = JobSpec.fromJson(p);
+    final paramsMap = params! as Map<String, Object?>;
+    final spec = JobSpec.fromJson(paramsMap);
     final handler = _handlers[spec.kind];
     if (handler == null) {
       throw RpcError('unknown_job', 'no handler for ${spec.kind}');
@@ -61,26 +61,28 @@ class JobService {
     final id = const Uuid().v4();
     final record = JobRecord(id: id, spec: spec);
     _jobs[id] = record;
-    final ctx = JobContext(
+    final jobContext = JobContext(
       record: record,
       connections: _connections,
       bus: _bus,
     );
-    _contexts[id] = ctx;
+    _contexts[id] = jobContext;
     _publish('job.created', record);
     // Fire and forget — caller gets the id back, observes via bus.
-    unawaited(_run(handler, ctx));
+    unawaited(_run(handler, jobContext));
     return record.toJson();
   }
 
-  Future<void> _run(JobHandler handler, JobContext ctx) async {
-    final record = ctx.record;
+  Future<void> _run(JobHandler handler, JobContext jobContext) async {
+    final record = jobContext.record;
     record.state = JobState.running;
     _publish('job.started:${record.id}', record);
     try {
-      final summary = await handler.run(ctx);
+      final summary = await handler.run(jobContext);
       record.summary = summary;
-      record.state = ctx.cancelled ? JobState.cancelled : JobState.completed;
+      record.state = jobContext.cancelled
+          ? JobState.cancelled
+          : JobState.completed;
     } on RpcError catch (e) {
       record.error = e.message;
       record.state = JobState.failed;
@@ -94,14 +96,16 @@ class JobService {
     }
   }
 
-  List<Object?> _listJson() => [for (final r in _jobs.values) r.toJson()];
+  List<Object?> _listJson() => [
+    for (final record in _jobs.values) record.toJson(),
+  ];
 
   void _publish(String topic, JobRecord record) {
     _bus.publish(topic, record.toJson());
   }
 
-  void _ensureMap(Object? p) {
-    if (p is! Map<String, Object?>) {
+  void _ensureMap(Object? rawParams) {
+    if (rawParams is! Map<String, Object?>) {
       throw const RpcError('bad_params', 'expected object');
     }
   }

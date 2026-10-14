@@ -30,6 +30,10 @@ import 'meta_menu.dart';
 
 const _mono = TextStyle(fontFamily: 'monospace', fontSize: 12);
 
+/// The enforcement dialog lists at most this many differences, so a badly
+/// drifted database cannot flood the dialog.
+const _kMaxDriftLinesShown = 200;
+
 /// The active connection's id and snapshot, or null with a toast.
 ({String id, MetaSnapshot snapshot})? _active(BuildContext context) {
   final id = ConnectionRegistry.instance.activeId;
@@ -70,10 +74,10 @@ Future<void> showMetadataProblems(BuildContext context) async {
   final problems = snapshot.problems;
   await showDialog<void>(
     context: context,
-    builder: (ctx) => AppFormDialog(
+    builder: (dialogContext) => AppFormDialog(
       title: 'Metadata problems',
-      width: 640,
-      height: 480,
+      width: 640.0,
+      height: 480.0,
       submitLabel: null,
       cancelLabel: 'Close',
       content: Column(
@@ -84,14 +88,14 @@ Future<void> showMetadataProblems(BuildContext context) async {
             '${snapshot.settings.sidecarPath == null ? '' : ' · file ${snapshot.settings.sidecarPath}'}'
             ' · ${snapshot.index.document.rows.length} rows, '
             '${snapshot.index.document.grants.length} grants',
-            style: Theme.of(ctx).textTheme.bodySmall,
+            style: Theme.of(dialogContext).textTheme.bodySmall,
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: 12.0),
           if (problems.isEmpty) const Text('No problems.'),
-          for (final p in problems)
+          for (final problem in problems)
             Padding(
-              padding: const EdgeInsets.only(bottom: 6),
-              child: SelectableText(p.toString(), style: _mono),
+              padding: const EdgeInsets.only(bottom: 6.0),
+              child: SelectableText(problem.toString(), style: _mono),
             ),
         ],
       ),
@@ -109,11 +113,16 @@ Future<void> showEffectiveAccess(BuildContext context) async {
   if (policy.active) {
     final catalog = SchemaCatalog.unfiltered(executor);
     try {
-      for (final s in await catalog.listSchemas()) {
-        if (s.isSystem) continue;
-        for (final t in await catalog.listTables(s.name)) {
-          final d = policy.forTable(t.schema, t.name);
-          rows.add((t.schema, t.name, d.level.name, d.reason));
+      for (final schema in await catalog.listSchemas()) {
+        if (schema.isSystem) continue;
+        for (final table in await catalog.listTables(schema.name)) {
+          final decision = policy.forTable(table.schema, table.name);
+          rows.add((
+            table.schema,
+            table.name,
+            decision.level.name,
+            decision.reason,
+          ));
         }
       }
     } catch (e) {
@@ -123,12 +132,12 @@ Future<void> showEffectiveAccess(BuildContext context) async {
   if (!context.mounted) return;
   await showDialog<void>(
     context: context,
-    builder: (ctx) {
-      final theme = Theme.of(ctx);
+    builder: (dialogContext) {
+      final theme = Theme.of(dialogContext);
       return AppFormDialog(
         title: 'Your access on this connection',
-        width: 720,
-        height: 560,
+        width: 720.0,
+        height: 560.0,
         submitLabel: null,
         cancelLabel: 'Close',
         content: Column(
@@ -141,7 +150,7 @@ Future<void> showEffectiveAccess(BuildContext context) async {
               )
             else ...[
               Text(policy.summary, style: theme.textTheme.titleSmall),
-              const SizedBox(height: 4),
+              const SizedBox(height: 4.0),
               Text(
                 'Strength: ${snapshot.tablesOutcome == MetaTablesOutcome.loaded && snapshot.identity.postgresRoles.isNotEmpty ? 'guardrails (dbscope); real Postgres privileges cap everything' : 'guardrails (dbscope)'}',
                 style: theme.textTheme.bodySmall,
@@ -152,7 +161,7 @@ Future<void> showEffectiveAccess(BuildContext context) async {
                 style: theme.textTheme.bodySmall,
               ),
               Text(
-                'Capabilities: ${policy.capabilities.isEmpty ? '(none)' : [for (final c in policy.capabilities) c.name].join(', ')}',
+                'Capabilities: ${policy.capabilities.isEmpty ? '(none)' : [for (final capability in policy.capabilities) capability.name].join(', ')}',
                 style: theme.textTheme.bodySmall,
               ),
               Text(
@@ -160,18 +169,20 @@ Future<void> showEffectiveAccess(BuildContext context) async {
                 style: theme.textTheme.bodySmall,
               ),
               const Divider(),
-              for (final r in rows)
+              for (final accessRow in rows)
                 Tooltip(
-                  message: r.$4,
+                  message: accessRow.$4,
                   child: Padding(
-                    padding: const EdgeInsets.symmetric(vertical: 1),
+                    padding: const EdgeInsets.symmetric(vertical: 1.0),
                     child: Row(
                       children: [
                         SizedBox(
-                          width: 70,
-                          child: Text(r.$3, style: _mono),
+                          width: 70.0,
+                          child: Text(accessRow.$3, style: _mono),
                         ),
-                        Expanded(child: Text('${r.$1}.${r.$2}')),
+                        Expanded(
+                          child: Text('${accessRow.$1}.${accessRow.$2}'),
+                        ),
                       ],
                     ),
                   ),
@@ -200,19 +211,19 @@ Future<void> showViewAs(BuildContext context) async {
   if (!_requireManage(context, snapshot)) return;
   final document = snapshot.index.document;
   final roleIds = <String>{
-    for (final r in document.roles) r.id,
-    for (final m in document.members) m.roleId,
-    for (final g in document.grants) g.roleId,
+    for (final role in document.roles) role.id,
+    for (final member in document.members) member.roleId,
+    for (final grant in document.grants) grant.roleId,
   }..remove(kEveryoneRoleId);
   final chosen = <String>{};
   final result = await showDialog<Set<String>>(
     context: context,
-    builder: (ctx) => StatefulBuilder(
-      builder: (ctx, setState) => AppFormDialog(
+    builder: (_) => StatefulBuilder(
+      builder: (dialogContext, setState) => AppFormDialog(
         title: 'View as…',
-        width: 420,
+        width: 420.0,
         submitLabel: 'Preview',
-        onSubmit: () => Navigator.of(ctx).pop(chosen),
+        onSubmit: () => Navigator.of(dialogContext).pop(chosen),
         content: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -221,15 +232,15 @@ Future<void> showViewAs(BuildContext context) async {
               'everyone). Choose none to preview an unlisted user. Use '
               'Metadata ▸ View as… again to stop.',
             ),
-            const SizedBox(height: 8),
+            const SizedBox(height: 8.0),
             for (final id in roleIds.toList()..sort())
               CheckboxListTile(
                 dense: true,
                 contentPadding: EdgeInsets.zero,
                 value: chosen.contains(id),
                 title: Text(id),
-                onChanged: (v) => setState(() {
-                  if (v ?? false) {
+                onChanged: (checked) => setState(() {
+                  if (checked ?? false) {
                     chosen.add(id);
                   } else {
                     chosen.remove(id);
@@ -268,12 +279,12 @@ Future<void> showChecks(BuildContext context) async {
     var sql = check.sql.trim();
     if (sql.endsWith(';')) sql = sql.substring(0, sql.length - 1);
     try {
-      final res = await executeReadOnly(
+      final result = await executeReadOnly(
         executor,
         'SELECT count(*) FROM ($sql) AS dbscope_check',
       );
       results.add(
-        _CheckResult(check, count: (res.rows.first.first as num?)?.toInt()),
+        _CheckResult(check, count: (result.rows.first.first as num?)?.toInt()),
       );
     } catch (e) {
       results.add(_CheckResult(check, error: classify(e).message));
@@ -282,48 +293,49 @@ Future<void> showChecks(BuildContext context) async {
   if (!context.mounted) return;
   await showDialog<void>(
     context: context,
-    builder: (ctx) {
-      final theme = Theme.of(ctx);
+    builder: (dialogContext) {
+      final theme = Theme.of(dialogContext);
       return AppFormDialog(
         title: 'Checks',
-        width: 680,
-        height: 520,
+        width: 680.0,
+        height: 520.0,
         submitLabel: null,
         cancelLabel: 'Close',
         content: Column(
           children: [
-            for (final r in results)
+            for (final checkResult in results)
               ListTile(
                 dense: true,
                 leading: Icon(
-                  r.error != null
+                  checkResult.error != null
                       ? Icons.error_outline
-                      : (r.count ?? 0) == 0
+                      : (checkResult.count ?? 0) == 0
                       ? Icons.check_circle_outline
-                      : r.check.severity == CheckSeverity.error
+                      : checkResult.check.severity == CheckSeverity.error
                       ? Icons.cancel_outlined
                       : Icons.warning_amber,
-                  color: r.error != null || (r.count ?? 0) > 0
-                      ? (r.check.severity == CheckSeverity.info
+                  color:
+                      checkResult.error != null || (checkResult.count ?? 0) > 0
+                      ? (checkResult.check.severity == CheckSeverity.info
                             ? theme.hintColor
                             : theme.colorScheme.error)
                       : Colors.green,
                 ),
-                title: Text(r.check.label),
+                title: Text(checkResult.check.label),
                 subtitle: Text(
-                  r.error ??
-                      '${r.count} row(s)'
-                          '${r.check.description == null ? '' : ' — ${r.check.description}'}',
+                  checkResult.error ??
+                      '${checkResult.count} row(s)'
+                          '${checkResult.check.description == null ? '' : ' — ${checkResult.check.description}'}',
                 ),
-                trailing: (r.count ?? 0) > 0
+                trailing: (checkResult.count ?? 0) > 0
                     ? TextButton(
                         onPressed: () {
-                          Navigator.of(ctx).pop();
+                          Navigator.of(dialogContext).pop();
                           AppState.instance.openTab(
                             NamedQueryTab.adHoc(
                               connectionId: active.id,
-                              label: 'Check: ${r.check.label}',
-                              sql: r.check.sql,
+                              label: 'Check: ${checkResult.check.label}',
+                              sql: checkResult.check.sql,
                               boundParams: const {},
                             ),
                           );
@@ -370,15 +382,15 @@ Future<void> showMetadataSettings(BuildContext context) async {
   );
   final result = await showDialog<MetadataSettings>(
     context: context,
-    builder: (ctx) => StatefulBuilder(
-      builder: (ctx, setState) => AppFormDialog(
+    builder: (_) => StatefulBuilder(
+      builder: (dialogContext, setState) => AppFormDialog(
         title: 'Metadata settings — ${profile.name}',
-        width: 560,
+        width: 560.0,
         submitLabel: 'Save',
         onSubmit: () {
-          String? text(TextEditingController c) =>
-              c.text.trim().isEmpty ? null : c.text.trim();
-          Navigator.of(ctx).pop(
+          String? text(TextEditingController controller) =>
+              controller.text.trim().isEmpty ? null : controller.text.trim();
+          Navigator.of(dialogContext).pop(
             MetadataSettings(
               tablesMode: settings.tablesMode,
               customName: text(customController),
@@ -391,7 +403,7 @@ Future<void> showMetadataSettings(BuildContext context) async {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             const Text('Metadata tables in the database'),
-            const SizedBox(height: 4),
+            const SizedBox(height: 4.0),
             SegmentedButton<MetaTablesMode>(
               segments: const [
                 ButtonSegment(value: MetaTablesMode.auto, label: Text('Auto')),
@@ -404,21 +416,23 @@ Future<void> showMetadataSettings(BuildContext context) async {
               selected: {settings.tablesMode},
               onSelectionChanged: tablesLocked
                   ? null
-                  : (v) => setState(
-                      () => settings = settings.copyWith(tablesMode: v.first),
+                  : (selection) => setState(
+                      () => settings = settings.copyWith(
+                        tablesMode: selection.first,
+                      ),
                     ),
             ),
             if (tablesLocked)
               const Padding(
-                padding: EdgeInsets.only(top: 4),
+                padding: EdgeInsets.only(top: 4.0),
                 child: Text(
                   'The database defines access control; only a role with '
                   'manage can change where dbscope reads it from.',
-                  style: TextStyle(fontSize: 11),
+                  style: TextStyle(fontSize: 11.0),
                 ),
               ),
             if (settings.tablesMode == MetaTablesMode.custom) ...[
-              const SizedBox(height: 8),
+              const SizedBox(height: 8.0),
               TextField(
                 controller: customController,
                 enabled: !tablesLocked,
@@ -431,7 +445,7 @@ Future<void> showMetadataSettings(BuildContext context) async {
                 ),
               ),
             ],
-            const SizedBox(height: 16),
+            const SizedBox(height: 16.0),
             Row(
               children: [
                 Expanded(
@@ -444,7 +458,7 @@ Future<void> showMetadataSettings(BuildContext context) async {
                     ),
                   ),
                 ),
-                const SizedBox(width: 8),
+                const SizedBox(width: 8.0),
                 OutlinedButton(
                   onPressed: () async {
                     final file = await openFile(
@@ -463,7 +477,7 @@ Future<void> showMetadataSettings(BuildContext context) async {
                 ),
               ],
             ),
-            const SizedBox(height: 16),
+            const SizedBox(height: 16.0),
             TextField(
               controller: identityController,
               decoration: const InputDecoration(
@@ -499,12 +513,12 @@ Future<void> showInitializeTables(BuildContext context) async {
   final ddl = writer.createTablesSql();
   final ok = await showDialog<bool>(
     context: context,
-    builder: (ctx) => AppFormDialog(
+    builder: (dialogContext) => AppFormDialog(
       title: 'Initialize metadata tables',
-      width: 720,
-      height: 560,
+      width: 720.0,
+      height: 560.0,
       submitLabel: 'Create',
-      onSubmit: () => Navigator.of(ctx).pop(true),
+      onSubmit: () => Navigator.of(dialogContext).pop(true),
       extraActions: [
         TextButton(
           onPressed: () => Clipboard.setData(ClipboardData(text: ddl)),
@@ -518,7 +532,7 @@ Future<void> showInitializeTables(BuildContext context) async {
             'dbscope will run this DDL. Many teams prefer to add it to their '
             'own migrations instead — copy it and close this dialog.',
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: 8.0),
           SelectableText(ddl, style: _mono),
         ],
       ),
@@ -586,45 +600,47 @@ Future<void> exportMetadataFile(BuildContext context) async {
   if (active == null) return;
   final document = active.snapshot.index.document;
   final rows = [
-    for (final r in document.rows)
-      if (r.source == MetaSourceKind.database ||
-          r.source == MetaSourceKind.file)
+    for (final metaRow in document.rows)
+      if (metaRow.source == MetaSourceKind.database ||
+          metaRow.source == MetaSourceKind.file)
         {
-          'id': r.id,
-          'target': r.target.raw,
-          'kind': r.kind,
-          if (r.priority != 0) 'priority': r.priority,
-          'spec': r.spec,
+          'id': metaRow.id,
+          'target': metaRow.target.raw,
+          'kind': metaRow.kind,
+          if (metaRow.priority != 0) 'priority': metaRow.priority,
+          'spec': metaRow.spec,
         },
   ];
   final out = <String, Object?>{
     'format': kSupportedMetaFormatVersion,
     'meta': rows,
     'roles': [
-      for (final r in document.roles)
+      for (final role in document.roles)
         {
-          'id': r.id,
-          'label': r.label,
-          'description': ?r.description,
-          if (r.inherits.isNotEmpty) 'inherits': r.inherits,
-          if (r.capabilities.isNotEmpty)
-            'capabilities': [for (final c in r.capabilities) c.name],
-          'db_role': ?r.dbRole,
+          'id': role.id,
+          'label': role.label,
+          'description': ?role.description,
+          if (role.inherits.isNotEmpty) 'inherits': role.inherits,
+          if (role.capabilities.isNotEmpty)
+            'capabilities': [
+              for (final capability in role.capabilities) capability.name,
+            ],
+          'db_role': ?role.dbRole,
         },
     ],
     'members': [
-      for (final m in document.members)
-        {'role': m.roleId, 'principal': m.principal},
+      for (final member in document.members)
+        {'role': member.roleId, 'principal': member.principal},
     ],
     'grants': [
-      for (final g in document.grants)
+      for (final grant in document.grants)
         {
-          'id': g.id,
-          'role': g.roleId,
-          'target': g.target.raw,
-          'level': g.level.name,
-          if (g.defaultHidden) 'default_hidden': true,
-          'note': ?g.note,
+          'id': grant.id,
+          'role': grant.roleId,
+          'target': grant.target.raw,
+          'level': grant.level.name,
+          if (grant.defaultHidden) 'default_hidden': true,
+          'note': ?grant.note,
         },
     ],
   };
@@ -659,20 +675,20 @@ Future<void> showEnforcementSql(BuildContext context) async {
   final catalog = SchemaCatalog.unfiltered(executor);
   final tables = <EnforcementTable>[];
   try {
-    for (final s in await catalog.listSchemas()) {
-      if (s.isSystem) continue;
-      for (final t in await catalog.listTables(s.name)) {
-        final isView = t.kind == 'VIEW';
-        if (t.kind != 'BASE TABLE' && !isView) continue;
-        if (snapshot.isMetaTable(t.schema, t.name)) continue;
-        final columns = await catalog.listColumns(t.schema, t.name);
-        final pk = await catalog.primaryKey(t.schema, t.name);
+    for (final schema in await catalog.listSchemas()) {
+      if (schema.isSystem) continue;
+      for (final table in await catalog.listTables(schema.name)) {
+        final isView = table.kind == 'VIEW';
+        if (table.kind != 'BASE TABLE' && !isView) continue;
+        if (snapshot.isMetaTable(table.schema, table.name)) continue;
+        final columns = await catalog.listColumns(table.schema, table.name);
+        final primaryKey = await catalog.primaryKey(table.schema, table.name);
         tables.add(
           EnforcementTable(
-            schema: t.schema,
-            table: t.name,
-            columns: [for (final c in columns) c.name],
-            primaryKey: pk,
+            schema: table.schema,
+            table: table.name,
+            columns: [for (final column in columns) column.name],
+            primaryKey: primaryKey,
             isView: isView,
           ),
         );
@@ -707,7 +723,7 @@ Future<void> showEnforcementSql(BuildContext context) async {
         ? 'SELECT has_table_privilege(@role, @rel, @priv)'
         : 'SELECT has_column_privilege(@role, @rel, @col, @priv)';
     try {
-      final res = await executor.execute(
+      final result = await executor.execute(
         sql,
         named: {
           'role': e.dbRole,
@@ -716,20 +732,20 @@ Future<void> showEnforcementSql(BuildContext context) async {
           if (e.column != null) 'col': e.column,
         },
       );
-      final actual = res.rows.first.first == true;
+      final actual = result.rows.first.first == true;
       if (actual != e.granted) drift.add(e.describe);
-    } catch (err) {
-      drift.add('${e.describe} — could not check: ${classify(err).message}');
+    } catch (error) {
+      drift.add('${e.describe} — could not check: ${classify(error).message}');
       break;
     }
   }
   if (!context.mounted) return;
   await showDialog<void>(
     context: context,
-    builder: (ctx) => AppFormDialog(
+    builder: (dialogContext) => AppFormDialog(
       title: 'Enforcement SQL',
-      width: 760,
-      height: 600,
+      width: 760.0,
+      height: 600.0,
       submitLabel: null,
       cancelLabel: 'Close',
       extraActions: [
@@ -747,15 +763,16 @@ Future<void> showEnforcementSql(BuildContext context) async {
             'own the tables.',
           ),
           for (final note in plan.notes) Text('• $note'),
-          const SizedBox(height: 8),
+          const SizedBox(height: 8.0),
           Text(
             drift.isEmpty
                 ? 'Drift: none — the database matches the grants.'
                 : 'Drift: ${drift.length} difference(s) between the grants and '
                       'the database:',
-            style: Theme.of(ctx).textTheme.titleSmall,
+            style: Theme.of(dialogContext).textTheme.titleSmall,
           ),
-          for (final d in drift.take(200)) Text('• $d', style: _mono),
+          for (final difference in drift.take(_kMaxDriftLinesShown))
+            Text('• $difference', style: _mono),
           const Divider(),
           SelectableText(plan.script, style: _mono),
         ],
@@ -775,21 +792,21 @@ Future<void> showGlobalActions(BuildContext context) async {
   final click = MetaClickContext(connectionId: active.id);
   final picked = await showDialog<ActionSpec>(
     context: context,
-    builder: (ctx) => AppFormDialog(
+    builder: (dialogContext) => AppFormDialog(
       title: 'Actions',
-      width: 480,
+      width: 480.0,
       submitLabel: null,
       content: Column(
         children: [
-          for (final a in actions)
+          for (final action in actions)
             ListTile(
               dense: true,
-              title: Text(a.label),
-              subtitle: actionUnavailableReason(a, click) == null
-                  ? Text(a.run.name)
-                  : Text(actionUnavailableReason(a, click)!),
-              enabled: actionUnavailableReason(a, click) == null,
-              onTap: () => Navigator.of(ctx).pop(a),
+              title: Text(action.label),
+              subtitle: actionUnavailableReason(action, click) == null
+                  ? Text(action.run.name)
+                  : Text(actionUnavailableReason(action, click)!),
+              enabled: actionUnavailableReason(action, click) == null,
+              onTap: () => Navigator.of(dialogContext).pop(action),
             ),
         ],
       ),

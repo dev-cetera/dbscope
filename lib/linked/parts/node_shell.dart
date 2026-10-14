@@ -1,20 +1,24 @@
 part of '../linked_view.dart';
 
-String _short(Object? v) {
-  if (v == null) return 'NULL';
-  final s = v.toString();
-  if (s.length <= 24) return s;
-  return '${s.substring(0, 24)}…';
+/// Longest value shown in a row label or seed subtitle before it is cut
+/// off with an ellipsis.
+const _kMaxShortValueLength = 24;
+
+String _short(Object? value) {
+  if (value == null) return 'NULL';
+  final text = value.toString();
+  if (text.length <= _kMaxShortValueLength) return text;
+  return '${text.substring(0, _kMaxShortValueLength)}…';
 }
 
 /// Compact "col1=val1, col2=val2" label used by the row picker panel
 /// when previewing a row in the seed picker. Kept on the linked-view
 /// library so it lives alongside the rest of the row-display helpers.
-String _rowLabel(List<Object?> rowVals, List<GridColumnSpec> cols) {
-  if (cols.isEmpty) return '(row)';
+String _rowLabel(List<Object?> rowValues, List<GridColumnSpec> columns) {
+  if (columns.isEmpty) return '(row)';
   return [
-    for (var i = 0; i < cols.length; i++)
-      '${cols[i].name}=${_short(i < rowVals.length ? rowVals[i] : null)}',
+    for (var i = 0; i < columns.length; i++)
+      '${columns[i].name}=${_short(i < rowValues.length ? rowValues[i] : null)}',
   ].join(', ');
 }
 
@@ -23,15 +27,15 @@ String _rowLabel(List<Object?> rowVals, List<GridColumnSpec> cols) {
 /// null so the card stays compact. The ONE place this is decided — node
 /// height, edge anchors and auto-width all ask it, so the card never
 /// renders taller than the box the canvas gives it.
-String? _nodeSubtitle(LinkedRowNode n) {
-  final rowLabel = n.rowLabel;
+String? _nodeSubtitle(LinkedRowNode node) {
+  final rowLabel = node.rowLabel;
   if (rowLabel != null) return rowLabel;
-  if (!n.isSeed) return null;
-  if (n.pkColumns.isEmpty) return null;
+  if (!node.isSeed) return null;
+  if (node.pkColumns.isEmpty) return null;
   final parts = <String>[];
-  for (var i = 0; i < n.pkColumns.length; i++) {
-    final v = i < n.pkValues.length ? n.pkValues[i] : null;
-    parts.add('${n.pkColumns[i]}=${_short(v)}');
+  for (var i = 0; i < node.pkColumns.length; i++) {
+    final value = i < node.pkValues.length ? node.pkValues[i] : null;
+    parts.add('${node.pkColumns[i]}=${_short(value)}');
   }
   return '(${parts.join(', ')})';
 }
@@ -39,26 +43,32 @@ String? _nodeSubtitle(LinkedRowNode n) {
 /// Columns shown in the node body in compact mode — mirrors the filter
 /// SchemaCard applies when `compact: true`, so the node-height and
 /// edge-anchor math match what's actually rendered.
-List<String> _compactColumnsFor(LinkedRowNode node, List<ForeignKey> allFks) {
+List<String> _compactColumnsFor(
+  LinkedRowNode node,
+  List<ForeignKey> allForeignKeys,
+) {
   if (node.columns.isEmpty) {
-    return node.bodyColumnOrder(allFks);
+    return node.bodyColumnOrder(allForeignKeys);
   }
   final pkSet = node.pkColumns.toSet();
-  final fkCols = <String>{
-    for (final fk in allFks)
-      if (fk.fromSchema == node.schema && fk.fromTable == node.table)
-        fk.fromColumn,
+  final foreignKeyColumns = <String>{
+    for (final foreignKey in allForeignKeys)
+      if (foreignKey.fromSchema == node.schema &&
+          foreignKey.fromTable == node.table)
+        foreignKey.fromColumn,
   };
   final refTargets = <String>{
-    for (final fk in allFks)
-      if (fk.toSchema == node.schema && fk.toTable == node.table) fk.toColumn,
+    for (final foreignKey in allForeignKeys)
+      if (foreignKey.toSchema == node.schema &&
+          foreignKey.toTable == node.table)
+        foreignKey.toColumn,
   };
   return [
-    for (final c in node.columns)
-      if (pkSet.contains(c.name) ||
-          fkCols.contains(c.name) ||
-          refTargets.contains(c.name))
-        c.name,
+    for (final column in node.columns)
+      if (pkSet.contains(column.name) ||
+          foreignKeyColumns.contains(column.name) ||
+          refTargets.contains(column.name))
+        column.name,
   ];
 }
 
@@ -77,53 +87,62 @@ List<String> _compactColumnsFor(LinkedRowNode node, List<ForeignKey> allFks) {
 /// label, matching the Schema viewer's card.
 SchemaNodeData _toSchemaNode(
   LinkedRowNode node,
-  List<ForeignKey> allFks, {
+  List<ForeignKey> allForeignKeys, {
   required bool showRowData,
 }) {
   final fkByColumn = <String, ForeignKey>{};
-  for (final fk in allFks) {
-    if (fk.fromSchema != node.schema || fk.fromTable != node.table) continue;
-    fkByColumn.putIfAbsent(fk.fromColumn, () => fk);
+  for (final foreignKey in allForeignKeys) {
+    if (foreignKey.fromSchema != node.schema ||
+        foreignKey.fromTable != node.table) {
+      continue;
+    }
+    fkByColumn.putIfAbsent(foreignKey.fromColumn, () => foreignKey);
   }
   final inboundRefTargets = <String>{};
-  for (final fk in allFks) {
-    if (fk.toSchema != node.schema || fk.toTable != node.table) continue;
-    inboundRefTargets.add(fk.toColumn);
+  for (final foreignKey in allForeignKeys) {
+    if (foreignKey.toSchema != node.schema ||
+        foreignKey.toTable != node.table) {
+      continue;
+    }
+    inboundRefTargets.add(foreignKey.toColumn);
   }
   final pkSet = node.pkColumns.toSet();
 
   // If columns haven't loaded yet, fall back to a minimal field list
   // built from pkColumns + outbound FK columns so the card still
   // renders something sensible.
-  final cols = node.columns.isNotEmpty
+  final columns = node.columns.isNotEmpty
       ? node.columns.map((c) => (name: c.name, type: c.typeName)).toList()
       : [
-          for (final c in node.bodyColumnOrder(allFks)) (name: c, type: ''),
+          for (final c in node.bodyColumnOrder(allForeignKeys))
+            (name: c, type: ''),
         ];
 
   final fields = <SchemaFieldSpec>[];
-  for (final c in cols) {
-    final fk = fkByColumn[c.name];
+  for (final column in columns) {
+    final foreignKey = fkByColumn[column.name];
     String? valueDisplay;
     var valueIsNull = false;
     if (showRowData) {
-      final v = node.row?[c.name];
-      if (v == null) {
+      final value = node.row?[column.name];
+      if (value == null) {
         valueDisplay = 'NULL';
         valueIsNull = true;
       } else {
-        final s = v.toString();
-        valueDisplay = s.length > 32 ? '${s.substring(0, 32)}…' : s;
+        final text = value.toString();
+        valueDisplay = text.length > _kMaxValueDisplayLength
+            ? '${text.substring(0, _kMaxValueDisplayLength)}…'
+            : text;
       }
     }
     fields.add(
       SchemaFieldSpec(
-        name: c.name,
-        typeLabel: c.type,
-        pk: pkSet.contains(c.name),
-        fk: fk != null,
-        isRefTarget: inboundRefTargets.contains(c.name),
-        linkedTable: fk?.toTable,
+        name: column.name,
+        typeLabel: column.type,
+        pk: pkSet.contains(column.name),
+        fk: foreignKey != null,
+        isRefTarget: inboundRefTargets.contains(column.name),
+        linkedTable: foreignKey?.toTable,
         valueDisplay: valueDisplay,
         valueIsNull: valueIsNull,
       ),
@@ -162,11 +181,11 @@ class _NodeShell extends StatefulWidget {
   final LinkedTab tab;
   final bool isSelected;
   final VoidCallback onDragStart;
-  final void Function(DragUpdateDetails d) onDragUpdate;
+  final void Function(DragUpdateDetails details) onDragUpdate;
   final VoidCallback onDragEnd;
   final VoidCallback onTap;
   final VoidCallback onMount;
-  final void Function(Offset globalPos)? onSecondaryTapDown;
+  final void Function(Offset globalPosition)? onSecondaryTapDown;
 
   /// Drill-in action the SchemaCard's header "open" button fires.
   /// In the Linked view this is the explorer-style action — open the
@@ -225,15 +244,15 @@ class _NodeShellState extends State<_NodeShell> {
         // Right-edge resize handle. Sits on top of the card border so
         // the user can grab and drag without clicking on a row.
         Positioned(
-          top: 0,
-          bottom: 0,
-          right: 0,
+          top: 0.0,
+          bottom: 0.0,
+          right: 0.0,
           width: _kResizeHandleWidth,
           child: MouseRegion(
             cursor: SystemMouseCursors.resizeLeftRight,
             child: GestureDetector(
               behavior: HitTestBehavior.opaque,
-              onPanUpdate: (d) => widget.onResizeUpdate(d.delta.dx),
+              onPanUpdate: (details) => widget.onResizeUpdate(details.delta.dx),
               onPanEnd: (_) => widget.onResizeEnd(),
               onPanCancel: widget.onResizeEnd,
               child: const SizedBox.expand(),

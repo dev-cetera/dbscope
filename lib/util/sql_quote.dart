@@ -17,6 +17,6 @@ String quoteLiteral(Object? value) {
   if (value is bool) return value ? 'TRUE' : 'FALSE';
   if (value is num) return value.toString();
   if (value is BigInt) return value.toString();
-  final s = value.toString();
-  return "'${s.replaceAll("'", "''")}'";
+  final text = value.toString();
+  return "'${text.replaceAll("'", "''")}'";
 }

@@ -30,30 +30,30 @@ class ProfileService {
 
   void register(Server server) {
     server.onRequest('profile.list', (_) async => _listJson());
-    server.onRequest('profile.add', (p) async {
-      _ensureMap(p);
-      final profile = _fromParams(p! as Map<String, Object?>);
+    server.onRequest('profile.add', (rawParams) async {
+      _ensureMap(rawParams);
+      final profile = _fromParams(rawParams! as Map<String, Object?>);
       await _upsert(profile);
       return _toJson(profile);
     });
-    server.onRequest('profile.update', (p) async {
-      _ensureMap(p);
-      final profile = _fromParams(p! as Map<String, Object?>);
+    server.onRequest('profile.update', (rawParams) async {
+      _ensureMap(rawParams);
+      final profile = _fromParams(rawParams! as Map<String, Object?>);
       await _upsert(profile);
       return _toJson(profile);
     });
-    server.onRequest('profile.remove', (p) async {
-      _ensureMap(p);
-      final id = (p! as Map<String, Object?>)['id'] as String?;
+    server.onRequest('profile.remove', (rawParams) async {
+      _ensureMap(rawParams);
+      final id = (rawParams! as Map<String, Object?>)['id'] as String?;
       if (id == null) {
         throw const RpcError('bad_params', 'id required');
       }
       await _remove(id);
       return null;
     });
-    server.onRequest('profile.password', (p) async {
-      _ensureMap(p);
-      final id = (p! as Map<String, Object?>)['id'] as String?;
+    server.onRequest('profile.password', (rawParams) async {
+      _ensureMap(rawParams);
+      final id = (rawParams! as Map<String, Object?>)['id'] as String?;
       if (id == null) {
         throw const RpcError('bad_params', 'id required');
       }
@@ -71,41 +71,41 @@ class ProfileService {
 
   Future<List<Object?>> _listJson() async {
     await _ensureLoaded();
-    return [for (final p in _profiles) _toJson(p)];
+    return [for (final profile in _profiles) _toJson(profile)];
   }
 
   Future<void> _upsert(ConnectionProfile profile) async {
     await _ensureLoaded();
-    final idx = _profiles.indexWhere((p) => p.id == profile.id);
-    if (idx >= 0) {
-      _profiles[idx] = profile;
+    final index = _profiles.indexWhere((stored) => stored.id == profile.id);
+    if (index >= 0) {
+      _profiles[index] = profile;
     } else {
       _profiles = [..._profiles, profile];
     }
     await _store.save(_profiles);
     _bus.publish('profile.changed', {
-      'profiles': [for (final p in _profiles) _toJson(p)],
+      'profiles': [for (final stored in _profiles) _toJson(stored)],
     });
   }
 
   Future<void> _remove(String id) async {
     await _ensureLoaded();
-    final removed = _profiles.where((p) => p.id == id).toList();
-    _profiles = _profiles.where((p) => p.id != id).toList();
-    for (final p in removed) {
-      await _store.delete(p);
+    final removed = _profiles.where((profile) => profile.id == id).toList();
+    _profiles = _profiles.where((profile) => profile.id != id).toList();
+    for (final profile in removed) {
+      await _store.delete(profile);
     }
     await _store.save(_profiles);
     _bus.publish('profile.changed', {
-      'profiles': [for (final p in _profiles) _toJson(p)],
+      'profiles': [for (final profile in _profiles) _toJson(profile)],
     });
   }
 
   // Server-side accessor used by ConnectionService and jobs.
   Future<ConnectionProfile?> resolve(String id) async {
     await _ensureLoaded();
-    for (final p in _profiles) {
-      if (p.id == id) return p;
+    for (final profile in _profiles) {
+      if (profile.id == id) return profile;
     }
     return null;
   }
@@ -122,15 +122,15 @@ class ProfileService {
     await _upsert(profile);
   }
 
-  Map<String, Object?> _toJson(ConnectionProfile p) => p.toJson();
+  Map<String, Object?> _toJson(ConnectionProfile profile) => profile.toJson();
 
-  ConnectionProfile _fromParams(Map<String, Object?> p) {
-    final password = p['password'] as String? ?? '';
-    return ConnectionProfile.fromJson(p, password);
+  ConnectionProfile _fromParams(Map<String, Object?> params) {
+    final password = params['password'] as String? ?? '';
+    return ConnectionProfile.fromJson(params, password);
   }
 
-  void _ensureMap(Object? p) {
-    if (p is! Map<String, Object?>) {
+  void _ensureMap(Object? rawParams) {
+    if (rawParams is! Map<String, Object?>) {
       throw const RpcError('bad_params', 'expected object');
     }
   }

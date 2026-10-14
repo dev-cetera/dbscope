@@ -49,7 +49,7 @@ class FakeDbExecutor implements DbExecutor {
   void enqueueRow(List<Object?> row, {List<String> columns = const []}) {
     _scripted.add(
       DbResult(
-        columns: [for (final c in columns) DbColumn(name: c)],
+        columns: [for (final columnName in columns) DbColumn(name: columnName)],
         rows: [row],
       ),
     );

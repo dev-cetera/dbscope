@@ -5,10 +5,10 @@ import '../tabs/tab_kind.dart';
 import 'query_tab.dart';
 import 'query_tab_view.dart';
 
-GridViewMode _viewModeFrom(Object? v) {
-  if (v is String) {
-    for (final m in GridViewMode.values) {
-      if (m.name == v) return m;
+GridViewMode _viewModeFrom(Object? value) {
+  if (value is String) {
+    for (final mode in GridViewMode.values) {
+      if (mode.name == value) return mode;
     }
   }
   return GridViewMode.typed;
@@ -41,38 +41,38 @@ final queryTabKind = TabKind(
   icon: Icons.code,
   buildView: (tab) => QueryTabView(key: ValueKey(tab.id), tab: tab as QueryTab),
   serialize: (tab) {
-    final t = tab as QueryTab;
+    final queryTab = tab as QueryTab;
     return {
       'kind': 'query',
-      'id': t.id,
-      'connectionId': t.connectionId,
-      'sql': t.sql,
-      'prompt': t.prompt,
-      'focusSchema': t.focusSchema,
-      'focusTable': t.focusTable,
-      'historyRailOpen': t.historyRailOpen,
-      'titleOverride': t.titleOverride,
-      'savedName': t.savedName,
-      'pinned': t.pinned,
-      'viewMode': t.viewMode.name,
+      'id': queryTab.id,
+      'connectionId': queryTab.connectionId,
+      'sql': queryTab.sql,
+      'prompt': queryTab.prompt,
+      'focusSchema': queryTab.focusSchema,
+      'focusTable': queryTab.focusTable,
+      'historyRailOpen': queryTab.historyRailOpen,
+      'titleOverride': queryTab.titleOverride,
+      'savedName': queryTab.savedName,
+      'pinned': queryTab.pinned,
+      'viewMode': queryTab.viewMode.name,
     };
   },
   deserialize: _deserialize,
   isRunning: (tab) {
-    final t = tab as QueryTab;
-    return t.isLoading || t.isAsking;
+    final queryTab = tab as QueryTab;
+    return queryTab.isLoading || queryTab.isAsking;
   },
   footerSummary: (tab) {
-    final t = tab as QueryTab;
-    final rows = t.data?.rows.length ?? 0;
-    var s = '$rows rows';
-    if (t.truncated) s += ' • truncated at 10k';
-    if (t.error != null) {
-      s += ' • error';
-    } else if (t.elapsed != null && !t.isLoading) {
-      s += ' • ${t.elapsed!.inMilliseconds}ms';
+    final queryTab = tab as QueryTab;
+    final rows = queryTab.data?.rows.length ?? 0;
+    var summary = '$rows rows';
+    if (queryTab.truncated) summary += ' • truncated at 10k';
+    if (queryTab.error != null) {
+      summary += ' • error';
+    } else if (queryTab.elapsed != null && !queryTab.isLoading) {
+      summary += ' • ${queryTab.elapsed!.inMilliseconds}ms';
     }
-    return s;
+    return summary;
   },
 );
 

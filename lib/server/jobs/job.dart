@@ -48,7 +48,7 @@ class JobRecord {
 
 abstract class JobHandler {
   String get kind;
-  Future<Map<String, Object?>> run(JobContext ctx);
+  Future<Map<String, Object?>> run(JobContext jobContext);
 }
 
 class JobContext {

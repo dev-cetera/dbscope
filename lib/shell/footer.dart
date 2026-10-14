@@ -27,9 +27,9 @@ class Footer extends StatelessWidget {
     }
 
     return AppBevel(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 2),
+      padding: const EdgeInsets.symmetric(horizontal: 10.0, vertical: 2.0),
       child: SizedBox(
-        height: 22,
+        height: 22.0,
         child: SelectionArea(
           child: Row(
             children: [
@@ -37,36 +37,36 @@ class Footer extends StatelessWidget {
                 child: AppBevel(
                   raised: false,
                   padding: const EdgeInsets.symmetric(
-                    horizontal: 6,
-                    vertical: 2,
+                    horizontal: 6.0,
+                    vertical: 2.0,
                   ),
                   child: Text(left, style: palette.smallText),
                 ),
               ),
-              const SizedBox(width: 6),
+              const SizedBox(width: 6.0),
               if (registry.profile?.readOnly ?? false)
                 AppBevel(
                   raised: false,
                   color: palette.surface,
                   padding: const EdgeInsets.symmetric(
-                    horizontal: 6,
-                    vertical: 2,
+                    horizontal: 6.0,
+                    vertical: 2.0,
                   ),
                   child: Text(
                     'READ-ONLY',
-                    style: palette.boldText.copyWith(fontSize: 10),
+                    style: palette.boldText.copyWith(fontSize: 10.0),
                   ),
                 ),
               if (running.isNotEmpty) ...[
-                const SizedBox(width: 6),
+                const SizedBox(width: 6.0),
                 ElevatedButton.icon(
-                  icon: const Icon(Icons.stop_circle_outlined, size: 14),
+                  icon: const Icon(Icons.stop_circle_outlined, size: 14.0),
                   label: Text('Cancel (${running.length})'),
                   style: ElevatedButton.styleFrom(
                     foregroundColor: theme.colorScheme.error,
                     padding: const EdgeInsets.symmetric(
-                      horizontal: 8,
-                      vertical: 2,
+                      horizontal: 8.0,
+                      vertical: 2.0,
                     ),
                     visualDensity: VisualDensity.compact,
                     textStyle: palette.smallText,

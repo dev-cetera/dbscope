@@ -225,13 +225,13 @@ String _parseValue(String raw, Map<String, String> vars) {
   if (value.startsWith('"')) {
     final body = StringBuffer();
     for (var i = 1; i < value.length; i++) {
-      final c = value[i];
-      if (c == r'\' && i + 1 < value.length) {
+      final char = value[i];
+      if (char == r'\' && i + 1 < value.length) {
         body.write(value[++i]);
         continue;
       }
-      if (c == '"') break;
-      body.write(c);
+      if (char == '"') break;
+      body.write(char);
     }
     return _expand(body.toString(), vars);
   }
@@ -245,19 +245,19 @@ String _parseValue(String raw, Map<String, String> vars) {
 /// environment, then empty.
 String _expand(String value, Map<String, String> vars) {
   if (!value.contains(r'$')) return value;
-  return value.replaceAllMapped(_reference, (m) {
-    final name = m.group(1) ?? m.group(2)!;
+  return value.replaceAllMapped(_reference, (match) {
+    final name = match.group(1) ?? match.group(2)!;
     return vars[name] ?? Platform.environment[name] ?? '';
   });
 }
 
 /// Strips one layer of matching surrounding quotes.
 String _unquote(String value) {
-  final v = value.trim();
-  if (v.length >= 2 &&
-      ((v.startsWith('"') && v.endsWith('"')) ||
-          (v.startsWith("'") && v.endsWith("'")))) {
-    return v.substring(1, v.length - 1);
+  final trimmed = value.trim();
+  if (trimmed.length >= 2 &&
+      ((trimmed.startsWith('"') && trimmed.endsWith('"')) ||
+          (trimmed.startsWith("'") && trimmed.endsWith("'")))) {
+    return trimmed.substring(1, trimmed.length - 1);
   }
-  return v;
+  return trimmed;
 }

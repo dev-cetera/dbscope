@@ -29,7 +29,8 @@ class PgTypeCellRenderer extends g.CellRenderer<PgType> {
   });
   final Map<String, ForeignKey> outboundByColumn;
   final Map<String, List<ForeignKey>> inboundByColumn;
-  final void Function(ForeignKey fk, {required bool incoming})? onFollowLink;
+  final void Function(ForeignKey foreignKey, {required bool incoming})?
+  onFollowLink;
   final GridViewMode viewMode;
 
   /// Metadata display (renderers) by column name.
@@ -69,8 +70,8 @@ class EditPolicyCellEditor extends g.CellEditor<PgType> {
 
   @override
   bool requiresDialog(g.GridColumnSpec<PgType> column) {
-    final t = column.type;
-    return t == PgType.json || t == PgType.jsonb;
+    final type = column.type;
+    return type == PgType.json || type == PgType.jsonb;
   }
 
   @override
@@ -88,25 +89,25 @@ class EditPolicyCellEditor extends g.CellEditor<PgType> {
 
   @override
   Object? canonicalize(Object? raw, g.GridColumnSpec<PgType> column) {
-    final t = column.type;
-    if ((t == PgType.json || t == PgType.jsonb) && raw is String) {
+    final type = column.type;
+    if ((type == PgType.json || type == PgType.jsonb) && raw is String) {
       return compactJson(raw);
     }
     return raw;
   }
 
   @override
-  Widget build(BuildContext context, g.CellEditContext<PgType> ctx) {
-    final policy = _policyFor(ctx.column.name)!;
+  Widget build(BuildContext context, g.CellEditContext<PgType> editContext) {
+    final policy = _policyFor(editContext.column.name)!;
     return ColumnInput.forPolicy(
       policy: policy,
-      value: ctx.value,
-      onChanged: (v) {
+      value: editContext.value,
+      onChanged: (newValue) {
         // Track the pending value via the close-over; the grid will
         // canonicalize and commit it via the shortcut handlers.
-        ctx.onCommit(v);
+        editContext.onCommit(newValue);
       },
-      compact: ctx.compact,
+      compact: editContext.compact,
     );
   }
 }
@@ -146,8 +147,8 @@ g.GridStyle gridStyleFromPalette(AppPalette palette) {
 
 /// Default per-PgType column width — keeps narrow types narrow (bool,
 /// int4) and gives wide types (uuid, jsonb) room to breathe.
-double defaultWidthForPgType(PgType t) {
-  switch (t) {
+double defaultWidthForPgType(PgType type) {
+  switch (type) {
     case PgType.bool_:
       return 80;
     case PgType.int2:

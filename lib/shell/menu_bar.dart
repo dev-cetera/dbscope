@@ -37,7 +37,7 @@ class AppMenuBar extends StatelessWidget {
     final menus = _MenuActions(context).buildMenus();
     if (_useNativeMacMenu) {
       return PlatformMenuBar(
-        menus: [for (final m in menus) _toPlatformMenu(m)],
+        menus: [for (final menu in menus) _toPlatformMenu(menu)],
         child: child,
       );
     }
@@ -58,36 +58,36 @@ class _MenuActions {
   _MenuActions(this.context);
   final BuildContext context;
 
-  String? get _activeConnId => ConnectionRegistry.instance.activeId;
+  String? get _activeConnectionId => ConnectionRegistry.instance.activeId;
 
   void _newQuery() {
-    final connId = _activeConnId;
+    final connId = _activeConnectionId;
     if (connId == null) return;
     AppState.instance.newQueryTab(connId);
   }
 
   void _newNavigator() {
-    final connId = _activeConnId;
+    final connId = _activeConnectionId;
     if (connId == null) return;
     AppState.instance.openTab(NavigatorTab(connectionId: connId));
   }
 
   void _newLinked() {
-    final connId = _activeConnId;
+    final connId = _activeConnectionId;
     if (connId == null) return;
     AppState.instance.openTab(LinkedTab(connectionId: connId));
   }
 
   void _openSchema() {
-    final connId = _activeConnId;
+    final connId = _activeConnectionId;
     if (connId == null) return;
     final state = AppState.instance;
     // Focus the existing Schema tab for this connection if one is open;
     // otherwise create a fresh one. Schema view is connection-scoped and
     // having two side by side adds noise without value.
-    for (final t in state.tabs) {
-      if (t is SchemaTab && t.connectionId == connId) {
-        state.selectTab(t.id);
+    for (final tab in state.tabs) {
+      if (tab is SchemaTab && tab.connectionId == connId) {
+        state.selectTab(tab.id);
         return;
       }
     }
@@ -95,7 +95,7 @@ class _MenuActions {
   }
 
   void _newAiQuery() {
-    final connId = _activeConnId;
+    final connId = _activeConnectionId;
     if (connId == null) return;
     AppState.instance.newAiQueryTab(connId);
   }
@@ -117,13 +117,13 @@ class _MenuActions {
   List<MenuItemSpec> _contributionsFor(String menu) {
     final regs = MenuContributionRegistry.instance.forMenu(menu);
     return [
-      for (final c in regs)
+      for (final contribution in regs)
         MenuItemSpec(
-          label: c.build(context).label,
-          onSelected: c.build(context).onSelected,
-          shortcut: c.build(context).shortcut,
-          children: c.build(context).children,
-          startsGroup: c.startsGroup,
+          label: contribution.build(context).label,
+          onSelected: contribution.build(context).onSelected,
+          shortcut: contribution.build(context).shortcut,
+          children: contribution.build(context).children,
+          startsGroup: contribution.startsGroup,
         ),
     ];
   }
@@ -232,10 +232,11 @@ class _MenuActions {
             label: 'Theme',
             startsGroup: true,
             children: [
-              for (final t in ThemeRegistry.instance.all)
+              for (final theme in ThemeRegistry.instance.all)
                 MenuItemSpec(
-                  label: '${state.themeId == t.id ? '● ' : ' '}${t.label}',
-                  onSelected: () => state.setThemeId(t.id),
+                  label:
+                      '${state.themeId == theme.id ? '● ' : ' '}${theme.label}',
+                  onSelected: () => state.setThemeId(theme.id),
                 ),
             ],
           ),
@@ -356,10 +357,10 @@ class _FallbackMenuBar extends StatelessWidget {
     return Material(
       color: palette.surfaceRaised,
       child: SizedBox(
-        height: 28,
+        height: 28.0,
         child: Row(
           children: [
-            for (final m in menus) _MenuButton(menu: m),
+            for (final menu in menus) _MenuButton(menu: menu),
           ],
         ),
       ),
@@ -371,23 +372,23 @@ class _MenuButton extends StatelessWidget {
   const _MenuButton({required this.menu});
   final MenuSpec menu;
 
-  Future<void> _show(BuildContext context, Offset globalPos) async {
+  Future<void> _show(BuildContext context, Offset globalPosition) async {
     final overlay =
         Overlay.of(context).context.findRenderObject()! as RenderBox;
     final flattened = _flattenForPopup(menu.items);
     final picked = await showMenu<MenuItemSpec>(
       context: context,
       position: RelativeRect.fromLTRB(
-        globalPos.dx,
-        globalPos.dy,
-        overlay.size.width - globalPos.dx,
-        overlay.size.height - globalPos.dy,
+        globalPosition.dx,
+        globalPosition.dy,
+        overlay.size.width - globalPosition.dx,
+        overlay.size.height - globalPosition.dy,
       ),
       items: [
         for (final e in flattened)
           PopupMenuItem<MenuItemSpec>(
             value: e,
-            height: 28,
+            height: 28.0,
             child: Text(e.label),
           ),
       ],
@@ -400,18 +401,18 @@ class _MenuButton extends StatelessWidget {
   /// parent label) and its children render below with an "indent" prefix.
   static List<MenuItemSpec> _flattenForPopup(List<MenuItemSpec> items) {
     final out = <MenuItemSpec>[];
-    for (final i in items) {
-      if (i.isSubmenu) {
-        for (final c in i.children!) {
+    for (final item in items) {
+      if (item.isSubmenu) {
+        for (final child in item.children!) {
           out.add(
             MenuItemSpec(
-              label: '${i.label}: ${c.label}',
-              onSelected: c.onSelected,
+              label: '${item.label}: ${child.label}',
+              onSelected: child.onSelected,
             ),
           );
         }
       } else {
-        out.add(i);
+        out.add(item);
       }
     }
     return out;
@@ -421,10 +422,10 @@ class _MenuButton extends StatelessWidget {
   Widget build(BuildContext context) {
     final palette = AppPalette.of(context);
     return Builder(
-      builder: (innerCtx) => InkWell(
-        onTapDown: (d) => _show(innerCtx, d.globalPosition),
+      builder: (builderContext) => InkWell(
+        onTapDown: (details) => _show(builderContext, details.globalPosition),
         child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+          padding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 4.0),
           alignment: Alignment.center,
           child: Text(
             menu.label,

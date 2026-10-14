@@ -65,8 +65,8 @@ class _NamedQueryViewState extends State<NamedQueryView>
 
   @override
   void dispose() {
-    for (final c in _inputControllers.values) {
-      c.dispose();
+    for (final controller in _inputControllers.values) {
+      controller.dispose();
     }
     super.dispose();
   }
@@ -90,8 +90,10 @@ class _NamedQueryViewState extends State<NamedQueryView>
   }
 
   Future<void> _run() async {
-    final conn = ConnectionRegistry.instance.connectionFor(tab.connectionId);
-    if (conn == null) {
+    final executor = ConnectionRegistry.instance.connectionFor(
+      tab.connectionId,
+    );
+    if (executor == null) {
       setState(() => tab.error = 'Not connected.');
       return;
     }
@@ -110,12 +112,12 @@ class _NamedQueryViewState extends State<NamedQueryView>
     for (final input in spec?.inputs ?? const <ActionInput>[]) {
       final raw = tab.inputValues[input.name] ?? '';
       if (input.type == 'number') {
-        final n = num.tryParse(raw.trim());
-        if (n == null) {
+        final number = num.tryParse(raw.trim());
+        if (number == null) {
           setState(() => tab.error = '"${input.prompt}" must be a number.');
           return;
         }
-        inputs[input.name] = n;
+        inputs[input.name] = number;
       } else {
         inputs[input.name] = raw;
       }
@@ -153,7 +155,7 @@ class _NamedQueryViewState extends State<NamedQueryView>
     try {
       final raw =
           await QueryRunner(
-            conn,
+            executor,
           ).runSql(
             fromInputs.sql,
             named: named,
@@ -186,11 +188,11 @@ class _NamedQueryViewState extends State<NamedQueryView>
   Widget Function(BuildContext, int, Widget)? _headerBuilder() {
     final queryId = tab.queryId;
     if (queryId == null) return null;
-    return (context, columnIdx, header) => MetaColumnHeader.forQuery(
+    return (context, columnIndex, header) => MetaColumnHeader.forQuery(
       connectionId: tab.connectionId,
       queryId: queryId,
-      column: tab.data!.columns[columnIdx].name,
-      columnType: tab.data!.columns[columnIdx].pgType,
+      column: tab.data!.columns[columnIndex].name,
+      columnType: tab.data!.columns[columnIndex].pgType,
       child: header,
     );
   }
@@ -219,20 +221,20 @@ class _NamedQueryViewState extends State<NamedQueryView>
     final data = tab.data;
     if (id == null || index == null || data == null) return const {};
     return {
-      for (final c in data.columns)
-        c.name: index.displayQueryColumn(id, c.name),
+      for (final column in data.columns)
+        column.name: index.displayQueryColumn(id, column.name),
     };
   }
 
   List<GridMenuEntry> _menuExtras(
-    int rowIdx,
-    int columnIdx,
+    int rowIndex,
+    int columnIndex,
     List<int> selectedRows,
   ) {
     final data = tab.data;
-    if (data == null || rowIdx >= data.rows.length) return const [];
-    final row = data.rows[rowIdx];
-    final column = data.columns[columnIdx];
+    if (data == null || rowIndex >= data.rows.length) return const [];
+    final row = data.rows[rowIndex];
+    final column = data.columns[columnIndex];
     final click = MetaClickContext(
       connectionId: tab.connectionId,
       queryId: tab.queryId,
@@ -242,7 +244,7 @@ class _NamedQueryViewState extends State<NamedQueryView>
       },
       column: column.name,
       columnType: column.pgType,
-      cell: row[columnIdx],
+      cell: row[columnIndex],
     );
     return [
       for (final item in buildMetaMenuItems(context, click))
@@ -283,7 +285,7 @@ class _NamedQueryViewState extends State<NamedQueryView>
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         PanelHeader(
-          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+          padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 4.0),
           titleIcon: Icons.manage_search,
           title: spec?.label ?? tab.label,
           trailing: Row(
@@ -292,18 +294,18 @@ class _NamedQueryViewState extends State<NamedQueryView>
               if (charts.isNotEmpty)
                 IconButton(
                   tooltip: tab.chartsOpen ? 'Hide charts' : 'Show charts',
-                  icon: const Icon(Icons.insert_chart_outlined, size: 18),
+                  icon: const Icon(Icons.insert_chart_outlined, size: 18.0),
                   onPressed: () =>
                       setState(() => tab.chartsOpen = !tab.chartsOpen),
                 ),
               IconButton(
                 tooltip: tab.showSql ? 'Hide SQL' : 'Show SQL',
-                icon: const Icon(Icons.code, size: 18),
+                icon: const Icon(Icons.code, size: 18.0),
                 onPressed: () => setState(() => tab.showSql = !tab.showSql),
               ),
               FilledButton.icon(
                 onPressed: tab.isLoading ? null : _run,
-                icon: const Icon(Icons.play_arrow, size: 16),
+                icon: const Icon(Icons.play_arrow, size: 16.0),
                 label: const Text('Run'),
               ),
             ],
@@ -311,19 +313,19 @@ class _NamedQueryViewState extends State<NamedQueryView>
         ),
         if (spec?.description != null)
           Padding(
-            padding: const EdgeInsets.fromLTRB(12, 6, 12, 0),
+            padding: const EdgeInsets.fromLTRB(12.0, 6.0, 12.0, 0.0),
             child: Text(spec!.description!, style: theme.textTheme.bodySmall),
           ),
         if ((spec?.inputs ?? const []).isNotEmpty)
           Padding(
-            padding: const EdgeInsets.fromLTRB(12, 8, 12, 0),
+            padding: const EdgeInsets.fromLTRB(12.0, 8.0, 12.0, 0.0),
             child: Wrap(
-              spacing: 8,
-              runSpacing: 8,
+              spacing: 8.0,
+              runSpacing: 8.0,
               children: [
                 for (final input in spec!.inputs)
                   SizedBox(
-                    width: 220,
+                    width: 220.0,
                     child: TextField(
                       controller: _controllerFor(input),
                       decoration: InputDecoration(
@@ -339,9 +341,9 @@ class _NamedQueryViewState extends State<NamedQueryView>
           ),
         if (tab.showSql)
           Container(
-            margin: const EdgeInsets.fromLTRB(12, 8, 12, 0),
-            padding: const EdgeInsets.all(8),
-            constraints: const BoxConstraints(maxHeight: 180),
+            margin: const EdgeInsets.fromLTRB(12.0, 8.0, 12.0, 0.0),
+            padding: const EdgeInsets.all(8.0),
+            constraints: const BoxConstraints(maxHeight: 180.0),
             decoration: BoxDecoration(
               border: Border.all(color: AppPalette.of(context).border),
             ),
@@ -354,24 +356,24 @@ class _NamedQueryViewState extends State<NamedQueryView>
           ),
         if (tab.chartsOpen && charts.isNotEmpty && executor != null)
           SizedBox(
-            height: 236,
+            height: 236.0,
             child: ListView(
               scrollDirection: Axis.horizontal,
-              padding: const EdgeInsets.all(8),
+              padding: const EdgeInsets.all(8.0),
               children: [
-                for (final c in charts)
+                for (final chart in charts)
                   Padding(
-                    padding: const EdgeInsets.only(right: 8),
+                    padding: const EdgeInsets.only(right: 8.0),
                     child: SizedBox(
-                      width: 420,
-                      child: MetaChartCard(chart: c, executor: executor),
+                      width: 420.0,
+                      child: MetaChartCard(chart: chart, executor: executor),
                     ),
                   ),
               ],
             ),
           ),
-        const SizedBox(height: 6),
-        const Divider(height: 1),
+        const SizedBox(height: 6.0),
+        const Divider(height: 1.0),
         Expanded(
           child: GridWithInspector(
             grid: DataGrid(

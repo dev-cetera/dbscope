@@ -40,21 +40,29 @@ class _TableRow extends StatelessWidget {
   }
 
   Future<void> _showContextMenu(BuildContext context, Offset position) async {
-    final ctx = SidebarTableActionContext(
+    final actionContext = SidebarTableActionContext(
       buildContext: context,
       connectionId: connectionId,
       schema: schema,
       table: table.name,
       estimatedRows: table.estimatedRows,
     );
-    final actions = SidebarTableActionRegistry.instance.visibleFor(ctx);
+    final actions = SidebarTableActionRegistry.instance.visibleFor(
+      actionContext,
+    );
     final entries = <AppMenuEntry<String>>[];
     for (var i = 0; i < actions.length; i++) {
-      final a = actions[i];
-      if (a.startsGroup && i > 0) {
+      final tableAction = actions[i];
+      if (tableAction.startsGroup && i > 0) {
         entries.add(const AppMenuEntry.divider());
       }
-      entries.add(AppMenuEntry(value: a.id, label: a.label, icon: a.icon));
+      entries.add(
+        AppMenuEntry(
+          value: tableAction.id,
+          label: tableAction.label,
+          icon: tableAction.icon,
+        ),
+      );
     }
     final selected = await showAppContextMenu<String>(
       context: context,
@@ -62,8 +70,8 @@ class _TableRow extends StatelessWidget {
       items: entries,
     );
     if (selected == null || !context.mounted) return;
-    final action = actions.firstWhere((a) => a.id == selected);
-    await action.onSelected(ctx);
+    final action = actions.firstWhere((candidate) => candidate.id == selected);
+    await action.onSelected(actionContext);
   }
 
   @override
@@ -73,8 +81,10 @@ class _TableRow extends StatelessWidget {
         ? theme.colorScheme.primaryContainer
         : (isRelated ? tableColor.withValues(alpha: 0.28) : Colors.transparent);
     return GestureDetector(
-      onSecondaryTapDown: (d) => _showContextMenu(context, d.globalPosition),
-      onLongPressStart: (d) => _showContextMenu(context, d.globalPosition),
+      onSecondaryTapDown: (details) =>
+          _showContextMenu(context, details.globalPosition),
+      onLongPressStart: (details) =>
+          _showContextMenu(context, details.globalPosition),
       child: DecoratedBox(
         decoration: BoxDecoration(
           color: bg,
@@ -86,7 +96,7 @@ class _TableRow extends StatelessWidget {
           onTap: _openTable,
           child: _withDescription(
             Padding(
-              padding: const EdgeInsets.fromLTRB(32, 3, 4, 3),
+              padding: const EdgeInsets.fromLTRB(32.0, 3.0, 4.0, 3.0),
               child: Row(
                 children: [
                   Expanded(
@@ -102,12 +112,12 @@ class _TableRow extends StatelessWidget {
                   ),
                   if (table.estimatedRows >= 0)
                     Padding(
-                      padding: const EdgeInsets.only(left: 4, right: 2),
+                      padding: const EdgeInsets.only(left: 4.0, right: 2.0),
                       child: Text(
                         _fmt(table.estimatedRows),
                         style: theme.textTheme.bodySmall?.copyWith(
                           color: theme.hintColor,
-                          fontSize: 11,
+                          fontSize: 11.0,
                         ),
                       ),
                     ),

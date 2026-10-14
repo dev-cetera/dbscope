@@ -24,9 +24,9 @@ class CellEditor {
     final parsed = parseValue(policy, newValueRaw);
     final params = <Object?>[parsed];
     final pkPlaceholders = <String>[];
-    for (final pk in policy.pkColumns) {
-      params.add(pkValues[pk]);
-      pkPlaceholders.add('${quoteIdent(pk)} = \$${params.length}');
+    for (final primaryKey in policy.pkColumns) {
+      params.add(pkValues[primaryKey]);
+      pkPlaceholders.add('${quoteIdent(primaryKey)} = \$${params.length}');
     }
     params.add(oldValue);
     final oldPlaceholder = '\$${params.length}';
@@ -34,8 +34,9 @@ class CellEditor {
     final qualified = quoteQualified(policy.schema, policy.table);
     // CURRENT_TIMESTAMP rather than now(): it works on Postgres and SQLite.
     final touches = [
-      for (final c in policy.touchColumns)
-        if (c != policy.column) ', ${quoteIdent(c)} = CURRENT_TIMESTAMP',
+      for (final touchColumn in policy.touchColumns)
+        if (touchColumn != policy.column)
+          ', ${quoteIdent(touchColumn)} = CURRENT_TIMESTAMP',
     ].join();
     final sql =
         'UPDATE $qualified '
@@ -56,9 +57,9 @@ class CellEditor {
     final qualified = quoteQualified(schema, table);
     final params = <Object?>[];
     final wherePlaceholders = <String>[];
-    for (final pk in pkColumns) {
-      params.add(pkValues[pk]);
-      wherePlaceholders.add('${quoteIdent(pk)} = \$${params.length}');
+    for (final primaryKey in pkColumns) {
+      params.add(pkValues[primaryKey]);
+      wherePlaceholders.add('${quoteIdent(primaryKey)} = \$${params.length}');
     }
     final sql =
         'DELETE FROM $qualified WHERE ${wherePlaceholders.join(' AND ')}';
@@ -80,14 +81,14 @@ class CellEditor {
     final qualified = quoteQualified(schema, table);
     final params = <Object?>[];
     final wherePlaceholders = <String>[];
-    for (final pk in pkColumns) {
-      params.add(pkValues[pk]);
-      wherePlaceholders.add('${quoteIdent(pk)} = \$${params.length}');
+    for (final primaryKey in pkColumns) {
+      params.add(pkValues[primaryKey]);
+      wherePlaceholders.add('${quoteIdent(primaryKey)} = \$${params.length}');
     }
-    final col = quoteIdent(deletedColumn);
+    final column = quoteIdent(deletedColumn);
     final sql =
-        'UPDATE $qualified SET $col = now() '
-        'WHERE ${wherePlaceholders.join(' AND ')} AND $col IS NULL';
+        'UPDATE $qualified SET $column = now() '
+        'WHERE ${wherePlaceholders.join(' AND ')} AND $column IS NULL';
     final result = await conn.execute(sql, positional: params);
     return result.affectedRows;
   }
@@ -99,22 +100,22 @@ class CellEditor {
     required Map<String, Object?> values,
     String returning = '*',
   }) async {
-    final cols = <String>[];
+    final columns = <String>[];
     final placeholders = <String>[];
     final params = <Object?>[];
-    for (final p in editable) {
-      if (!values.containsKey(p.column)) continue;
-      final v = parseValue(p, values[p.column]);
-      cols.add(quoteIdent(p.column));
-      params.add(v);
+    for (final policy in editable) {
+      if (!values.containsKey(policy.column)) continue;
+      final parsedValue = parseValue(policy, values[policy.column]);
+      columns.add(quoteIdent(policy.column));
+      params.add(parsedValue);
       placeholders.add('\$${params.length}');
     }
-    if (cols.isEmpty) {
+    if (columns.isEmpty) {
       throw const FormatException('Provide at least one column value.');
     }
     final qualified = quoteQualified(schema, table);
     final sql =
-        'INSERT INTO $qualified (${cols.join(', ')}) VALUES (${placeholders.join(', ')}) RETURNING $returning';
+        'INSERT INTO $qualified (${columns.join(', ')}) VALUES (${placeholders.join(', ')}) RETURNING $returning';
     final result = await conn.execute(sql, positional: params);
     if (result.isEmpty) return const [];
     return result.first;
@@ -125,25 +126,25 @@ class CellEditor {
     if (raw is String && raw.isEmpty) {
       return policy.nullIfBlank ? null : '';
     }
-    final s = raw is String ? raw : raw.toString();
+    final text = raw is String ? raw : raw.toString();
     switch (policy.type) {
       case PgType.int2:
       case PgType.int4:
       case PgType.int8:
-        return int.parse(s);
+        return int.parse(text);
       case PgType.numeric:
       case PgType.real:
       case PgType.doublePrecision:
-        return num.parse(s);
+        return num.parse(text);
       case PgType.bool_:
         if (raw is bool) return raw;
-        final lower = s.toLowerCase();
+        final lower = text.toLowerCase();
         if (lower == 'true' || lower == 't' || lower == '1') return true;
         if (lower == 'false' || lower == 'f' || lower == '0') return false;
-        throw FormatException('Invalid bool: $s');
+        throw FormatException('Invalid bool: $text');
       case PgType.json:
       case PgType.jsonb:
-        final decoded = jsonDecode(s);
+        final decoded = jsonDecode(text);
         return jsonEncode(decoded);
       case PgType.text:
       case PgType.varchar:
@@ -157,7 +158,7 @@ class CellEditor {
       case PgType.bytea:
       case PgType.array:
       case PgType.unknown:
-        return s;
+        return text;
     }
   }
 }

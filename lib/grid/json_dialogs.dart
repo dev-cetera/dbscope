@@ -15,17 +15,17 @@ import 'inputs/column_input.dart' show compactJson;
 /// trips through `jsonEncode` so the dialog always opens with valid
 /// JSON source — strings that already parse (e.g. JSON stored in a
 /// `text` column) are passed through untouched.
-String jsonSourceOf(Object? v) {
-  if (v == null) return '';
-  if (v is String) {
+String jsonSourceOf(Object? value) {
+  if (value == null) return '';
+  if (value is String) {
     try {
-      jsonDecode(v);
-      return v;
+      jsonDecode(value);
+      return value;
     } catch (_) {
-      return jsonEncode(v);
+      return jsonEncode(value);
     }
   }
-  return jsonEncode(v);
+  return jsonEncode(value);
 }
 
 /// Read-only JSON viewer dialog. Pretty-printed, syntax-highlighted via
@@ -49,8 +49,8 @@ class JsonViewerDialog extends StatelessWidget {
     return AlertDialog(
       title: Text(columnName),
       content: SizedBox(
-        width: 560,
-        height: 420,
+        width: 560.0,
+        height: 420.0,
         child: CodeViewer(
           initialText: pretty,
           language: CodeLanguages.json,
@@ -61,7 +61,7 @@ class JsonViewerDialog extends StatelessWidget {
       actions: [
         if (onOpenInNewTab != null)
           TextButton.icon(
-            icon: const Icon(Icons.open_in_new, size: 16),
+            icon: const Icon(Icons.open_in_new, size: 16.0),
             label: const Text('Open in new tab'),
             onPressed: () {
               onOpenInNewTab!();

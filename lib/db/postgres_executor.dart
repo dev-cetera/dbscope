@@ -45,21 +45,21 @@ class PostgresExecutor implements DbExecutor {
       // Caller will translate to a cancel exception; we still return what
       // we have because the query already ran.
     }
-    final cols = <DbColumn>[];
+    final columns = <DbColumn>[];
     for (var i = 0; i < result.schema.columns.length; i++) {
-      final c = result.schema.columns[i];
-      cols.add(
+      final column = result.schema.columns[i];
+      columns.add(
         DbColumn(
-          name: c.columnName ?? 'col_$i',
-          typeName: c.type.toString().split('.').last,
+          name: column.columnName ?? 'col_$i',
+          typeName: column.type.toString().split('.').last,
         ),
       );
     }
     final rows = <List<Object?>>[
-      for (final r in result) [for (final v in r) _decodeValue(v)],
+      for (final row in result) [for (final value in row) _decodeValue(value)],
     ];
     return DbResult(
-      columns: cols,
+      columns: columns,
       rows: rows,
       affectedRows: result.affectedRows,
     );
@@ -77,25 +77,25 @@ class PostgresExecutor implements DbExecutor {
   /// codec, …), the bytes are the UTF-8 representation in both text and
   /// binary protocol modes, so decode them as a string.
   @visibleForTesting
-  static Object? decodeValue(Object? v) => _decodeValue(v);
+  static Object? decodeValue(Object? value) => _decodeValue(value);
 
   static const _byteaOid = 17;
 
-  static Object? _decodeValue(Object? v) {
-    if (v is! pg.UndecodedBytes) return v;
-    if (v.typeOid != _byteaOid) {
+  static Object? _decodeValue(Object? value) {
+    if (value is! pg.UndecodedBytes) return value;
+    if (value.typeOid != _byteaOid) {
       try {
-        return v.asString;
+        return value.asString;
       } catch (_) {
         // fall through to hex
       }
     }
-    final b = v.bytes;
-    final sb = StringBuffer(r'\x');
-    for (final byte in b) {
-      sb.write(byte.toRadixString(16).padLeft(2, '0'));
+    final bytes = value.bytes;
+    final buffer = StringBuffer(r'\x');
+    for (final byte in bytes) {
+      buffer.write(byte.toRadixString(16).padLeft(2, '0'));
     }
-    return sb.toString();
+    return buffer.toString();
   }
 
   @override
@@ -140,9 +140,11 @@ class _EnumCodec extends pg.Codec {
 
   @override
   pg.EncodedValue? encode(pg.TypedValue input, pg.CodecContext context) {
-    final v = input.value;
-    if (v == null) return null;
-    final bytes = Uint8List.fromList(context.encoding.encode(v.toString()));
+    final value = input.value;
+    if (value == null) return null;
+    final bytes = Uint8List.fromList(
+      context.encoding.encode(value.toString()),
+    );
     return pg.EncodedValue.text(bytes);
   }
 

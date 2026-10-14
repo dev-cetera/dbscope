@@ -114,7 +114,7 @@ class _EnvDialogState extends State<EnvDialog> {
     return AlertDialog(
       title: const Text('Environment'),
       content: SizedBox(
-        width: 520,
+        width: 520.0,
         child: SingleChildScrollView(
           child: Column(
             mainAxisSize: MainAxisSize.min,
@@ -126,9 +126,9 @@ class _EnvDialogState extends State<EnvDialog> {
                 'instead — API keys like GEMINI_API_KEY, the connection-'
                 'link passphrase, and the PATH used to find '
                 'cloud-sql-proxy.',
-                style: TextStyle(fontSize: 12),
+                style: TextStyle(fontSize: 12.0),
               ),
-              const SizedBox(height: 16),
+              const SizedBox(height: 16.0),
               TextField(
                 controller: _pathController,
                 decoration: InputDecoration(
@@ -139,27 +139,27 @@ class _EnvDialogState extends State<EnvDialog> {
                 ),
                 onSubmitted: (_) => _check(),
               ),
-              const SizedBox(height: 8),
+              const SizedBox(height: 8.0),
               Row(
                 children: [
                   TextButton(
                     onPressed: _busy ? null : _useDefault,
                     child: const Text('Use default'),
                   ),
-                  const SizedBox(width: 8),
+                  const SizedBox(width: 8.0),
                   TextButton(
                     onPressed: _busy ? null : _browse,
                     child: const Text('Browse…'),
                   ),
-                  const SizedBox(width: 8),
+                  const SizedBox(width: 8.0),
                   TextButton(
                     onPressed: _busy ? null : _check,
                     child: const Text('Reload'),
                   ),
                 ],
               ),
-              const Divider(height: 24),
-              _EnvStatus(env: ShellEnv.instance),
+              const Divider(height: 24.0),
+              _EnvStatus(shellEnv: ShellEnv.instance),
             ],
           ),
         ),
@@ -180,23 +180,23 @@ class _EnvDialogState extends State<EnvDialog> {
 
 /// Outcome of the last load: where it read, and which names it found.
 class _EnvStatus extends StatelessWidget {
-  const _EnvStatus({required this.env});
-  final ShellEnv env;
+  const _EnvStatus({required this.shellEnv});
+  final ShellEnv shellEnv;
 
   @override
   Widget build(BuildContext context) {
-    final names = env.names;
-    final (String message, Color color) = switch (env.status) {
+    final names = shellEnv.names;
+    final (String message, Color color) = switch (shellEnv.status) {
       ShellEnvStatus.loaded => (
-        '${names.length} variable(s) read from ${env.resolvedPath}',
+        '${names.length} variable(s) read from ${shellEnv.resolvedPath}',
         Colors.green,
       ),
       ShellEnvStatus.missing => (
-        'No file at ${env.resolvedPath}',
+        'No file at ${shellEnv.resolvedPath}',
         Colors.orange,
       ),
       ShellEnvStatus.unreadable => (
-        'Could not read ${env.resolvedPath}: ${env.error}',
+        'Could not read ${shellEnv.resolvedPath}: ${shellEnv.error}',
         Colors.red,
       ),
       ShellEnvStatus.unsupported => (
@@ -208,13 +208,13 @@ class _EnvStatus extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        Text(message, style: TextStyle(fontSize: 12, color: color)),
+        Text(message, style: TextStyle(fontSize: 12.0, color: color)),
         if (names.isNotEmpty) ...[
-          const SizedBox(height: 8),
+          const SizedBox(height: 8.0),
           // Names only — the values are secrets.
           SelectableText(
             names.join(', '),
-            style: const TextStyle(fontSize: 11, height: 1.5),
+            style: const TextStyle(fontSize: 11.0, height: 1.5),
           ),
         ],
       ],

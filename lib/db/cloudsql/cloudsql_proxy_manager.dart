@@ -15,6 +15,25 @@ class CloudSqlProxyException implements Exception {
   String toString() => message;
 }
 
+/// Longest we wait for a `gcloud sql instances patch` (assigning or removing
+/// a public IP is a slow Cloud SQL operation).
+const _kGcloudPatchTimeout = Duration(seconds: 180);
+
+/// Longest we wait for the quick `gcloud sql instances describe` check.
+const _kGcloudDescribeTimeout = Duration(seconds: 30);
+
+/// How long a killed proxy process gets to exit before we move on.
+const _kProxyExitTimeout = Duration(seconds: 5);
+
+/// How long we wait for a new proxy to start listening on its local port.
+const _kProxyBindTimeout = Duration(seconds: 20);
+
+/// How often we re-check whether the proxy has bound its port.
+const _kProxyBindPollInterval = Duration(milliseconds: 300);
+
+/// Longest a single "is anything listening on this port?" probe may take.
+const _kPortProbeTimeout = Duration(milliseconds: 600);
+
 class _ProxyEntry {
   Process? process;
   var refCount = 0;
@@ -53,13 +72,13 @@ class CloudSqlProxyManager {
 
   final Map<String, _ProxyEntry> _entries = {};
 
-  /// Ensure a tunnel is up for [cfg]. Increments the ref count. Throws
+  /// Ensure a tunnel is up for [config]. Increments the ref count. Throws
   /// [CloudSqlProxyException] if the tunnel can't be established.
   Future<void> acquire(
-    CloudSqlConfig cfg, {
+    CloudSqlConfig config, {
     void Function(String status)? onStatus,
   }) {
-    final key = cfg.proxyKey;
+    final key = config.proxyKey;
     final existing = _entries[key];
     if (existing != null) {
       existing.refCount++;
@@ -72,34 +91,34 @@ class CloudSqlProxyManager {
     }
     final entry = _ProxyEntry()..refCount = 1;
     _entries[key] = entry;
-    final f = _startProxy(entry, cfg, onStatus);
-    entry.ready = f;
-    return f;
+    final startup = _startProxy(entry, config, onStatus);
+    entry.ready = startup;
+    return startup;
   }
 
-  /// Decrement the ref count for [cfg]'s tunnel. When it reaches zero and
+  /// Decrement the ref count for [config]'s tunnel. When it reaches zero and
   /// dbscope owns the tunnel, kill the proxy and remove any public IP it
   /// assigned.
-  Future<void> release(CloudSqlConfig cfg) async {
-    final entry = _entries[cfg.proxyKey];
+  Future<void> release(CloudSqlConfig config) async {
+    final entry = _entries[config.proxyKey];
     if (entry == null) return;
     entry.refCount--;
     if (entry.refCount > 0) return;
-    _entries.remove(cfg.proxyKey);
+    _entries.remove(config.proxyKey);
     if (entry.owned) {
-      await _teardown(entry, cfg);
+      await _teardown(entry, config);
     }
   }
 
   Future<void> _startProxy(
     _ProxyEntry entry,
-    CloudSqlConfig cfg,
+    CloudSqlConfig config,
     void Function(String status)? onStatus,
   ) async {
     try {
-      if (await _portOpen(cfg.localPort)) {
+      if (await _portOpen(config.localPort)) {
         onStatus?.call(
-          'Reusing existing tunnel on 127.0.0.1:${cfg.localPort}.',
+          'Reusing existing tunnel on 127.0.0.1:${config.localPort}.',
         );
         entry.owned = false;
         return;
@@ -107,7 +126,7 @@ class CloudSqlProxyManager {
 
       final proxyBin = await _resolveBinary(
         'cloud-sql-proxy',
-        cfg.cloudSqlProxyPath,
+        config.cloudSqlProxyPath,
       );
       if (proxyBin == null) {
         throw const CloudSqlProxyException(
@@ -117,8 +136,8 @@ class CloudSqlProxyManager {
         );
       }
 
-      if (cfg.assignPublicIp) {
-        final gcloudBin = await _resolveBinary('gcloud', cfg.gcloudPath);
+      if (config.assignPublicIp) {
+        final gcloudBin = await _resolveBinary('gcloud', config.gcloudPath);
         if (gcloudBin == null) {
           throw const CloudSqlProxyException(
             'gcloud was not found — it is needed to assign the instance a '
@@ -131,52 +150,54 @@ class CloudSqlProxyManager {
         // operation). Skip it when the instance already has one; that's what
         // makes reconnects fast. We only strip the IP on teardown when *we*
         // assigned it (`assignedIp`), so a pre-existing IP is left untouched.
-        if (await _hasPublicIp(gcloudBin, cfg)) {
-          onStatus?.call('${cfg.instanceName} already has a public IP.');
+        if (await _hasPublicIp(gcloudBin, config)) {
+          onStatus?.call('${config.instanceName} already has a public IP.');
         } else {
-          onStatus?.call('Assigning public IP to ${cfg.instanceName}…');
-          final res = await Process.run(gcloudBin, [
+          onStatus?.call('Assigning public IP to ${config.instanceName}…');
+          final processResult = await Process.run(gcloudBin, [
             'sql',
             'instances',
             'patch',
-            cfg.instanceName,
+            config.instanceName,
             '--assign-ip',
             '--project',
-            cfg.gcpProject,
+            config.gcpProject,
             '--quiet',
-          ]).timeout(const Duration(seconds: 180));
-          if (res.exitCode != 0) {
+          ]).timeout(_kGcloudPatchTimeout);
+          if (processResult.exitCode != 0) {
             throw CloudSqlProxyException(
               'Assigning a public IP failed. Check `gcloud auth login` and '
-              'that you can reach project ${cfg.gcpProject}.\n'
-              '${_tail(res.stderr.toString())}',
+              'that you can reach project ${config.gcpProject}.\n'
+              '${_tail(processResult.stderr.toString())}',
             );
           }
           entry.assignedIp = true;
         }
       }
 
-      onStatus?.call('Starting cloud-sql-proxy on 127.0.0.1:${cfg.localPort}…');
+      onStatus?.call(
+        'Starting cloud-sql-proxy on 127.0.0.1:${config.localPort}…',
+      );
       final proc = await Process.start(proxyBin, [
-        cfg.instanceConnectionName,
+        config.instanceConnectionName,
         '--port',
-        '${cfg.localPort}',
+        '${config.localPort}',
       ]);
       entry.process = proc;
       entry.owned = true;
       proc.stdout.transform(utf8.decoder).listen(entry.log.write);
       proc.stderr.transform(utf8.decoder).listen(entry.log.write);
 
-      final bound = await _waitBound(cfg.localPort, proc);
+      final bound = await _waitBound(config.localPort, proc);
       if (!bound) {
         throw CloudSqlProxyException(
           'cloud-sql-proxy failed to start.\n${_tail(entry.log.toString())}',
         );
       }
-      onStatus?.call('Tunnel ready on 127.0.0.1:${cfg.localPort}.');
+      onStatus?.call('Tunnel ready on 127.0.0.1:${config.localPort}.');
     } catch (e) {
-      await _teardown(entry, cfg);
-      _entries.remove(cfg.proxyKey);
+      await _teardown(entry, config);
+      _entries.remove(config.proxyKey);
       rethrow;
     }
   }
@@ -184,48 +205,48 @@ class CloudSqlProxyManager {
   /// Fast check (~a few seconds) of whether the instance already exposes a
   /// public IP, so we can skip the slow `--assign-ip` patch. Returns false on
   /// any error — the caller then falls back to attempting the assignment.
-  Future<bool> _hasPublicIp(String gcloudBin, CloudSqlConfig cfg) async {
+  Future<bool> _hasPublicIp(String gcloudBin, CloudSqlConfig config) async {
     try {
-      final res = await Process.run(gcloudBin, [
+      final processResult = await Process.run(gcloudBin, [
         'sql',
         'instances',
         'describe',
-        cfg.instanceName,
+        config.instanceName,
         '--project',
-        cfg.gcpProject,
+        config.gcpProject,
         '--format=value(settings.ipConfiguration.ipv4Enabled)',
-      ]).timeout(const Duration(seconds: 30));
-      if (res.exitCode != 0) return false;
-      return res.stdout.toString().trim().toLowerCase() == 'true';
+      ]).timeout(_kGcloudDescribeTimeout);
+      if (processResult.exitCode != 0) return false;
+      return processResult.stdout.toString().trim().toLowerCase() == 'true';
     } catch (_) {
       return false;
     }
   }
 
-  Future<void> _teardown(_ProxyEntry entry, CloudSqlConfig cfg) async {
+  Future<void> _teardown(_ProxyEntry entry, CloudSqlConfig config) async {
     final proc = entry.process;
     entry.process = null;
     if (proc != null) {
       proc.kill();
       try {
-        await proc.exitCode.timeout(const Duration(seconds: 5));
+        await proc.exitCode.timeout(_kProxyExitTimeout);
       } catch (_) {}
     }
     if (entry.assignedIp) {
       entry.assignedIp = false;
-      final gcloudBin = await _resolveBinary('gcloud', cfg.gcloudPath);
+      final gcloudBin = await _resolveBinary('gcloud', config.gcloudPath);
       if (gcloudBin != null) {
         try {
           await Process.run(gcloudBin, [
             'sql',
             'instances',
             'patch',
-            cfg.instanceName,
+            config.instanceName,
             '--no-assign-ip',
             '--project',
-            cfg.gcpProject,
+            config.gcpProject,
             '--quiet',
-          ]).timeout(const Duration(seconds: 180));
+          ]).timeout(_kGcloudPatchTimeout);
         } catch (_) {
           // Best effort — the user can remove the IP manually if this fails.
         }
@@ -240,23 +261,23 @@ class CloudSqlProxyManager {
   Future<bool> _waitBound(int port, Process proc) async {
     var exited = false;
     unawaited(proc.exitCode.then((_) => exited = true));
-    final deadline = DateTime.now().add(const Duration(seconds: 20));
+    final deadline = DateTime.now().add(_kProxyBindTimeout);
     while (DateTime.now().isBefore(deadline)) {
       if (exited) return false;
       if (await _portOpen(port)) return true;
-      await Future<void>.delayed(const Duration(milliseconds: 300));
+      await Future<void>.delayed(_kProxyBindPollInterval);
     }
     return false;
   }
 
   static Future<bool> _portOpen(int port) async {
     try {
-      final s = await Socket.connect(
+      final socket = await Socket.connect(
         '127.0.0.1',
         port,
-        timeout: const Duration(milliseconds: 600),
+        timeout: _kPortProbeTimeout,
       );
-      s.destroy();
+      socket.destroy();
       return true;
     } catch (_) {
       return false;
@@ -292,20 +313,20 @@ class CloudSqlProxyManager {
       // Deduped: the shell profile's PATH almost always RESTATES most of the
       // process PATH, and the four fallbacks below are usually in both. Every
       // repeat is another File.exists() stat on the connect path.
-    ].where((d) => d.isNotEmpty).toSet();
+    ].where((directory) => directory.isNotEmpty).toSet();
 
     final names = Platform.isWindows
         ? ['$name.exe', '$name.cmd', name]
         : [name];
-    for (final dir in dirs) {
-      for (final n in names) {
-        final candidate = '$dir${Platform.pathSeparator}$n';
+    for (final directory in dirs) {
+      for (final candidateName in names) {
+        final candidate = '$directory${Platform.pathSeparator}$candidateName';
         if (File(candidate).existsSync()) return candidate;
       }
     }
     return null;
   }
 
-  static String _tail(String s, [int max = 1500]) =>
-      s.length <= max ? s : s.substring(s.length - max);
+  static String _tail(String text, [int max = 1500]) =>
+      text.length <= max ? text : text.substring(text.length - max);
 }

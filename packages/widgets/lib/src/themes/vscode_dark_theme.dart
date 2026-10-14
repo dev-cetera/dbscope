@@ -21,8 +21,8 @@ class _VsCodeDark {
   static const borderStrong = Color(0xFF454545);
 
   // Text.
-  static const fg = Color(0xFFCCCCCC);
-  static const descriptionFg = Color(0xFF9D9D9D);
+  static const foreground = Color(0xFFCCCCCC);
+  static const descriptionForeground = Color(0xFF9D9D9D);
 
   // Accent / focus / selection.
   static const accent = Color(0xFF0078D4);
@@ -55,8 +55,8 @@ const vsCodeDarkPalette = AppPalette(
   fieldDisabled: _VsCodeDark.inputDisabledBg,
   border: _VsCodeDark.border,
   borderStrong: _VsCodeDark.borderStrong,
-  text: _VsCodeDark.fg,
-  mutedText: _VsCodeDark.descriptionFg,
+  text: _VsCodeDark.foreground,
+  mutedText: _VsCodeDark.descriptionForeground,
   accent: _VsCodeDark.accent,
   onAccent: _VsCodeDark.accentText,
   accentSoft: _VsCodeDark.accentSoft,
@@ -126,7 +126,7 @@ ThemeData buildVsCodeDarkTheme({String? fontFamily}) {
       titleLarge: TextStyle(
         color: palette.text,
         fontFamily: palette.uiFontFamily,
-        fontSize: 14,
+        fontSize: 14.0,
         fontWeight: FontWeight.w600,
         height: 1.2,
       ),
@@ -139,18 +139,18 @@ ThemeData buildVsCodeDarkTheme({String? fontFamily}) {
       secondary: _VsCodeDark.accent,
       onSecondary: _VsCodeDark.accentText,
       surface: _VsCodeDark.editorBg,
-      onSurface: _VsCodeDark.fg,
+      onSurface: _VsCodeDark.foreground,
       surfaceContainer: _VsCodeDark.sideBarBg,
       surfaceContainerHigh: _VsCodeDark.tabActiveBg,
       surfaceContainerHighest: _VsCodeDark.tabActiveBg,
       error: Color(0xFFF48771),
       onError: _VsCodeDark.accentText,
       tertiaryContainer: _VsCodeDark.accentSoft,
-      onTertiaryContainer: _VsCodeDark.fg,
+      onTertiaryContainer: _VsCodeDark.foreground,
       errorContainer: Color(0xFF5A1D1D),
       onErrorContainer: Color(0xFFFFB4AB),
       primaryContainer: _VsCodeDark.accentSoft,
-      onPrimaryContainer: _VsCodeDark.fg,
+      onPrimaryContainer: _VsCodeDark.foreground,
       outline: _VsCodeDark.border,
     ),
     dialogTheme: DialogThemeData(
@@ -159,7 +159,7 @@ ThemeData buildVsCodeDarkTheme({String? fontFamily}) {
       titleTextStyle: TextStyle(
         color: palette.text,
         fontFamily: palette.uiFontFamily,
-        fontSize: 14,
+        fontSize: 14.0,
         fontWeight: FontWeight.w600,
       ),
       contentTextStyle: bodyText,
@@ -168,7 +168,10 @@ ThemeData buildVsCodeDarkTheme({String? fontFamily}) {
       filled: true,
       fillColor: palette.field,
       isDense: true,
-      contentPadding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+      contentPadding: const EdgeInsets.symmetric(
+        horizontal: 8.0,
+        vertical: 8.0,
+      ),
       border: outline(palette.border),
       enabledBorder: outline(palette.border),
       focusedBorder: outline(palette.accent),
@@ -195,7 +198,7 @@ ThemeData buildVsCodeDarkTheme({String? fontFamily}) {
         side: BorderSide(color: palette.border),
       ),
       textStyle: bodyText,
-      elevation: 4,
+      elevation: 4.0,
     ),
     menuTheme: MenuThemeData(
       style: MenuStyle(
@@ -211,7 +214,7 @@ ThemeData buildVsCodeDarkTheme({String? fontFamily}) {
     ),
     cardTheme: CardThemeData(
       color: palette.surfaceRaised,
-      elevation: 0,
+      elevation: 0.0,
       shape: RoundedRectangleBorder(
         borderRadius: radius,
         side: BorderSide(color: palette.border),
@@ -222,8 +225,8 @@ ThemeData buildVsCodeDarkTheme({String? fontFamily}) {
         backgroundColor: palette.accent,
         foregroundColor: palette.onAccent,
         shape: RoundedRectangleBorder(borderRadius: radius),
-        elevation: 0,
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+        elevation: 0.0,
+        padding: const EdgeInsets.symmetric(horizontal: 14.0, vertical: 8.0),
         textStyle: boldText,
       ),
     ),
@@ -232,8 +235,8 @@ ThemeData buildVsCodeDarkTheme({String? fontFamily}) {
         backgroundColor: palette.accent,
         foregroundColor: palette.onAccent,
         shape: RoundedRectangleBorder(borderRadius: radius),
-        elevation: 0,
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+        elevation: 0.0,
+        padding: const EdgeInsets.symmetric(horizontal: 14.0, vertical: 8.0),
         textStyle: boldText,
       ),
     ),
@@ -251,11 +254,11 @@ ThemeData buildVsCodeDarkTheme({String? fontFamily}) {
         backgroundColor: Colors.transparent,
       ),
     ),
-    iconTheme: IconThemeData(color: palette.text, size: 16),
+    iconTheme: IconThemeData(color: palette.text, size: 16.0),
     dividerTheme: DividerThemeData(
       color: palette.border,
       space: 1,
-      thickness: 1,
+      thickness: 1.0,
     ),
     snackBarTheme: SnackBarThemeData(
       backgroundColor: palette.surfaceRaised,
@@ -275,7 +278,7 @@ ThemeData buildVsCodeDarkTheme({String? fontFamily}) {
     appBarTheme: AppBarTheme(
       backgroundColor: _VsCodeDark.titleBarBg,
       foregroundColor: palette.text,
-      elevation: 0,
+      elevation: 0.0,
     ),
     tooltipTheme: TooltipThemeData(
       decoration: BoxDecoration(
@@ -288,20 +291,20 @@ ThemeData buildVsCodeDarkTheme({String? fontFamily}) {
         fontFamily: palette.uiFontFamily,
         fontSize: palette.smallFontSize,
       ),
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 4.0),
     ),
     switchTheme: SwitchThemeData(
-      thumbColor: WidgetStateProperty.resolveWith((s) {
-        if (s.contains(WidgetState.selected)) return palette.onAccent;
+      thumbColor: WidgetStateProperty.resolveWith((states) {
+        if (states.contains(WidgetState.selected)) return palette.onAccent;
         return palette.mutedText;
       }),
-      trackColor: WidgetStateProperty.resolveWith((s) {
-        if (s.contains(WidgetState.selected)) return palette.accent;
+      trackColor: WidgetStateProperty.resolveWith((states) {
+        if (states.contains(WidgetState.selected)) return palette.accent;
         return palette.surfaceRecessed;
       }),
     ),
     listTileTheme: ListTileThemeData(
-      contentPadding: const EdgeInsets.symmetric(horizontal: 10),
+      contentPadding: const EdgeInsets.symmetric(horizontal: 10.0),
       minVerticalPadding: 2,
       dense: true,
       textColor: palette.text,

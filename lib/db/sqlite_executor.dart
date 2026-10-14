@@ -50,8 +50,8 @@ class SqliteExecutor implements DbExecutor {
     if (named != null) {
       final rewritten = translateNamedToSqlite(sql);
       final params = <String, Object?>{};
-      named.forEach((k, v) {
-        params[':$k'] = _toSqlValue(v);
+      named.forEach((key, value) {
+        params[':$key'] = _toSqlValue(value);
       });
       return _runPrepared(
         rewritten,
@@ -61,7 +61,7 @@ class SqliteExecutor implements DbExecutor {
     }
     if (positional != null) {
       final rewritten = translatePositionalToSqlite(sql);
-      final params = [for (final v in positional) _toSqlValue(v)];
+      final params = [for (final value in positional) _toSqlValue(value)];
       return _runPrepared(
         rewritten,
         positionalParams: params,
@@ -97,24 +97,24 @@ class SqliteExecutor implements DbExecutor {
     Map<String, Object?>? namedParams,
     CancelToken? cancelToken,
   }) {
-    final stmt = _db.prepare(sql);
+    final statement = _db.prepare(sql);
     try {
-      final isQuery = _statementProducesRows(stmt);
+      final isQuery = _statementProducesRows(statement);
       if (isQuery) {
-        final rs = positionalParams != null
-            ? stmt.select(positionalParams)
-            : stmt.selectWith(
+        final resultSet = positionalParams != null
+            ? statement.select(positionalParams)
+            : statement.selectWith(
                 sq.StatementParameters.named(namedParams ?? const {}),
               );
         if (cancelToken?.isCancelled ?? false) {
           return const DbResult(columns: [], rows: []);
         }
-        return _resultFromSelect(rs);
+        return _resultFromSelect(resultSet);
       } else {
         if (positionalParams != null) {
-          stmt.execute(positionalParams);
+          statement.execute(positionalParams);
         } else {
-          stmt.executeWith(
+          statement.executeWith(
             sq.StatementParameters.named(namedParams ?? const {}),
           );
         }
@@ -125,17 +125,17 @@ class SqliteExecutor implements DbExecutor {
         );
       }
     } finally {
-      stmt.dispose();
+      statement.dispose();
     }
   }
 
-  bool _statementProducesRows(sq.PreparedStatement stmt) {
+  bool _statementProducesRows(sq.PreparedStatement statement) {
     // The sqlite3 Dart binding doesn't expose a "is read-only" flag for a
     // prepared stmt across all versions, so peek at the leading keyword.
     // Catalog SQL and the pager generate stable shapes so this is
     // adequate.
-    final src = stmt.sql.trimLeft();
-    final upper = src.toUpperCase();
+    final source = statement.sql.trimLeft();
+    final upper = source.toUpperCase();
     if (upper.startsWith('SELECT')) return true;
     if (upper.startsWith('WITH')) return true;
     if (upper.startsWith('PRAGMA')) return true;
@@ -146,22 +146,22 @@ class SqliteExecutor implements DbExecutor {
     return false;
   }
 
-  DbResult _resultFromSelect(sq.ResultSet rs) {
-    final cols = <DbColumn>[];
-    for (var i = 0; i < rs.columnNames.length; i++) {
-      cols.add(
+  DbResult _resultFromSelect(sq.ResultSet resultSet) {
+    final columns = <DbColumn>[];
+    for (var i = 0; i < resultSet.columnNames.length; i++) {
+      columns.add(
         DbColumn(
-          name: rs.columnNames[i],
+          name: resultSet.columnNames[i],
         ),
       );
     }
     final rows = <List<Object?>>[
-      for (final row in rs.rows) List<Object?>.from(row),
+      for (final row in resultSet.rows) List<Object?>.from(row),
     ];
     // SELECTs report affectedRows = 0; RETURNING clauses on DML will be
     // reported as len(rows) so callers downstream of insertRow get the
     // intuitive count.
-    return DbResult(columns: cols, rows: rows, affectedRows: rows.length);
+    return DbResult(columns: columns, rows: rows, affectedRows: rows.length);
   }
 
   @override
@@ -184,12 +184,12 @@ class SqliteExecutor implements DbExecutor {
   /// anything else (DateTime, BigInt, custom objects from the grid edit
   /// path) goes through toString so the user's intent isn't silently
   /// dropped.
-  static Object? _toSqlValue(Object? v) {
-    if (v == null) return null;
-    if (v is String || v is num || v is bool) return v;
-    if (v is DateTime) return v.toUtc().toIso8601String();
-    if (v is BigInt) return v.toString();
-    if (v is List<int>) return v;
-    return v.toString();
+  static Object? _toSqlValue(Object? value) {
+    if (value == null) return null;
+    if (value is String || value is num || value is bool) return value;
+    if (value is DateTime) return value.toUtc().toIso8601String();
+    if (value is BigInt) return value.toString();
+    if (value is List<int>) return value;
+    return value.toString();
   }
 }

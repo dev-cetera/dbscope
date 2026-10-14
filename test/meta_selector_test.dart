@@ -60,9 +60,9 @@ void main() {
     });
 
     test('quoted segments keep dots and stars literal', () {
-      final s = sel('"my.schema"."a*b"');
-      expect(s.matchesTable('my.schema', 'a*b'), isTrue);
-      expect(s.matchesTable('my.schema', 'aXb'), isFalse);
+      final selector = sel('"my.schema"."a*b"');
+      expect(selector.matchesTable('my.schema', 'a*b'), isTrue);
+      expect(selector.matchesTable('my.schema', 'aXb'), isFalse);
     });
 
     test('a doubled quote inside quotes is one quote', () {
@@ -73,9 +73,12 @@ void main() {
     });
 
     test('globs match within one segment', () {
-      final s = sel('*.*.*_internal');
-      expect(s.matchesColumn('public', 'users', 'notes_internal'), isTrue);
-      expect(s.matchesColumn('public', 'users', 'notes'), isFalse);
+      final selector = sel('*.*.*_internal');
+      expect(
+        selector.matchesColumn('public', 'users', 'notes_internal'),
+        isTrue,
+      );
+      expect(selector.matchesColumn('public', 'users', 'notes'), isFalse);
       expect(sel('public.user*').matchesTable('public', 'users'), isTrue);
       expect(sel('public.user*').matchesTable('public', 'accounts'), isFalse);
     });

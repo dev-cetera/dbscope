@@ -4,6 +4,9 @@ import '../grid_data.dart';
 import '../grid_model.dart';
 import '../grid_style.dart';
 
+/// How long the pointer must rest on a header before its tooltip appears.
+const _kTooltipDelay = Duration(milliseconds: 400);
+
 /// Column-header row. Each header is a draggable handle for reorder
 /// and has a resize handle on its right edge. Click toggles sort.
 class GridHeader<TypeTag> extends StatelessWidget {
@@ -44,16 +47,16 @@ class GridHeader<TypeTag> extends StatelessWidget {
       ),
       child: Row(
         children: [
-          for (var v = 0; v < model.order.length; v++)
+          for (var viewIndex = 0; viewIndex < model.order.length; viewIndex++)
             _HeaderCell<TypeTag>(
-              viewIdx: v,
-              originalIdx: model.viewToOriginal(v),
-              spec: data.columns[model.viewToOriginal(v)],
-              width: model.widthAt(v),
+              viewIndex: viewIndex,
+              originalIndex: model.viewToOriginal(viewIndex),
+              spec: data.columns[model.viewToOriginal(viewIndex)],
+              width: model.widthAt(viewIndex),
               height: height,
               style: style,
-              isSorted:
-                  sortColumn == data.columns[model.viewToOriginal(v)].name,
+              isSorted: sortColumn ==
+                  data.columns[model.viewToOriginal(viewIndex)].name,
               sortDescending: sortDescending,
               onSortToggle: onSortToggle,
               onWidthChanged: onWidthChanged,
@@ -68,8 +71,8 @@ class GridHeader<TypeTag> extends StatelessWidget {
 
 class _HeaderCell<TypeTag> extends StatelessWidget {
   const _HeaderCell({
-    required this.viewIdx,
-    required this.originalIdx,
+    required this.viewIndex,
+    required this.originalIndex,
     required this.spec,
     required this.width,
     required this.height,
@@ -81,8 +84,8 @@ class _HeaderCell<TypeTag> extends StatelessWidget {
     required this.onReorder,
     required this.headerBuilder,
   });
-  final int viewIdx;
-  final int originalIdx;
+  final int viewIndex;
+  final int originalIndex;
   final GridColumnSpec<TypeTag> spec;
   final double width;
   final double height;
@@ -105,7 +108,7 @@ class _HeaderCell<TypeTag> extends StatelessWidget {
     final body = Container(
       width: width,
       height: height,
-      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
+      padding: const EdgeInsets.symmetric(horizontal: 6.0, vertical: 4.0),
       decoration: BoxDecoration(
         border: Border(right: BorderSide(color: style.cellBorder)),
       ),
@@ -127,7 +130,7 @@ class _HeaderCell<TypeTag> extends StatelessWidget {
                     ),
                     if (spec.marker != null)
                       Padding(
-                        padding: const EdgeInsets.only(left: 4),
+                        padding: const EdgeInsets.only(left: 4.0),
                         child: Text(
                           spec.marker!,
                           style: style.headerSubtitleStyle,
@@ -135,7 +138,7 @@ class _HeaderCell<TypeTag> extends StatelessWidget {
                       ),
                     if (badges.isNotEmpty)
                       Padding(
-                        padding: const EdgeInsets.only(left: 4),
+                        padding: const EdgeInsets.only(left: 4.0),
                         child: Text(
                           badges.join('/'),
                           style: style.headerSubtitleStyle.copyWith(
@@ -148,7 +151,7 @@ class _HeaderCell<TypeTag> extends StatelessWidget {
                         sortDescending
                             ? Icons.arrow_drop_down
                             : Icons.arrow_drop_up,
-                        size: 14,
+                        size: 14.0,
                         color: style.textColor,
                       ),
                   ],
@@ -167,10 +170,10 @@ class _HeaderCell<TypeTag> extends StatelessWidget {
     );
 
     final draggable = Draggable<int>(
-      data: viewIdx,
+      data: viewIndex,
       axis: Axis.horizontal,
       feedback: Material(
-        elevation: 4,
+        elevation: 4.0,
         color: style.headerBackground,
         child: SizedBox(
           width: width,
@@ -180,24 +183,24 @@ class _HeaderCell<TypeTag> extends StatelessWidget {
       ),
       childWhenDragging: Opacity(opacity: 0.3, child: body),
       child: GestureDetector(
-        onTap: onSortToggle == null ? null : () => onSortToggle!(originalIdx),
+        onTap: onSortToggle == null ? null : () => onSortToggle!(originalIndex),
         child: _wrapped(context, body),
       ),
     );
 
     final dropTarget = DragTarget<int>(
-      onWillAcceptWithDetails: (d) => d.data != viewIdx,
-      onAcceptWithDetails: (d) => onReorder(d.data, viewIdx),
-      builder: (ctx, candidate, rejected) {
+      onWillAcceptWithDetails: (details) => details.data != viewIndex,
+      onAcceptWithDetails: (details) => onReorder(details.data, viewIndex),
+      builder: (_, candidate, rejected) {
         return Stack(
           children: [
             draggable,
             if (candidate.isNotEmpty)
               Positioned(
-                left: 0,
-                top: 0,
-                bottom: 0,
-                width: 2,
+                left: 0.0,
+                top: 0.0,
+                bottom: 0.0,
+                width: 2.0,
                 child: Container(color: style.accent),
               ),
           ],
@@ -209,16 +212,16 @@ class _HeaderCell<TypeTag> extends StatelessWidget {
       children: [
         dropTarget,
         Positioned(
-          right: 0,
-          top: 0,
-          bottom: 0,
-          width: 6,
+          right: 0.0,
+          top: 0.0,
+          bottom: 0.0,
+          width: 6.0,
           child: MouseRegion(
             cursor: SystemMouseCursors.resizeColumn,
             child: GestureDetector(
               behavior: HitTestBehavior.opaque,
-              onHorizontalDragUpdate: (d) =>
-                  onWidthChanged(originalIdx, width + d.delta.dx),
+              onHorizontalDragUpdate: (details) =>
+                  onWidthChanged(originalIndex, width + details.delta.dx),
             ),
           ),
         ),
@@ -230,12 +233,12 @@ class _HeaderCell<TypeTag> extends StatelessWidget {
   /// hovering anywhere on it shows what the column is.
   Widget _wrapped(BuildContext context, Widget body) {
     final builder = headerBuilder;
-    if (builder != null) return builder(context, originalIdx, body);
+    if (builder != null) return builder(context, originalIndex, body);
     final tooltip = spec.tooltip;
     if (tooltip == null || tooltip.isEmpty) return body;
     return Tooltip(
       message: tooltip,
-      waitDuration: const Duration(milliseconds: 400),
+      waitDuration: _kTooltipDelay,
       child: body,
     );
   }

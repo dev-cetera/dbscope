@@ -45,7 +45,7 @@ abstract class CellEditor<TypeTag> {
   /// Build the inline input. Called only when [canEdit] returned
   /// true. Return any widget — the grid wraps it in keyboard shortcut
   /// handlers for Enter / Tab / Esc.
-  Widget build(BuildContext context, CellEditContext<TypeTag> ctx);
+  Widget build(BuildContext context, CellEditContext<TypeTag> editContext);
 
   /// Optional hook: when the grid wants to commit a value that came
   /// from outside the editor (e.g. via the keyboard), it asks the

@@ -74,7 +74,7 @@ class CodeViewer extends StatefulWidget {
     this.maxLines,
     this.minLines,
     this.expands = false,
-    this.padding = const EdgeInsets.all(8),
+    this.padding = const EdgeInsets.all(8.0),
     this.background,
     this.borderColor,
     this.borderRadius,
@@ -153,8 +153,10 @@ class _CodeViewerState extends State<CodeViewer> {
       widget.controller ?? (_ownedController ??= _createOwnedController());
 
   InteractiveTextController _createOwnedController() {
-    final c = InteractiveTextController(text: widget.initialText ?? '');
-    return c;
+    final controller = InteractiveTextController(
+      text: widget.initialText ?? '',
+    );
+    return controller;
   }
 
   @override
@@ -267,7 +269,7 @@ class CodeEditorPanel extends StatefulWidget {
     this.placeholder,
     this.theme,
     this.style,
-    this.padding = const EdgeInsets.all(8),
+    this.padding = const EdgeInsets.all(8.0),
     this.background,
     this.borderColor,
     this.borderRadius,
@@ -341,16 +343,16 @@ class CodeEditorPanelState extends State<CodeEditorPanel> {
   }
 
   void _validate(String text) {
-    final v = widget.validator;
-    final next = v == null ? null : v(text);
+    final validator = widget.validator;
+    final next = validator == null ? null : validator(text);
     if (next != _error) setState(() => _error = next);
   }
 
   /// Format the current text via [CodeEditorPanel.formatter], if set.
   void format() {
-    final f = widget.formatter;
-    if (f == null) return;
-    final next = f(_controller.text);
+    final formatter = widget.formatter;
+    if (formatter == null) return;
+    final next = formatter(_controller.text);
     if (next == _controller.text) return;
     _controller.value = TextEditingValue(
       text: next,
@@ -415,7 +417,7 @@ class CodeEditorPanelState extends State<CodeEditorPanel> {
               ),
               if (_error != null)
                 Padding(
-                  padding: const EdgeInsets.only(top: 6),
+                  padding: const EdgeInsets.only(top: 6.0),
                   child: Text(
                     _error!,
                     style: TextStyle(
@@ -536,8 +538,8 @@ class _CodeEditorDialogState extends State<_CodeEditorDialog> {
           validator: widget.validator,
           formatter: widget.formatter,
           onChanged: (_) {
-            final v = _panelKey.currentState?.isValid ?? true;
-            if (v != _isValid) setState(() => _isValid = v);
+            final isValid = _panelKey.currentState?.isValid ?? true;
+            if (isValid != _isValid) setState(() => _isValid = isValid);
           },
           onSaveRequested: (_) => _save(),
           onCancelRequested: _cancel,

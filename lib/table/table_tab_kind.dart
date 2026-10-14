@@ -5,10 +5,10 @@ import '../tabs/tab_kind.dart';
 import 'table_tab.dart';
 import 'table_tab_view.dart';
 
-GridViewMode _viewModeFrom(Object? v) {
-  if (v is String) {
-    for (final m in GridViewMode.values) {
-      if (m.name == v) return m;
+GridViewMode _viewModeFrom(Object? value) {
+  if (value is String) {
+    for (final mode in GridViewMode.values) {
+      if (mode.name == value) return mode;
     }
   }
   return GridViewMode.typed;
@@ -20,16 +20,16 @@ final tableTabKind = TabKind(
   icon: Icons.table_chart_outlined,
   buildView: (tab) => TableTabView(key: ValueKey(tab.id), tab: tab as TableTab),
   serialize: (tab) {
-    final t = tab as TableTab;
+    final tableTab = tab as TableTab;
     return {
       'kind': 'table',
-      'id': t.id,
-      'connectionId': t.connectionId,
-      'schema': t.schema,
-      'table': t.table,
-      'estimatedRows': t.estimatedRows,
-      'pinned': t.pinned,
-      'viewMode': t.viewMode.name,
+      'id': tableTab.id,
+      'connectionId': tableTab.connectionId,
+      'schema': tableTab.schema,
+      'table': tableTab.table,
+      'estimatedRows': tableTab.estimatedRows,
+      'pinned': tableTab.pinned,
+      'viewMode': tableTab.viewMode.name,
     };
   },
   deserialize: (j) {
@@ -45,19 +45,21 @@ final tableTabKind = TabKind(
     )..viewMode = _viewModeFrom(j['viewMode']);
   },
   isRunning: (tab) {
-    final t = tab as TableTab;
-    return t.isLoading || t.isLoadingMore;
+    final tableTab = tab as TableTab;
+    return tableTab.isLoading || tableTab.isLoadingMore;
   },
   footerSummary: (tab) {
-    final t = tab as TableTab;
-    final rows = t.estimatedRows < 0 ? '?' : '~${_compact(t.estimatedRows)}';
-    var s = '$rows rows';
-    if (t.error != null) {
-      s += ' • error';
-    } else if (t.elapsed != null && !t.isLoading) {
-      s += ' • ${t.elapsed!.inMilliseconds}ms';
+    final tableTab = tab as TableTab;
+    final rows = tableTab.estimatedRows < 0
+        ? '?'
+        : '~${_compact(tableTab.estimatedRows)}';
+    var summary = '$rows rows';
+    if (tableTab.error != null) {
+      summary += ' • error';
+    } else if (tableTab.elapsed != null && !tableTab.isLoading) {
+      summary += ' • ${tableTab.elapsed!.inMilliseconds}ms';
     }
-    return s;
+    return summary;
   },
 );
 

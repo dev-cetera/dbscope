@@ -92,20 +92,26 @@ class _ColumnInputState extends State<ColumnInput> {
 
   @override
   Widget build(BuildContext context) {
-    final p = widget.policy;
+    final policy = widget.policy;
     final palette = AppPalette.of(context);
     final disabled = !widget.enabled || _isNull;
+    final field = _ColumnInputField(
+      policy: policy,
+      value: widget.value,
+      enabled: !disabled,
+      onChanged: widget.onChanged,
+    );
 
     if (widget.compact) {
       // Inline cell-edit form: no header row, no bottom padding. The
       // NULL toggle (if applicable) sits to the right of the input
       // instead of above.
-      final input = _isNull ? const _NullPlaceholder() : _buildChild(disabled);
-      if (!p.nullable) return input;
+      final input = _isNull ? const _NullPlaceholder() : field;
+      if (!policy.nullable) return input;
       return Row(
         children: [
           Expanded(child: input),
-          const SizedBox(width: 4),
+          const SizedBox(width: 4.0),
           _NullButton(
             isNull: _isNull,
             enabled: widget.enabled,
@@ -116,7 +122,7 @@ class _ColumnInputState extends State<ColumnInput> {
     }
 
     return Padding(
-      padding: const EdgeInsets.only(bottom: 10),
+      padding: const EdgeInsets.only(bottom: 10.0),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
@@ -124,22 +130,22 @@ class _ColumnInputState extends State<ColumnInput> {
             children: [
               Expanded(
                 child: Text(
-                  '${p.column} ',
+                  '${policy.column} ',
                   style: palette.boldText,
                   overflow: TextOverflow.ellipsis,
                 ),
               ),
               Text(
-                p.typeName,
+                policy.typeName,
                 style: TextStyle(
                   color: palette.mutedText,
                   fontSize: palette.smallFontSize,
                   fontFamily: palette.uiFontFamily,
                 ),
               ),
-              if (p.nullable)
+              if (policy.nullable)
                 Padding(
-                  padding: const EdgeInsets.only(left: 6),
+                  padding: const EdgeInsets.only(left: 6.0),
                   child: _NullButton(
                     isNull: _isNull,
                     enabled: widget.enabled,
@@ -148,97 +154,112 @@ class _ColumnInputState extends State<ColumnInput> {
                 ),
             ],
           ),
-          const SizedBox(height: 3),
-          if (_isNull) const _NullPlaceholder() else _buildChild(disabled),
+          const SizedBox(height: 3.0),
+          if (_isNull) const _NullPlaceholder() else field,
         ],
       ),
     );
   }
+}
 
-  Widget _buildChild(bool disabled) {
-    final p = widget.policy;
-    final raw = widget.value;
+/// The type-specific input (text, number, date, JSON, …) for one column,
+/// picked from the column's [PgType]. Greyed out when [enabled] is false.
+class _ColumnInputField extends StatelessWidget {
+  const _ColumnInputField({
+    required this.policy,
+    required this.value,
+    required this.enabled,
+    required this.onChanged,
+  });
+  final EditPolicy policy;
+  final Object? value;
+  final bool enabled;
+  final ValueChanged<Object?> onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    final raw = value;
     final asString = raw == null
         ? null
         : (raw is String ? raw : raw.toString());
-    if (p.enumValues != null && p.enumValues!.isNotEmpty) {
+    if (policy.enumValues != null && policy.enumValues!.isNotEmpty) {
       return _EnumInput(
-        values: p.enumValues!,
+        values: policy.enumValues!,
         value: asString,
-        enabled: !disabled,
-        onChanged: widget.onChanged,
+        enabled: enabled,
+        onChanged: onChanged,
       );
     }
-    switch (p.type) {
+    switch (policy.type) {
       case PgType.bool_:
         return _BoolInput(
           value: raw is bool ? raw : _parseBool(asString),
-          enabled: !disabled,
-          onChanged: widget.onChanged,
+          enabled: enabled,
+          onChanged: onChanged,
         );
       case PgType.int2:
       case PgType.int4:
       case PgType.int8:
         return _NumberInput(
           value: asString,
-          enabled: !disabled,
+          enabled: enabled,
           allowDecimal: false,
-          onChanged: widget.onChanged,
+          onChanged: onChanged,
         );
       case PgType.numeric:
       case PgType.real:
       case PgType.doublePrecision:
         return _NumberInput(
           value: asString,
-          enabled: !disabled,
+          enabled: enabled,
           allowDecimal: true,
-          onChanged: widget.onChanged,
+          onChanged: onChanged,
         );
       case PgType.json:
       case PgType.jsonb:
         return _JsonInput(
           value: asString,
-          enabled: !disabled,
-          onChanged: widget.onChanged,
+          enabled: enabled,
+          onChanged: onChanged,
         );
       case PgType.date:
         return _DateInput(
           value: asString,
-          enabled: !disabled,
+          enabled: enabled,
           mode: CupertinoDatePickerMode.date,
-          onChanged: widget.onChanged,
+          onChanged: onChanged,
         );
       case PgType.time:
         return _DateInput(
           value: asString,
-          enabled: !disabled,
+          enabled: enabled,
           mode: CupertinoDatePickerMode.time,
-          onChanged: widget.onChanged,
+          onChanged: onChanged,
         );
       case PgType.timestamp:
       case PgType.timestamptz:
         return _DateInput(
           value: asString,
-          enabled: !disabled,
+          enabled: enabled,
           mode: CupertinoDatePickerMode.dateAndTime,
-          onChanged: widget.onChanged,
+          onChanged: onChanged,
         );
       case PgType.text:
       case PgType.varchar:
       case PgType.name:
         return _SmartTextInput(
           value: asString,
-          enabled: !disabled,
-          multiLine: p.multiLine,
-          onChanged: widget.onChanged,
+          enabled: enabled,
+          multiLine: policy.multiLine,
+          onChanged: onChanged,
         );
       case PgType.uuid:
         return _RawTextInput(
           value: asString,
-          enabled: !disabled,
+          enabled: enabled,
           hint: '00000000-0000-0000-0000-000000000000',
           monospace: true,
-          onChanged: widget.onChanged,
+          onChanged: onChanged,
         );
       case PgType.interval:
       case PgType.bytea:
@@ -246,9 +267,9 @@ class _ColumnInputState extends State<ColumnInput> {
       case PgType.unknown:
         return _RawTextInput(
           value: asString,
-          enabled: !disabled,
-          multiLine: p.multiLine,
-          onChanged: widget.onChanged,
+          enabled: enabled,
+          multiLine: policy.multiLine,
+          onChanged: onChanged,
         );
     }
   }
@@ -267,10 +288,10 @@ String compactJson(String input) {
   }
 }
 
-bool? _parseBool(String? s) {
-  if (s == null) return null;
-  final l = s.toLowerCase();
-  if (l == 'true' || l == 't' || l == '1') return true;
-  if (l == 'false' || l == 'f' || l == '0') return false;
+bool? _parseBool(String? text) {
+  if (text == null) return null;
+  final lower = text.toLowerCase();
+  if (lower == 'true' || lower == 't' || lower == '1') return true;
+  if (lower == 'false' || lower == 'f' || lower == '0') return false;
   return null;
 }

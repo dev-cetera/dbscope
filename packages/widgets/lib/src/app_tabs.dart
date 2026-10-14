@@ -28,13 +28,13 @@ class AppTabBar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return SizedBox(
-      height: 22,
+      height: 22.0,
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.end,
         children: [
           for (var i = 0; i < tabs.length; i++)
             Padding(
-              padding: const EdgeInsets.only(right: 2),
+              padding: const EdgeInsets.only(right: 2.0),
               child: _tab(context, i, tabs[i], i == index),
             ),
         ],
@@ -43,19 +43,19 @@ class AppTabBar extends StatelessWidget {
   }
 
   Widget _tab(BuildContext context, int i, AppTab tab, bool selected) {
-    final p = AppPalette.of(context);
+    final palette = AppPalette.of(context);
     final label = Row(
       children: [
         if (tab.icon != null) ...[
-          Icon(tab.icon, size: 12, color: p.text),
-          const SizedBox(width: 4),
+          Icon(tab.icon, size: 12.0, color: palette.text),
+          const SizedBox(width: 4.0),
         ],
         Text(
           tab.label,
           style: TextStyle(
-            fontSize: p.bodyFontSize,
-            fontFamily: p.uiFontFamily,
-            color: p.text,
+            fontSize: palette.bodyFontSize,
+            fontFamily: palette.uiFontFamily,
+            color: palette.text,
             fontWeight: selected ? FontWeight.w700 : FontWeight.w400,
           ),
         ),
@@ -65,27 +65,29 @@ class AppTabBar extends StatelessWidget {
       behavior: HitTestBehavior.opaque,
       onTap: () => onChanged(i),
       child:
-          p.isBevel
-              ? _bevelTab(p, selected: selected, child: label)
-              : _flatTab(p, selected: selected, child: label),
+          palette.isBevel
+              ? _bevelTab(palette, selected: selected, child: label)
+              : _flatTab(palette, selected: selected, child: label),
     );
   }
 
   Widget _bevelTab(
-    AppPalette p, {
+    AppPalette palette, {
     required bool selected,
     required Widget child,
   }) {
     return Container(
       height: selected ? 22 : 20,
-      padding: const EdgeInsets.symmetric(horizontal: 10),
+      padding: const EdgeInsets.symmetric(horizontal: 10.0),
       decoration: BoxDecoration(
-        color: p.surface,
+        color: palette.surface,
         border: Border(
-          top: BorderSide(color: p.bevelHighlight),
-          left: BorderSide(color: p.bevelHighlight),
-          right: BorderSide(color: p.borderStrong),
-          bottom: BorderSide(color: selected ? p.surface : p.borderStrong),
+          top: BorderSide(color: palette.bevelHighlight),
+          left: BorderSide(color: palette.bevelHighlight),
+          right: BorderSide(color: palette.borderStrong),
+          bottom: BorderSide(
+            color: selected ? palette.surface : palette.borderStrong,
+          ),
         ),
       ),
       child: Center(child: child),
@@ -93,19 +95,19 @@ class AppTabBar extends StatelessWidget {
   }
 
   Widget _flatTab(
-    AppPalette p, {
+    AppPalette palette, {
     required bool selected,
     required Widget child,
   }) {
     return Container(
-      height: 22,
-      padding: const EdgeInsets.symmetric(horizontal: 10),
+      height: 22.0,
+      padding: const EdgeInsets.symmetric(horizontal: 10.0),
       decoration: BoxDecoration(
-        color: p.surface,
+        color: palette.surface,
         border: Border(
           bottom: BorderSide(
-            color: selected ? p.accent : Colors.transparent,
-            width: 2,
+            color: selected ? palette.accent : Colors.transparent,
+            width: 2.0,
           ),
         ),
       ),

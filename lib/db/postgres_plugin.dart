@@ -7,6 +7,9 @@ import '../plugins/dbscope_plugin.dart';
 import 'plugin.dart';
 import 'postgres_executor.dart';
 
+/// How long opening a Postgres connection may take before it gives up.
+const _kConnectTimeout = Duration(seconds: 15);
+
 /// Universal-plugin wrapper for the built-in Postgres kind. The host
 /// registers this alongside external plugins so the registration shape
 /// is identical for built-ins and third-party plugins.
@@ -39,7 +42,7 @@ class PostgresKindPlugin implements ConnectionKindPlugin {
     ConnectionProfile profile, {
     BuildContext? context,
   }) async {
-    final conn = await openConnection(
+    final connection = await openConnection(
       host: profile.host,
       port: profile.port,
       database: profile.database,
@@ -47,7 +50,7 @@ class PostgresKindPlugin implements ConnectionKindPlugin {
       password: profile.password,
       sslMode: profile.sslMode,
     );
-    return OpenResult(executor: PostgresExecutor(conn));
+    return OpenResult(executor: PostgresExecutor(connection));
   }
 
   /// Open a ready-to-use `pg.Connection`, including the two-step enum-codec
@@ -67,7 +70,7 @@ class PostgresKindPlugin implements ConnectionKindPlugin {
     required String username,
     required String password,
     SslMode sslMode = SslMode.disable,
-    Duration timeout = const Duration(seconds: 15),
+    Duration timeout = _kConnectTimeout,
   }) async {
     final endpoint = pg.Endpoint(
       host: host,
@@ -114,8 +117,8 @@ class PostgresKindPlugin implements ConnectionKindPlugin {
     );
   }
 
-  static pg.SslMode _sslMap(SslMode m) {
-    switch (m) {
+  static pg.SslMode _sslMap(SslMode mode) {
+    switch (mode) {
       case SslMode.disable:
         return pg.SslMode.disable;
       case SslMode.require:

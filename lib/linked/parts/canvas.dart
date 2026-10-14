@@ -24,7 +24,8 @@ class _Canvas extends StatefulWidget {
 
   /// Right-click handler. Called with the node and the global pointer
   /// position so the host can show a context menu anchored to the click.
-  final void Function(LinkedNode node, Offset globalPos)? onNodeContextMenu;
+  final void Function(LinkedNode node, Offset globalPosition)?
+  onNodeContextMenu;
 
   @override
   State<_Canvas> createState() => _CanvasState();
@@ -108,8 +109,8 @@ class _CanvasState extends State<_Canvas> with SingleTickerProviderStateMixin {
   Offset get _effectivePan => widget.tab.pan + _panDelta;
   double get _scale => widget.tab.scale;
 
-  void _onBackgroundPanUpdate(DragUpdateDetails d) {
-    setState(() => _panDelta += d.delta);
+  void _onBackgroundPanUpdate(DragUpdateDetails details) {
+    setState(() => _panDelta += details.delta);
   }
 
   void _onBackgroundPanEnd() {
@@ -132,11 +133,11 @@ class _CanvasState extends State<_Canvas> with SingleTickerProviderStateMixin {
     setState(() => _topNodeId = node.id);
   }
 
-  void _onNodeDragUpdate(DragUpdateDetails d) {
+  void _onNodeDragUpdate(DragUpdateDetails details) {
     // _NodeShell sits inside a FittedBox that hit-tests with the inverse
     // scale applied, so gesture deltas reported inside the shell are
     // already in canvas (unscaled) units — no further division needed.
-    setState(() => _dragDelta += d.delta);
+    setState(() => _dragDelta += details.delta);
   }
 
   void _onNodeDragEnd() {
@@ -148,7 +149,7 @@ class _CanvasState extends State<_Canvas> with SingleTickerProviderStateMixin {
       return;
     }
     final node = widget.tab.nodes.cast<LinkedNode?>().firstWhere(
-      (n) => n?.id == id,
+      (candidate) => candidate?.id == id,
       orElse: () => null,
     );
     if (node != null && _dragDelta != Offset.zero) {
@@ -166,12 +167,12 @@ class _CanvasState extends State<_Canvas> with SingleTickerProviderStateMixin {
   void _onPointerSignal(PointerSignalEvent event) {
     if (event is! PointerScrollEvent) return;
     final keys = HardwareKeyboard.instance.logicalKeysPressed;
-    final ctrl =
+    final isZoomModifierPressed =
         keys.contains(LogicalKeyboardKey.controlLeft) ||
         keys.contains(LogicalKeyboardKey.controlRight) ||
         keys.contains(LogicalKeyboardKey.metaLeft) ||
         keys.contains(LogicalKeyboardKey.metaRight);
-    if (!ctrl) return;
+    if (!isZoomModifierPressed) return;
     final factor = event.scrollDelta.dy < 0 ? 1.1 : 1 / 1.1;
     final newScale = (widget.tab.scale * factor).clamp(0.25, 3.0);
     if (newScale == widget.tab.scale) return;
@@ -192,16 +193,16 @@ class _CanvasState extends State<_Canvas> with SingleTickerProviderStateMixin {
   /// Build only the LinkedRowNode positions. `_topNodeId` (if any) is
   /// rendered last so it stacks on top.
   List<Widget> _buildRowNodes(Offset pan) {
-    final fks = widget.tab.foreignKeys;
+    final foreignKeys = widget.tab.foreignKeys;
     final rows = <LinkedRowNode>[
-      for (final n in widget.tab.nodes)
-        if (n is LinkedRowNode) n,
+      for (final node in widget.tab.nodes)
+        if (node is LinkedRowNode) node,
     ];
-    final topIdx = _topNodeId == null
+    final topIndex = _topNodeId == null
         ? -1
-        : rows.indexWhere((n) => n.id == _topNodeId);
-    if (topIdx >= 0) {
-      final top = rows.removeAt(topIdx);
+        : rows.indexWhere((row) => row.id == _topNodeId);
+    if (topIndex >= 0) {
+      final top = rows.removeAt(topIndex);
       rows.add(top);
     }
     return [
@@ -211,30 +212,30 @@ class _CanvasState extends State<_Canvas> with SingleTickerProviderStateMixin {
           // resized the card themselves. We only widen, never shrink —
           // so a manual resize sticks.
           if (widget.tab.fksLoaded && !_autoSizedOnce.contains(node.id)) {
-            final fit = _autoWidthFor(node, fks);
+            final fit = _autoWidthFor(node, foreignKeys);
             if (fit > node.width) node.width = fit;
             _autoSizedOnce.add(node.id);
           }
-          final h = _nodeHeightFor(node, fks);
-          final w = node.width;
+          final height = _nodeHeightFor(node, foreignKeys);
+          final width = node.width;
           return Positioned(
             key: ValueKey(node.id),
             left:
                 pan.dx +
                 (node.position.dx +
-                        (node.id == _dragNodeId ? _dragDelta.dx : 0)) *
+                        (node.id == _dragNodeId ? _dragDelta.dx : 0.0)) *
                     _scale,
             top:
                 pan.dy +
                 (node.position.dy +
-                        (node.id == _dragNodeId ? _dragDelta.dy : 0)) *
+                        (node.id == _dragNodeId ? _dragDelta.dy : 0.0)) *
                     _scale,
-            width: w * _scale,
-            height: h * _scale,
+            width: width * _scale,
+            height: height * _scale,
             child: _ScaledNode(
               scale: _scale,
-              width: w,
-              height: h,
+              width: width,
+              height: height,
               child: _NodeShell(
                 node: node,
                 tab: widget.tab,
@@ -252,8 +253,8 @@ class _CanvasState extends State<_Canvas> with SingleTickerProviderStateMixin {
                 onActivate: widget.onRowNodeActivate == null
                     ? null
                     : () => widget.onRowNodeActivate!(node),
-                onSecondaryTapDown: (globalPos) =>
-                    widget.onNodeContextMenu?.call(node, globalPos),
+                onSecondaryTapDown: (globalPosition) =>
+                    widget.onNodeContextMenu?.call(node, globalPosition),
                 onResizeUpdate: (deltaCanvas) {
                   setState(() {
                     node.width = (node.width + deltaCanvas).clamp(
@@ -281,7 +282,7 @@ class _CanvasState extends State<_Canvas> with SingleTickerProviderStateMixin {
         onPanEnd: (_) => _onBackgroundPanEnd(),
         child: const EmptyState(
           icon: Icons.hub_outlined,
-          iconSize: 56,
+          iconSize: 56.0,
           message:
               'Pick a row from the left panel to drop it on the canvas. '
               'Its FK-linked rows expand automatically.',

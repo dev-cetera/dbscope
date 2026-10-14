@@ -39,43 +39,45 @@ class DbmlExporter {
     final catalog = SchemaCatalog(conn);
 
     final schemas = (await catalog.listSchemas())
-        .where((s) => !s.isSystem)
+        .where((schema) => !schema.isSystem)
         .toList();
 
     final allTables = <TableInfo>[];
-    for (final s in schemas) {
-      final tables = await catalog.listTables(s.name);
-      allTables.addAll(tables.where((t) => t.kind == 'BASE TABLE'));
+    for (final schema in schemas) {
+      final tables = await catalog.listTables(schema.name);
+      allTables.addAll(tables.where((table) => table.kind == 'BASE TABLE'));
     }
 
-    final enums = await _loadEnums(schemas.map((s) => s.name).toList());
+    final enums = await _loadEnums(
+      schemas.map((schema) => schema.name).toList(),
+    );
 
-    final fks = await catalog.listForeignKeys();
+    final foreignKeys = await catalog.listForeignKeys();
 
-    final buf = StringBuffer();
-    buf.writeln('Project $databaseName {');
-    buf.writeln(" database_type: 'PostgreSQL'");
-    buf.writeln('}');
-    buf.writeln();
+    final buffer = StringBuffer();
+    buffer.writeln('Project $databaseName {');
+    buffer.writeln(" database_type: 'PostgreSQL'");
+    buffer.writeln('}');
+    buffer.writeln();
 
-    for (final e in enums) {
-      _writeEnum(buf, e);
-      buf.writeln();
+    for (final dbmlEnum in enums) {
+      _writeEnum(buffer, dbmlEnum);
+      buffer.writeln();
     }
 
     for (var i = 0; i < allTables.length; i++) {
-      final t = allTables[i];
+      final table = allTables[i];
       onProgress?.call(
         DbmlExportProgress(
           completed: i,
           total: allTables.length,
-          currentTable: '${t.schema}.${t.name}',
+          currentTable: '${table.schema}.${table.name}',
         ),
       );
-      final cols = await catalog.listColumns(t.schema, t.name);
-      final pk = await catalog.primaryKey(t.schema, t.name);
-      _writeTable(buf, t, cols, pk);
-      buf.writeln();
+      final columns = await catalog.listColumns(table.schema, table.name);
+      final primaryKey = await catalog.primaryKey(table.schema, table.name);
+      _writeTable(buffer, table, columns, primaryKey);
+      buffer.writeln();
     }
     onProgress?.call(
       DbmlExportProgress(
@@ -85,17 +87,17 @@ class DbmlExporter {
       ),
     );
 
-    _writeForeignKeys(buf, fks);
+    _writeForeignKeys(buffer, foreignKeys);
 
-    return buf.toString();
+    return buffer.toString();
   }
 
   Future<List<DbmlEnum>> _loadEnums(List<String> schemas) async {
     if (schemas.isEmpty) return const [];
     final params = <Object?>[];
     final placeholders = <String>[];
-    for (final s in schemas) {
-      params.add(s);
+    for (final schema in schemas) {
+      params.add(schema);
       placeholders.add('\$${params.length}');
     }
     final sql =
@@ -119,52 +121,64 @@ class DbmlExporter {
     ];
   }
 
-  void _writeEnum(StringBuffer buf, DbmlEnum e) {
-    buf.writeln('Enum ${_qualifiedRef(e.schema, e.name)} {');
-    for (final v in e.values) {
-      buf.writeln(' ${_quoteIfNeeded(v)}');
+  void _writeEnum(StringBuffer buffer, DbmlEnum dbmlEnum) {
+    buffer.writeln('Enum ${_qualifiedRef(dbmlEnum.schema, dbmlEnum.name)} {');
+    for (final value in dbmlEnum.values) {
+      buffer.writeln(' ${_quoteIfNeeded(value)}');
     }
-    buf.writeln('}');
+    buffer.writeln('}');
   }
 
   void _writeTable(
-    StringBuffer buf,
-    TableInfo t,
-    List<ColumnInfo> cols,
-    List<String> pk,
+    StringBuffer buffer,
+    TableInfo table,
+    List<ColumnInfo> columns,
+    List<String> primaryKey,
   ) {
-    final pkSet = pk.toSet();
-    final singlePk = pk.length == 1 ? pk.first : null;
-    buf.writeln('Table ${_qualifiedRef(t.schema, t.name)} {');
-    for (final c in cols) {
-      final attrs = <String>[];
-      if (singlePk == c.name) attrs.add('pk');
-      if (c.isIdentity) attrs.add('increment');
-      if (!c.nullable && !pkSet.contains(c.name)) attrs.add('not null');
-      final def = c.defaultExpr;
-      if (def != null && def.toUpperCase() != 'NULL' && !c.isGenerated) {
-        attrs.add('default: `${_escapeBacktick(def)}`');
+    final primaryKeySet = primaryKey.toSet();
+    final singlePrimaryKey = primaryKey.length == 1 ? primaryKey.first : null;
+    buffer.writeln('Table ${_qualifiedRef(table.schema, table.name)} {');
+    for (final column in columns) {
+      final attributes = <String>[];
+      if (singlePrimaryKey == column.name) attributes.add('pk');
+      if (column.isIdentity) attributes.add('increment');
+      if (!column.nullable && !primaryKeySet.contains(column.name)) {
+        attributes.add('not null');
       }
-      final note = _columnNote(t, c);
-      if (note != null) attrs.add("note: '${_escapeNote(note)}'");
-      final attrStr = attrs.isEmpty ? '' : ' [${attrs.join(', ')}]';
-      buf.writeln(' ${_columnName(c.name)} ${_dbmlType(c)}$attrStr');
+      final defaultExpression = column.defaultExpr;
+      if (defaultExpression != null &&
+          defaultExpression.toUpperCase() != 'NULL' &&
+          !column.isGenerated) {
+        attributes.add('default: `${_escapeBacktick(defaultExpression)}`');
+      }
+      final note = _columnNote(table, column);
+      if (note != null) attributes.add("note: '${_escapeNote(note)}'");
+      final attributeSuffix = attributes.isEmpty
+          ? ''
+          : ' [${attributes.join(', ')}]';
+      buffer.writeln(
+        ' ${_columnName(column.name)} ${_dbmlType(column)}$attributeSuffix',
+      );
     }
-    final tableNote = _meta?.describeTable(t.schema, t.name).description;
-    if (tableNote != null) buf.writeln(" Note: '${_escapeNote(tableNote)}'");
-    if (pk.length > 1) {
-      buf.writeln(' indexes {');
-      final cols = pk.map(_columnName).join(', ');
-      buf.writeln(' ($cols) [pk]');
-      buf.writeln(' }');
+    final tableNote = _meta
+        ?.describeTable(table.schema, table.name)
+        .description;
+    if (tableNote != null) buffer.writeln(" Note: '${_escapeNote(tableNote)}'");
+    if (primaryKey.length > 1) {
+      buffer.writeln(' indexes {');
+      final keyColumns = primaryKey.map(_columnName).join(', ');
+      buffer.writeln(' ($keyColumns) [pk]');
+      buffer.writeln(' }');
     }
-    buf.writeln('}');
+    buffer.writeln('}');
   }
 
-  void _writeForeignKeys(StringBuffer buf, List<ForeignKey> fks) {
+  void _writeForeignKeys(StringBuffer buffer, List<ForeignKey> foreignKeys) {
     final byConstraint = <String, List<ForeignKey>>{};
-    for (final fk in fks) {
-      (byConstraint[fk.constraintKey] ??= <ForeignKey>[]).add(fk);
+    for (final foreignKey in foreignKeys) {
+      (byConstraint[foreignKey.constraintKey] ??= <ForeignKey>[]).add(
+        foreignKey,
+      );
     }
     for (final group in byConstraint.values) {
       final first = group.first;
@@ -176,14 +190,14 @@ class DbmlExporter {
           ? '${_qualifiedRef(first.toSchema, first.toTable)}.${_columnName(first.toColumn)}'
           : '${_qualifiedRef(first.toSchema, first.toTable)}.'
                 '(${group.map((g) => _columnName(g.toColumn)).join(', ')})';
-      buf.writeln(
+      buffer.writeln(
         'Ref: $from > $to${first.isVirtual ? ' // virtual (metadata link)' : ''}',
       );
     }
   }
 
-  String _dbmlType(ColumnInfo c) {
-    final name = c.typeName;
+  String _dbmlType(ColumnInfo column) {
+    final name = column.typeName;
     if (name.startsWith('_')) {
       return '${name.substring(1)}[]';
     }
@@ -197,34 +211,38 @@ class DbmlExporter {
     return '"$name"';
   }
 
-  bool _isSimpleIdent(String s) {
-    if (s.isEmpty) return false;
-    final r = RegExp(r'^[A-Za-z_][A-Za-z0-9_]*$');
-    return r.hasMatch(s);
+  bool _isSimpleIdent(String text) {
+    if (text.isEmpty) return false;
+    final pattern = RegExp(r'^[A-Za-z_][A-Za-z0-9_]*$');
+    return pattern.hasMatch(text);
   }
 
-  String _quoteIfNeeded(String s) {
-    if (_isSimpleIdent(s)) return s;
-    return '"${s.replaceAll('"', r'\"')}"';
+  String _quoteIfNeeded(String text) {
+    if (_isSimpleIdent(text)) return text;
+    return '"${text.replaceAll('"', r'\"')}"';
   }
 
-  String _escapeBacktick(String s) => s.replaceAll('`', r'\`');
+  String _escapeBacktick(String text) => text.replaceAll('`', r'\`');
 
   /// Description + enum meanings for a column, plus a marker when the
   /// viewer only sees it masked.
-  String? _columnNote(TableInfo t, ColumnInfo c) {
-    final describe = _meta?.describeColumn(t.schema, t.name, c.name);
+  String? _columnNote(TableInfo table, ColumnInfo column) {
+    final describe = _meta?.describeColumn(
+      table.schema,
+      table.name,
+      column.name,
+    );
     final parts = <String>[
       ?describe?.description,
       if (describe?.unit != null) 'unit: ${describe!.unit}',
       if (describe != null && describe.values.isNotEmpty)
         'values: ${describe.values.entries.map((e) => '${e.key} = ${e.value}').join('; ')}',
       if (describe?.deprecated != null) 'deprecated: ${describe!.deprecated}',
-      if (c.isMasked) 'masked for this user',
+      if (column.isMasked) 'masked for this user',
     ];
     return parts.isEmpty ? null : parts.join(' | ');
   }
 
-  String _escapeNote(String s) =>
-      s.replaceAll(r'\', r'\\').replaceAll("'", r"\'").replaceAll('\n', ' ');
+  String _escapeNote(String text) =>
+      text.replaceAll(r'\', r'\\').replaceAll("'", r"\'").replaceAll('\n', ' ');
 }

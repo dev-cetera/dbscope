@@ -96,8 +96,8 @@ class _DeviceSqliteDialogState extends State<_DeviceSqliteDialog> {
     if (prior == null) return devices.length == 1 ? devices.first : null;
     final kind = (prior.extra['deviceKind'] as String?) ?? '';
     final id = (prior.extra['deviceId'] as String?) ?? '';
-    for (final d in devices) {
-      if (d.kind == kind && d.id == id) return d;
+    for (final device in devices) {
+      if (device.kind == kind && device.id == id) return device;
     }
     return null;
   }
@@ -120,7 +120,7 @@ class _DeviceSqliteDialogState extends State<_DeviceSqliteDialog> {
         _apps = apps;
         _appsLoading = false;
         // If the prior appId still exists on this device, keep it.
-        if (_appId != null && apps.any((a) => a.id == _appId)) {
+        if (_appId != null && apps.any((app) => app.id == _appId)) {
           // Trigger the next step.
         } else {
           _appId = null;
@@ -151,7 +151,8 @@ class _DeviceSqliteDialogState extends State<_DeviceSqliteDialog> {
       setState(() {
         _dbs = dbs;
         _dbsLoading = false;
-        if (_dbPath != null && dbs.any((d) => d.relativePath == _dbPath)) {
+        if (_dbPath != null &&
+            dbs.any((dbFile) => dbFile.relativePath == _dbPath)) {
           // Keep selection.
         } else {
           _dbPath = dbs.isNotEmpty ? dbs.first.relativePath : null;
@@ -213,29 +214,29 @@ class _DeviceSqliteDialogState extends State<_DeviceSqliteDialog> {
             : 'Edit on-device SQLite connection',
       ),
       content: SizedBox(
-        width: 560,
+        width: 560.0,
         child: SingleChildScrollView(
           child: Column(
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               _warningBanner(theme),
-              const SizedBox(height: 12),
+              const SizedBox(height: 12.0),
               TextField(
                 controller: _name,
                 decoration: const InputDecoration(labelText: 'Name'),
                 onChanged: (_) => setState(() {}),
               ),
-              const SizedBox(height: 16),
+              const SizedBox(height: 16.0),
               _deviceRow(),
-              const SizedBox(height: 12),
+              const SizedBox(height: 12.0),
               _appRow(),
-              const SizedBox(height: 12),
+              const SizedBox(height: 12.0),
               _dbRow(),
-              const SizedBox(height: 16),
+              const SizedBox(height: 16.0),
               SwitchListTile(
                 value: _readOnly,
-                onChanged: (v) => setState(() => _readOnly = v),
+                onChanged: (value) => setState(() => _readOnly = value),
                 title: const Text('Read-only'),
                 subtitle: const Text(
                   'Enforced locally via PRAGMA query_only. The on-device '
@@ -262,10 +263,10 @@ class _DeviceSqliteDialogState extends State<_DeviceSqliteDialog> {
 
   Widget _warningBanner(ThemeData theme) {
     return Container(
-      padding: const EdgeInsets.all(10),
+      padding: const EdgeInsets.all(10.0),
       decoration: BoxDecoration(
         color: theme.colorScheme.errorContainer.withValues(alpha: 0.5),
-        borderRadius: BorderRadius.circular(4),
+        borderRadius: BorderRadius.circular(4.0),
         border:
             Border.all(color: theme.colorScheme.error.withValues(alpha: 0.4)),
       ),
@@ -273,7 +274,7 @@ class _DeviceSqliteDialogState extends State<_DeviceSqliteDialog> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Icon(Icons.warning_amber, color: theme.colorScheme.error),
-          const SizedBox(width: 8),
+          const SizedBox(width: 8.0),
           Expanded(
             child: Text(
               'Force-stop the app on the device before editing. The DB file '
@@ -308,37 +309,37 @@ class _DeviceSqliteDialogState extends State<_DeviceSqliteDialog> {
               helperMaxLines: 3,
             ),
             items: [
-              for (final d in _devices)
+              for (final device in _devices)
                 DropdownMenuItem(
-                  value: d,
+                  value: device,
                   child: Text(
-                    '${d.kind} ${d.label}',
+                    '${device.kind} ${device.label}',
                     overflow: TextOverflow.ellipsis,
                   ),
                 ),
             ],
             onChanged: _devicesLoading
                 ? null
-                : (v) {
+                : (selected) {
                     setState(() {
-                      _device = v;
+                      _device = selected;
                       _apps = const [];
                       _appId = null;
                       _dbs = const [];
                       _dbPath = null;
                     });
-                    if (v != null) unawaited(_loadApps(v));
+                    if (selected != null) unawaited(_loadApps(selected));
                   },
           ),
         ),
-        const SizedBox(width: 8),
+        const SizedBox(width: 8.0),
         IconButton(
           tooltip: 'Rescan devices',
           icon: _devicesLoading
               ? const SizedBox(
-                  width: 16,
-                  height: 16,
-                  child: CircularProgressIndicator(strokeWidth: 2),
+                  width: 16.0,
+                  height: 16.0,
+                  child: CircularProgressIndicator(strokeWidth: 2.0),
                 )
               : const Icon(Icons.refresh),
           onPressed: _devicesLoading ? null : _refreshDevices,
@@ -354,7 +355,7 @@ class _DeviceSqliteDialogState extends State<_DeviceSqliteDialog> {
       children: [
         Expanded(
           child: DropdownButtonFormField<String>(
-            initialValue: _apps.any((a) => a.id == _appId) ? _appId : null,
+            initialValue: _apps.any((app) => app.id == _appId) ? _appId : null,
             isExpanded: true,
             decoration: InputDecoration(
               labelText: 'App',
@@ -367,37 +368,39 @@ class _DeviceSqliteDialogState extends State<_DeviceSqliteDialog> {
               errorText: _appsError,
             ),
             items: [
-              for (final a in _apps)
+              for (final app in _apps)
                 DropdownMenuItem(
-                  value: a.id,
+                  value: app.id,
                   child: Text(
-                    a.displayName == null ? a.id : '${a.displayName} (${a.id})',
+                    app.displayName == null
+                        ? app.id
+                        : '${app.displayName} (${app.id})',
                     overflow: TextOverflow.ellipsis,
                   ),
                 ),
             ],
             onChanged: (_appsLoading || disabled)
                 ? null
-                : (v) {
+                : (selected) {
                     setState(() {
-                      _appId = v;
+                      _appId = selected;
                       _dbs = const [];
                       _dbPath = null;
                     });
-                    if (v != null && _device != null) {
-                      unawaited(_loadDbs(_device!, v));
+                    if (selected != null && _device != null) {
+                      unawaited(_loadDbs(_device!, selected));
                     }
                   },
           ),
         ),
-        const SizedBox(width: 8),
+        const SizedBox(width: 8.0),
         IconButton(
           tooltip: 'Rescan apps',
           icon: _appsLoading
               ? const SizedBox(
-                  width: 16,
-                  height: 16,
-                  child: CircularProgressIndicator(strokeWidth: 2),
+                  width: 16.0,
+                  height: 16.0,
+                  child: CircularProgressIndicator(strokeWidth: 2.0),
                 )
               : const Icon(Icons.refresh),
           onPressed:
@@ -414,8 +417,9 @@ class _DeviceSqliteDialogState extends State<_DeviceSqliteDialog> {
       children: [
         Expanded(
           child: DropdownButtonFormField<String>(
-            initialValue:
-                _dbs.any((d) => d.relativePath == _dbPath) ? _dbPath : null,
+            initialValue: _dbs.any((dbFile) => dbFile.relativePath == _dbPath)
+                ? _dbPath
+                : null,
             isExpanded: true,
             decoration: InputDecoration(
               labelText: 'Database file',
@@ -442,24 +446,24 @@ class _DeviceSqliteDialogState extends State<_DeviceSqliteDialog> {
             ],
             onChanged: (_dbsLoading || disabled)
                 ? null
-                : (v) => setState(() {
-                      _dbPath = v;
-                      if (v != null &&
+                : (selected) => setState(() {
+                      _dbPath = selected;
+                      if (selected != null &&
                           _name.text.trim().isEmpty &&
                           _appId != null) {
-                        _name.text = _suggestName(_appId!, v);
+                        _name.text = _suggestName(_appId!, selected);
                       }
                     }),
           ),
         ),
-        const SizedBox(width: 8),
+        const SizedBox(width: 8.0),
         IconButton(
           tooltip: 'Rescan files',
           icon: _dbsLoading
               ? const SizedBox(
-                  width: 16,
-                  height: 16,
-                  child: CircularProgressIndicator(strokeWidth: 2),
+                  width: 16.0,
+                  height: 16.0,
+                  child: CircularProgressIndicator(strokeWidth: 2.0),
                 )
               : const Icon(Icons.refresh),
           onPressed: (_dbsLoading || disabled)

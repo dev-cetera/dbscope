@@ -29,15 +29,15 @@ class CopyTableJob implements JobHandler {
   String get kind => 'copy_table';
 
   @override
-  Future<Map<String, Object?>> run(JobContext ctx) async {
-    final p = ctx.record.spec.params;
-    final sourceId = p['sourceConnectionId'] as String?;
-    final targetId = p['targetConnectionId'] as String?;
-    final sourceSchema = p['sourceSchema'] as String?;
-    final sourceTable = p['sourceTable'] as String?;
-    final targetSchema = (p['targetSchema'] as String?) ?? sourceSchema;
-    final targetTable = (p['targetTable'] as String?) ?? sourceTable;
-    final mode = (p['mode'] as String?) ?? 'append';
+  Future<Map<String, Object?>> run(JobContext jobContext) async {
+    final jobParams = jobContext.record.spec.params;
+    final sourceId = jobParams['sourceConnectionId'] as String?;
+    final targetId = jobParams['targetConnectionId'] as String?;
+    final sourceSchema = jobParams['sourceSchema'] as String?;
+    final sourceTable = jobParams['sourceTable'] as String?;
+    final targetSchema = (jobParams['targetSchema'] as String?) ?? sourceSchema;
+    final targetTable = (jobParams['targetTable'] as String?) ?? sourceTable;
+    final mode = (jobParams['mode'] as String?) ?? 'append';
 
     if (sourceId == null ||
         targetId == null ||
@@ -59,13 +59,17 @@ class CopyTableJob implements JobHandler {
       );
     }
 
-    final source = _requirePostgres(await ctx.connections.obtain(sourceId));
-    final target = _requirePostgres(await ctx.connections.obtain(targetId));
+    final source = _requirePostgres(
+      await jobContext.connections.obtain(sourceId),
+    );
+    final target = _requirePostgres(
+      await jobContext.connections.obtain(targetId),
+    );
 
     final qSource = quoteQualified(sourceSchema, sourceTable);
     final qTarget = quoteQualified(targetSchema, targetTable);
 
-    ctx.reportProgress({'phase': 'planning', 'processed': 0});
+    jobContext.reportProgress({'phase': 'planning', 'processed': 0});
 
     // Discover source columns in ordinal order; this is the column set
     // we'll select and insert.
@@ -84,7 +88,7 @@ class CopyTableJob implements JobHandler {
     }
 
     // Confirm target has all those columns (by name).
-    final tgtColResult = await target.execute(
+    final targetColumnResult = await target.execute(
       pg.Sql.named('''
  SELECT column_name
  FROM information_schema.columns
@@ -92,11 +96,15 @@ class CopyTableJob implements JobHandler {
  '''),
       parameters: {'schema': targetSchema, 'table': targetTable},
     );
-    final targetCols = {for (final row in tgtColResult) row[0]! as String};
-    if (targetCols.isEmpty) {
+    final targetColumns = {
+      for (final row in targetColumnResult) row[0]! as String,
+    };
+    if (targetColumns.isEmpty) {
       throw RpcError('missing_target', 'target $qTarget not found');
     }
-    final missing = columns.where((c) => !targetCols.contains(c)).toList();
+    final missing = columns
+        .where((column) => !targetColumns.contains(column))
+        .toList();
     if (missing.isNotEmpty) {
       throw RpcError(
         'schema_mismatch',
@@ -106,22 +114,22 @@ class CopyTableJob implements JobHandler {
 
     final selectSql =
         'SELECT ${columns.map(quoteIdent).join(', ')} FROM $qSource';
-    final insertCols = columns.map(quoteIdent).join(', ');
+    final insertColumns = columns.map(quoteIdent).join(', ');
 
     var processed = 0;
-    await target.runTx((tx) async {
+    await target.runTx((transaction) async {
       if (mode == 'truncate') {
-        ctx.reportProgress({'phase': 'truncating', 'processed': 0});
-        await tx.execute('TRUNCATE $qTarget');
+        jobContext.reportProgress({'phase': 'truncating', 'processed': 0});
+        await transaction.execute('TRUNCATE $qTarget');
       }
-      ctx.reportProgress({'phase': 'copying', 'processed': 0});
+      jobContext.reportProgress({'phase': 'copying', 'processed': 0});
       // Stream from source in pages of [batchSize].
       // Simplest: SELECT once into memory in chunks via OFFSET. For very
       // large tables this is suboptimal but matches Phase 3 scope; a
       // cursor-based stream is the obvious upgrade.
       var offset = 0;
       while (true) {
-        if (ctx.cancelled) {
+        if (jobContext.cancelled) {
           throw const RpcError('cancelled', 'job cancelled');
         }
         final batch = await source.execute(
@@ -129,7 +137,7 @@ class CopyTableJob implements JobHandler {
         );
         if (batch.isEmpty) break;
         final buffer = StringBuffer(
-          'INSERT INTO $qTarget ($insertCols) VALUES ',
+          'INSERT INTO $qTarget ($insertColumns) VALUES ',
         );
         final params = <Object?>[];
         final tuples = <String>[];
@@ -142,15 +150,21 @@ class CopyTableJob implements JobHandler {
           tuples.add('(${placeholders.join(', ')})');
         }
         buffer.write(tuples.join(', '));
-        await tx.execute(pg.Sql(buffer.toString()), parameters: params);
+        await transaction.execute(
+          pg.Sql(buffer.toString()),
+          parameters: params,
+        );
         processed += batch.length;
-        ctx.reportProgress({'phase': 'copying', 'processed': processed});
+        jobContext.reportProgress({
+          'phase': 'copying',
+          'processed': processed,
+        });
         if (batch.length < batchSize) break;
         offset += batch.length;
       }
     });
 
-    ctx.bus.publish('schema.invalidated:$targetId', {
+    jobContext.bus.publish('schema.invalidated:$targetId', {
       'schema': targetSchema,
       'table': targetTable,
     });
@@ -164,13 +178,13 @@ class CopyTableJob implements JobHandler {
     };
   }
 
-  pg.Connection _requirePostgres(DbExecutor exec) {
-    if (exec is! PostgresExecutor) {
+  pg.Connection _requirePostgres(DbExecutor executor) {
+    if (executor is! PostgresExecutor) {
       throw RpcError(
         'unsupported_backend',
-        'copy_table requires postgres on both ends (got ${exec.kind})',
+        'copy_table requires postgres on both ends (got ${executor.kind})',
       );
     }
-    return exec.raw;
+    return executor.raw;
   }
 }

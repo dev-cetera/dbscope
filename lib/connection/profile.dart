@@ -29,9 +29,9 @@ class TenantFilter {
 
   static TenantFilter? fromJson(Object? raw) {
     if (raw is! Map) return null;
-    final col = raw['column'];
-    if (col is! String || col.isEmpty) return null;
-    return TenantFilter(column: col, value: raw['value']);
+    final column = raw['column'];
+    if (column is! String || column.isEmpty) return null;
+    return TenantFilter(column: column, value: raw['value']);
   }
 }
 
@@ -120,14 +120,16 @@ class ConnectionProfile {
       username: (json['username'] as String?) ?? '',
       password: password,
       sslMode: SslMode.values.firstWhere(
-        (s) => s.name == (json['sslMode'] as String? ?? 'disable'),
+        (mode) => mode.name == (json['sslMode'] as String? ?? 'disable'),
         orElse: () => SslMode.disable,
       ),
       readOnly: json['readOnly'] as bool? ?? false,
       extra: extraRaw is Map<String, Object?>
           ? Map<String, Object?>.from(extraRaw)
           : extraRaw is Map
-          ? extraRaw.map((k, v) => MapEntry(k.toString(), v as Object?))
+          ? extraRaw.map(
+              (key, value) => MapEntry(key.toString(), value as Object?),
+            )
           : const <String, Object?>{},
       tenantFilter: TenantFilter.fromJson(json['tenantFilter']),
       tableOverrides: overrides,

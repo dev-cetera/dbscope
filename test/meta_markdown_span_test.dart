@@ -33,7 +33,7 @@ List<TextSpan> _leaves(String source) {
 }
 
 TextSpan _find(List<TextSpan> spans, String text) =>
-    spans.firstWhere((s) => s.text == text);
+    spans.firstWhere((span) => span.text == text);
 
 void main() {
   test('bold and code take their colours', () {
@@ -53,7 +53,7 @@ void main() {
   });
 
   test('lists put each item on its own line', () {
-    final text = _leaves('- one\n- two').map((s) => s.text).join();
+    final text = _leaves('- one\n- two').map((span) => span.text).join();
     expect(text, '• one\n• two');
   });
 }

@@ -21,21 +21,21 @@ class _DateInputState extends State<_DateInput> {
   static final _lastDate = DateTime(9999, 12, 31);
 
   String _format(DateTime dt) {
-    final y = dt.year.toString().padLeft(4, '0');
-    final mo = dt.month.toString().padLeft(2, '0');
-    final d = dt.day.toString().padLeft(2, '0');
-    final h = dt.hour.toString().padLeft(2, '0');
-    final mi = dt.minute.toString().padLeft(2, '0');
-    final s = dt.second.toString().padLeft(2, '0');
+    final year = dt.year.toString().padLeft(4, '0');
+    final month = dt.month.toString().padLeft(2, '0');
+    final day = dt.day.toString().padLeft(2, '0');
+    final hour = dt.hour.toString().padLeft(2, '0');
+    final minute = dt.minute.toString().padLeft(2, '0');
+    final second = dt.second.toString().padLeft(2, '0');
     switch (widget.mode) {
       case CupertinoDatePickerMode.date:
-        return '$y-$mo-$d';
+        return '$year-$month-$day';
       case CupertinoDatePickerMode.time:
-        return '$h:$mi:$s';
+        return '$hour:$minute:$second';
       case CupertinoDatePickerMode.dateAndTime:
-        return '$y-$mo-$d $h:$mi:$s';
+        return '$year-$month-$day $hour:$minute:$second';
       case CupertinoDatePickerMode.monthYear:
-        return '$y-$mo';
+        return '$year-$month';
     }
   }
 
@@ -67,8 +67,10 @@ class _DateInputState extends State<_DateInput> {
     return showTimePicker(
       context: context,
       initialTime: TimeOfDay(hour: seed.hour, minute: seed.minute),
-      builder: (ctx, child) => MediaQuery(
-        data: MediaQuery.of(ctx).copyWith(alwaysUse24HourFormat: true),
+      builder: (builderContext, child) => MediaQuery(
+        data: MediaQuery.of(
+          builderContext,
+        ).copyWith(alwaysUse24HourFormat: true),
         child: child ?? const SizedBox.shrink(),
       ),
     );
@@ -133,10 +135,10 @@ class _DateInputState extends State<_DateInput> {
         child: GestureDetector(
           onTap: _pick,
           child: const Padding(
-            padding: EdgeInsets.symmetric(horizontal: 6),
+            padding: EdgeInsets.symmetric(horizontal: 6.0),
             child: Tooltip(
               message: 'Pick date',
-              child: Icon(Icons.event, size: 14),
+              child: Icon(Icons.event, size: 14.0),
             ),
           ),
         ),

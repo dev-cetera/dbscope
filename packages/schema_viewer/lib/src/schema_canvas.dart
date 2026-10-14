@@ -266,8 +266,8 @@ class _SchemaCanvasState extends State<SchemaCanvas>
 
   Offset get _effectivePan => widget.pan + _panDelta;
 
-  void _onBackgroundPanUpdate(DragUpdateDetails d) {
-    setState(() => _panDelta += d.delta);
+  void _onBackgroundPanUpdate(DragUpdateDetails details) {
+    setState(() => _panDelta += details.delta);
   }
 
   void _onBackgroundPanEnd() {
@@ -295,25 +295,28 @@ class _SchemaCanvasState extends State<SchemaCanvas>
   /// underneath the grown card.
   void _cascadeFromSizeChange(String pivotId) {
     final positions = <String, Offset>{
-      for (final n in widget.nodes) n.id: n.position,
+      for (final node in widget.nodes) node.id: node.position,
     };
     cascadeSeparate(
       movedIds: {pivotId},
       positions: positions,
       dimsFor: (otherId) {
-        for (final n in widget.nodes) {
-          if (n.id == otherId) {
-            return (w: effectiveNodeWidth(n), h: renderedNodeHeight(n));
+        for (final node in widget.nodes) {
+          if (node.id == otherId) {
+            return (
+              w: effectiveNodeWidth(node),
+              h: renderedNodeHeight(node),
+            );
           }
         }
         return null;
       },
       allIds: positions.keys,
     );
-    for (final n in widget.nodes) {
-      if (n.id == pivotId) continue;
-      final p = positions[n.id];
-      if (p != null) n.position = p;
+    for (final node in widget.nodes) {
+      if (node.id == pivotId) continue;
+      final position = positions[node.id];
+      if (position != null) node.position = position;
     }
   }
 
@@ -327,12 +330,12 @@ class _SchemaCanvasState extends State<SchemaCanvas>
     if (id == null) return;
     final positions = <String, Offset>{};
     SchemaNodeData? dragged;
-    for (final n in widget.nodes) {
-      if (n.id == id) {
-        dragged = n;
-        positions[n.id] = n.position + _dragDelta;
+    for (final node in widget.nodes) {
+      if (node.id == id) {
+        dragged = node;
+        positions[node.id] = node.position + _dragDelta;
       } else {
-        positions[n.id] = n.position;
+        positions[node.id] = node.position;
       }
     }
     if (dragged == null) return;
@@ -340,11 +343,11 @@ class _SchemaCanvasState extends State<SchemaCanvas>
       movedIds: {id},
       positions: positions,
       dimsFor: (otherId) {
-        for (final n in widget.nodes) {
-          if (n.id == otherId) {
+        for (final node in widget.nodes) {
+          if (node.id == otherId) {
             return (
-              w: effectiveNodeWidth(n),
-              h: renderedNodeHeight(n),
+              w: effectiveNodeWidth(node),
+              h: renderedNodeHeight(node),
             );
           }
         }
@@ -352,16 +355,16 @@ class _SchemaCanvasState extends State<SchemaCanvas>
       },
       allIds: positions.keys,
     );
-    for (final n in widget.nodes) {
-      if (n.id == id) continue;
-      final p = positions[n.id];
-      if (p != null) n.position = p;
+    for (final node in widget.nodes) {
+      if (node.id == id) continue;
+      final position = positions[node.id];
+      if (position != null) node.position = position;
     }
   }
 
-  void _onNodeDragUpdate(DragUpdateDetails d) {
+  void _onNodeDragUpdate(DragUpdateDetails details) {
     setState(() {
-      _dragDelta += d.delta;
+      _dragDelta += details.delta;
       _cascadeNeighbours();
     });
   }
@@ -373,9 +376,9 @@ class _SchemaCanvasState extends State<SchemaCanvas>
       return;
     }
     SchemaNodeData? node;
-    for (final n in widget.nodes) {
-      if (n.id == id) {
-        node = n;
+    for (final candidate in widget.nodes) {
+      if (candidate.id == id) {
+        node = candidate;
         break;
       }
     }
@@ -448,7 +451,7 @@ class _SchemaCanvasState extends State<SchemaCanvas>
     final box = context.findRenderObject() as RenderBox?;
     final size = box?.size ?? Size.zero;
     _applyZoomAt(
-      Offset(size.width / 2, size.height / 2),
+      Offset(size.width / 2.0, size.height / 2.0),
       factor,
     );
   }
@@ -472,13 +475,13 @@ class _SchemaCanvasState extends State<SchemaCanvas>
     bool isSelected,
     bool isHighlighted,
     bool hasSelection,
-    SchemaCanvasCardCallbacks cb,
+    SchemaCanvasCardCallbacks callbacks,
   ) {
     if (widget.cardBuilder != null) {
       return widget.cardBuilder!(
         context,
         node,
-        cb,
+        callbacks,
         isSelected: isSelected,
         isHighlighted: isHighlighted,
         hasSelection: hasSelection,
@@ -489,13 +492,13 @@ class _SchemaCanvasState extends State<SchemaCanvas>
       isSelected: isSelected,
       isHighlighted: isHighlighted,
       hasSelection: hasSelection,
-      onTap: cb.onTap,
-      onHeaderPanStart: cb.onHeaderPanStart,
-      onHeaderPanUpdate: cb.onHeaderPanUpdate,
-      onHeaderPanEnd: cb.onHeaderPanEnd,
-      onSecondaryTapDown: cb.onSecondaryTapDown,
-      onToggleCompact: cb.onToggleCompact,
-      onActivate: cb.onActivate,
+      onTap: callbacks.onTap,
+      onHeaderPanStart: callbacks.onHeaderPanStart,
+      onHeaderPanUpdate: callbacks.onHeaderPanUpdate,
+      onHeaderPanEnd: callbacks.onHeaderPanEnd,
+      onSecondaryTapDown: callbacks.onSecondaryTapDown,
+      onToggleCompact: callbacks.onToggleCompact,
+      onActivate: callbacks.onActivate,
       activateTooltip: widget.cardActivateTooltip,
       activateIcon: widget.cardActivateIcon,
     );
@@ -514,12 +517,12 @@ class _SchemaCanvasState extends State<SchemaCanvas>
     var minY = double.infinity;
     var maxX = -double.infinity;
     var maxY = -double.infinity;
-    for (final n in widget.nodes) {
-      final r = rectForNode(n);
-      if (r.left < minX) minX = r.left;
-      if (r.top < minY) minY = r.top;
-      if (r.right > maxX) maxX = r.right;
-      if (r.bottom > maxY) maxY = r.bottom;
+    for (final node in widget.nodes) {
+      final rect = rectForNode(node);
+      if (rect.left < minX) minX = rect.left;
+      if (rect.top < minY) minY = rect.top;
+      if (rect.right > maxX) maxX = rect.right;
+      if (rect.bottom > maxY) maxY = rect.bottom;
     }
     final contentW = maxX - minX;
     final contentH = maxY - minY;
@@ -567,9 +570,9 @@ class _SchemaCanvasState extends State<SchemaCanvas>
 
     final ordered = <SchemaNodeData>[...widget.nodes];
     if (_topNodeId != null) {
-      final idx = ordered.indexWhere((n) => n.id == _topNodeId);
-      if (idx >= 0) {
-        final top = ordered.removeAt(idx);
+      final index = ordered.indexWhere((node) => node.id == _topNodeId);
+      if (index >= 0) {
+        final top = ordered.removeAt(index);
         ordered.add(top);
       }
     }
@@ -625,17 +628,17 @@ class _SchemaCanvasState extends State<SchemaCanvas>
               () {
                 final isSelected = widget.selectedId == node.id;
                 final isHighlighted = highlighted.contains(node.id);
-                final w = effectiveNodeWidth(node);
-                final h = renderedNodeHeight(node);
+                final nodeWidth = effectiveNodeWidth(node);
+                final nodeHeight = renderedNodeHeight(node);
                 final left = pan.dx +
                     (node.position.dx +
-                            (node.id == _dragNodeId ? _dragDelta.dx : 0)) *
+                            (node.id == _dragNodeId ? _dragDelta.dx : 0.0)) *
                         scale;
                 final top = pan.dy +
                     (node.position.dy +
-                            (node.id == _dragNodeId ? _dragDelta.dy : 0)) *
+                            (node.id == _dragNodeId ? _dragDelta.dy : 0.0)) *
                         scale;
-                final cb = SchemaCanvasCardCallbacks(
+                final callbacks = SchemaCanvasCardCallbacks(
                   onTap: () {
                     setState(() => _topNodeId = node.id);
                     widget.onSelectedChanged(node.id);
@@ -645,7 +648,10 @@ class _SchemaCanvasState extends State<SchemaCanvas>
                   onHeaderPanEnd: _onNodeDragEnd,
                   onSecondaryTapDown: widget.onCardSecondaryTap == null
                       ? null
-                      : (gp) => widget.onCardSecondaryTap!(node.id, gp),
+                      : (globalPosition) => widget.onCardSecondaryTap!(
+                            node.id,
+                            globalPosition,
+                          ),
                   onToggleCompact: widget.onCompactToggled == null
                       ? null
                       : () {
@@ -669,19 +675,19 @@ class _SchemaCanvasState extends State<SchemaCanvas>
                   key: ValueKey('node-${node.id}'),
                   left: left,
                   top: top,
-                  width: w * scale,
-                  height: h * scale,
+                  width: nodeWidth * scale,
+                  height: nodeHeight * scale,
                   child: _ScaledCard(
                     scale: scale,
-                    width: w,
-                    height: h,
+                    width: nodeWidth,
+                    height: nodeHeight,
                     child: _buildCard(
                       context,
                       node,
                       isSelected,
                       isHighlighted,
                       hasSel,
-                      cb,
+                      callbacks,
                     ),
                   ),
                 );

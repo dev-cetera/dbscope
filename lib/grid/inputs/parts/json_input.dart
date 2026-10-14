@@ -42,13 +42,13 @@ class _JsonInputState extends State<_JsonInput> {
     }
   }
 
-  void _validate(String s) {
-    if (s.isEmpty) {
+  void _validate(String text) {
+    if (text.isEmpty) {
       _error = null;
       return;
     }
     try {
-      jsonDecode(s);
+      jsonDecode(text);
       _error = null;
     } catch (e) {
       _error = 'Invalid JSON';
@@ -82,11 +82,11 @@ class _JsonInputState extends State<_JsonInput> {
           multiLine: true,
           monospace: true,
           hint: '{"key": "value"}',
-          onChanged: (v) {
-            final s = v as String? ?? '';
-            _text = s;
-            setState(() => _validate(s));
-            widget.onChanged(s);
+          onChanged: (value) {
+            final text = value as String? ?? '';
+            _text = text;
+            setState(() => _validate(text));
+            widget.onChanged(text);
           },
           suffix: widget.enabled
               ? MouseRegion(
@@ -94,10 +94,10 @@ class _JsonInputState extends State<_JsonInput> {
                   child: GestureDetector(
                     onTap: _format,
                     child: const Padding(
-                      padding: EdgeInsets.symmetric(horizontal: 6),
+                      padding: EdgeInsets.symmetric(horizontal: 6.0),
                       child: Tooltip(
                         message: 'Format JSON',
-                        child: Icon(Icons.auto_fix_high, size: 14),
+                        child: Icon(Icons.auto_fix_high, size: 14.0),
                       ),
                     ),
                   ),
@@ -106,7 +106,7 @@ class _JsonInputState extends State<_JsonInput> {
         ),
         if (_error != null)
           Padding(
-            padding: const EdgeInsets.only(top: 2, left: 2),
+            padding: const EdgeInsets.only(top: 2.0, left: 2.0),
             child: Text(
               _error!,
               style: TextStyle(

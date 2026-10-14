@@ -22,9 +22,9 @@ class MetaWriter {
   /// preview. Idempotent (`IF NOT EXISTS`).
   String createTablesSql() {
     if (_sqlite) {
-      final n = _names;
+      final tableNames = _names;
       return '''
-CREATE TABLE IF NOT EXISTS ${n.meta} (
+CREATE TABLE IF NOT EXISTS ${tableNames.meta} (
   id TEXT PRIMARY KEY,
   target TEXT NOT NULL DEFAULT '*',
   kind TEXT NOT NULL,
@@ -33,7 +33,7 @@ CREATE TABLE IF NOT EXISTS ${n.meta} (
   enabled INTEGER NOT NULL DEFAULT 1,
   updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
-CREATE TABLE IF NOT EXISTS ${n.roles} (
+CREATE TABLE IF NOT EXISTS ${tableNames.roles} (
   id TEXT PRIMARY KEY,
   label TEXT NOT NULL,
   description TEXT,
@@ -42,14 +42,14 @@ CREATE TABLE IF NOT EXISTS ${n.roles} (
   db_role TEXT,
   spec TEXT NOT NULL DEFAULT '{}'
 );
-CREATE TABLE IF NOT EXISTS ${n.members} (
-  role_id TEXT NOT NULL REFERENCES ${n.roles}(id) ON DELETE CASCADE,
+CREATE TABLE IF NOT EXISTS ${tableNames.members} (
+  role_id TEXT NOT NULL REFERENCES ${tableNames.roles}(id) ON DELETE CASCADE,
   principal TEXT NOT NULL,
   PRIMARY KEY (role_id, principal)
 );
-CREATE TABLE IF NOT EXISTS ${n.grants} (
+CREATE TABLE IF NOT EXISTS ${tableNames.grants} (
   id TEXT PRIMARY KEY,
-  role_id TEXT NOT NULL REFERENCES ${n.roles}(id) ON DELETE CASCADE,
+  role_id TEXT NOT NULL REFERENCES ${tableNames.roles}(id) ON DELETE CASCADE,
   target TEXT NOT NULL,
   level TEXT NOT NULL CHECK (level IN ('none', 'masked', 'read', 'edit', 'full')),
   default_hidden INTEGER NOT NULL DEFAULT 0,
@@ -59,10 +59,10 @@ CREATE TABLE IF NOT EXISTS ${n.grants} (
 );''';
     }
     final schema = quoteIdent(settings.postgresSchema);
-    final n = _names;
+    final tableNames = _names;
     return '''
 CREATE SCHEMA IF NOT EXISTS $schema;
-CREATE TABLE IF NOT EXISTS ${n.meta} (
+CREATE TABLE IF NOT EXISTS ${tableNames.meta} (
   id TEXT PRIMARY KEY,
   target TEXT NOT NULL DEFAULT '*',
   kind TEXT NOT NULL,
@@ -71,7 +71,7 @@ CREATE TABLE IF NOT EXISTS ${n.meta} (
   enabled BOOLEAN NOT NULL DEFAULT TRUE,
   updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
-CREATE TABLE IF NOT EXISTS ${n.roles} (
+CREATE TABLE IF NOT EXISTS ${tableNames.roles} (
   id TEXT PRIMARY KEY,
   label TEXT NOT NULL,
   description TEXT,
@@ -80,14 +80,14 @@ CREATE TABLE IF NOT EXISTS ${n.roles} (
   db_role TEXT,
   spec JSONB NOT NULL DEFAULT '{}'
 );
-CREATE TABLE IF NOT EXISTS ${n.members} (
-  role_id TEXT NOT NULL REFERENCES ${n.roles}(id) ON DELETE CASCADE,
+CREATE TABLE IF NOT EXISTS ${tableNames.members} (
+  role_id TEXT NOT NULL REFERENCES ${tableNames.roles}(id) ON DELETE CASCADE,
   principal TEXT NOT NULL,
   PRIMARY KEY (role_id, principal)
 );
-CREATE TABLE IF NOT EXISTS ${n.grants} (
+CREATE TABLE IF NOT EXISTS ${tableNames.grants} (
   id TEXT PRIMARY KEY,
-  role_id TEXT NOT NULL REFERENCES ${n.roles}(id) ON DELETE CASCADE,
+  role_id TEXT NOT NULL REFERENCES ${tableNames.roles}(id) ON DELETE CASCADE,
   target TEXT NOT NULL,
   level TEXT NOT NULL CHECK (level IN ('none', 'masked', 'read', 'edit', 'full')),
   default_hidden BOOLEAN NOT NULL DEFAULT FALSE,
@@ -96,15 +96,15 @@ CREATE TABLE IF NOT EXISTS ${n.grants} (
   spec JSONB NOT NULL DEFAULT '{}'
 );
 COMMENT ON SCHEMA $schema IS 'dbscope (database viewer) metadata: descriptions, display, queries, charts and viewer access rules. Not used by the application.';
-COMMENT ON TABLE ${n.meta} IS 'dbscope: schema metadata rows (display, links, actions, named queries, charts, checks, AI notes).';
-COMMENT ON TABLE ${n.roles} IS 'dbscope: roles for what the database VIEWER shows each person. Not the application''s roles.';
-COMMENT ON TABLE ${n.members} IS 'dbscope: who holds which viewer role (user:<email> or pg:<role>).';
-COMMENT ON TABLE ${n.grants} IS 'dbscope: what each viewer role may see or edit (none / masked / read / edit / full).';
+COMMENT ON TABLE ${tableNames.meta} IS 'dbscope: schema metadata rows (display, links, actions, named queries, charts, checks, AI notes).';
+COMMENT ON TABLE ${tableNames.roles} IS 'dbscope: roles for what the database VIEWER shows each person. Not the application''s roles.';
+COMMENT ON TABLE ${tableNames.members} IS 'dbscope: who holds which viewer role (user:<email> or pg:<role>).';
+COMMENT ON TABLE ${tableNames.grants} IS 'dbscope: what each viewer role may see or edit (none / masked / read / edit / full).';
 -- Everyone must be able to READ the rules (the client applies them);
 -- grant writes only to the people who manage them.
 GRANT USAGE ON SCHEMA $schema TO PUBLIC;
 GRANT SELECT ON ALL TABLES IN SCHEMA $schema TO PUBLIC;
-INSERT INTO ${n.meta} (id, target, kind, spec)
+INSERT INTO ${tableNames.meta} (id, target, kind, spec)
 VALUES ('format', '*', 'format', '{"version": 1}')
 ON CONFLICT (id) DO NOTHING;''';
   }
@@ -186,7 +186,7 @@ ON CONFLICT (id) DO NOTHING;''';
       );
       count++;
     }
-    final n = _names;
+    final tableNames = _names;
     String json(String param) => _sqlite ? '@$param' : 'CAST(@$param AS jsonb)';
     for (final role in data.roles) {
       final params = {
@@ -194,14 +194,16 @@ ON CONFLICT (id) DO NOTHING;''';
         'label': role.label,
         'description': role.description,
         'inherits': jsonEncode(role.inherits),
-        'capabilities': jsonEncode([for (final c in role.capabilities) c.name]),
+        'capabilities': jsonEncode([
+          for (final capability in role.capabilities) capability.name,
+        ]),
         'db_role': role.dbRole,
       };
       // An upsert on both backends: SQLite's INSERT OR REPLACE would DELETE
       // the old row first, and ON DELETE CASCADE would take the role's
       // members and grants with it.
       await executor.execute(
-        'INSERT INTO ${n.roles} '
+        'INSERT INTO ${tableNames.roles} '
         '(id, label, description, inherits, capabilities, db_role) VALUES '
         '(@id, @label, @description, ${json('inherits')}, '
         '${json('capabilities')}, @db_role) '
@@ -214,14 +216,14 @@ ON CONFLICT (id) DO NOTHING;''';
     }
     // Roles referenced only by members/grants must exist for the FK.
     final referenced = {
-      for (final m in data.members) m.roleId,
-      for (final g in data.grants) g.roleId,
-    }.difference({for (final r in data.roles) r.id});
+      for (final member in data.members) member.roleId,
+      for (final grant in data.grants) grant.roleId,
+    }.difference({for (final role in data.roles) role.id});
     for (final id in referenced) {
       await executor.execute(
         _sqlite
-            ? 'INSERT OR IGNORE INTO ${n.roles} (id, label) VALUES (@id, @id)'
-            : 'INSERT INTO ${n.roles} (id, label) VALUES (@id, @id) '
+            ? 'INSERT OR IGNORE INTO ${tableNames.roles} (id, label) VALUES (@id, @id)'
+            : 'INSERT INTO ${tableNames.roles} (id, label) VALUES (@id, @id) '
                   'ON CONFLICT (id) DO NOTHING',
         named: {'id': id},
       );
@@ -229,9 +231,9 @@ ON CONFLICT (id) DO NOTHING;''';
     for (final member in data.members) {
       await executor.execute(
         _sqlite
-            ? 'INSERT OR IGNORE INTO ${n.members} (role_id, principal) '
+            ? 'INSERT OR IGNORE INTO ${tableNames.members} (role_id, principal) '
                   'VALUES (@role_id, @principal)'
-            : 'INSERT INTO ${n.members} (role_id, principal) '
+            : 'INSERT INTO ${tableNames.members} (role_id, principal) '
                   'VALUES (@role_id, @principal) ON CONFLICT DO NOTHING',
         named: {'role_id': member.roleId, 'principal': member.principal},
       );
@@ -250,10 +252,10 @@ ON CONFLICT (id) DO NOTHING;''';
       };
       await executor.execute(
         _sqlite
-            ? 'INSERT OR REPLACE INTO ${n.grants} '
+            ? 'INSERT OR REPLACE INTO ${tableNames.grants} '
                   '(id, role_id, target, level, default_hidden, note) VALUES '
                   '(@id, @role_id, @target, @level, @default_hidden, @note)'
-            : 'INSERT INTO ${n.grants} '
+            : 'INSERT INTO ${tableNames.grants} '
                   '(id, role_id, target, level, default_hidden, note) VALUES '
                   '(@id, @role_id, @target, @level, @default_hidden, @note) '
                   'ON CONFLICT (id) DO UPDATE SET role_id = EXCLUDED.role_id, '
@@ -266,13 +268,13 @@ ON CONFLICT (id) DO NOTHING;''';
     }
     for (final id in data.disabledRowIds) {
       await executor.execute(
-        'DELETE FROM ${n.meta} WHERE id = @id',
+        'DELETE FROM ${tableNames.meta} WHERE id = @id',
         named: {'id': id},
       );
     }
     for (final id in data.disabledGrantIds) {
       await executor.execute(
-        'DELETE FROM ${n.grants} WHERE id = @id',
+        'DELETE FROM ${tableNames.grants} WHERE id = @id',
         named: {'id': id},
       );
     }

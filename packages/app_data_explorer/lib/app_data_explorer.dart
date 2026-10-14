@@ -33,11 +33,11 @@ String? _adbPath;
 String? resolveAdbPath() {
   if (_adbPath != null) return _adbPath;
   try {
-    final r = Process.runSync('command', ['-v', 'adb'], runInShell: true);
-    if (r.exitCode == 0) {
-      final p = (r.stdout as String).trim();
-      if (p.isNotEmpty && File(p).existsSync()) {
-        return _adbPath = p;
+    final result = Process.runSync('command', ['-v', 'adb'], runInShell: true);
+    if (result.exitCode == 0) {
+      final foundPath = (result.stdout as String).trim();
+      if (foundPath.isNotEmpty && File(foundPath).existsSync()) {
+        return _adbPath = foundPath;
       }
     }
   } catch (_) {}
@@ -52,8 +52,8 @@ String? resolveAdbPath() {
     '/usr/local/bin/adb',
     '/opt/homebrew/bin/adb',
   ];
-  for (final c in candidates) {
-    if (File(c).existsSync()) return _adbPath = c;
+  for (final candidate in candidates) {
+    if (File(candidate).existsSync()) return _adbPath = candidate;
   }
   return null;
 }
@@ -124,9 +124,11 @@ class AndroidBackend extends Backend {
   @override
   Future<List<Entry>> ls(String relPath) async {
     final target = relPath.isEmpty ? '.' : relPath;
-    final r = await _adbShell(_runAs('ls -lAp ${_q(target)}'));
-    if (r.exitCode != 0) throw AppDataExplorerException(_adbError('ls', r));
-    return _parseLsLap(r.stdout as String);
+    final result = await _adbShell(_runAs('ls -lAp ${_q(target)}'));
+    if (result.exitCode != 0) {
+      throw AppDataExplorerException(_adbError('ls', result));
+    }
+    return _parseLsLap(result.stdout as String);
   }
 
   @override
@@ -137,17 +139,17 @@ class AndroidBackend extends Backend {
     // type ("regular file", "directory", "symbolic link"), %s is size, %n is
     // the full path the matcher saw. We use '|' as the separator since %F
     // contains spaces.
-    final r = await _adbShell(
+    final result = await _adbShell(
       _runAs(
         "find ${_q(base)} -mindepth 1 -exec stat -c '%F|%s|%n' {} +",
       ),
     );
-    if (r.exitCode != 0) {
-      throw AppDataExplorerException(_adbError('lsRecursive', r));
+    if (result.exitCode != 0) {
+      throw AppDataExplorerException(_adbError('lsRecursive', result));
     }
     final basePrefix = base == '.' ? './' : '$base/';
     final entries = <Entry>[];
-    for (final line in (r.stdout as String).split('\n')) {
+    for (final line in (result.stdout as String).split('\n')) {
       if (line.isEmpty) continue;
       final p1 = line.indexOf('|');
       if (p1 < 0) continue;
@@ -162,8 +164,10 @@ class AndroidBackend extends Backend {
         name = name.substring(2);
       }
       if (name.isEmpty) continue;
-      final isDir = type == 'directory';
-      entries.add(Entry(name, isDir: isDir, sizeBytes: isDir ? null : size));
+      final isDirectory = type == 'directory';
+      entries.add(
+        Entry(name, isDir: isDirectory, sizeBytes: isDirectory ? null : size),
+      );
     }
     return entries;
   }
@@ -173,8 +177,10 @@ class AndroidBackend extends Backend {
     if (relPath.isEmpty) {
       throw const AppDataExplorerException('refuse to rm empty path');
     }
-    final r = await _adbShell(_runAs('rm -f ${_q(relPath)}'));
-    if (r.exitCode != 0) throw AppDataExplorerException(_adbError('rm', r));
+    final result = await _adbShell(_runAs('rm -f ${_q(relPath)}'));
+    if (result.exitCode != 0) {
+      throw AppDataExplorerException(_adbError('rm', result));
+    }
   }
 
   @override
@@ -182,8 +188,11 @@ class AndroidBackend extends Backend {
     if (relDir.isEmpty) {
       throw const AppDataExplorerException('refuse to clear container root');
     }
-    final r = await _adbShell(_runAs('find ${_q(relDir)} -mindepth 1 -delete'));
-    if (r.exitCode != 0) throw AppDataExplorerException(_adbError('clear', r));
+    final result =
+        await _adbShell(_runAs('find ${_q(relDir)} -mindepth 1 -delete'));
+    if (result.exitCode != 0) {
+      throw AppDataExplorerException(_adbError('clear', result));
+    }
   }
 
   @override
@@ -194,15 +203,15 @@ class AndroidBackend extends Backend {
       ['-s', serial, 'exec-out', 'run-as', pkg, 'cat', remoteRelPath],
     );
     final sink = File(localPath).openWrite();
-    final stderrBuf = StringBuffer();
+    final stderrBuffer = StringBuffer();
     final stderrFut =
-        proc.stderr.transform(utf8.decoder).forEach(stderrBuf.write);
+        proc.stderr.transform(utf8.decoder).forEach(stderrBuffer.write);
     await proc.stdout.pipe(sink);
     final ec = await proc.exitCode;
     await stderrFut;
     if (ec != 0) {
       throw AppDataExplorerException(
-        'pull failed: ${stderrBuf.toString().trim()}',
+        'pull failed: ${stderrBuffer.toString().trim()}',
       );
     }
   }
@@ -237,41 +246,41 @@ class AndroidBackend extends Backend {
     }
   }
 
-  static String _adbError(String op, ProcessResult r) {
-    final out = (r.stdout as String).trim();
-    final err = (r.stderr as String).trim();
-    return 'adb $op failed (exit ${r.exitCode}): ${[
-      err,
+  static String _adbError(String op, ProcessResult result) {
+    final out = (result.stdout as String).trim();
+    final error = (result.stderr as String).trim();
+    return 'adb $op failed (exit ${result.exitCode}): ${[
+      error,
       out,
-    ].where((s) => s.isNotEmpty).join(' | ')}';
+    ].where((part) => part.isNotEmpty).join(' | ')}';
   }
 
   static List<Entry> _parseLsLap(String output) {
     final entries = <Entry>[];
     for (final line in output.split('\n')) {
-      final t = line.trim();
-      if (t.isEmpty || t.startsWith('total ')) continue;
-      final parts = t.split(RegExp(r'\s+'));
+      final trimmed = line.trim();
+      if (trimmed.isEmpty || trimmed.startsWith('total ')) continue;
+      final parts = trimmed.split(RegExp(r'\s+'));
       if (parts.length < 8) continue;
       final perms = parts[0];
       if (perms.isEmpty) continue;
       final size = int.tryParse(parts[4]);
       var name = parts.sublist(7).join(' ');
-      var isDir = perms.startsWith('d');
+      var isDirectory = perms.startsWith('d');
       if (name.endsWith('/')) {
-        isDir = true;
+        isDirectory = true;
         name = name.substring(0, name.length - 1);
       }
       if (name.contains(' -> ')) name = name.split(' -> ').first;
       if (name.isEmpty) continue;
-      entries.add(Entry(name, isDir: isDir, sizeBytes: size));
+      entries.add(Entry(name, isDir: isDirectory, sizeBytes: size));
     }
     return entries;
   }
 
-  static String _q(String s) {
-    if (RegExp(r'^[A-Za-z0-9_./-]+$').hasMatch(s)) return s;
-    return "'${s.replaceAll("'", r"'\''")}'";
+  static String _q(String text) {
+    if (RegExp(r'^[A-Za-z0-9_./-]+$').hasMatch(text)) return text;
+    return "'${text.replaceAll("'", r"'\''")}'";
   }
 }
 
@@ -319,27 +328,27 @@ Future<AndroidDetectionResult> detectAndroidDevices() async {
   final out = r.stdout as String;
   final all = <AndroidDeviceInfo>[];
   for (final line in out.split('\n').skip(1)) {
-    final t = line.trim();
-    if (t.isEmpty) continue;
-    final m = RegExp(r'^(\S+)\s+(\S+)(.*)$').firstMatch(t);
-    if (m == null) continue;
-    final state = m.group(2)!;
-    final rest = m.group(3) ?? '';
+    final trimmed = line.trim();
+    if (trimmed.isEmpty) continue;
+    final match = RegExp(r'^(\S+)\s+(\S+)(.*)$').firstMatch(trimmed);
+    if (match == null) continue;
+    final state = match.group(2)!;
+    final rest = match.group(3) ?? '';
     final modelMatch = RegExp(r'model:(\S+)').firstMatch(rest);
     all.add(
       AndroidDeviceInfo(
-        serial: m.group(1)!,
+        serial: match.group(1)!,
         state: state,
         model: modelMatch?.group(1),
       ),
     );
   }
-  final usable = all.where((d) => d.state == 'device').toList();
+  final usable = all.where((device) => device.state == 'device').toList();
   String? hint;
-  final problem = all.where((d) => d.state != 'device').toList();
+  final problem = all.where((device) => device.state != 'device').toList();
   if (problem.isNotEmpty) {
     hint =
-        'android device(s) not ready: ${problem.map((d) => '${d.serial} (${d.state})').join(', ')}. '
+        'android device(s) not ready: ${problem.map((device) => '${device.serial} (${device.state})').join(', ')}. '
         'Unlock the phone and accept the USB-debugging prompt.';
   }
   return AndroidDetectionResult(devices: usable, hint: hint);
@@ -354,12 +363,14 @@ Future<List<String>> listAndroidPackages(
   final adb = resolveAdbPath() ?? 'adb';
   final args = ['-s', serial, 'shell', 'pm', 'list', 'packages'];
   if (!includeSystem) args.add('-3');
-  final r = await Process.run(adb, args);
-  if (r.exitCode != 0) return const [];
+  final result = await Process.run(adb, args);
+  if (result.exitCode != 0) return const [];
   final pkgs = <String>[];
-  for (final line in (r.stdout as String).split('\n')) {
-    final t = line.trim();
-    if (t.startsWith('package:')) pkgs.add(t.substring('package:'.length));
+  for (final line in (result.stdout as String).split('\n')) {
+    final trimmed = line.trim();
+    if (trimmed.startsWith('package:')) {
+      pkgs.add(trimmed.substring('package:'.length));
+    }
   }
   pkgs.sort();
   return pkgs;
@@ -370,9 +381,9 @@ Future<List<String>> listAndroidPackages(
 Future<bool> isAndroidPackageDebuggable(String serial, String pkg) async {
   final adb = resolveAdbPath();
   if (adb == null) return false;
-  final r =
+  final result =
       await Process.run(adb, ['-s', serial, 'shell', 'run-as', pkg, 'true']);
-  return r.exitCode == 0;
+  return result.exitCode == 0;
 }
 
 // ---------------------------------------------------------------------------
@@ -410,10 +421,10 @@ class IosBackend extends Backend {
       } catch (e, st) {
         lastErr = e;
         lastStack = st;
-        final msg = e.toString();
-        final transient = msg.contains('device disconnected') ||
-            msg.contains('StreamingAction') ||
-            msg.contains("Couldn't get the message");
+        final message = e.toString();
+        final transient = message.contains('device disconnected') ||
+            message.contains('StreamingAction') ||
+            message.contains("Couldn't get the message");
         if (!transient) rethrow;
       }
     }
@@ -421,25 +432,25 @@ class IosBackend extends Backend {
   }
 
   Future<Map<String, dynamic>> _devicectlJsonOnce(List<String> args) async {
-    final tmp = await File(
+    final tempFile = await File(
       '${Directory.systemTemp.path}/devicectl-${DateTime.now().microsecondsSinceEpoch}.json',
     ).create();
     try {
-      final r = await Process.run('xcrun', [
+      final result = await Process.run('xcrun', [
         'devicectl',
         ...args,
         '--json-output',
-        tmp.path,
+        tempFile.path,
       ]);
-      if (!tmp.existsSync()) {
+      if (!tempFile.existsSync()) {
         throw AppDataExplorerException(
-          'devicectl produced no JSON. stderr: ${(r.stderr as String).trim()}',
+          'devicectl produced no JSON. stderr: ${(result.stderr as String).trim()}',
         );
       }
-      final body = await tmp.readAsString();
+      final body = await tempFile.readAsString();
       if (body.isEmpty) {
         throw AppDataExplorerException(
-          'devicectl wrote empty JSON. exit=${r.exitCode} stderr=${(r.stderr as String).trim()}',
+          'devicectl wrote empty JSON. exit=${result.exitCode} stderr=${(result.stderr as String).trim()}',
         );
       }
       final json = jsonDecode(body) as Map<String, dynamic>;
@@ -453,7 +464,7 @@ class IosBackend extends Backend {
       return json;
     } finally {
       try {
-        await tmp.delete();
+        await tempFile.delete();
       } catch (_) {}
     }
   }
@@ -575,7 +586,8 @@ class IosBackend extends Backend {
     if (relDir.isEmpty) {
       throw const AppDataExplorerException('refuse to clear container root');
     }
-    final tmp = await Directory.systemTemp.createTemp('explorer_clear_');
+    final tempDirectory =
+        await Directory.systemTemp.createTemp('explorer_clear_');
     try {
       await _devicectlJson([
         'device',
@@ -588,7 +600,7 @@ class IosBackend extends Backend {
         '--domain-identifier',
         bundleId,
         '--source',
-        tmp.path,
+        tempDirectory.path,
         '--destination',
         relDir,
         '--remove-existing-content',
@@ -596,7 +608,7 @@ class IosBackend extends Backend {
       ]);
     } finally {
       try {
-        await tmp.delete(recursive: true);
+        await tempDirectory.delete(recursive: true);
       } catch (_) {}
     }
   }
@@ -644,8 +656,8 @@ class IosBackend extends Backend {
     ]);
   }
 
-  static List<String> _splitPath(String p) =>
-      p.split('/').where((s) => s.isNotEmpty).toList();
+  static List<String> _splitPath(String path) =>
+      path.split('/').where((segment) => segment.isNotEmpty).toList();
 
   static Future<Directory> _findPulledRoot(
     Directory localCopy, {
@@ -676,21 +688,21 @@ class IosBackend extends Backend {
     final filesAny = result['files'];
     if (filesAny is! List) return const [];
     final entries = <Entry>[];
-    for (final f in filesAny) {
-      if (f is! Map) continue;
-      final relPath = (f['relativePath'] ?? f['name'])?.toString();
+    for (final file in filesAny) {
+      if (file is! Map) continue;
+      final relPath = (file['relativePath'] ?? file['name'])?.toString();
       if (relPath == null || relPath.isEmpty) continue;
       if (directChildrenOnly && relPath.contains('/')) continue;
-      final resources = f['resources'];
-      final isDir = resources is Map && resources['isDirectory'] == true;
+      final resources = file['resources'];
+      final isDirectory = resources is Map && resources['isDirectory'] == true;
       final isLink = resources is Map && resources['isSymbolicLink'] == true;
-      final metadata = f['metadata'];
+      final metadata = file['metadata'];
       final sizeRaw = (metadata is Map) ? metadata['size'] : null;
       final size = sizeRaw is num ? sizeRaw.toInt() : null;
       entries.add(
         Entry(
           isLink ? '$relPath@' : relPath,
-          isDir: isDir,
+          isDir: isDirectory,
           sizeBytes: size,
         ),
       );
@@ -706,41 +718,42 @@ class IosDeviceInfo {
 }
 
 Future<List<IosDeviceInfo>> detectIosDevices() async {
-  final tmp = await File(
+  final tempFile = await File(
     '${Directory.systemTemp.path}/explorer-devs-${DateTime.now().microsecondsSinceEpoch}.json',
   ).create();
   try {
-    final r = await Process.run(
+    final result = await Process.run(
       'xcrun',
-      ['devicectl', 'list', 'devices', '--json-output', tmp.path],
+      ['devicectl', 'list', 'devices', '--json-output', tempFile.path],
     );
-    if (!tmp.existsSync()) return const [];
-    final body = await tmp.readAsString();
+    if (!tempFile.existsSync()) return const [];
+    final body = await tempFile.readAsString();
     if (body.isEmpty) return const [];
     final json = jsonDecode(body) as Map<String, dynamic>;
     if ((json['info'] as Map?)?['outcome'] != 'success') return const [];
     final devs = (json['result'] as Map?)?['devices'];
     if (devs is! List) return const [];
     final out = <IosDeviceInfo>[];
-    for (final d in devs) {
-      if (d is! Map) continue;
-      final id = d['identifier']?.toString();
+    for (final device in devs) {
+      if (device is! Map) continue;
+      final id = device['identifier']?.toString();
       if (id == null) continue;
-      final name = (d['deviceProperties'] as Map?)?['name']?.toString() ?? id;
+      final name =
+          (device['deviceProperties'] as Map?)?['name']?.toString() ?? id;
       final tunnel =
-          (d['connectionProperties'] as Map?)?['tunnelState']?.toString();
+          (device['connectionProperties'] as Map?)?['tunnelState']?.toString();
       final pairing =
-          (d['connectionProperties'] as Map?)?['pairingState']?.toString();
+          (device['connectionProperties'] as Map?)?['pairingState']?.toString();
       if (pairing != 'paired' || tunnel == 'unavailable') continue;
       out.add(IosDeviceInfo(identifier: id, name: name));
     }
-    if (r.exitCode != 0 && out.isEmpty) return const [];
+    if (result.exitCode != 0 && out.isEmpty) return const [];
     return out;
   } catch (_) {
     return const [];
   } finally {
     try {
-      await tmp.delete();
+      await tempFile.delete();
     } catch (_) {}
   }
 }
@@ -759,7 +772,7 @@ Future<List<IosApp>> listIosApps(
   String deviceId, {
   bool includeSystem = false,
 }) async {
-  final tmp = await File(
+  final tempFile = await File(
     '${Directory.systemTemp.path}/explorer-apps-${DateTime.now().microsecondsSinceEpoch}.json',
   ).create();
   try {
@@ -771,39 +784,39 @@ Future<List<IosApp>> listIosApps(
       '--device',
       deviceId,
       '--json-output',
-      tmp.path,
+      tempFile.path,
     ];
     if (includeSystem) args.add('--include-all-apps');
-    final r = await Process.run('xcrun', args);
-    if (!tmp.existsSync() || tmp.lengthSync() == 0) {
+    final result = await Process.run('xcrun', args);
+    if (!tempFile.existsSync() || tempFile.lengthSync() == 0) {
       throw AppDataExplorerException(
-        'devicectl produced no JSON (exit ${r.exitCode}). stderr: ${(r.stderr as String).trim()}',
+        'devicectl produced no JSON (exit ${result.exitCode}). stderr: ${(result.stderr as String).trim()}',
       );
     }
-    final body = await tmp.readAsString();
+    final body = await tempFile.readAsString();
     final json = jsonDecode(body) as Map<String, dynamic>;
     final outcome = (json['info'] as Map?)?['outcome'];
     if (outcome != 'success') {
-      final err = json['error'] ?? body;
+      final error = json['error'] ?? body;
       throw AppDataExplorerException(
-        'devicectl failed (${outcome ?? 'no outcome'}): $err',
+        'devicectl failed (${outcome ?? 'no outcome'}): $error',
       );
     }
     final apps = (json['result'] as Map?)?['apps'];
     if (apps is! List) return const [];
     final out = <IosApp>[];
-    for (final a in apps) {
-      if (a is! Map) continue;
-      final id = a['bundleIdentifier']?.toString();
+    for (final app in apps) {
+      if (app is! Map) continue;
+      final id = app['bundleIdentifier']?.toString();
       if (id == null) continue;
-      final name = (a['name'] ?? a['displayName'])?.toString();
+      final name = (app['name'] ?? app['displayName'])?.toString();
       out.add(IosApp(bundleId: id, name: name));
     }
     out.sort((a, b) => a.bundleId.compareTo(b.bundleId));
     return out;
   } finally {
     try {
-      await tmp.delete();
+      await tempFile.delete();
     } catch (_) {}
   }
 }
@@ -812,16 +825,24 @@ Future<List<IosApp>> listIosApps(
 // Reachability + has-data probes (for UIs that want to hide noise)
 // ---------------------------------------------------------------------------
 
+/// How long to wait for a phone to answer "are you there?" before treating
+/// it as unreachable.
+const _kReachabilityTimeout = Duration(seconds: 3);
+
+/// How long to wait while listing an app's files to see whether it has any
+/// data. Slower than the reachability check because it reads the device.
+const _kHasDataTimeout = Duration(seconds: 5);
+
 /// Returns true when the iOS device responds to a `devicectl info details`
 /// call within [timeout]. devicectl `list devices` returns every paired
 /// device including ones that are nowhere nearby, so this probe is needed
 /// if you want to show only currently-reachable devices.
 Future<bool> isIosDeviceReachable(
   String deviceId, {
-  Duration timeout = const Duration(seconds: 3),
+  Duration timeout = _kReachabilityTimeout,
 }) async {
   Process? proc;
-  final tmp = await File(
+  final tempFile = await File(
     '${Directory.systemTemp.path}/explorer-reach-${DateTime.now().microsecondsSinceEpoch}.json',
   ).create();
   try {
@@ -833,7 +854,7 @@ Future<bool> isIosDeviceReachable(
       '--device',
       deviceId,
       '--json-output',
-      tmp.path,
+      tempFile.path,
     ]);
     final ec = await proc.exitCode.timeout(
       timeout,
@@ -847,7 +868,7 @@ Future<bool> isIosDeviceReachable(
     return false;
   } finally {
     try {
-      await tmp.delete();
+      await tempFile.delete();
     } catch (_) {}
   }
 }
@@ -857,7 +878,7 @@ Future<bool> isIosDeviceReachable(
 Future<bool> iosAppHasData(
   String deviceId,
   String bundleId, {
-  Duration timeout = const Duration(seconds: 5),
+  Duration timeout = _kHasDataTimeout,
 }) async {
   try {
     final backend = IosBackend(deviceId: deviceId, bundleId: bundleId);
@@ -876,12 +897,12 @@ Future<bool> iosAppHasData(
 Future<bool> androidAppHasData(
   String serial,
   String pkg, {
-  Duration timeout = const Duration(seconds: 5),
+  Duration timeout = _kHasDataTimeout,
 }) async {
   final adb = resolveAdbPath();
   if (adb == null) return false;
   try {
-    final r = await Process.run(adb, [
+    final result = await Process.run(adb, [
       '-s',
       serial,
       'shell',
@@ -891,7 +912,7 @@ Future<bool> androidAppHasData(
       '-c',
       'find . -mindepth 1 -type f 2>/dev/null | head -1',
     ]).timeout(timeout);
-    return r.exitCode == 0 && (r.stdout as String).trim().isNotEmpty;
+    return result.exitCode == 0 && (result.stdout as String).trim().isNotEmpty;
   } catch (_) {
     return false;
   }

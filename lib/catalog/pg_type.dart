@@ -77,10 +77,10 @@ PgType pgTypeFromUdt(String udt) {
 /// declared types are hints (the "type affinity" rules apply at runtime),
 /// so this is a best-effort mapping.
 PgType pgTypeFromSqlite(String declared) {
-  final t = declared.trim().toUpperCase();
-  if (t.isEmpty) return PgType.unknown;
+  final normalized = declared.trim().toUpperCase();
+  if (normalized.isEmpty) return PgType.unknown;
   // Strip parameterised forms like VARCHAR(255), NUMERIC(10,2).
-  final base = t.split('(').first.trim();
+  final base = normalized.split('(').first.trim();
   if (base.contains('INT')) return PgType.int8;
   if (base == 'BOOL' || base == 'BOOLEAN') return PgType.bool_;
   if (base.contains('CHAR') || base.contains('CLOB') || base.contains('TEXT')) {
@@ -111,26 +111,37 @@ PgType pgTypeFromSqlite(String declared) {
 /// UDT names use [pgTypeFromUdt] instead.
 PgType pgTypeFromTypeName(String? typeName) {
   if (typeName == null) return PgType.unknown;
-  final n = typeName.toLowerCase();
-  if (n.contains('bigint') || n.contains('int8')) return PgType.int8;
-  if (n.contains('smallint') || n.contains('int2')) return PgType.int2;
-  if (n.contains('integer') || n.contains('int4')) return PgType.int4;
-  if (n.contains('numeric')) return PgType.numeric;
-  if (n.contains('real') || n.contains('float4')) return PgType.real;
-  if (n.contains('double') || n.contains('float8')) {
+  final lowerName = typeName.toLowerCase();
+  if (lowerName.contains('bigint') || lowerName.contains('int8')) {
+    return PgType.int8;
+  }
+  if (lowerName.contains('smallint') || lowerName.contains('int2')) {
+    return PgType.int2;
+  }
+  if (lowerName.contains('integer') || lowerName.contains('int4')) {
+    return PgType.int4;
+  }
+  if (lowerName.contains('numeric')) return PgType.numeric;
+  if (lowerName.contains('real') || lowerName.contains('float4')) {
+    return PgType.real;
+  }
+  if (lowerName.contains('double') || lowerName.contains('float8')) {
     return PgType.doublePrecision;
   }
-  if (n.contains('bool')) return PgType.bool_;
-  if (n.contains('uuid')) return PgType.uuid;
-  if (n.contains('timestamp') && n.contains('tz')) return PgType.timestamptz;
-  if (n.contains('timestamp')) return PgType.timestamp;
-  if (n.contains('date')) return PgType.date;
-  if (n.contains('time')) return PgType.time;
-  if (n.contains('jsonb')) return PgType.jsonb;
-  if (n.contains('json')) return PgType.json;
-  if (n.contains('bytea')) return PgType.bytea;
-  if (n.contains('text')) return PgType.text;
-  if (n.contains('varchar') || n.contains('character varying')) {
+  if (lowerName.contains('bool')) return PgType.bool_;
+  if (lowerName.contains('uuid')) return PgType.uuid;
+  if (lowerName.contains('timestamp') && lowerName.contains('tz')) {
+    return PgType.timestamptz;
+  }
+  if (lowerName.contains('timestamp')) return PgType.timestamp;
+  if (lowerName.contains('date')) return PgType.date;
+  if (lowerName.contains('time')) return PgType.time;
+  if (lowerName.contains('jsonb')) return PgType.jsonb;
+  if (lowerName.contains('json')) return PgType.json;
+  if (lowerName.contains('bytea')) return PgType.bytea;
+  if (lowerName.contains('text')) return PgType.text;
+  if (lowerName.contains('varchar') ||
+      lowerName.contains('character varying')) {
     return PgType.varchar;
   }
   return PgType.unknown;

@@ -56,10 +56,10 @@ class _ResizableState extends State<Resizable> {
         onHorizontalDragEnd: (_) => _dragWidth = null,
         onHorizontalDragCancel: () => _dragWidth = null,
         child: Container(
-          width: 5,
+          width: 5.0,
           color: Colors.transparent,
           alignment: Alignment.center,
-          child: Container(width: 1, color: theme.dividerColor),
+          child: Container(width: 1.0, color: theme.dividerColor),
         ),
       ),
     );

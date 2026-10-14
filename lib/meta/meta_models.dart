@@ -162,8 +162,8 @@ enum Capability {
 
   static Capability? tryParse(Object? raw) {
     if (raw is! String) return null;
-    for (final c in Capability.values) {
-      if (c.name == raw.trim().toLowerCase()) return c;
+    for (final capability in Capability.values) {
+      if (capability.name == raw.trim().toLowerCase()) return capability;
     }
     return null;
   }
@@ -183,8 +183,8 @@ enum IdentityMode {
 
   static IdentityMode? tryParse(Object? raw) {
     if (raw is! String) return null;
-    for (final m in IdentityMode.values) {
-      if (m.name == raw.trim().toLowerCase()) return m;
+    for (final mode in IdentityMode.values) {
+      if (mode.name == raw.trim().toLowerCase()) return mode;
     }
     return null;
   }
@@ -285,7 +285,7 @@ class MetaDocument {
       rows.isEmpty && roles.isEmpty && members.isEmpty && grants.isEmpty;
 
   Iterable<MetaRow> rowsOfKind(String kind) =>
-      rows.where((r) => r.kind == kind);
+      rows.where((row) => row.kind == kind);
 }
 
 /// One source's raw contribution before merging.
@@ -346,12 +346,12 @@ MetaDocument mergeMetaSources(List<MetaSourceData> sources) {
   }
 
   // An `rbac` settings row alone also switches access control on.
-  if (rowsById.values.any((r) => r.kind == MetaKinds.rbac)) {
+  if (rowsById.values.any((row) => row.kind == MetaKinds.rbac)) {
     hasAccessControl = true;
   }
 
   final formatRow = rowsById.values
-      .where((r) => r.kind == MetaKinds.format)
+      .where((row) => row.kind == MetaKinds.format)
       .firstOrNull;
   final version = formatRow?.spec['version'];
   if (version is num && version > kSupportedMetaFormatVersion) {
@@ -382,58 +382,61 @@ MetaDocument mergeMetaSources(List<MetaSourceData> sources) {
 // [validateMetaRow], the specs themselves never throw.
 
 String? specString(Map<String, Object?> spec, String key) {
-  final v = spec[key];
-  if (v is String && v.trim().isNotEmpty) return v;
+  final value = spec[key];
+  if (value is String && value.trim().isNotEmpty) return value;
   return null;
 }
 
 bool specBool(Map<String, Object?> spec, String key) {
-  final v = spec[key];
-  if (v is bool) return v;
-  if (v is num) return v != 0;
-  if (v is String) return v == 'true' || v == '1';
+  final value = spec[key];
+  if (value is bool) return value;
+  if (value is num) return value != 0;
+  if (value is String) return value == 'true' || value == '1';
   return false;
 }
 
 int? specInt(Map<String, Object?> spec, String key) {
-  final v = spec[key];
-  if (v is int) return v;
-  if (v is num) return v.toInt();
-  if (v is String) return int.tryParse(v);
+  final value = spec[key];
+  if (value is int) return value;
+  if (value is num) return value.toInt();
+  if (value is String) return int.tryParse(value);
   return null;
 }
 
 num? specNum(Map<String, Object?> spec, String key) {
-  final v = spec[key];
-  if (v is num) return v;
-  if (v is String) return num.tryParse(v);
+  final value = spec[key];
+  if (value is num) return value;
+  if (value is String) return num.tryParse(value);
   return null;
 }
 
 List<String> specStringList(Map<String, Object?> spec, String key) {
-  final v = spec[key];
-  if (v is List) {
+  final value = spec[key];
+  if (value is List) {
     return [
-      for (final e in v)
+      for (final e in value)
         if (e is String) e,
     ];
   }
-  if (v is String && v.isNotEmpty) return [v];
+  if (value is String && value.isNotEmpty) return [value];
   return const [];
 }
 
 Map<String, Object?> specMap(Map<String, Object?> spec, String key) {
-  final v = spec[key];
-  if (v is Map) return {for (final e in v.entries) e.key.toString(): e.value};
+  final value = spec[key];
+  if (value is Map) {
+    return {for (final e in value.entries) e.key.toString(): e.value};
+  }
   return const {};
 }
 
 List<Map<String, Object?>> specMapList(Map<String, Object?> spec, String key) {
-  final v = spec[key];
-  if (v is! List) return const [];
+  final value = spec[key];
+  if (value is! List) return const [];
   return [
-    for (final e in v)
-      if (e is Map) {for (final x in e.entries) x.key.toString(): x.value},
+    for (final e in value)
+      if (e is Map)
+        {for (final entry in e.entries) entry.key.toString(): entry.value},
   ];
 }
 
@@ -516,8 +519,8 @@ enum ValueRenderer {
   static ValueRenderer? tryParse(Object? raw) {
     if (raw is! String) return null;
     final normalised = raw.trim().toLowerCase().replaceAll('_', '');
-    for (final r in ValueRenderer.values) {
-      if (r.name.toLowerCase() == normalised) return r;
+    for (final renderer in ValueRenderer.values) {
+      if (renderer.name.toLowerCase() == normalised) return renderer;
     }
     return null;
   }
@@ -707,10 +710,10 @@ class LinkSpec {
     final url = specMap(spec, 'url');
     final map = <String, Selector>{};
     for (final e in specMap(poly, 'map').entries) {
-      final sel = e.value is String
+      final selector = e.value is String
           ? Selector.tryParse(e.value! as String)
           : null;
-      if (sel != null) map[e.key] = sel;
+      if (selector != null) map[e.key] = selector;
     }
     final toRaw = specString(spec, 'to');
     return LinkSpec(
@@ -764,8 +767,8 @@ enum ActionScope {
 
   static ActionScope? tryParse(Object? raw) {
     if (raw is! String) return null;
-    for (final s in ActionScope.values) {
-      if (s.name == raw) return s;
+    for (final scope in ActionScope.values) {
+      if (scope.name == raw) return scope;
     }
     return null;
   }
@@ -781,8 +784,8 @@ enum ActionRun {
 
   static ActionRun? tryParse(Object? raw) {
     if (raw is! String) return null;
-    for (final r in ActionRun.values) {
-      if (r.name == raw) return r;
+    for (final run in ActionRun.values) {
+      if (run.name == raw) return run;
     }
     return null;
   }
@@ -860,11 +863,11 @@ class ActionSpec {
     }
     final when = <String, List<String>>{};
     for (final e in specMap(spec, 'when').entries) {
-      final v = e.value;
-      if (v is List) {
-        when[e.key] = [for (final x in v) x.toString()];
-      } else if (v != null) {
-        when[e.key] = [v.toString()];
+      final value = e.value;
+      if (value is List) {
+        when[e.key] = [for (final element in value) element.toString()];
+      } else if (value != null) {
+        when[e.key] = [value.toString()];
       }
     }
     final tableRaw = specString(spec, 'table');
@@ -957,8 +960,8 @@ enum ChartType {
   static ChartType? tryParse(Object? raw) {
     if (raw is! String) return null;
     final normalised = raw.trim().toLowerCase().replaceAll('_', '');
-    for (final t in ChartType.values) {
-      if (t.name.toLowerCase() == normalised) return t;
+    for (final type in ChartType.values) {
+      if (type.name.toLowerCase() == normalised) return type;
     }
     return null;
   }
@@ -976,8 +979,8 @@ enum ChartAggregate {
   static ChartAggregate? tryParse(Object? raw) {
     if (raw is! String) return null;
     final normalised = raw.trim().toLowerCase().replaceAll('_', '');
-    for (final a in ChartAggregate.values) {
-      if (a.name.toLowerCase() == normalised) return a;
+    for (final aggregate in ChartAggregate.values) {
+      if (aggregate.name.toLowerCase() == normalised) return aggregate;
     }
     return null;
   }
@@ -993,8 +996,8 @@ enum ChartBucket {
 
   static ChartBucket? tryParse(Object? raw) {
     if (raw is! String) return null;
-    for (final b in ChartBucket.values) {
-      if (b.name == raw.trim().toLowerCase()) return b;
+    for (final bucket in ChartBucket.values) {
+      if (bucket.name == raw.trim().toLowerCase()) return bucket;
     }
     return null;
   }
@@ -1119,9 +1122,9 @@ class ChartSpec {
     if (sql != null) {
       source = ChartSqlSource(sql);
     } else if (sourceRaw != null) {
-      final sel = Selector.tryParse(sourceRaw);
-      final queryId = sel?.exactQueryId;
-      final table = sel?.exactTable;
+      final selector = Selector.tryParse(sourceRaw);
+      final queryId = selector?.exactQueryId;
+      final table = selector?.exactTable;
       if (queryId != null) {
         source = ChartQuerySource(queryId);
       } else if (table != null) {
@@ -1147,11 +1150,11 @@ class ChartSpec {
       return null;
     }
     final measures = <ChartMeasure>[
-      for (final m in specMapList(spec, 'y'))
+      for (final measureMap in specMapList(spec, 'y'))
         ChartMeasure(
-          aggregate: ChartAggregate.tryParse(m['agg']),
-          column: specString(m, 'column'),
-          label: specString(m, 'label'),
+          aggregate: ChartAggregate.tryParse(measureMap['agg']),
+          column: specString(measureMap, 'column'),
+          label: specString(measureMap, 'label'),
         ),
     ];
     return ChartSpec(

@@ -63,10 +63,10 @@ class ConnectionKindRegistry {
   List<ConnectionKindPlugin> get all => List.unmodifiable(_kinds.values);
 
   ConnectionKindPlugin require(String id) {
-    final p = _kinds[id];
-    if (p == null) {
+    final plugin = _kinds[id];
+    if (plugin == null) {
       throw StateError('No connection kind plugin registered for "$id"');
     }
-    return p;
+    return plugin;
   }
 }

@@ -102,7 +102,7 @@ class GridModel extends ChangeNotifier {
         if (!hidden.contains(i) && !kept.contains(i)) i,
     ];
     for (final i in shown) {
-      final insertAt = kept.indexWhere((k) => k > i);
+      final insertAt = kept.indexWhere((keptIndex) => keptIndex > i);
       if (insertAt < 0) {
         kept.add(i);
       } else {
@@ -138,26 +138,26 @@ class GridModel extends ChangeNotifier {
     if (fromViewIdx == toViewIdx) return;
     final clampedFrom = fromViewIdx.clamp(0, _order.length - 1);
     final clampedTo = toViewIdx.clamp(0, _order.length - 1);
-    final col = _order.removeAt(clampedFrom);
-    _order.insert(clampedTo, col);
+    final movedColumn = _order.removeAt(clampedFrom);
+    _order.insert(clampedTo, movedColumn);
     notifyListeners();
   }
 
-  void selectSingle(int row, int col) {
-    if (!_inBounds(row, col)) return;
-    _selection = CellRange.singleCell(row, col);
+  void selectSingle(int row, int column) {
+    if (!_inBounds(row, column)) return;
+    _selection = CellRange.singleCell(row, column);
     _editingRow = null;
     _editingCol = null;
     notifyListeners();
   }
 
-  void extendSelection(int row, int col) {
-    if (!_inBounds(row, col)) return;
+  void extendSelection(int row, int column) {
+    if (!_inBounds(row, column)) return;
     final current = _selection;
     if (current == null) {
-      _selection = CellRange.singleCell(row, col);
+      _selection = CellRange.singleCell(row, column);
     } else {
-      _selection = current.withFocus(row, col);
+      _selection = current.withFocus(row, column);
     }
     notifyListeners();
   }
@@ -184,11 +184,11 @@ class GridModel extends ChangeNotifier {
     notifyListeners();
   }
 
-  void beginEdit(int row, int col) {
-    if (!_inBounds(row, col)) return;
-    _selection = CellRange.singleCell(row, col);
+  void beginEdit(int row, int column) {
+    if (!_inBounds(row, column)) return;
+    _selection = CellRange.singleCell(row, column);
     _editingRow = row;
-    _editingCol = col;
+    _editingCol = column;
     notifyListeners();
   }
 
@@ -199,12 +199,12 @@ class GridModel extends ChangeNotifier {
     notifyListeners();
   }
 
-  bool _inBounds(int row, int col) =>
-      row >= 0 && row < _rowCount && col >= 0 && col < _order.length;
+  bool _inBounds(int row, int column) =>
+      row >= 0 && row < _rowCount && column >= 0 && column < _order.length;
 
   void _clampSelection() {
-    final s = _selection;
-    if (s == null) return;
+    final selection = _selection;
+    if (selection == null) return;
     if (_rowCount == 0 || _order.isEmpty) {
       _selection = null;
       _editingRow = null;
@@ -212,11 +212,11 @@ class GridModel extends ChangeNotifier {
       return;
     }
     final maxRow = _rowCount - 1;
-    final maxCol = _order.length - 1;
-    if (s.anchorRow > maxRow ||
-        s.focusRow > maxRow ||
-        s.anchorCol > maxCol ||
-        s.focusCol > maxCol) {
+    final maxColumn = _order.length - 1;
+    if (selection.anchorRow > maxRow ||
+        selection.focusRow > maxRow ||
+        selection.anchorCol > maxColumn ||
+        selection.focusCol > maxColumn) {
       _selection = null;
       _editingRow = null;
       _editingCol = null;
