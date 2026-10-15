@@ -1,5 +1,9 @@
 # Changelog
 
+## 2026-10-15
+
+- New app icon: a flat "db" monogram (two rings sharing a stem, so it also reads as binoculars), cream on vermilion, replacing the shaded microscope-over-spreadsheet. `assets/icon/dbscope_icon.svg` is the source; the macOS icon set, web icons, maskable icons and favicon are rendered from it. (2026-10-15)
+
 ## 2026-10-11
 
 - Metadata tables renamed to `dbscope_metadata`, `dbscope_access_roles`, `dbscope_access_role_members`, `dbscope_access_grants` (SQLite: `_dbscope_*`) so they can't be mistaken for an app's own RBAC tables; existing `dbscope.meta`/`roles`/`role_members`/`grants` tables are not read any more — re-create and reload them. (2026-10-11)
