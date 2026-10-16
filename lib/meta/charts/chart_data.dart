@@ -98,9 +98,7 @@ Future<ChartData> runChart(
 }) async {
   final snapshot = MetadataCache.instance.snapshotForExecutor(executor);
   final policy = snapshot?.policy ?? AccessPolicy.unrestricted;
-  final dialect = isSqliteExecutor(executor)
-      ? SqlDialect.sqlite
-      : SqlDialect.postgres;
+  final dialect = sqlDialectOf(executor);
   final timeout = Duration(milliseconds: chart.timeoutMs.clamp(500, 120000));
 
   // The server cancels at [timeout] (statement_timeout inside the read-only

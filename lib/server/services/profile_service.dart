@@ -17,10 +17,9 @@ class ProfileService {
   ProfileService({
     ProfileStore? store,
     SecureStore? secure,
-    required BusService bus,
+    required this._bus,
   }) : _store = store ?? ProfileStore.instance,
-       _secure = secure ?? SecureStore.instance,
-       _bus = bus;
+       _secure = secure ?? SecureStore.instance;
   final ProfileStore _store;
   final SecureStore _secure;
   final BusService _bus;
@@ -57,8 +56,9 @@ class ProfileService {
       if (id == null) {
         throw const RpcError('bad_params', 'id required');
       }
-      // Password is only handed back to server-side code that needs it
-      // (Connection open). Clients never see it.
+      // Handed back only on demand to whoever opens a connection — the
+      // server's ConnectionService and each window's ConnectionRegistry.
+      // profile.list never includes it.
       return {'password': await _secure.readPassword(id) ?? ''};
     });
   }
@@ -78,7 +78,14 @@ class ProfileService {
     await _ensureLoaded();
     final index = _profiles.indexWhere((stored) => stored.id == profile.id);
     if (index >= 0) {
-      _profiles[index] = profile;
+      // Window-side profiles carry `password: ''` (see profile.list), so a
+      // settings-only update (read-only, tenant filter, metadata) arrives
+      // blank. Keep the stored password — ProfileStore.save already skips
+      // empty passwords, so this just keeps memory in step with the
+      // keychain instead of handing jobs an empty password until restart.
+      _profiles[index] = profile.password.isEmpty
+          ? profile.copyWith(password: _profiles[index].password)
+          : profile;
     } else {
       _profiles = [..._profiles, profile];
     }

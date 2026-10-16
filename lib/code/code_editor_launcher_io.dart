@@ -16,16 +16,20 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:widgets/widgets.dart';
 
+import '../rpc/isolate_transport_io.dart';
 import '../shell/app_state.dart';
 import 'code_editor_payload.dart';
 
 /// Per-process handler installed on first call. Resolves the Completer
 /// matching the request id when a subwindow commits or cancels. Kept as
 /// a module-level singleton because `desktop_multi_window` only supports
-/// a single method handler per isolate.
+/// a single method handler per isolate — which is why this registers a
+/// route on the shared [WindowRouter] rather than calling
+/// `setMethodHandler` itself: that would replace the router's handler
+/// and silently drop every `rpc.send` / `rpc.recv` from then on.
 class _CodeEditorHostHub {
   _CodeEditorHostHub._() {
-    DesktopMultiWindow.setMethodHandler(_handle);
+    WindowRouter.instance.addRoute(codeEditorCommitMethod, _handle);
   }
   static final instance = _CodeEditorHostHub._();
 
@@ -38,7 +42,6 @@ class _CodeEditorHostHub {
   }
 
   Future<dynamic> _handle(MethodCall call, int fromWindowId) async {
-    if (call.method != codeEditorCommitMethod) return null;
     final args = call.arguments;
     if (args is! Map) return null;
     final id = args['requestId'];
@@ -69,10 +72,9 @@ Future<String?> openCodeEditor(
   String? cancelLabel,
   String? formatLabel,
 }) async {
-  // Touch the singleton so the method handler is installed exactly
-  // once. Subsequent calls to `setMethodHandler` would replace the
-  // existing handler — we want one shared handler that demuxes by
-  // requestId across all pending editors.
+  // Touch the singleton so the route is installed exactly once — one
+  // shared handler that demuxes by requestId across all pending
+  // editors.
   final hub = _CodeEditorHostHub.instance;
   final requestId = _generateRequestId();
 
@@ -94,6 +96,7 @@ Future<String?> openCodeEditor(
     cancelLabel: cancelLabel ?? 'Cancel',
     formatLabel: formatLabel,
     formatJson: isJson,
+    replyToWindowId: WindowRouter.instance.windowId,
   );
 
   final future = hub.awaitRequest(requestId);

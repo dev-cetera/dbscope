@@ -9,6 +9,7 @@
 
 import 'dart:async';
 
+import '../../connection/profile.dart';
 import '../../db/executor.dart';
 import '../../db/plugin.dart';
 import '../../rpc/envelope.dart';
@@ -27,9 +28,7 @@ class _ConnEntry {
 }
 
 class ConnectionService {
-  ConnectionService({required ProfileService profiles, required BusService bus})
-    : _profiles = profiles,
-      _bus = bus;
+  ConnectionService({required this._profiles, required this._bus});
   final ProfileService _profiles;
   final BusService _bus;
   final Map<String, _ConnEntry> _entries = {};
@@ -75,6 +74,19 @@ class ConnectionService {
     return executor;
   }
 
+  /// A fresh connection the caller owns and must close. For work that
+  /// keeps a transaction open for a long time — a copy job's source
+  /// snapshot — which on the shared [obtain] connection would make every
+  /// other server-side query on it throw (the driver refuses queries while
+  /// a transaction is open) and could deadlock two jobs.
+  Future<DbExecutor> openDedicated(String profileId) async {
+    final profile = await _profiles.resolve(profileId);
+    if (profile == null) {
+      throw RpcError('unknown_profile', profileId);
+    }
+    return _openWithPlugin(profile);
+  }
+
   bool isOpen(String profileId) =>
       _entries[profileId]?.executor?.isOpen ?? false;
   bool isReadOnly(String profileId) => _entries[profileId]?.readOnly ?? false;
@@ -92,21 +104,11 @@ class ConnectionService {
     entry.lastError = null;
     _publishState(profileId);
     try {
-      final plugin = ConnectionKindRegistry.instance.lookup(profile.kind);
-      if (plugin == null) {
-        throw RpcError(
-          'no_plugin',
-          'no plugin registered for kind "${profile.kind}"',
-        );
+      final executor = await _openWithPlugin(profile);
+      if (entry.readOnly && executor.capabilities.sessionReadOnly) {
+        await executor.setReadOnly(readOnly: true);
       }
-      final opened = await plugin.open(profile);
-      if (opened.updatedProfile != null) {
-        await _profiles.upsertFromPlugin(opened.updatedProfile!);
-      }
-      if (entry.readOnly && opened.executor.capabilities.sessionReadOnly) {
-        await opened.executor.setReadOnly(readOnly: true);
-      }
-      entry.executor = opened.executor;
+      entry.executor = executor;
       entry.state = ConnectionState.connected;
     } catch (e) {
       entry.executor = null;
@@ -117,6 +119,21 @@ class ConnectionService {
     } finally {
       _publishState(profileId);
     }
+  }
+
+  Future<DbExecutor> _openWithPlugin(ConnectionProfile profile) async {
+    final plugin = ConnectionKindRegistry.instance.lookup(profile.kind);
+    if (plugin == null) {
+      throw RpcError(
+        'no_plugin',
+        'no plugin registered for kind "${profile.kind}"',
+      );
+    }
+    final opened = await plugin.open(profile);
+    if (opened.updatedProfile != null) {
+      await _profiles.upsertFromPlugin(opened.updatedProfile!);
+    }
+    return opened.executor;
   }
 
   Future<void> _close(String profileId) async {

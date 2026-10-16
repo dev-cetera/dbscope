@@ -65,7 +65,7 @@ class _CanvasState extends State<_Canvas> with SingleTickerProviderStateMixin {
   void initState() {
     super.initState();
     _ticker = createTicker(_onTick);
-    unawaited(_ticker.start());
+    _ticker.start();
   }
 
   @override

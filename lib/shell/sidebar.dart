@@ -9,6 +9,7 @@ import 'package:widgets/widgets.dart';
 import '../catalog/schema_catalog.dart';
 import '../connection/connection_picker.dart';
 import '../connection/registry.dart';
+import '../db/executor.dart';
 import '../meta/dashboard/dashboard_tab.dart';
 import '../meta/meta_cache.dart';
 import '../meta/meta_models.dart';
@@ -92,6 +93,14 @@ class _SidebarState extends State<Sidebar> with ListenableStateMixin {
   var _filter = '';
   String? _loadedFor;
 
+  /// Bumped by every reload and by disconnect. A load only applies its
+  /// results while its generation is still current, so a slow reload for
+  /// connection A can't overwrite the listing of a B the user switched
+  /// to mid-flight (both stay open in the registry).
+  var _generation = 0;
+
+  bool _isCurrent(int generation) => mounted && generation == _generation;
+
   @override
   void initState() {
     super.initState();
@@ -121,7 +130,9 @@ class _SidebarState extends State<Sidebar> with ListenableStateMixin {
         unawaited(_reload());
       }
     } else {
+      _generation++;
       setState(() {
+        _loading = false;
         _schemas = [];
         _tablesBySchema.clear();
         _expanded.clear();
@@ -138,6 +149,7 @@ class _SidebarState extends State<Sidebar> with ListenableStateMixin {
     final executor = _registry.connection;
     final activeId = _registry.activeId;
     if (executor == null || activeId == null) return;
+    final generation = ++_generation;
     setState(() {
       _loading = true;
       _error = null;
@@ -146,7 +158,7 @@ class _SidebarState extends State<Sidebar> with ListenableStateMixin {
     try {
       final catalog = SchemaCatalog(executor);
       final schemas = await catalog.listSchemas();
-      if (!mounted) return;
+      if (!_isCurrent(generation)) return;
       setState(() {
         _schemas = schemas;
         _tablesBySchema.clear();
@@ -165,34 +177,48 @@ class _SidebarState extends State<Sidebar> with ListenableStateMixin {
       for (final schemaInfo in schemas.where(
         (schemaInfo) => !schemaInfo.isSystem,
       )) {
-        await _loadTables(schemaInfo.name);
+        await _loadTables(
+          schemaInfo.name,
+          executor: executor,
+          generation: generation,
+        );
+        if (!_isCurrent(generation)) return;
       }
       try {
         final foreignKeys = await catalog.listForeignKeys();
-        if (!mounted) return;
+        if (!_isCurrent(generation)) return;
         setState(() => _foreignKeys = foreignKeys);
       } catch (_) {
-        if (!mounted) return;
+        if (!_isCurrent(generation)) return;
         setState(() => _foreignKeys = const []);
       }
     } catch (e) {
-      if (!mounted) return;
+      if (!_isCurrent(generation)) return;
       setState(() => _error = e.toString());
     } finally {
-      if (mounted) setState(() => _loading = false);
+      if (_isCurrent(generation)) setState(() => _loading = false);
     }
   }
 
-  Future<void> _loadTables(String schema) async {
-    final executor = _registry.connection;
-    if (executor == null) return;
+  /// A reload passes the [executor] and [generation] it captured, so a
+  /// stale load neither queries the newly active connection with the old
+  /// connection's schema names nor writes into its listing. User actions
+  /// (expand, refresh) omit them and use the current ones.
+  Future<void> _loadTables(
+    String schema, {
+    DbExecutor? executor,
+    int? generation,
+  }) async {
+    final conn = executor ?? _registry.connection;
+    if (conn == null) return;
+    final loadGeneration = generation ?? _generation;
     try {
-      final catalog = SchemaCatalog(executor);
+      final catalog = SchemaCatalog(conn);
       final tables = await catalog.listTables(schema);
-      if (!mounted) return;
+      if (!_isCurrent(loadGeneration)) return;
       setState(() => _tablesBySchema[schema] = tables);
     } catch (e, st) {
-      if (!mounted) return;
+      if (!_isCurrent(loadGeneration)) return;
       // Surface the real cause instead of silently rendering an empty
       // schema. Without this, an HTTP-backed driver that returns a
       // wrapped error ("Command failure - DB Exception ...") looks

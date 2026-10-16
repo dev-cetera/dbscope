@@ -26,7 +26,7 @@ List<List<Object?>> maskRows(
     for (final row in rows)
       [
         for (var i = 0; i < row.length; i++)
-          maskedIndexes.contains(i) ? MaskedValue.instance : row[i],
+          if (maskedIndexes.contains(i)) MaskedValue.instance else row[i],
       ],
   ];
 }

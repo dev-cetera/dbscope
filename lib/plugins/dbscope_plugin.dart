@@ -71,6 +71,19 @@ class DbscopePluginRegistry {
   final List<DbscopePlugin> _plugins = [];
 
   void register(DbscopePlugin plugin) {
+    // Not every sub-registry replaces duplicates (menu contributions
+    // append), so registering the same plugin twice would duplicate menu
+    // items — skip it. A *different* plugin reusing an id is a bug that
+    // would otherwise make the second one vanish silently, so assert.
+    for (final registered in _plugins) {
+      if (registered.id != plugin.id) continue;
+      assert(
+        registered.runtimeType == plugin.runtimeType,
+        'Plugin id "${plugin.id}" is claimed by both "${registered.label}" '
+        'and "${plugin.label}".',
+      );
+      return;
+    }
     _plugins.add(plugin);
     plugin.register(_host);
   }

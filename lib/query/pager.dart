@@ -117,6 +117,9 @@ class KeysetPager {
   Future<Page> fetchNext({CancelToken? cancelToken}) async {
     if (_done) return Page(rows: <List<Object?>>[]);
     final page = await _fetchOne(cancelToken: cancelToken);
+    // Cancelled: _fetchOne left the state alone; don't overwrite the
+    // cursor with the empty page's (null) keys.
+    if (cancelToken?.isCancelled ?? false) return page;
     if (page.rows.isEmpty || page.rows.length < pageSize) _done = true;
     _lastSortVals = page.lastSortVals;
     _lastPrimaryKeyValues = page.lastPkVals;
@@ -176,6 +179,10 @@ class KeysetPager {
     final result = params.isEmpty
         ? await conn.execute(sql, cancelToken: cancelToken)
         : await conn.execute(sql, positional: params, cancelToken: cancelToken);
+    // A cancelled fetch leaves the pager where it was. Some executors
+    // return no rows once cancelled, which below would read as the end of
+    // the table and stop paging for good.
+    if (cancelToken?.isCancelled ?? false) return Page(rows: <List<Object?>>[]);
 
     if (result.isEmpty) {
       _done = true;

@@ -1,10 +1,20 @@
 # dbscope
 
-A Flutter desktop Postgres viewer and editor for macOS, Windows, and Linux. Browse schemas, run queries, edit rows, and navigate foreign-key relationships across huge tables.
+A Flutter desktop database viewer and editor for macOS, Windows, and Linux. Browse schemas, run queries, edit rows, and navigate foreign-key relationships across huge tables.
+
+It connects to:
+
+- **Postgres** (14–17) directly over TCP.
+- **Cloud SQL for Postgres** through a Cloud SQL Auth Proxy that dbscope starts and stops for you (needs `gcloud auth login`).
+- **Postgres over HTTP** via the bundled `dbscope_pg_proxy` — the only backend in the web build.
+- **Local SQLite** files (*File ▸ Open .db file…*).
+- **SQLite inside an app on a USB-connected Android or iOS device**, pulled, edited and pushed back via `adb` / `devicectl`. Force-stop the app first: the file is a snapshot.
+
+Connections can be shared as encrypted `.dbscopeconn` links (*File ▸ Import / Export connection link…*). API keys and passphrases are read from your shell profile (`~/.zshenv` by default, *File ▸ Environment…*), since apps launched from the Finder don't see your shell's exports.
 
 ## Getting started
 
-Flutter is pinned to 3.41.9 via FVM (see `.fvmrc`). Prefix commands with `fvm` to pick up the right SDK.
+Flutter is pinned to 3.47.7 (Dart 3.13.5) via FVM (see `.fvmrc`). Prefix commands with `fvm` to pick up the right SDK. The macOS build needs macOS 12 or later.
 
 ```
 fvm flutter pub get
@@ -18,7 +28,10 @@ That's it - the app launches, and you add a connection profile from the UI.
 ```
 fvm flutter analyze          # lint
 fvm flutter test             # run tests
+fvm flutter build macos      # or windows / linux / web
 ```
+
+The macOS build runs without the App Sandbox (it shells out to `adb`, `xcrun` and `cloud-sql-proxy`), so it can't ship to the Mac App Store as is.
 
 ## Schema metadata (optional)
 

@@ -4,12 +4,20 @@ import 'package:widgets/widgets.dart';
 import '../connection/registry.dart';
 import '../tabs/tab_kind.dart';
 import 'app_state.dart';
+import 'shell_listenable.dart';
 
 class Footer extends StatelessWidget {
   const Footer({super.key});
 
+  /// Inserted as `const` under the shell, so a parent rebuild skips it —
+  /// it subscribes itself.
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context) => ListenableBuilder(
+    listenable: shellListenable,
+    builder: (context, _) => _build(context),
+  );
+
+  Widget _build(BuildContext context) {
     final theme = Theme.of(context);
     final palette = AppPalette.of(context);
     final state = AppState.instance;

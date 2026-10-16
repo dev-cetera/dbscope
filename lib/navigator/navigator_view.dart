@@ -75,12 +75,10 @@ class _NavigatorTabViewState extends State<NavigatorTabView> {
         if (!mounted || !_hScroll.hasClients) return;
         final natural = _naturalRightmostScroll;
         if (natural == null) return;
-        unawaited(
-          _hScroll.animateTo(
-            natural,
-            duration: const Duration(milliseconds: 250),
-            curve: Curves.easeOut,
-          ),
+        _hScroll.animateTo(
+          natural,
+          duration: const Duration(milliseconds: 250),
+          curve: Curves.easeOut,
         );
       });
     }

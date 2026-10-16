@@ -86,7 +86,15 @@ class _QueryTabViewState extends State<QueryTabView> {
   DbExecutor? _executor() =>
       ConnectionRegistry.instance.connectionFor(widget.tab.connectionId);
 
-  Future<void> _run() async {
+  /// [aiGenerated]: the SQL came from the assistant and runs without the
+  /// user reading it first, so it runs through `executeReadOnly`: a
+  /// read-only transaction on Postgres, `query_only` on local SQLite.
+  /// `enforceReadOnly` only checks the first keyword, which lets through
+  /// `WITH d AS (DELETE … RETURNING *) SELECT …` and
+  /// `EXPLAIN ANALYZE DELETE …` — both of which write. Backends without
+  /// transactions (pg-proxy, on-device sqflite) can't be fenced, so there
+  /// that keyword check is still the only guard.
+  Future<void> _run({bool aiGenerated = false}) async {
     final executor = _executor();
     if (executor == null) {
       setState(() => widget.tab.error = 'No connection.');
@@ -116,7 +124,11 @@ class _QueryTabViewState extends State<QueryTabView> {
     AppState.instance.notifyChange();
     try {
       final runner = QueryRunner(executor);
-      final result = await runner.runSql(widget.tab.sql, cancelToken: token);
+      final result = await runner.runSql(
+        widget.tab.sql,
+        cancelToken: token,
+        readOnly: aiGenerated,
+      );
       if (!mounted) return;
       setState(() {
         widget.tab.data = result.data;
@@ -125,11 +137,17 @@ class _QueryTabViewState extends State<QueryTabView> {
         widget.tab.isLoading = false;
         widget.tab.cancelToken = null;
       });
-      await HistoryStore.instance.appendHistory(
-        widget.tab.connectionId,
-        widget.tab.sql,
-      );
-      await _loadHistoryAndSaved();
+      try {
+        await HistoryStore.instance.appendHistory(
+          widget.tab.connectionId,
+          widget.tab.sql,
+        );
+        await _loadHistoryAndSaved();
+      } catch (e) {
+        // The query itself succeeded; don't report a history-file
+        // problem as a query error.
+        debugPrint('Query history update failed: $e');
+      }
     } catch (e) {
       if (!mounted) return;
       setState(() {
@@ -172,7 +190,7 @@ class _QueryTabViewState extends State<QueryTabView> {
         widget.tab.sql = sql;
       });
       AppState.instance.notifyChange();
-      await _run();
+      await _run(aiGenerated: true);
     } catch (e) {
       if (!mounted) return;
       setState(() {

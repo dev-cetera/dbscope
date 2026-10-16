@@ -22,10 +22,17 @@ enum PgType {
   unknown,
 }
 
+/// Map a Postgres `udt_name` (information_schema) onto a [PgType].
+/// Anything not listed — enums, ranges, geometric, extension types — is
+/// [PgType.unknown], which edits as plain text. It must NOT fall through
+/// to [pgTypeFromSqlite]: SQLite's affinity rules match `INT` anywhere in
+/// the name, so an enum like `appointment_status` (or `point`,
+/// `int4range`) would become int8 and every edit would `int.parse` it.
 PgType pgTypeFromUdt(String udt) {
   if (udt.startsWith('_')) return PgType.array;
   switch (udt) {
     case 'text':
+    case 'citext':
       return PgType.text;
     case 'varchar':
     case 'bpchar':
@@ -67,7 +74,7 @@ PgType pgTypeFromUdt(String udt) {
     case 'bytea':
       return PgType.bytea;
     default:
-      return pgTypeFromSqlite(udt);
+      return PgType.unknown;
   }
 }
 

@@ -3,13 +3,34 @@
 // store and the SharedPreferences-backed web store can share identical
 // model types (avoids type-identity issues at consumer sites).
 
+import 'dart:convert';
+
+/// Parses a stored history list, keeping whatever entries are readable.
+/// A hand-edited or otherwise damaged list must not take the whole
+/// history (and every later append, which re-reads it) down with it.
+List<HistoryEntry> decodeHistory(String raw) {
+  if (raw.trim().isEmpty) return [];
+  final Object? decoded;
+  try {
+    decoded = jsonDecode(raw);
+  } on FormatException {
+    return [];
+  }
+  if (decoded is! List<Object?>) return [];
+  return [for (final entry in decoded) ?HistoryEntry._tryFromJson(entry)];
+}
+
 class HistoryEntry {
   HistoryEntry(this.sql, this.ranAt);
 
-  factory HistoryEntry.fromJson(Map<String, Object?> json) => HistoryEntry(
-    json['sql']! as String,
-    DateTime.parse(json['ranAt']! as String),
-  );
+  static HistoryEntry? _tryFromJson(Object? json) {
+    if (json is! Map<String, Object?>) return null;
+    final sql = json['sql'];
+    final ranAt = json['ranAt'];
+    if (sql is! String || ranAt is! String) return null;
+    final parsed = DateTime.tryParse(ranAt);
+    return parsed == null ? null : HistoryEntry(sql, parsed);
+  }
 
   final String sql;
   final DateTime ranAt;

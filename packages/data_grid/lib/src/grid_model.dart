@@ -126,6 +126,50 @@ class GridModel extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// [count] rows were removed at [start]. Selection and edit positions
+  /// are data-row indices, so they follow their row; one that touched a
+  /// removed row is dropped. Without this a delete left the selection —
+  /// and whatever reads it, like an inspector — on the row below.
+  void rowsRemoved(int start, int count) {
+    _rowCount -= count;
+    int? follow(int row) => row < start
+        ? row
+        : row < start + count
+        ? null
+        : row - count;
+    _moveRows(follow);
+  }
+
+  /// [count] rows were inserted at [start]; positions at or below it
+  /// move down with their row.
+  void rowsInserted(int start, int count) {
+    _rowCount += count;
+    _moveRows((row) => row < start ? row : row + count);
+  }
+
+  void _moveRows(int? Function(int row) follow) {
+    final selection = _selection;
+    if (selection != null) {
+      final anchor = follow(selection.anchorRow);
+      final focus = follow(selection.focusRow);
+      _selection = anchor == null || focus == null
+          ? null
+          : CellRange(
+              anchorRow: anchor,
+              anchorCol: selection.anchorCol,
+              focusRow: focus,
+              focusCol: selection.focusCol,
+            );
+    }
+    final editingRow = _editingRow;
+    if (editingRow != null) {
+      _editingRow = follow(editingRow);
+      if (_editingRow == null) _editingCol = null;
+    }
+    _clampSelection();
+    notifyListeners();
+  }
+
   void setColumnWidth(int originalIdx, double width) {
     if (originalIdx < 0 || originalIdx >= _widths.length) return;
     _widths[originalIdx] = width.clamp(minColumnWidth, maxColumnWidth);

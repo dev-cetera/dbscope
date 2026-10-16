@@ -28,6 +28,7 @@ class CodeEditorLaunchPayload {
     this.cancelLabel = 'Cancel',
     this.formatLabel,
     this.formatJson = false,
+    this.replyToWindowId = 0,
   });
 
   factory CodeEditorLaunchPayload.fromJsonString(String source) {
@@ -45,6 +46,7 @@ class CodeEditorLaunchPayload {
       cancelLabel: (raw['cancelLabel'] as String?) ?? 'Cancel',
       formatLabel: raw['formatLabel'] as String?,
       formatJson: raw['formatJson'] == true,
+      replyToWindowId: (raw['replyToWindowId'] as int?) ?? 0,
     );
   }
 
@@ -76,6 +78,11 @@ class CodeEditorLaunchPayload {
   /// other language modes later without changing the wire format.
   final bool formatJson;
 
+  /// desktop_multi_window id of the window that opened the editor — where
+  /// its pending request lives, so where the commit / cancel must go. Not
+  /// always the host (0): a "New window" window can open an editor too.
+  final int replyToWindowId;
+
   Map<String, Object?> toJson() => <String, Object?>{
     'kind': codeEditorPayloadKind,
     'requestId': requestId,
@@ -87,6 +94,7 @@ class CodeEditorLaunchPayload {
     'cancelLabel': cancelLabel,
     if (formatLabel != null) 'formatLabel': formatLabel,
     'formatJson': formatJson,
+    'replyToWindowId': replyToWindowId,
   };
 
   /// True when [source] is a JSON object whose `kind` field marks it as

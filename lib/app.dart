@@ -11,8 +11,10 @@ import 'rpc/scope.dart';
 import 'shell/app_state.dart';
 import 'shell/footer.dart';
 import 'shell/menu_bar.dart';
+import 'shell/shell_listenable.dart';
 import 'shell/sidebar.dart';
 import 'shell/tab_strip.dart';
+import 'shell/theme_registry.dart';
 import 'tabs/tab_kind.dart';
 
 class DBScopeApp extends StatefulWidget {
@@ -31,10 +33,47 @@ class DBScopeApp extends StatefulWidget {
 }
 
 class _DBScopeAppState extends State<DBScopeApp> {
+  // The root reads AppState only for the theme, so it rebuilds only when
+  // the theme changes — not on every notify (a drag fires one per pointer
+  // event). That also builds each ThemeData once per switch: the builders
+  // return a fresh ThemeData that never compares equal to the last
+  // (component themes hold fresh `resolveWith` closures), and handing
+  // MaterialApp a new one restarts AnimatedTheme's 200 ms lerp, which
+  // rebuilds every Theme.of dependant on each frame.
+  ThemePlugin? _themePlugin;
+  late ThemeData _theme;
+
+  void _adoptTheme() {
+    _themePlugin = AppState.instance.themePlugin;
+    _theme = _themePlugin?.build() ?? ThemeData.fallback();
+  }
+
+  void _onAppStateChange() {
+    if (identical(AppState.instance.themePlugin, _themePlugin)) return;
+    setState(_adoptTheme);
+  }
+
   @override
   void initState() {
     super.initState();
+    // May switch theme synchronously; adopt after it, and listen only
+    // once initState can no longer be interrupted by a setState.
     unawaited(_applyLaunchPayload());
+    _adoptTheme();
+    AppState.instance.addListener(_onAppStateChange);
+  }
+
+  @override
+  void dispose() {
+    AppState.instance.removeListener(_onAppStateChange);
+    super.dispose();
+  }
+
+  @override
+  void reassemble() {
+    super.reassemble();
+    // Hot reload: pick up edits to the theme builders.
+    _adoptTheme();
   }
 
   Future<void> _applyLaunchPayload() async {
@@ -62,33 +101,27 @@ class _DBScopeAppState extends State<DBScopeApp> {
   Widget build(BuildContext context) {
     return BackendScope(
       client: widget.backend,
-      child: AnimatedBuilder(
-        animation: AppState.instance,
-        builder: (context, _) {
-          // Theme + its overlays both come from the registry — Doom's
-          // mugshot only ships when the Doom plugin is registered, etc.
-          final active = AppState.instance.themePlugin;
-          final theme = active?.build() ?? ThemeData.fallback();
-          final overlays = active?.overlays ?? const <WidgetBuilder>[];
-          return MaterialApp(
-            title: widget.windowId == 0
-                ? 'DBScope'
-                : 'DBScope — window ${widget.windowId}',
-            debugShowCheckedModeBanner: false,
-            theme: theme,
-            darkTheme: theme,
-            themeMode: theme.brightness == Brightness.dark
-                ? ThemeMode.dark
-                : ThemeMode.light,
-            home: const _Shell(),
-            builder: (context, child) {
-              return Stack(
-                children: [
-                  ?child,
-                  for (final builder in overlays) builder(context),
-                ],
-              );
-            },
+      // Theme + its overlays both come from the registry — Doom's mugshot
+      // only ships when the Doom plugin is registered, etc.
+      child: MaterialApp(
+        title: widget.windowId == 0
+            ? 'DBScope'
+            : 'DBScope — window ${widget.windowId}',
+        debugShowCheckedModeBanner: false,
+        theme: _theme,
+        darkTheme: _theme,
+        themeMode: _theme.brightness == Brightness.dark
+            ? ThemeMode.dark
+            : ThemeMode.light,
+        home: const _Shell(),
+        builder: (context, child) {
+          return Stack(
+            children: [
+              ?child,
+              for (final builder
+                  in _themePlugin?.overlays ?? const <WidgetBuilder>[])
+                builder(context),
+            ],
           );
         },
       ),
@@ -101,13 +134,9 @@ class _Shell extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final listenable = Listenable.merge([
-      AppState.instance,
-      ConnectionRegistry.instance,
-    ]);
     return AppMenuBar(
       child: AnimatedBuilder(
-        animation: listenable,
+        animation: shellListenable,
         builder: (context, _) {
           return CallbackShortcuts(
             bindings: <ShortcutActivator, VoidCallback>{

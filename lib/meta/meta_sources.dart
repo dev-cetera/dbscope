@@ -7,6 +7,7 @@ import '../connection/profile.dart';
 import '../db/executor.dart';
 import '../db/sqlite_kind.dart';
 import '../util/portable_io.dart';
+import '../util/sql_parse.dart';
 import '../util/sql_quote.dart';
 import 'meta_models.dart';
 import 'meta_parse.dart';
@@ -14,6 +15,9 @@ import 'meta_settings.dart';
 import 'selector.dart';
 
 bool isSqliteExecutor(DbExecutor executor) => executor.kind == kSqliteKind;
+
+SqlDialect sqlDialectOf(DbExecutor executor) =>
+    isSqliteExecutor(executor) ? SqlDialect.sqlite : SqlDialect.postgres;
 
 /// Native catalog comments: Postgres `COMMENT ON TABLE/COLUMN`. SQLite has
 /// no comments, so it contributes nothing there.

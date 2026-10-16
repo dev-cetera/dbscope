@@ -102,6 +102,7 @@ Future<void> main(List<String> args) async {
     final windowIdRaw = args.length > 1 ? args[1] : '0';
     final payload = args.length > 2 ? args[2] : '';
     final windowId = int.tryParse(windowIdRaw) ?? -1;
+    WindowRouter.instance.windowId = windowId;
 
     final transport = IsolateTransport();
     final client = BackendClient(transport);
@@ -158,6 +159,7 @@ class _HostQuitHook extends WidgetsBindingObserver {
 
   @override
   Future<ui.AppExitResponse> didRequestAppExit() async {
+    await AppState.instance.flushTabs();
     await ConnectionRegistry.instance.disconnectAll();
     await host.dispose();
     return ui.AppExitResponse.exit;

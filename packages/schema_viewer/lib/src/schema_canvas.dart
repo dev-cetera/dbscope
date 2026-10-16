@@ -1,5 +1,3 @@
-import 'dart:async';
-
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/scheduler.dart';
@@ -197,7 +195,7 @@ class _SchemaCanvasState extends State<SchemaCanvas>
   void initState() {
     super.initState();
     _ticker = createTicker(_onTick);
-    unawaited(_ticker.start());
+    _ticker.start();
     widget.controller?._attach(this);
   }
 

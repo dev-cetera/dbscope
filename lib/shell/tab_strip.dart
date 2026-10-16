@@ -7,6 +7,7 @@ import '../connection/registry.dart';
 import '../tabs/tab_kind.dart';
 import '../util/hover_state_mixin.dart';
 import 'app_state.dart';
+import 'shell_listenable.dart';
 
 /// Chrome-style horizontal tab strip.
 ///
@@ -34,8 +35,15 @@ class TabStrip extends StatelessWidget {
     );
   }
 
+  /// Inserted as `const` under the shell, so a parent rebuild skips it —
+  /// it subscribes itself.
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context) => ListenableBuilder(
+    listenable: shellListenable,
+    builder: (context, _) => _build(context),
+  );
+
+  Widget _build(BuildContext context) {
     final state = AppState.instance;
     final registry = ConnectionRegistry.instance;
     final palette = AppPalette.of(context);
@@ -55,12 +63,9 @@ class TabStrip extends StatelessWidget {
                       color: Colors.transparent,
                       child: child,
                     ),
-                    onReorder: (oldIndex, newIndex) {
-                      final target = newIndex > oldIndex
-                          ? newIndex - 1
-                          : newIndex;
-                      state.moveTab(oldIndex, target);
-                    },
+                    // onReorderItem's newIndex already accounts for the
+                    // dragged tab's removal, so it's moveTab's target.
+                    onReorderItem: state.moveTab,
                     itemCount: state.tabs.length,
                     itemBuilder: (_, i) {
                       final tab = state.tabs[i];

@@ -90,6 +90,13 @@ class _DataGridState extends State<DataGrid> {
   late final ValueNotifier<double> _rowHeight;
   late final VoidCallback _appStateListener;
 
+  // Converted once per `widget.data` object. A fresh GridData every build
+  // reads as new data to a controller-less grid (Query / named-query
+  // tabs), which then re-copies its rows and resets column widths and
+  // selection on every rebuild — i.e. on every AppState notify.
+  GridData? _convertedFrom;
+  late g.GridData<PgType> _converted;
+
   @override
   void initState() {
     super.initState();
@@ -141,32 +148,34 @@ class _DataGridState extends State<DataGrid> {
       for (final policy in widget.editPolicies) policy.column: policy,
     };
 
-    // Defaults stored on the column spec so the package's reset logic
-    // picks them up without re-passing the type table.
-    final columnsWithWidths = <GridColumnSpec>[
-      for (final column in widget.data.columns)
-        gridColumn(
-          name: column.name,
-          type: column.type ?? PgType.unknown,
-          typeName: column.typeLabel,
-          primaryKey: column.primaryKey,
-          indexed: column.indexed,
-          defaultWidth:
-              column.defaultWidth ??
-              defaultWidthForPgType(column.type ?? PgType.unknown),
-          hidden: column.hidden,
-          tooltip: column.tooltip,
-          marker: column.marker,
-        ),
-    ];
-    final dataForGrid = g.GridData<PgType>(
-      columns: columnsWithWidths,
-      rows: widget.data.rows,
-    );
+    if (!identical(widget.data, _convertedFrom)) {
+      _convertedFrom = widget.data;
+      // Defaults stored on the column spec so the package's reset logic
+      // picks them up without re-passing the type table.
+      _converted = g.GridData<PgType>(
+        columns: [
+          for (final column in widget.data.columns)
+            gridColumn(
+              name: column.name,
+              type: column.type ?? PgType.unknown,
+              typeName: column.typeLabel,
+              primaryKey: column.primaryKey,
+              indexed: column.indexed,
+              defaultWidth:
+                  column.defaultWidth ??
+                  defaultWidthForPgType(column.type ?? PgType.unknown),
+              hidden: column.hidden,
+              tooltip: column.tooltip,
+              marker: column.marker,
+            ),
+        ],
+        rows: widget.data.rows,
+      );
+    }
 
     final palette = AppPalette.of(context);
     return g.DataGrid<PgType>(
-      data: dataForGrid,
+      data: _converted,
       isLoading: widget.isLoading,
       error: widget.error,
       controller: widget.controller,

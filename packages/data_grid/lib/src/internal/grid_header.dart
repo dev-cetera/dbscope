@@ -69,6 +69,47 @@ class GridHeader<TypeTag> extends StatelessWidget {
   }
 }
 
+/// Grab strip on a header cell's right edge. Wide enough to hit without
+/// pixel hunting; it sits above the cell's reorder Draggable, so a near
+/// miss starts a column reorder instead of a resize.
+const double _kResizeHandleWidth = 10;
+
+/// Resizes from where the drag started — start width plus total pointer
+/// travel — rather than adding each event's delta to the last-built
+/// width. When several pointer events land before the next rebuild, the
+/// incremental form keeps only the last delta and the column falls
+/// behind the cursor.
+class _ColumnResizeHandle extends StatefulWidget {
+  const _ColumnResizeHandle({required this.width, required this.onChanged});
+  final double width;
+  final ValueChanged<double> onChanged;
+
+  @override
+  State<_ColumnResizeHandle> createState() => _ColumnResizeHandleState();
+}
+
+class _ColumnResizeHandleState extends State<_ColumnResizeHandle> {
+  var _startWidth = 0.0;
+  var _startX = 0.0;
+
+  @override
+  Widget build(BuildContext context) {
+    return MouseRegion(
+      cursor: SystemMouseCursors.resizeColumn,
+      child: GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onHorizontalDragStart: (details) {
+          _startWidth = widget.width;
+          _startX = details.globalPosition.dx;
+        },
+        onHorizontalDragUpdate: (details) => widget.onChanged(
+          _startWidth + details.globalPosition.dx - _startX,
+        ),
+      ),
+    );
+  }
+}
+
 class _HeaderCell<TypeTag> extends StatelessWidget {
   const _HeaderCell({
     required this.viewIndex,
@@ -215,14 +256,10 @@ class _HeaderCell<TypeTag> extends StatelessWidget {
           right: 0.0,
           top: 0.0,
           bottom: 0.0,
-          width: 6.0,
-          child: MouseRegion(
-            cursor: SystemMouseCursors.resizeColumn,
-            child: GestureDetector(
-              behavior: HitTestBehavior.opaque,
-              onHorizontalDragUpdate: (details) =>
-                  onWidthChanged(originalIndex, width + details.delta.dx),
-            ),
+          width: _kResizeHandleWidth,
+          child: _ColumnResizeHandle(
+            width: width,
+            onChanged: (next) => onWidthChanged(originalIndex, next),
           ),
         ),
       ],

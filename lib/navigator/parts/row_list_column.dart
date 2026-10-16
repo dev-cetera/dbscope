@@ -343,9 +343,10 @@ class _RowListColumnState extends State<RowListColumn> {
         for (final row in sampleResult.rows)
           [
             for (final column in columns)
-              colByName[column.name] != null
-                  ? row[colByName[column.name]!]
-                  : null,
+              if (colByName[column.name] case final index?)
+                row[index]
+              else
+                null,
           ],
       ];
       final picked = await RegexInferrer.infer(

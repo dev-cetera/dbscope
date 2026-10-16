@@ -11,6 +11,8 @@ class WindowRouter {
   WindowRouter._();
   static final instance = WindowRouter._();
 
+  var windowId = 0;
+
   void ensureInstalled() {}
 }
 
@@ -32,6 +34,15 @@ class IsolateTransport implements Transport {
   Future<void> dispose() async {}
 }
 
+// Same signature as the io HostWindowRouter so `main.dart` compiles on
+// web; it is never constructed there (guarded by `!kIsWeb`).
 class HostWindowRouter {
-  HostWindowRouter();
+  HostWindowRouter({required this.dispatch});
+
+  final void Function(
+    Envelope envelope,
+    int fromWindowId,
+    void Function(Envelope) reply,
+  )
+  dispatch;
 }

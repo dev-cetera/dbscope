@@ -7,10 +7,13 @@
 // get a single LIMIT page with no ORDER BY tuple-compare.
 // * Descending sort flips both the ORDER BY direction and the
 // tuple-compare operator (`<` vs `>`).
+// * A cancelled fetchNext yields no rows and leaves the cursor (and
+// isDone) untouched, so the next fetch resumes where it was.
 
 import 'package:dbscope/catalog/pg_type.dart';
 import 'package:dbscope/catalog/schema_catalog.dart';
 import 'package:dbscope/db/executor.dart';
+import 'package:dbscope/query/cancel_token.dart';
 import 'package:dbscope/query/pager.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -324,6 +327,38 @@ void main() {
 
       await pager.pages().toList();
       expect(pager.isDone, isTrue);
+    });
+  });
+
+  group('KeysetPager — cancellation', () {
+    test('a cancelled fetchNext neither advances nor finishes', () async {
+      final executor = FakeDbExecutor();
+      // What a cancelled SQLite query returns: no rows.
+      executor.enqueue(_rows(const []));
+      executor.enqueue(
+        _rows([
+          [1],
+          [2],
+        ]),
+      );
+      final pager = KeysetPager(
+        conn: executor,
+        schema: 'public',
+        table: 'users',
+        columns: [_col('id')],
+        pkColumns: const ['id'],
+        pageSize: 2,
+      );
+
+      final cancelled = CancelToken()..cancel();
+      final skipped = await pager.fetchNext(cancelToken: cancelled);
+      expect(skipped.rows, isEmpty);
+      expect(pager.isDone, isFalse);
+
+      final page = await pager.fetchNext(cancelToken: CancelToken());
+      expect(page.rows, hasLength(2));
+      // Still the first page: no keyset cursor from the cancelled fetch.
+      expect(executor.calls.last.positional, isNull);
     });
   });
 }

@@ -9,6 +9,7 @@ import '../meta/access_policy.dart';
 import '../meta/masked_value.dart';
 import '../meta/meta_cache.dart';
 import '../meta/meta_models.dart';
+import '../meta/meta_sources.dart';
 import '../meta/read_only_exec.dart';
 import '../util/sql_parse.dart';
 import '../util/sql_quote.dart';
@@ -355,7 +356,7 @@ class QueryRunner {
     if (trimmed.isEmpty) {
       throw const FormatException('Empty query.');
     }
-    if (containsMultipleStatements(trimmed)) {
+    if (containsMultipleStatements(trimmed, dialect: sqlDialectOf(conn))) {
       throw const FormatException(
         'Run one statement at a time (phase 1 limitation).',
       );

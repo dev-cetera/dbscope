@@ -23,16 +23,7 @@ class HistoryStore {
   Future<List<HistoryEntry>> loadHistory(String connectionId) async {
     final preferences = await SharedPreferences.getInstance();
     final raw = preferences.getString(_key(connectionId));
-    if (raw == null || raw.trim().isEmpty) return [];
-    try {
-      final list = jsonDecode(raw) as List<Object?>;
-      return [
-        for (final e in list)
-          if (e is Map<String, Object?>) HistoryEntry.fromJson(e),
-      ];
-    } catch (_) {
-      return [];
-    }
+    return raw == null ? [] : decodeHistory(raw);
   }
 
   Future<void> appendHistory(String connectionId, String sql) async {

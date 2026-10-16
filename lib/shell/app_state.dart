@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 
 import 'package:flutter/foundation.dart';
@@ -109,7 +110,26 @@ class AppState extends ChangeNotifier {
   }
 
   void _persistTabs() {
-    if (!_persistTabsEnabled) return;
+    final blob = _openTabsBlob();
+    if (blob != null) unawaited(UiPrefs.instance.setOpenTabsJson(blob));
+  }
+
+  /// Persist the open tabs now and wait for the write. Tab actions
+  /// persist as they happen, but in-place edits don't (SQL typed into a
+  /// query tab only reaches prefs on the next tab action) — the host's
+  /// quit hook calls this so they survive a restart.
+  Future<void> flushTabs() async {
+    final blob = _openTabsBlob();
+    if (blob == null) return;
+    try {
+      await UiPrefs.instance.setOpenTabsJson(blob);
+    } catch (e) {
+      debugPrint('Saving open tabs on quit failed: $e');
+    }
+  }
+
+  String? _openTabsBlob() {
+    if (!_persistTabsEnabled) return null;
     final registry = TabKindRegistry.instance;
     final entries = <Map<String, Object?>>[];
     for (final tab in tabs) {
@@ -117,12 +137,11 @@ class AppState extends ChangeNotifier {
       final serialized = kind?.serialize?.call(tab);
       if (serialized != null) entries.add(serialized);
     }
-    final blob = jsonEncode({
+    return jsonEncode({
       'version': 1,
       'tabs': entries,
       'activeId': _active?.id,
     });
-    UiPrefs.instance.setOpenTabsJson(blob);
   }
 
   /// Restore tabs from prefs. Idempotent: subsequent calls are no-ops if

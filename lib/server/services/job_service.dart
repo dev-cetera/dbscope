@@ -13,9 +13,7 @@ import 'bus_service.dart';
 import 'connection_service.dart';
 
 class JobService {
-  JobService({required ConnectionService connections, required BusService bus})
-    : _connections = connections,
-      _bus = bus;
+  JobService({required this._connections, required this._bus});
   final ConnectionService _connections;
   final BusService _bus;
   final Map<String, JobHandler> _handlers = {};

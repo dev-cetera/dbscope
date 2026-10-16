@@ -78,7 +78,10 @@ class UiPrefs {
   void setRowHeight(double v) => _prefs?.setDouble(_kRowHeight, v);
   void setLastConnectionId(String? v) => _setOrRemove(_kLastConnectionId, v);
 
-  void setOpenTabsJson(String v) => _prefs?.setString(_kOpenTabs, v);
+  /// Returns the write so the quit hook can wait for it to land.
+  Future<void> setOpenTabsJson(String v) async {
+    await _prefs?.setString(_kOpenTabs, v);
+  }
 
   void setEnvFilePath(String? v) => _setOrRemove(_kEnvFilePath, v);
 

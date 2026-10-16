@@ -8,24 +8,26 @@ dbscope is a Flutter desktop database viewer/editor (macOS / Windows / Linux) wi
 
 ## Toolchain & commands
 
-Flutter version is pinned via FVM in `.fvmrc` (3.41.9). Prefix commands with `fvm` to get the right SDK:
+Flutter version is pinned via FVM in `.fvmrc` (3.47.7, Dart 3.13.5). The app and its app-specific plugin packages set `environment.sdk` to match the pinned Dart (`^3.13.5`); the reusable packages (`data_grid`, `schema_viewer`, `widgets`, `dbscope_sqflite_plugin`, `app_data_explorer`) keep deliberately lower floors. Prefix commands with `fvm` to get the right SDK:
 
 ```
 fvm flutter pub get
 fvm flutter run -d macos             # primary dev target
 fvm flutter analyze                  # lint via flutter_lints
 fvm flutter test                     # whole suite
-fvm flutter test test/server_test.dart -p vm   # single file
-fvm flutter test test/server_test.dart -p vm --plain-name 'routes req'   # single test by name
+fvm flutter test test/server_test.dart         # single file
+fvm flutter test test/server_test.dart --plain-name 'routes req'   # single test by name
 ```
 
-Tests are per-unit and live under `test/`: `sql_quote`, `envelope`, `cancel_token`, `dml`, `pager`, `server`, `bus_service`, `postgres_executor_decode`, `shell_env`, and the `sqflite_param_translator` suite. They share `test/support/fake_executor.dart` — a `DbExecutor` stub used wherever a test needs to exercise something that would otherwise want a live DB. Each test file opens with a comment block stating the contract it pins down; read that before editing the production code it covers. `test/widget_test.dart` is an intentional placeholder — do not add coverage there.
+Tests are per-unit and live under `test/`: `sql_quote`, `envelope`, `cancel_token`, `dml`, `pager`, `server`, `bus_service`, `postgres_executor_decode`, `shell_env`, `sql_parse`, `pg_type`, `copy_table_job`, `grid_row_ownership`, `resizable`, and the `meta_*` suite. They share `test/support/fake_executor.dart` — a `DbExecutor` stub used wherever a test needs to exercise something that would otherwise want a live DB. Each test file opens with a comment block stating the contract it pins down; read that before editing the production code it covers. `test/widget_test.dart` is an intentional placeholder — do not add coverage there.
 
 ## Architecture: two isolates, one Server
 
 The single biggest concept that isn't obvious from the plan or from any one file:
 
 **There is exactly one canonical `Server` in the host window's isolate.** Every other window is a subwindow spawned by `desktop_multi_window`, runs in its own isolate with its own Flutter engine, and talks to the host's `Server` via `IsolateTransport` over method channels. The wire format is `Envelope` JSON (`lib/rpc/envelope.dart`) — `req`/`res`/`sub`/`unsub`/`evt`/`end`/`err`. Transports are interchangeable (`LocalTransport` in-process, `IsolateTransport` cross-window).
+
+`desktop_multi_window` allows **one** method handler per isolate, and `WindowRouter` (`lib/rpc/isolate_transport_io.dart`) owns it. Anything else that needs a cross-window message adds a route with `WindowRouter.instance.addRoute(method, handler)`. Never call `DesktopMultiWindow.setMethodHandler` directly: it silently replaces the router, and every RPC from then on hangs (`BackendClient` has no request timeout). `WindowRouter.instance.windowId` is the current window's id (0 = host), so a spawned window knows where to reply. The code editor passes it as `replyToWindowId`.
 
 The boundary:
 
@@ -36,8 +38,8 @@ The boundary:
 Where state actually lives:
 
 - **Profiles** are owned by `ProfileService` (server). All mutations flow through RPC; the server broadcasts `profile.changed` on the bus and every window's `ConnectionRegistry` rehydrates from that event.
-- **`DbExecutor` objects** live in **two** places. `ConnectionService` (server) owns the executor used by server-side code (jobs). `ConnectionRegistry` (per-window, `lib/connection/registry.dart`) owns the executor the UI uses. For Postgres profiles these are two independent TCP sockets to the same database. Keep that in mind before "consolidating" — server-side jobs must not depend on a window being open, and UI features (query cancel via socket close, grid pagination) need a connection they own.
-- **Passwords** stay in `flutter_secure_storage`. The server hands them back only to server-side callers (`ConnectionService._open`), never to clients.
+- **`DbExecutor` objects** live in **two** places. `ConnectionService` (server) owns the executor used by server-side code (jobs). It's one shared connection per profile, and the Postgres driver throws on any query while a `runTx` is open on it. So a job that holds a transaction for a long time (the copy job's source snapshot) opens its own with `ConnectionService.openDedicated` and closes it when done. `ConnectionRegistry` (per-window, `lib/connection/registry.dart`) owns the executor the UI uses. For Postgres profiles these are two independent TCP sockets to the same database. Keep that in mind before "consolidating" — server-side jobs must not depend on a window being open, and UI features (query cancel via socket close, grid pagination) need a connection they own.
+- **Passwords** stay in `flutter_secure_storage`. `profile.list` never carries them; they're fetched on demand via `profile.password` by whoever opens a connection — `ConnectionService._open` server-side, and each window's `ConnectionRegistry` (every window opens its own executor). So window-side profiles hold `password: ''` until connect, and `ProfileService` keeps its stored password when a settings-only update arrives blank.
 
 When adding a new RPC method, the pattern is: add a `server.onRequest('foo.bar', ...)` in a service, then a thin client wrapper under `lib/rpc/services/` that wraps `client.request('foo.bar', params)`.
 
@@ -93,6 +95,8 @@ Every theme ships as a standalone package; the host has no built-in themes. Curr
 - `packages/dbscope_portal_plugin/`
 
 Each theme plugin owns its palette, its `ThemeData` builder, and any asset it ships. Assets shipped from a plugin must use the `packages/<plugin-name>/assets/...` path in `Image.asset(...)` — that's how Flutter finds package-bundled assets at runtime.
+
+`ThemePlugin.build` runs once per theme switch. The builders return a fresh `ThemeData` that never compares equal to the last one, and handing `MaterialApp` a new one restarts its 200 ms theme animation, which rebuilds every `Theme.of` dependant on each frame. So the app root (`_DBScopeAppState`) rebuilds only when the theme plugin changes, not on every `AppState` notify. One consequence: a widget inserted as `const` under the shell isn't rebuilt by its parent, so it must subscribe itself. `TabStrip` and `Footer` use `shellListenable` (`lib/shell/shell_listenable.dart`, AppState + ConnectionRegistry). `AppMenuBar` rebuilds only when its rendered labels change, because each rebuild re-sends the native macOS menu.
 
 The first-registered theme is the fallback when no preference is stored or when the user's saved theme id no longer resolves (e.g. the plugin was removed between sessions). `AppState.setThemeId(id)` is a no-op for unknown ids, so a typo can't silently fall back.
 
@@ -202,6 +206,8 @@ Themes and reusable widgets live in `packages/widgets/` (Dart package name `widg
 The grid is a hand-rolled `ListView.builder` widget (`lib/grid/data_grid.dart` and `lib/grid/internal/`) — it replaced `pluto_grid` because pluto couldn't host the shared `ColumnInput` editor, drag-range selection, or TSV copy without major workarounds. Everything that matters about scaling lives in `DataGrid` / `DataGridController`:
 
 - The controller exposes `replaceAll` / `appendRows` / `removeFirstRows` / `removeRowAt` / `prependRow` / `updateCell`. **When a controller is attached, the grid ignores `widget.data` identity changes** — all updates must go through the controller. `QueryTabView` doesn't attach one and keeps reactive behavior; `TableTabView` does.
+- The grid keeps **its own copy** of the row list (the row lists inside are shared). `TableTabView` mutates its tab buffer *and* forwards the same delta to the controller, which is only correct because the two outer lists are separate. Pinned by `test/grid_row_ownership_test.dart`. Selection and in-progress edits follow their row across `removeRowAt` / `removeFirstRows` / `prependRow` (`GridModel.rowsRemoved` / `rowsInserted`), and are dropped when their row is removed.
+- The app-side wrapper (`lib/grid/data_grid.dart`) converts `widget.data` once per object. A fresh `GridData` on every build looks like new data to a controller-less grid, which then resets column widths and selection.
 - `TableTabView` enforces a 50 000-row in-memory window with 5 000-row trim chunks (`_maxBufferedRows`, `_trimChunk`) to make billion-row tables work. Trade-off: scrollback past the window loses rows (use Refresh); changing these numbers shifts the memory-vs-scrollback balance. `removeFirstRows` compensates the scroll offset (`jumpTo(prev - removed * _kRowHeight)`) so the viewport stays put when the top is trimmed.
 - Pagination is keyset, not OFFSET. `KeysetPager` (`lib/query/pager.dart`) builds `(sort_col, pk_cols...) > ($lastSort, $lastPk...)` cursors. The optional `baseWhere`/`baseWhereParams` slot is how the Navigator threads inbound-FK and regex filters through the same pager.
 - Query tabs cap at 10 000 rows (no pagination). This is deliberate.
@@ -250,6 +256,8 @@ These are non-negotiable; the plan covers them and the codebase enforces them:
 
 - **Identifier vs value quoting.** Schema/table/column names go through `quoteIdent` / `quoteQualified` (`lib/util/sql_quote.dart`). Values are positional params (`$1`, `$2`). Never concatenate user values into SQL.
 - **Optimistic concurrency on UPDATE.** All cell edits issue `... AND <col> IS NOT DISTINCT FROM $oldValue`. 0 rows affected = conflict toast + refresh that row. See `lib/db/dml.dart`.
+- **Statement splitting** (`containsMultipleStatements` / `stripCommentsAndLeading` in `lib/util/sql_parse.dart`) takes a required `SqlDialect`. Derive it with `sqlDialectOf(executor)` (`lib/meta/meta_sources.dart`). Postgres syntax (`E''`, `$$`, nested comments) on SQLite would hide a real second statement.
+- **AI-generated SQL** auto-runs through `runSql(readOnly: true)`, which fences it into a read-only transaction (`executeReadOnly`). `enforceReadOnly` only checks the first keyword. Backends without transactions (pg-proxy, on-device sqflite) can't be fenced.
 - **Read-only mode** is enforced by `SET default_transaction_read_only = ON` on the connection itself, not by parsing SQL. Toggled per-profile; `ConnectionService` and `ConnectionRegistry` both apply it on open and on `setReadOnly`.
 
 ## Postgres version floor

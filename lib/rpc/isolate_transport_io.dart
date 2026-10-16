@@ -12,6 +12,7 @@
 import 'dart:async';
 
 import 'package:desktop_multi_window/desktop_multi_window.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 
 import 'envelope.dart';
@@ -30,6 +31,11 @@ class WindowRouter {
 
   var _installed = false;
   final Map<String, WindowRoute> _routes = {};
+
+  /// This isolate's desktop_multi_window id: 0 in the host, set by
+  /// `main.dart` in a subwindow. Lets a window tell a window it spawns
+  /// where to send replies.
+  var windowId = 0;
 
   void ensureInstalled() {
     if (_installed) return;
@@ -64,8 +70,11 @@ class IsolateTransport implements Transport {
     if (raw is! String) return null;
     try {
       _incoming.add(Envelope.decode(raw));
-    } catch (_) {
-      // Ignore malformed envelopes — server will time them out.
+    } catch (e) {
+      // Nothing to fail-respond against without a decoded id, and
+      // BackendClient has no request timeout — so a dropped reply hangs
+      // its caller. Log it so the hang is at least traceable.
+      debugPrint('IsolateTransport: dropped malformed envelope: $e');
     }
     return null;
   }
@@ -124,8 +133,12 @@ class HostWindowRouter {
           ),
         );
       });
-    } catch (_) {
-      // Ignore — see IsolateTransport._onRecv.
+    } catch (e) {
+      // See IsolateTransport._onRecv.
+      debugPrint(
+        'HostWindowRouter: dropped malformed envelope from window '
+        '$fromWindowId: $e',
+      );
     }
     return null;
   }

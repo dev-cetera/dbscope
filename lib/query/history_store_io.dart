@@ -25,13 +25,7 @@ class HistoryStore {
   Future<List<HistoryEntry>> loadHistory(String connectionId) async {
     final file = await _historyFile(connectionId);
     if (!file.existsSync()) return [];
-    final raw = await file.readAsString();
-    if (raw.trim().isEmpty) return [];
-    final list = jsonDecode(raw) as List<Object?>;
-    return [
-      for (final e in list)
-        if (e is Map<String, Object?>) HistoryEntry.fromJson(e),
-    ];
+    return decodeHistory(await file.readAsString());
   }
 
   Future<void> appendHistory(String connectionId, String sql) async {
@@ -39,9 +33,14 @@ class HistoryStore {
     existing.insert(0, HistoryEntry(sql, DateTime.now()));
     final trimmed = existing.take(_kMaxHistoryEntries).toList();
     final file = await _historyFile(connectionId);
-    await file.writeAsString(
+    // Write-then-rename: a crash or quit mid-write leaves the previous
+    // file intact rather than a truncated one.
+    final temp = File('${file.path}.tmp');
+    await temp.writeAsString(
       jsonEncode([for (final e in trimmed) e.toJson()]),
+      flush: true,
     );
+    await temp.rename(file.path);
   }
 
   Future<List<SavedQuery>> loadSaved(String connectionId) async {

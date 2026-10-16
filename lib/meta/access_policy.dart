@@ -115,13 +115,11 @@ class AccessPolicy {
     required this.identityMode,
     required this.principals,
     this.viewingAs,
-    required List<MetaGrant> grants,
-    PrivilegeCeilings? ceilings,
-    bool Function(String schema, String table)? isMetaTable,
+    required this._grants,
+    this._ceilings,
+    this._isMetaTable,
     this.problems = const [],
-  }) : _grants = grants,
-       _ceilings = ceilings,
-       _isMetaTable = isMetaTable;
+  });
 
   /// The rules exist but can't be read. Read-only, no capabilities.
   factory AccessPolicy.failClosed(String reason) => AccessPolicy._(

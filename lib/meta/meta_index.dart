@@ -71,8 +71,8 @@ class MetaIndex {
     required this.dashboards,
     required this.rbac,
     required this.problems,
-    required Map<String, List<MetaRow>> scalarRowsByKind,
-  }) : _scalarRowsByKind = scalarRowsByKind;
+    required this._scalarRowsByKind,
+  });
 
   factory MetaIndex.build(MetaDocument document) {
     final problems = <MetaProblem>[];

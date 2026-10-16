@@ -23,8 +23,8 @@ class ThemePlugin {
   /// Human-readable label for the picker.
   final String label;
 
-  /// Builds the [ThemeData] for this look. Called per frame when the
-  /// theme is active, so keep it cheap or memoise inside the builder.
+  /// Builds the [ThemeData] for this look. Called once per theme switch
+  /// (see `_DBScopeAppState` in app.dart for why not more often).
   final ThemeData Function() build;
 
   /// Optional full-app overlay widgets shown in the root `Stack` when

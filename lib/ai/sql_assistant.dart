@@ -13,6 +13,7 @@ import '../catalog/schema_catalog.dart';
 import '../db/executor.dart';
 import '../meta/meta_cache.dart';
 import '../meta/meta_models.dart';
+import '../meta/meta_sources.dart';
 import '../meta/selector.dart';
 import '../util/sql_parse.dart';
 import 'ai_key_resolver.dart';
@@ -92,7 +93,7 @@ class SqlAssistant {
       user: user,
     );
     final cleaned = _extractSql(raw);
-    enforceReadOnly(cleaned);
+    enforceReadOnly(cleaned, dialect: sqlDialectOf(conn));
     return cleaned;
   }
 
@@ -251,12 +252,12 @@ class SqlAssistant {
 
 /// Lexical gate. Public so tests / callers can verify directly. Throws
 /// [AssistantException] when the SQL is not a single read-only statement.
-void enforceReadOnly(String sql) {
-  final stripped = stripCommentsAndLeading(sql);
+void enforceReadOnly(String sql, {required SqlDialect dialect}) {
+  final stripped = stripCommentsAndLeading(sql, dialect: dialect);
   if (stripped.isEmpty) {
     throw const AssistantException('Empty SQL after stripping comments.');
   }
-  if (containsMultipleStatements(stripped)) {
+  if (containsMultipleStatements(stripped, dialect: dialect)) {
     throw const AssistantException(
       'AI returned multiple statements; refusing.',
     );

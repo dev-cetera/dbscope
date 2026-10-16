@@ -18,7 +18,7 @@ import 'serialize.dart';
 
 const double _kDefaultHeaderHeight = 44;
 const double _kGutterWidth = 52;
-const double _kResizeHotZone = 4;
+const double _kResizeHotZone = 6;
 
 /// Drives incremental updates to a [DataGrid] without rebuilding the
 /// entire row set. Owned by the caller and passed to the grid widget.
@@ -185,7 +185,17 @@ class DataGrid<TypeTag> extends StatefulWidget {
 }
 
 class _DataGridState<TypeTag> extends State<DataGrid<TypeTag>> {
+  /// The grid's own row list. Never the caller's: a controller-driven
+  /// caller keeps its buffer in sync by applying the same mutation
+  /// itself and then calling [DataGridController.appendRows] etc., so
+  /// sharing one list would apply every append / trim / delete / insert
+  /// twice. Copying is O(rows) once per [_applyReplaceAll]; the row
+  /// lists themselves stay shared, so [_applyUpdateCell] still writes
+  /// through to the caller's row.
   late GridData<TypeTag> _currentData;
+
+  static GridData<T> _ownCopy<T>(GridData<T> data) =>
+      GridData<T>(columns: data.columns, rows: List.of(data.rows));
   final _model = GridModel();
   final _vScroll = ScrollController();
   final _hScroll = ScrollController();
@@ -224,7 +234,7 @@ class _DataGridState<TypeTag> extends State<DataGrid<TypeTag>> {
   @override
   void initState() {
     super.initState();
-    _currentData = widget.data;
+    _currentData = _ownCopy(widget.data);
     _initModel();
     _model.addListener(_onModelChange);
     _rowHeightListenable.addListener(_onRowHeightChanged);
@@ -335,7 +345,7 @@ class _DataGridState<TypeTag> extends State<DataGrid<TypeTag>> {
   // --- Controller hooks --------------------------------------------------
 
   void _applyReplaceAll(GridData<TypeTag> data) {
-    _currentData = data;
+    _currentData = _ownCopy(data);
     _rowHeightOverrides.clear();
     _initModel();
     if (mounted) setState(() {});
@@ -372,20 +382,20 @@ class _DataGridState<TypeTag> extends State<DataGrid<TypeTag>> {
           .clamp(0.0, scroll.position.maxScrollExtent);
       if (target != previous) scroll.jumpTo(target);
     }
-    _model.setRowCount(_currentData.rows.length);
+    _model.rowsRemoved(0, actual);
   }
 
   void _applyRemoveAt(int index) {
     if (index < 0 || index >= _currentData.rows.length) return;
     _currentData.rows.removeAt(index);
     _shiftOverridesFrom(index, -1);
-    _model.setRowCount(_currentData.rows.length);
+    _model.rowsRemoved(index, 1);
   }
 
   void _applyPrepend(List<Object?> row) {
     _currentData.rows.insert(0, row);
     _shiftOverrides(1);
-    _model.setRowCount(_currentData.rows.length);
+    _model.rowsInserted(0, 1);
   }
 
   /// Shift every override index by [delta]; entries that would fall to

@@ -686,9 +686,9 @@ class SchemaCatalog {
   }
 
   Future<int> exactCount(String schema, String table) async {
-    final qualified =
-        '"${schema.replaceAll('"', '""')}"."${table.replaceAll('"', '""')}"';
-    final result = await conn.execute('SELECT count(*) FROM $qualified');
+    final result = await conn.execute(
+      'SELECT count(*) FROM ${quoteQualified(schema, table)}',
+    );
     return toInt(result.rows.first[0]) ?? 0;
   }
 

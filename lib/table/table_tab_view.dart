@@ -164,6 +164,9 @@ class _TableTabViewState extends State<TableTabView> {
     final token = CancelToken();
     setState(() {
       widget.tab.isLoading = true;
+      // A load-more still in flight from the previous pager bails on
+      // the generation check without clearing its flag.
+      widget.tab.isLoadingMore = false;
       widget.tab.error = null;
       widget.tab.cancelToken = token;
     });
@@ -171,7 +174,7 @@ class _TableTabViewState extends State<TableTabView> {
     // Any prefetch from a prior pager is now stale — drop the reference
     // and let it complete into the void. The new pager replaces _pager
     // below, so the old future's result would be discarded anyway.
-    _nextPagePrefetch = null;
+    _dropPrefetch();
     try {
       final loader = TableLoader(executor, connectionReadOnly: _readOnly());
       final profile = ConnectionRegistry.instance.profileById(
@@ -288,16 +291,36 @@ class _TableTabViewState extends State<TableTabView> {
     final pager = _pager;
     if (pager == null || pager.isDone) return;
     if (_nextPagePrefetch != null) return;
-    final token = widget.tab.cancelToken ?? CancelToken();
+    _nextPagePrefetch = pager.fetchNext(cancelToken: _pageFetchToken());
+  }
+
+  /// Forget an unconsumed prefetch. `ignore()` so a stale one that
+  /// later fails doesn't surface as an unhandled async error.
+  void _dropPrefetch() {
+    _nextPagePrefetch?.ignore();
+    _nextPagePrefetch = null;
+  }
+
+  /// The tab's token for page fetches. A cancelled one is replaced, or
+  /// after a Stop every later page fetch would be cancelled on arrival
+  /// and come back empty.
+  CancelToken _pageFetchToken() {
+    final current = widget.tab.cancelToken;
+    final token = current == null || current.isCancelled
+        ? CancelToken()
+        : current;
     widget.tab.cancelToken = token;
-    _nextPagePrefetch = pager.fetchNext(cancelToken: token);
+    return token;
   }
 
   Future<void> _loadMore() async {
-    if (_pager == null || _pager!.isDone) return;
-    if (widget.tab.isLoadingMore) return;
-    final token = widget.tab.cancelToken ?? CancelToken();
-    widget.tab.cancelToken = token;
+    final pager = _pager;
+    if (pager == null || pager.isDone) return;
+    // Mid-reload, _pager is still the old one; its pages don't belong
+    // to the result set that's about to replace it.
+    if (widget.tab.isLoading || widget.tab.isLoadingMore) return;
+    final generation = _loadGeneration;
+    final token = _pageFetchToken();
     widget.tab.isLoadingMore = true;
     AppState.instance.notifyChange();
     try {
@@ -305,10 +328,12 @@ class _TableTabViewState extends State<TableTabView> {
       // the fetch synchronously. Either way only one fetchNext is in
       // flight on the pager at a time.
       final pendingFuture =
-          _nextPagePrefetch ?? _pager!.fetchNext(cancelToken: token);
+          _nextPagePrefetch ?? pager.fetchNext(cancelToken: token);
       _nextPagePrefetch = null;
       final page = await pendingFuture;
-      if (!mounted) return;
+      // A reload started while this page was in flight; it belongs to
+      // the old pager.
+      if (!mounted || generation != _loadGeneration) return;
       final existing = widget.tab.data;
       if (existing == null) return;
       // Mutate the row buffer in place and notify the grid via the
@@ -330,17 +355,16 @@ class _TableTabViewState extends State<TableTabView> {
       }
 
       setState(() {
-        widget.tab.hasNextPage = !_pager!.isDone;
+        widget.tab.hasNextPage = !pager.isDone;
         widget.tab.isLoadingMore = false;
       });
       // Start fetching the page after the one we just appended so the
       // next scroll-to-bottom is instant.
       _kickPrefetch();
     } catch (_) {
-      if (!mounted) return;
-      // The failed fetch may have been the prefetch we adopted — clear
-      // the slot so the next user attempt issues a fresh request.
-      _nextPagePrefetch = null;
+      if (!mounted || generation != _loadGeneration) return;
+      // The slot was emptied before the await, so the next attempt
+      // issues a fresh request.
       setState(() => widget.tab.isLoadingMore = false);
     }
     AppState.instance.notifyChange();

@@ -17,6 +17,7 @@ import '../schema/schema_tab.dart';
 import 'app_state.dart';
 import 'env_dialog.dart';
 import 'menu_spec.dart';
+import 'shell_listenable.dart';
 import 'theme_registry.dart';
 import 'window_actions.dart';
 
@@ -25,27 +26,58 @@ import 'window_actions.dart';
 // `PlatformMenuBar` or the in-app `_FallbackMenuBar`. There is no
 // duplication between the two paths.
 
-class AppMenuBar extends StatelessWidget {
+class AppMenuBar extends StatefulWidget {
   const AppMenuBar({super.key, required this.child});
   final Widget child;
 
+  @override
+  State<AppMenuBar> createState() => _AppMenuBarState();
+}
+
+class _AppMenuBarState extends State<AppMenuBar> {
   bool get _useNativeMacMenu =>
       !kIsWeb && defaultTargetPlatform == TargetPlatform.macOS;
+
+  /// The shell is a cached route page, so nothing else rebuilds this
+  /// widget. Rebuilding on every notify would re-send the native macOS
+  /// menu over the platform channel on every pointer event of a resize
+  /// drag, so it rebuilds only when what the menus show changes ("Hide /
+  /// Show sidebar", the theme marker, plugin labels). Building the specs
+  /// to compare is cheap; nothing crosses the channel for that.
+  String? _shownSignature;
+
+  void _onShellChange() {
+    final next = _signatureOf(_MenuActions(context).buildMenus());
+    if (next != _shownSignature) setState(() {});
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    shellListenable.addListener(_onShellChange);
+  }
+
+  @override
+  void dispose() {
+    shellListenable.removeListener(_onShellChange);
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
     final menus = _MenuActions(context).buildMenus();
+    _shownSignature = _signatureOf(menus);
     if (_useNativeMacMenu) {
       return PlatformMenuBar(
         menus: [for (final menu in menus) _toPlatformMenu(menu)],
-        child: child,
+        child: widget.child,
       );
     }
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         _FallbackMenuBar(menus: menus),
-        Expanded(child: child),
+        Expanded(child: widget.child),
       ],
     );
   }
@@ -118,13 +150,14 @@ class _MenuActions {
     final regs = MenuContributionRegistry.instance.forMenu(menu);
     return [
       for (final contribution in regs)
-        MenuItemSpec(
-          label: contribution.build(context).label,
-          onSelected: contribution.build(context).onSelected,
-          shortcut: contribution.build(context).shortcut,
-          children: contribution.build(context).children,
-          startsGroup: contribution.startsGroup,
-        ),
+        if (contribution.build(context) case final built)
+          MenuItemSpec(
+            label: built.label,
+            onSelected: built.onSelected,
+            shortcut: built.shortcut,
+            children: built.children,
+            startsGroup: contribution.startsGroup,
+          ),
     ];
   }
 
@@ -291,6 +324,25 @@ class _MenuActions {
 }
 
 // Native macOS renderer.
+
+/// What a set of menus shows: labels, nesting and which items are enabled.
+String _signatureOf(List<MenuSpec> menus) {
+  final out = StringBuffer();
+  void writeItem(MenuItemSpec item) {
+    out
+      ..write(item.label)
+      ..write(item.onSelected == null ? '\u0000-' : '\u0000+');
+    (item.children ?? const <MenuItemSpec>[]).forEach(writeItem);
+    out.write('\u0001');
+  }
+
+  for (final menu in menus) {
+    out.write(menu.label);
+    menu.items.forEach(writeItem);
+    out.write('\u0002');
+  }
+  return out.toString();
+}
 
 PlatformMenu _toPlatformMenu(MenuSpec menu) {
   return PlatformMenu(

@@ -98,13 +98,17 @@ class _CodeEditorSubwindowScreenState extends State<CodeEditorSubwindowScreen> {
   Future<void> _reply({required bool cancelled, String? text}) async {
     if (_replied) return;
     _replied = true;
-    await DesktopMultiWindow.invokeMethod(0, codeEditorCommitMethod, {
-      'requestId': widget.payload.requestId,
-      'text': text,
-      'cancelled': cancelled,
-    });
+    await DesktopMultiWindow.invokeMethod(
+      widget.payload.replyToWindowId,
+      codeEditorCommitMethod,
+      {
+        'requestId': widget.payload.requestId,
+        'text': text,
+        'cancelled': cancelled,
+      },
+    );
     // The window is dedicated to this single editor session — close it
-    // as soon as the host has the result.
+    // as soon as the opener has the result.
     await WindowController.fromWindowId(widget.windowId).close();
   }
 

@@ -9,10 +9,11 @@
 //   y0..yN   one per measure
 // Histograms return the raw values as `x` and bin client-side.
 
+import '../util/sql_parse.dart';
 import '../util/sql_quote.dart';
 import 'meta_models.dart';
 
-enum SqlDialect { postgres, sqlite }
+export '../util/sql_parse.dart' show SqlDialect;
 
 class ChartSqlError implements Exception {
   const ChartSqlError(this.message);

@@ -25,6 +25,9 @@ analyzer:
     # output, is what to fix. Generated files still type-check as imports.
     - "**/*.g.dart"
     - "**/generated_plugin_registrant.dart"
+    - build/**
+    - web/**
+    - macos/**
 
   errors:
     always_declare_return_types: error
@@ -100,7 +103,6 @@ linter:
     # strict-inference demands an explicit `dynamic` where inference fails.
     avoid_annotating_with_dynamic: false
     # Single-method interfaces exist so tests can inject fakes.
-    one_member_abstracts: false
     # Only meaningful for single-entrypoint scripts.
     unreachable_from_main: false
     # The analyzer rejects it alongside omit_obvious_property_types (the user-
@@ -136,7 +138,6 @@ linter:
     avoid_multiple_declarations_per_line: true
     avoid_positional_boolean_parameters: true
     avoid_print: true
-    avoid_private_typedef_functions: true
     avoid_redundant_argument_values: true
     avoid_relative_lib_imports: true
     avoid_renaming_method_parameters: true
@@ -274,7 +275,6 @@ linter:
     type_literal_in_constant_pattern: true
     unawaited_futures: true
     unintended_html_in_doc_comment: true
-    unnecessary_await_in_return: true
     unnecessary_brace_in_string_interps: true
     unnecessary_breaks: true
     unnecessary_const: true
