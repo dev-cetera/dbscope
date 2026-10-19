@@ -137,7 +137,7 @@ Future<void> main(List<String> args) async {
   // persisted session.
   AppState.instance.enableTabPersistence();
   AppState.instance.restorePersistedTabs();
-  // A command-line launch (`backend/scripts/dbscope/connect.sh` in
+  // A command-line launch (`backend/scripts/dbscope/start_dbscope.sh` in
   // compledo) sets DBSCOPE_AUTO_* to say which database to open — that
   // wins over whatever connection was last open in the GUI.
   final cliProfile = autoConnectProfileFromEnv();

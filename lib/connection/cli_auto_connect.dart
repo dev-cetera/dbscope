@@ -9,8 +9,8 @@ import 'profile.dart';
 /// environment variables — the command-line alternative to picking a
 /// connection by hand or importing a `.dbscopeconn` link.
 ///
-/// `backend/scripts/dbscope/connect.sh` (in the compledo repo) sets these
-/// and launches `flutter run -d macos`, so `connect.sh local` / `dev` /
+/// `backend/scripts/dbscope/start_dbscope.sh` (in the compledo repo) sets these
+/// and launches `flutter run -d macos`, so `start_dbscope.sh local` / `dev` /
 /// `prod` opens dbscope already pointed at the right database. A plain
 /// desktop launch (double-clicking the app, or `flutter run` with no env)
 /// sets none of these, so [autoConnectProfileFromEnv] returns null and
@@ -29,7 +29,7 @@ import 'profile.dart';
 /// `DBSCOPE_AUTO_ASSIGN_IP` (default `true`) tune the proxy.
 ///
 /// The returned profile has a **stable id** derived from the connection's
-/// own identity (host/port/database/username), so re-running `connect.sh`
+/// own identity (host/port/database/username), so re-running `start_dbscope.sh`
 /// updates the same saved profile instead of piling up a fresh one in the
 /// picker every launch.
 ConnectionProfile? autoConnectProfileFromEnv() {
