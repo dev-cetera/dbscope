@@ -161,8 +161,7 @@ class NavigatorTab extends TabModel {
     final last = steps.last;
     if (last is RowDetailStep) {
       final primaryKey = [
-        for (var i = 0; i < last.pkColumns.length; i++)
-          '${last.pkColumns[i]}=${last.pkValues[i]}',
+        for (var i = 0; i < last.pkColumns.length; i++) '${last.pkColumns[i]}=${last.pkValues[i]}',
       ].join(', ');
       return '${last.table}{$primaryKey}';
     }

@@ -11,8 +11,7 @@ Widget bevelBox({
   EdgeInsetsGeometry padding = EdgeInsets.zero,
 }) {
   final outerTopLeft = sunken ? palette.border : palette.bevelHighlight;
-  final outerBottomRight =
-      sunken ? palette.bevelHighlight : palette.borderStrong;
+  final outerBottomRight = sunken ? palette.bevelHighlight : palette.borderStrong;
   final innerTopLeft = sunken ? palette.borderStrong : palette.surfaceRaised;
   final innerBottomRight = sunken ? palette.surfaceRaised : palette.border;
 

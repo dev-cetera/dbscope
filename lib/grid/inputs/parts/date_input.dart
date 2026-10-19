@@ -129,9 +129,7 @@ class _DateInputState extends State<_DateInput> {
       },
       onChanged: widget.onChanged,
       suffix: MouseRegion(
-        cursor: widget.enabled
-            ? SystemMouseCursors.click
-            : SystemMouseCursors.basic,
+        cursor: widget.enabled ? SystemMouseCursors.click : SystemMouseCursors.basic,
         child: GestureDetector(
           onTap: _pick,
           child: const Padding(

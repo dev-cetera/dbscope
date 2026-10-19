@@ -147,8 +147,7 @@ class MetaTableNames {
     MetadataSettings settings,
   ) {
     final sqlite = isSqliteExecutor(executor);
-    String name(String logicalName) =>
-        physical(logicalName, settings, sqlite: sqlite);
+    String name(String logicalName) => physical(logicalName, settings, sqlite: sqlite);
     if (sqlite) {
       return MetaTableNames(
         meta: quoteIdent(name(metadata)),
@@ -198,9 +197,7 @@ class MetaTableNames {
     String logicalName,
     MetadataSettings settings, {
     required bool sqlite,
-  }) => sqlite
-      ? '${settings.sqlitePrefix}$logicalName'
-      : '$postgresTablePrefix$logicalName';
+  }) => sqlite ? '${settings.sqlitePrefix}$logicalName' : '$postgresTablePrefix$logicalName';
 
   /// Is [schema].[table] exactly one of dbscope's own four tables? Exact
   /// names only: a prefix or schema match would also hide user tables that
@@ -333,8 +330,7 @@ class DbTableSource {
     // Physical name → logical name.
     final byPhysical = {
       for (final logicalName in MetaTableNames.logical)
-        MetaTableNames.physical(logicalName, settings, sqlite: sqlite):
-            logicalName,
+        MetaTableNames.physical(logicalName, settings, sqlite: sqlite): logicalName,
     };
     if (sqlite) {
       final result = await executor.execute(
@@ -345,9 +341,7 @@ class DbTableSource {
       return {for (final row in result.rows) ?byPhysical[row[0]! as String]};
     }
     // The names are our own constants, so listing them inline is safe.
-    final inList = byPhysical.keys
-        .map((physicalName) => "'$physicalName'")
-        .join(', ');
+    final inList = byPhysical.keys.map((physicalName) => "'$physicalName'").join(', ');
     final result = await executor.execute(
       '''
  SELECT c.relname

@@ -75,8 +75,7 @@ class PropertyInspector extends StatelessWidget {
   final String? selectedInboundConstraintKey;
 
   final Future<void> Function(EditPolicy policy, Object? newRaw) onSave;
-  final void Function(String fromColumn, Object? value, List<ForeignKey> group)?
-  onFollowOutbound;
+  final void Function(String fromColumn, Object? value, List<ForeignKey> group)? onFollowOutbound;
   final void Function(List<ForeignKey> group)? onOpenInbound;
 
   EditPolicy _policyFor(ColumnInfo column) {
@@ -108,17 +107,11 @@ class PropertyInspector extends StatelessWidget {
     final inboundByColumn = <String, List<ForeignKey>>{};
     for (final foreignKey in foreignKeys) {
       if (foreignKey.fromSchema == schema && foreignKey.fromTable == table) {
-        outboundByConstraint
-            .putIfAbsent(foreignKey.constraintKey, () => [])
-            .add(foreignKey);
+        outboundByConstraint.putIfAbsent(foreignKey.constraintKey, () => []).add(foreignKey);
       }
       if (foreignKey.toSchema == schema && foreignKey.toTable == table) {
-        inboundByConstraint
-            .putIfAbsent(foreignKey.constraintKey, () => [])
-            .add(foreignKey);
-        inboundByColumn
-            .putIfAbsent(foreignKey.toColumn, () => [])
-            .add(foreignKey);
+        inboundByConstraint.putIfAbsent(foreignKey.constraintKey, () => []).add(foreignKey);
+        inboundByColumn.putIfAbsent(foreignKey.toColumn, () => []).add(foreignKey);
       }
     }
     final outboundByColumn = <String, ForeignKey>{};
@@ -135,8 +128,7 @@ class PropertyInspector extends StatelessWidget {
         onOpenInbound?.call([foreignKey]);
       } else {
         if (onFollowOutbound != null) {
-          final group =
-              outboundGroupByColumn[foreignKey.fromColumn] ?? [foreignKey];
+          final group = outboundGroupByColumn[foreignKey.fromColumn] ?? [foreignKey];
           onFollowOutbound!(
             foreignKey.fromColumn,
             row[foreignKey.fromColumn],
@@ -158,9 +150,7 @@ class PropertyInspector extends StatelessWidget {
               outboundFk: outboundByColumn[column.name],
               inboundRefs: inboundByColumn[column.name] ?? const [],
               isFollowed: selectedFollowedColumn == column.name,
-              onFollowLink: onFollowOutbound == null && onOpenInbound == null
-                  ? null
-                  : onLink,
+              onFollowLink: onFollowOutbound == null && onOpenInbound == null ? null : onLink,
               onSave: onSave,
               schema: schema,
               table: table,
@@ -221,8 +211,7 @@ class PropertyFieldRow extends StatefulWidget {
   final ForeignKey? outboundFk;
   final List<ForeignKey> inboundRefs;
   final bool isFollowed;
-  final void Function(ForeignKey foreignKey, {required bool incoming})?
-  onFollowLink;
+  final void Function(ForeignKey foreignKey, {required bool incoming})? onFollowLink;
   final Future<void> Function(EditPolicy, Object?) onSave;
 
   /// Table identification — passed to the AI Info path so it can scope
@@ -308,8 +297,7 @@ class _PropertyFieldRowState extends State<PropertyFieldRow> {
   Future<void> _commit() async {
     setState(() => _editing = false);
     var out = _pending;
-    if ((widget.policy.type == PgType.json ||
-            widget.policy.type == PgType.jsonb) &&
+    if ((widget.policy.type == PgType.json || widget.policy.type == PgType.jsonb) &&
         out is String) {
       out = compactJson(out);
     }
@@ -356,8 +344,7 @@ class _PropertyFieldRowState extends State<PropertyFieldRow> {
               Expanded(
                 child: GestureDetector(
                   behavior: HitTestBehavior.opaque,
-                  onSecondaryTapDown: (details) =>
-                      _showContextMenu(details.globalPosition),
+                  onSecondaryTapDown: (details) => _showContextMenu(details.globalPosition),
                   child: DescriptionTooltip(
                     markdown: _description(),
                     child: Text(
@@ -455,9 +442,7 @@ class _PropertyFieldRowState extends State<PropertyFieldRow> {
     final table = widget.table;
     final snapshot = _snapshot;
     if (schema == null || table == null || snapshot == null) return '';
-    return snapshot.index
-        .describeColumn(schema, table, widget.column.name)
-        .toMarkdown();
+    return snapshot.index.describeColumn(schema, table, widget.column.name).toMarkdown();
   }
 
   DisplaySpec? _displaySpec() {
@@ -486,12 +471,9 @@ class _PropertyFieldRowState extends State<PropertyFieldRow> {
         GestureDetector(
           behavior: HitTestBehavior.opaque,
           onDoubleTap: canEdit ? _startEdit : null,
-          onSecondaryTapDown: (details) =>
-              _showContextMenu(details.globalPosition),
+          onSecondaryTapDown: (details) => _showContextMenu(details.globalPosition),
           child: MouseRegion(
-            cursor: canEdit
-                ? SystemMouseCursors.text
-                : SystemMouseCursors.basic,
+            cursor: canEdit ? SystemMouseCursors.text : SystemMouseCursors.basic,
             child: Padding(
               padding: const EdgeInsets.symmetric(vertical: 2.0),
               child: display,
@@ -530,9 +512,7 @@ class _PropertyFieldRowState extends State<PropertyFieldRow> {
       items: [
         AppMenuEntry(
           value: 'aiInfo',
-          label: aiAllowed
-              ? 'AI Info'
-              : 'AI Info — your role cannot use AI here',
+          label: aiAllowed ? 'AI Info' : 'AI Info — your role cannot use AI here',
           icon: Icons.auto_awesome,
           enabled: aiAllowed,
         ),
@@ -559,8 +539,7 @@ class _PropertyFieldRowState extends State<PropertyFieldRow> {
       table,
       widget.column.name,
     );
-    final withhold =
-        widget.value is MaskedValue || (sensitive?.excludeFromAi ?? false);
+    final withhold = widget.value is MaskedValue || (sensitive?.excludeFromAi ?? false);
     await _aiInfo.request(
       connectionId: connId,
       schema: schema,

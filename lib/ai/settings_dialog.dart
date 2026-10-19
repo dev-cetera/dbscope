@@ -97,8 +97,7 @@ class _AiSettingsDialogState extends State<AiSettingsDialog> {
       setState(() {
         _availableModels[provider.id] = models;
         if (models.isEmpty) {
-          _providerError[provider.id] =
-              'API key was rejected or no compatible models.';
+          _providerError[provider.id] = 'API key was rejected or no compatible models.';
         } else if (_activeProviderId == provider.id && _activeModel == null) {
           // Sensible default the first time the user verifies this
           // provider: take the first returned model. The user can
@@ -158,8 +157,7 @@ class _AiSettingsDialogState extends State<AiSettingsDialog> {
                   mainAxisSize: MainAxisSize.min,
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    for (final provider in providers)
-                      _providerSection(provider),
+                    for (final provider in providers) _providerSection(provider),
                     const Divider(height: 24.0),
                     const Text(
                       'Active',
@@ -198,11 +196,8 @@ class _AiSettingsDialogState extends State<AiSettingsDialog> {
                             _keyControllers[providerId]?.text ?? '',
                           );
                           final alreadyFetched =
-                              (_availableModels[providerId] ?? const [])
-                                  .isNotEmpty;
-                          if (provider != null &&
-                              key.isNotEmpty &&
-                              !alreadyFetched) {
+                              (_availableModels[providerId] ?? const []).isNotEmpty;
+                          if (provider != null && key.isNotEmpty && !alreadyFetched) {
                             unawaited(_verify(provider));
                           }
                         }
@@ -211,9 +206,7 @@ class _AiSettingsDialogState extends State<AiSettingsDialog> {
                     const SizedBox(height: 8.0),
                     Builder(
                       builder: (_) {
-                        final fetched =
-                            _availableModels[_activeProviderId] ??
-                            const <String>[];
+                        final fetched = _availableModels[_activeProviderId] ?? const <String>[];
                         // If the user saved a model previously but hasn't
                         // clicked Verify this session, the fetched list is
                         // empty — surface the saved model as a single
@@ -251,8 +244,7 @@ class _AiSettingsDialogState extends State<AiSettingsDialog> {
                     SwitchListTile(
                       contentPadding: EdgeInsets.zero,
                       value: _allowSampleRows,
-                      onChanged: (allow) =>
-                          setState(() => _allowSampleRows = allow),
+                      onChanged: (allow) => setState(() => _allowSampleRows = allow),
                       title: const Text('Send sample rows for inference'),
                       subtitle: const Text(
                         'Needed for AI regex column-guess. Sends a few '
@@ -338,9 +330,7 @@ class _ProviderSectionState extends State<_ProviderSection> {
     final envVarName = widget.keyController.text.trim().isEmpty
         ? AiKeyResolver.envVarNameFor(provider.id)
         : null;
-    final envKey = envVarName == null
-        ? null
-        : AiKeyResolver.fromEnv(provider.id);
+    final envKey = envVarName == null ? null : AiKeyResolver.fromEnv(provider.id);
     return Padding(
       padding: const EdgeInsets.only(bottom: 12.0),
       child: Column(

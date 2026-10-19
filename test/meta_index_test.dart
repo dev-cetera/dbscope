@@ -166,9 +166,7 @@ meta:
     final index = MetaIndex.build(mergeMetaSources([file]));
     expect(index.queries.map((query) => query.id), ['q1']);
     expect(
-      index
-          .actionsForTable(ActionScope.row, 'public', 'users')
-          .map((action) => action.id),
+      index.actionsForTable(ActionScope.row, 'public', 'users').map((action) => action.id),
       ['a1'],
     );
     expect(
@@ -178,10 +176,7 @@ meta:
       ],
     );
     expect(
-      index
-          .linksForColumn('public', 'assets', 'entity_id')
-          .single
-          .polymorphicTable,
+      index.linksForColumn('public', 'assets', 'entity_id').single.polymorphicTable,
       TableNameTransform.lower,
     );
     expect(index.checks.single.label, 'Orphans');

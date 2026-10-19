@@ -82,9 +82,7 @@ Future<String?> openCodeEditor(
   // for now — the rest is plain text + validator. We don't ship the
   // validator function over the channel because it's a closure; the
   // subwindow re-derives it from `language` / `formatJson`.
-  final isJson =
-      formatter != null && language == 'json' ||
-      validator != null && language == 'json';
+  final isJson = formatter != null && language == 'json' || validator != null && language == 'json';
 
   final payload = CodeEditorLaunchPayload(
     requestId: requestId,

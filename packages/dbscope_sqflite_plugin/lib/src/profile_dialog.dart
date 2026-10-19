@@ -151,8 +151,7 @@ class _DeviceSqliteDialogState extends State<_DeviceSqliteDialog> {
       setState(() {
         _dbs = dbs;
         _dbsLoading = false;
-        if (_dbPath != null &&
-            dbs.any((dbFile) => dbFile.relativePath == _dbPath)) {
+        if (_dbPath != null && dbs.any((dbFile) => dbFile.relativePath == _dbPath)) {
           // Keep selection.
         } else {
           _dbPath = dbs.isNotEmpty ? dbs.first.relativePath : null;
@@ -179,10 +178,7 @@ class _DeviceSqliteDialogState extends State<_DeviceSqliteDialog> {
   }
 
   bool get _canSubmit =>
-      _name.text.trim().isNotEmpty &&
-      _device != null &&
-      _appId != null &&
-      _dbPath != null;
+      _name.text.trim().isNotEmpty && _device != null && _appId != null && _dbPath != null;
 
   void _submit() {
     if (!_canSubmit) return;
@@ -267,8 +263,7 @@ class _DeviceSqliteDialogState extends State<_DeviceSqliteDialog> {
       decoration: BoxDecoration(
         color: theme.colorScheme.errorContainer.withValues(alpha: 0.5),
         borderRadius: BorderRadius.circular(4.0),
-        border:
-            Border.all(color: theme.colorScheme.error.withValues(alpha: 0.4)),
+        border: Border.all(color: theme.colorScheme.error.withValues(alpha: 0.4)),
       ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -372,9 +367,7 @@ class _DeviceSqliteDialogState extends State<_DeviceSqliteDialog> {
                 DropdownMenuItem(
                   value: app.id,
                   child: Text(
-                    app.displayName == null
-                        ? app.id
-                        : '${app.displayName} (${app.id})',
+                    app.displayName == null ? app.id : '${app.displayName} (${app.id})',
                     overflow: TextOverflow.ellipsis,
                   ),
                 ),
@@ -403,8 +396,7 @@ class _DeviceSqliteDialogState extends State<_DeviceSqliteDialog> {
                   child: CircularProgressIndicator(strokeWidth: 2.0),
                 )
               : const Icon(Icons.refresh),
-          onPressed:
-              (_appsLoading || disabled) ? null : () => _loadApps(_device!),
+          onPressed: (_appsLoading || disabled) ? null : () => _loadApps(_device!),
         ),
       ],
     );
@@ -417,9 +409,7 @@ class _DeviceSqliteDialogState extends State<_DeviceSqliteDialog> {
       children: [
         Expanded(
           child: DropdownButtonFormField<String>(
-            initialValue: _dbs.any((dbFile) => dbFile.relativePath == _dbPath)
-                ? _dbPath
-                : null,
+            initialValue: _dbs.any((dbFile) => dbFile.relativePath == _dbPath) ? _dbPath : null,
             isExpanded: true,
             decoration: InputDecoration(
               labelText: 'Database file',
@@ -448,9 +438,7 @@ class _DeviceSqliteDialogState extends State<_DeviceSqliteDialog> {
                 ? null
                 : (selected) => setState(() {
                       _dbPath = selected;
-                      if (selected != null &&
-                          _name.text.trim().isEmpty &&
-                          _appId != null) {
+                      if (selected != null && _name.text.trim().isEmpty && _appId != null) {
                         _name.text = _suggestName(_appId!, selected);
                       }
                     }),
@@ -466,9 +454,7 @@ class _DeviceSqliteDialogState extends State<_DeviceSqliteDialog> {
                   child: CircularProgressIndicator(strokeWidth: 2.0),
                 )
               : const Icon(Icons.refresh),
-          onPressed: (_dbsLoading || disabled)
-              ? null
-              : () => _loadDbs(_device!, _appId!),
+          onPressed: (_dbsLoading || disabled) ? null : () => _loadDbs(_device!, _appId!),
         ),
       ],
     );

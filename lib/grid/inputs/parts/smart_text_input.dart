@@ -93,8 +93,7 @@ class _SmartTextInputState extends State<_SmartTextInput> {
               current: _override,
               detected: _detect(widget.value ?? ''),
               labelFor: _labelFor,
-              onSelected: (selectedKind) =>
-                  setState(() => _override = selectedKind),
+              onSelected: (selectedKind) => setState(() => _override = selectedKind),
             )
           : null,
       onChanged: widget.onChanged,

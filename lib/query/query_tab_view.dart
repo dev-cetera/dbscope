@@ -47,9 +47,7 @@ class _QueryTabViewState extends State<QueryTabView> {
     _promptController = TextEditingController(text: widget.tab.prompt);
     DbmlCache.instance.addListener(_onCacheChanged);
     unawaited(_loadHistoryAndSaved());
-    if (widget.tab.autoRun &&
-        widget.tab.data == null &&
-        !widget.tab.isLoading) {
+    if (widget.tab.autoRun && widget.tab.data == null && !widget.tab.isLoading) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (!mounted) return;
         widget.tab.autoRun = false;
@@ -83,8 +81,7 @@ class _QueryTabViewState extends State<QueryTabView> {
     });
   }
 
-  DbExecutor? _executor() =>
-      ConnectionRegistry.instance.connectionFor(widget.tab.connectionId);
+  DbExecutor? _executor() => ConnectionRegistry.instance.connectionFor(widget.tab.connectionId);
 
   /// [aiGenerated]: the SQL came from the assistant and runs without the
   /// user reading it first, so it runs through `executeReadOnly`: a
@@ -248,8 +245,7 @@ class _QueryTabViewState extends State<QueryTabView> {
   }
 
   Future<void> _deleteSaved(SavedQuery query) async {
-    final list = List<SavedQuery>.from(_saved)
-      ..removeWhere((saved) => saved.id == query.id);
+    final list = List<SavedQuery>.from(_saved)..removeWhere((saved) => saved.id == query.id);
     await HistoryStore.instance.saveSaved(widget.tab.connectionId, list);
     setState(() => _saved = list);
   }
@@ -257,9 +253,7 @@ class _QueryTabViewState extends State<QueryTabView> {
   Future<void> _export(_ExportFormat format) async {
     final executor = _executor();
     if (executor != null &&
-        !MetadataCache.instance
-            .policyForExecutor(executor)
-            .can(Capability.export)) {
+        !MetadataCache.instance.policyForExecutor(executor).can(Capability.export)) {
       showToast(context, 'Your role on this connection cannot export.');
       return;
     }
@@ -310,9 +304,7 @@ class _QueryTabViewState extends State<QueryTabView> {
           padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 4.0),
           titleIcon: Icons.code,
           title: 'Query',
-          subtitle: tab.focusTable != null
-              ? 'Focus: ${tab.focusSchema}.${tab.focusTable}'
-              : null,
+          subtitle: tab.focusTable != null ? 'Focus: ${tab.focusSchema}.${tab.focusTable}' : null,
           trailing: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
@@ -332,9 +324,7 @@ class _QueryTabViewState extends State<QueryTabView> {
               IconButton(
                 tooltip: 'Download .sql',
                 icon: const Icon(Icons.file_download_outlined, size: 18.0),
-                onPressed: tab.sql.trim().isEmpty
-                    ? null
-                    : () => _export(_ExportFormat.sql),
+                onPressed: tab.sql.trim().isEmpty ? null : () => _export(_ExportFormat.sql),
               ),
               if (hasResultData) ...[
                 TextButton.icon(
@@ -690,9 +680,7 @@ class _HistoryRailState extends State<_HistoryRail> {
               .toList();
     final history = filter.isEmpty
         ? widget.history
-        : widget.history
-              .where((e) => e.sql.toLowerCase().contains(filter))
-              .toList();
+        : widget.history.where((e) => e.sql.toLowerCase().contains(filter)).toList();
     return ColoredBox(
       color: palette.surface,
       child: Column(

@@ -52,8 +52,7 @@ class _SqlEditorState extends State<SqlEditor> {
   @override
   void didUpdateWidget(covariant SqlEditor oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (oldWidget.initialText != widget.initialText &&
-        widget.initialText != _controller.text) {
+    if (oldWidget.initialText != widget.initialText && widget.initialText != _controller.text) {
       _controller.text = widget.initialText;
     }
   }

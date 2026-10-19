@@ -38,8 +38,7 @@ class _RowDetailColumnState extends State<RowDetailColumn> {
     }
   }
 
-  DbExecutor? _executor() =>
-      ConnectionRegistry.instance.connectionFor(widget.tab.connectionId);
+  DbExecutor? _executor() => ConnectionRegistry.instance.connectionFor(widget.tab.connectionId);
 
   Future<void> _load() async {
     final step = widget.step;
@@ -82,9 +81,7 @@ class _RowDetailColumnState extends State<RowDetailColumn> {
       step.editPolicies = policies;
       step.row = row;
       step.isLoading = false;
-      step.error = row == null
-          ? 'Row not found (it may have been deleted).'
-          : null;
+      step.error = row == null ? 'Row not found (it may have been deleted).' : null;
       AppState.instance.notifyChange();
     } catch (e) {
       if (!mounted) return;
@@ -209,9 +206,7 @@ class _RowDetailColumnState extends State<RowDetailColumn> {
       AppState.instance.notifyChange();
       return;
     }
-    final toPrimaryKeyColumns = group
-        .map((foreignKey) => foreignKey.toColumn)
-        .toList();
+    final toPrimaryKeyColumns = group.map((foreignKey) => foreignKey.toColumn).toList();
     final pkValues = <Object?>[];
     for (final foreignKey in group) {
       pkValues.add(widget.step.row?[foreignKey.fromColumn]);
@@ -315,8 +310,7 @@ class _RowDetailColumnState extends State<RowDetailColumn> {
               selectedFollowedColumn: widget.tab.selectedFollowedColumnAt(
                 widget.index,
               ),
-              selectedInboundConstraintKey: widget.tab
-                  .selectedInboundConstraintAt(widget.index),
+              selectedInboundConstraintKey: widget.tab.selectedInboundConstraintAt(widget.index),
               onSave: _saveCell,
               onFollowOutbound: _followOutbound,
               onOpenInbound: _openInbound,

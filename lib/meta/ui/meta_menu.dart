@@ -68,8 +68,7 @@ class MetaClickContext {
       row: row,
       primaryKey: {
         for (final primaryKeyColumn in pkColumns)
-          if (row.containsKey(primaryKeyColumn))
-            primaryKeyColumn: row[primaryKeyColumn],
+          if (row.containsKey(primaryKeyColumn)) primaryKeyColumn: row[primaryKeyColumn],
       },
       cell: cell,
       selection: selection,
@@ -212,9 +211,7 @@ MetaMenuItem actionMenuItem(
   MetaClickContext click,
 ) {
   final reason = actionUnavailableReason(action, click);
-  final label = action.group == null
-      ? action.label
-      : '${action.group} ▸ ${action.label}';
+  final label = action.group == null ? action.label : '${action.group} ▸ ${action.label}';
   return MetaMenuItem(
     label: action.run == ActionRun.exec ? '$label…' : label,
     icon: _iconFor(action.run),
@@ -237,16 +234,13 @@ String? actionUnavailableReason(ActionSpec action, MetaClickContext click) {
   final snapshot = MetadataCache.instance.snapshotFor(click.connectionId);
   if (snapshot == null) return 'Metadata is still loading.';
   final policy = snapshot.policy;
-  if (action.roles.isNotEmpty &&
-      policy.active &&
-      !action.roles.any(policy.roleIds.contains)) {
+  if (action.roles.isNotEmpty && policy.active && !action.roles.any(policy.roleIds.contains)) {
     return 'Only for roles: ${action.roles.join(', ')}.';
   }
   final target = action.target;
   AccessLevel targetLevel;
   final exactTable =
-      target.exactTable ??
-      (click.isTable ? (schema: click.schema!, table: click.table!) : null);
+      target.exactTable ?? (click.isTable ? (schema: click.schema!, table: click.table!) : null);
   if (click.queryId != null && target.exactQueryId != null) {
     targetLevel = policy.forQuery(click.queryId!).level;
   } else if (exactTable != null) {
@@ -267,9 +261,7 @@ String? actionUnavailableReason(ActionSpec action, MetaClickContext click) {
     final executor = ConnectionRegistry.instance.connectionFor(
       click.connectionId,
     );
-    if (action.expectRows != null &&
-        executor != null &&
-        !executor.capabilities.transactions) {
+    if (action.expectRows != null && executor != null && !executor.capabilities.transactions) {
       return 'This backend has no transactions, so expectRows cannot be '
           'checked.';
     }
@@ -323,17 +315,12 @@ List<MetaMenuItem> _linkItems(BuildContext context, MetaClickContext click) {
     final target = resolveLinkTarget(link, click);
     if (target == null) continue;
     final level = snapshot.policy.forTable(target.schema, target.table).level;
-    final value = link.jsonPath == null
-        ? cell
-        : _jsonPathValue(cell, link.jsonPath!);
+    final value = link.jsonPath == null ? cell : _jsonPathValue(cell, link.jsonPath!);
     out.add(
       MetaMenuItem(
         label: 'Open ${target.table} row',
         icon: Icons.link,
-        enabled:
-            value != null &&
-            value is! MaskedValue &&
-            level.atLeast(AccessLevel.masked),
+        enabled: value != null && value is! MaskedValue && level.atLeast(AccessLevel.masked),
         disabledReason: level == AccessLevel.none
             ? '${target.table} is not available to you.'
             : 'No value to follow.',
@@ -444,8 +431,10 @@ Future<void> _openRow(
 
 /// Convert to the inspector/sidebar's AppMenuEntry list, plus a handler
 /// map keyed by the entry value.
-({List<AppMenuEntry<String>> entries, Map<String, VoidCallback> handlers})
-toAppMenu(List<MetaMenuItem> items, {String prefix = 'meta:'}) {
+({List<AppMenuEntry<String>> entries, Map<String, VoidCallback> handlers}) toAppMenu(
+  List<MetaMenuItem> items, {
+  String prefix = 'meta:',
+}) {
   final entries = <AppMenuEntry<String>>[];
   final handlers = <String, VoidCallback>{};
   for (var i = 0; i < items.length; i++) {

@@ -111,9 +111,7 @@ class Server {
         out(
           Envelope.err(
             env.id,
-            e is RpcError
-                ? e
-                : RpcError('handler_error', e.toString(), data: st.toString()),
+            e is RpcError ? e : RpcError('handler_error', e.toString(), data: st.toString()),
           ),
         );
         _subs.remove(env.id);

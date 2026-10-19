@@ -27,10 +27,7 @@ class Footer extends StatelessWidget {
 
     var left = '—';
     if (tab != null) {
-      final summary = TabKindRegistry.instance
-          .lookupForTab(tab)
-          ?.footerSummary
-          ?.call(tab);
+      final summary = TabKindRegistry.instance.lookupForTab(tab)?.footerSummary?.call(tab);
       if (summary != null) left = summary;
     }
 

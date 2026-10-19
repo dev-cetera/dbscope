@@ -33,8 +33,7 @@ class AppBevel extends StatelessWidget {
     }
     return flatBox(
       palette: palette,
-      background:
-          color ?? (raised ? palette.surfaceRaised : palette.surfaceRecessed),
+      background: color ?? (raised ? palette.surfaceRaised : palette.surfaceRecessed),
       padding: padding,
       child: child,
     );

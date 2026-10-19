@@ -87,8 +87,7 @@ class ConnectionService {
     return _openWithPlugin(profile);
   }
 
-  bool isOpen(String profileId) =>
-      _entries[profileId]?.executor?.isOpen ?? false;
+  bool isOpen(String profileId) => _entries[profileId]?.executor?.isOpen ?? false;
   bool isReadOnly(String profileId) => _entries[profileId]?.readOnly ?? false;
 
   Future<void> _open(String profileId) async {
@@ -159,9 +158,7 @@ class ConnectionService {
     }
     entry.readOnly = ro;
     final executor = entry.executor;
-    if (executor != null &&
-        executor.isOpen &&
-        executor.capabilities.sessionReadOnly) {
+    if (executor != null && executor.isOpen && executor.capabilities.sessionReadOnly) {
       await executor.setReadOnly(readOnly: ro);
     }
   }

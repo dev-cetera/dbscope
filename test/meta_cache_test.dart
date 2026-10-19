@@ -15,9 +15,7 @@ void main() {
   test('load completes and stores a ready snapshot', () async {
     final executor = FakeDbExecutor();
     final profile = ConnectionProfile(id: 'cache-test', name: 'cache test');
-    await MetadataCache.instance
-        .load(profile, executor)
-        .timeout(const Duration(seconds: 5));
+    await MetadataCache.instance.load(profile, executor).timeout(const Duration(seconds: 5));
     final snapshot = MetadataCache.instance.snapshotFor('cache-test')!;
     expect(snapshot.status, MetaLoadStatus.ready);
     expect(snapshot.tablesOutcome, MetaTablesOutcome.absent);
@@ -36,8 +34,6 @@ void main() {
       MetadataCache.instance.load(profile, executor),
     ]).timeout(const Duration(seconds: 5));
     // A second load after completion starts fresh (not stuck in-flight).
-    await MetadataCache.instance
-        .load(profile, executor)
-        .timeout(const Duration(seconds: 5));
+    await MetadataCache.instance.load(profile, executor).timeout(const Duration(seconds: 5));
   });
 }

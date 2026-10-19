@@ -25,12 +25,8 @@ class _JobTabViewState extends State<JobTabView> {
     super.initState();
     final client = BackendScope.of(context);
     final bus = BusClient(client);
-    _progressSub = bus
-        .subscribe('job.progress:${widget.tab.jobId}')
-        .listen(_onProgress);
-    _finishedSub = bus
-        .subscribe('job.finished:${widget.tab.jobId}')
-        .listen(_onFinished);
+    _progressSub = bus.subscribe('job.progress:${widget.tab.jobId}').listen(_onProgress);
+    _finishedSub = bus.subscribe('job.finished:${widget.tab.jobId}').listen(_onFinished);
   }
 
   @override

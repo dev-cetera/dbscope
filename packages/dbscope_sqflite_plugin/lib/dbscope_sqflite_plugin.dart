@@ -17,5 +17,4 @@
 // `lib/main.dart`
 // 4. delete any saved profiles of this kind from the connection picker.
 
-export 'src/plugin.dart'
-    show SqfliteRemoteKindPlugin, SqfliteRemotePlugin, kSqfliteRemoteKind;
+export 'src/plugin.dart' show SqfliteRemoteKindPlugin, SqfliteRemotePlugin, kSqfliteRemoteKind;

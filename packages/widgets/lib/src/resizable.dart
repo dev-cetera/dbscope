@@ -42,10 +42,7 @@ class _ResizableState extends State<Resizable> {
         behavior: HitTestBehavior.translucent,
         onHorizontalDragStart: (_) => _dragWidth = widget.width,
         onHorizontalDragUpdate: (details) {
-          final delta =
-              widget.side == ResizeSide.right
-                  ? details.delta.dx
-                  : -details.delta.dx;
+          final delta = widget.side == ResizeSide.right ? details.delta.dx : -details.delta.dx;
           final next = ((_dragWidth ?? widget.width) + delta).clamp(
             widget.minWidth,
             widget.maxWidth,

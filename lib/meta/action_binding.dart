@@ -336,9 +336,7 @@ String _scan(
       }
     }
     // @name[:type] — like the driver, regardless of what precedes the @.
-    if (codeUnit == 0x40 &&
-        i + 1 < length &&
-        _isIdentStart(sql.codeUnitAt(i + 1))) {
+    if (codeUnit == 0x40 && i + 1 < length && _isIdentStart(sql.codeUnitAt(i + 1))) {
       var j = i + 1;
       while (j < length && _isIdentChar(sql.codeUnitAt(j))) {
         j++;

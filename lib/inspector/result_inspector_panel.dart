@@ -40,8 +40,7 @@ class ResultInspectorPanel extends StatelessWidget {
   final List<ForeignKey> foreignKeys;
   final String? connectionId;
   final Future<void> Function(EditPolicy, Object?)? onSave;
-  final void Function(ForeignKey foreignKey, {required bool incoming})?
-  onFollowLink;
+  final void Function(ForeignKey foreignKey, {required bool incoming})? onFollowLink;
 
   static Future<void> _noopSave(EditPolicy _, Object? _) async {}
 
@@ -80,8 +79,7 @@ class ResultInspectorPanel extends StatelessWidget {
     Map<String, Object?>? row;
     if (hasRow) {
       row = {
-        for (var i = 0; i < data.columns.length; i++)
-          data.columns[i].name: data.rows[rowIndex][i],
+        for (var i = 0; i < data.columns.length; i++) data.columns[i].name: data.rows[rowIndex][i],
       };
     }
 
@@ -112,8 +110,7 @@ class ResultInspectorPanel extends StatelessWidget {
                 connectionId: connectionId,
                 onSave: onSave ?? _noopSave,
                 onFollowOutbound: onFollowLink != null
-                    ? (column, value, group) =>
-                          onFollowLink!(group.first, incoming: false)
+                    ? (column, value, group) => onFollowLink!(group.first, incoming: false)
                     : null,
                 onOpenInbound: onFollowLink != null
                     ? (group) => onFollowLink!(group.first, incoming: true)

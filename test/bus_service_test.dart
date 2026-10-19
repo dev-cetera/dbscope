@@ -21,10 +21,7 @@ Future<List<Object?>> _collectFromSubscribe(
   await Future<void>.delayed(Duration.zero);
   act();
   await Future<void>.delayed(Duration.zero);
-  return replies
-      .where((e) => e.kind == EnvelopeKind.evt)
-      .map((e) => e.result)
-      .toList();
+  return replies.where((e) => e.kind == EnvelopeKind.evt).map((e) => e.result).toList();
 }
 
 void main() {
@@ -75,9 +72,7 @@ void main() {
       );
 
       expect(events, hasLength(2));
-      final topics = events
-          .map((e) => (e! as Map<String, Object?>)['topic'])
-          .toList();
+      final topics = events.map((e) => (e! as Map<String, Object?>)['topic']).toList();
       expect(topics, ['job.created', 'job.progress:abc']);
     });
 

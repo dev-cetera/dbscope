@@ -71,6 +71,5 @@ class NamedQueryTab extends TabModel {
   String get title => label;
 
   /// Inputs to prompt for, from the metadata spec (named queries only).
-  List<ActionInput> inputsFrom(NamedQuerySpec? spec) =>
-      spec?.inputs ?? const [];
+  List<ActionInput> inputsFrom(NamedQuerySpec? spec) => spec?.inputs ?? const [];
 }

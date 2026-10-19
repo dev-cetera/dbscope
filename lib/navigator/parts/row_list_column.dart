@@ -57,8 +57,7 @@ class _RowListColumnState extends State<RowListColumn> {
     super.dispose();
   }
 
-  DbExecutor? _executor() =>
-      ConnectionRegistry.instance.connectionFor(widget.tab.connectionId);
+  DbExecutor? _executor() => ConnectionRegistry.instance.connectionFor(widget.tab.connectionId);
 
   void _onScroll() {
     if (!_vScroll.hasClients) return;
@@ -97,8 +96,7 @@ class _RowListColumnState extends State<RowListColumn> {
         column != null &&
         step.columns.any(
           (stepColumn) =>
-              stepColumn.name == column &&
-              stepColumn.accessLevel.index >= AccessLevel.read.index,
+              stepColumn.name == column && stepColumn.accessLevel.index >= AccessLevel.read.index,
         );
     if (column != null && pattern.isNotEmpty && readable) {
       params.add(pattern);
@@ -174,8 +172,7 @@ class _RowListColumnState extends State<RowListColumn> {
       final pkInfos = allColumns
           .where(
             (column) =>
-                primaryKeyColumns.contains(column.name) ||
-                labelColumns.contains(column.name),
+                primaryKeyColumns.contains(column.name) || labelColumns.contains(column.name),
           )
           .toList();
       step.rowLabelTemplate = labelTemplate;
@@ -189,9 +186,7 @@ class _RowListColumnState extends State<RowListColumn> {
         pkColumns: primaryKeyColumns,
         baseWhere: base.where,
         baseWhereParams: base.params,
-        explicitColumns: MetadataCache.instance
-            .policyForExecutor(executor)
-            .active,
+        explicitColumns: MetadataCache.instance.policyForExecutor(executor).active,
       );
       final firstPage = await pager.fetchNext();
 
@@ -343,10 +338,7 @@ class _RowListColumnState extends State<RowListColumn> {
         for (final row in sampleResult.rows)
           [
             for (final column in columns)
-              if (colByName[column.name] case final index?)
-                row[index]
-              else
-                null,
+              if (colByName[column.name] case final index?) row[index] else null,
           ],
       ];
       final picked = await RegexInferrer.infer(
@@ -384,8 +376,7 @@ class _RowListColumnState extends State<RowListColumn> {
       if (label.isNotEmpty) return label;
     }
     return [
-      for (var i = 0; i < columns.length; i++)
-        '${columns[i].name}=${_short(rowValues[i])}',
+      for (var i = 0; i < columns.length; i++) '${columns[i].name}=${_short(rowValues[i])}',
     ].join(', ');
   }
 
@@ -456,9 +447,7 @@ class _RowListColumnState extends State<RowListColumn> {
       await editor.insertRow(
         schema: step.schema,
         table: step.table,
-        editable: step.editPolicies
-            .where((policy) => !policy.readOnly)
-            .toList(),
+        editable: step.editPolicies.where((policy) => !policy.readOnly).toList(),
         values: values,
         returning: rules.returningList,
       );
@@ -485,9 +474,7 @@ class _RowListColumnState extends State<RowListColumn> {
         subtitle =
             'where ${inboundFilter.source.first.fromColumn} = ${_short(inboundFilter.values.first)}';
       } else {
-        final columns = inboundFilter.source
-            .map((foreignKey) => foreignKey.fromColumn)
-            .join(', ');
+        final columns = inboundFilter.source.map((foreignKey) => foreignKey.fromColumn).join(', ');
         final filterValuesText = inboundFilter.values.map(_short).join(', ');
         subtitle = 'where ($columns) = ($filterValuesText)';
       }
@@ -531,8 +518,7 @@ class _RowListColumnState extends State<RowListColumn> {
                       ),
                     ),
                     for (final column in step.columns.where(
-                      (column) =>
-                          column.accessLevel.index >= AccessLevel.read.index,
+                      (column) => column.accessLevel.index >= AccessLevel.read.index,
                     ))
                       DropdownMenuItem<String?>(
                         value: column.name,
@@ -634,14 +620,11 @@ class _RowListColumnState extends State<RowListColumn> {
                   pkValuesForRow.add(j >= 0 ? row[j] : null);
                 }
                 final isSel =
-                    selectedPrimaryKey != null &&
-                    _listEq(selectedPrimaryKey, pkValuesForRow);
+                    selectedPrimaryKey != null && _listEq(selectedPrimaryKey, pkValuesForRow);
                 return InkWell(
                   onTap: () => _openRow(i),
                   child: Container(
-                    color: isSel
-                        ? theme.colorScheme.primaryContainer
-                        : Colors.transparent,
+                    color: isSel ? theme.colorScheme.primaryContainer : Colors.transparent,
                     padding: const EdgeInsets.symmetric(
                       horizontal: 8.0,
                       vertical: 5.0,
@@ -697,9 +680,7 @@ class _RowListColumnState extends State<RowListColumn> {
           IconButton(
             tooltip: 'Insert row',
             icon: const Icon(Icons.add, size: 16.0),
-            onPressed: !step.catalogLoaded || step.pkColumns.isEmpty
-                ? null
-                : _insertRow,
+            onPressed: !step.catalogLoaded || step.pkColumns.isEmpty ? null : _insertRow,
           ),
           IconButton(
             tooltip: 'Reload',

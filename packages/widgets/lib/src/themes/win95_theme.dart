@@ -79,9 +79,7 @@ const win95Palette = AppPalette(
 /// font (e.g. system-ui on macOS) can opt out without forking the theme.
 ThemeData buildWin95Theme({String? fontFamily}) {
   final palette =
-      fontFamily == null
-          ? win95Palette
-          : win95Palette.copyWith(uiFontFamily: fontFamily);
+      fontFamily == null ? win95Palette : win95Palette.copyWith(uiFontFamily: fontFamily);
   const outline = OutlineInputBorder(
     borderRadius: BorderRadius.zero,
     borderSide: BorderSide(color: _Win95Colors.shadow),

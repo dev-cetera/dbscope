@@ -179,9 +179,7 @@ class _ColumnInputField extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final raw = value;
-    final asString = raw == null
-        ? null
-        : (raw is String ? raw : raw.toString());
+    final asString = raw == null ? null : (raw is String ? raw : raw.toString());
     if (policy.enumValues != null && policy.enumValues!.isNotEmpty) {
       return _EnumInput(
         values: policy.enumValues!,

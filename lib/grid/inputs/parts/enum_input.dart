@@ -37,8 +37,7 @@ class _EnumInput extends StatelessWidget {
             style: textStyle.copyWith(color: palette.mutedText),
           ),
           items: [
-            for (final option in values)
-              DropdownMenuItem(value: option, child: Text(option)),
+            for (final option in values) DropdownMenuItem(value: option, child: Text(option)),
           ],
           onChanged: enabled ? onChanged : null,
         ),

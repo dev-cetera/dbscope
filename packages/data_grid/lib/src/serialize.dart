@@ -74,10 +74,8 @@ String serializeRangeAsCsv<T>(
 String _csvField(Object? value) {
   if (value == null) return '';
   final text = value.toString();
-  final needsQuote = text.contains(',') ||
-      text.contains('"') ||
-      text.contains('\n') ||
-      text.contains('\r');
+  final needsQuote =
+      text.contains(',') || text.contains('"') || text.contains('\n') || text.contains('\r');
   if (!needsQuote) return text;
   return '"${text.replaceAll('"', '""')}"';
 }

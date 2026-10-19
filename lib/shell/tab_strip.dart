@@ -26,9 +26,7 @@ class TabStrip extends StatelessWidget {
   /// colour in some palettes (vsCodeDark has surface == surfaceContainerHigh)
   /// so we shift it by alpha-blend instead.
   static Color stripBgFor(AppPalette palette) {
-    final isDark =
-        ThemeData.estimateBrightnessForColor(palette.surface) ==
-        Brightness.dark;
+    final isDark = ThemeData.estimateBrightnessForColor(palette.surface) == Brightness.dark;
     return Color.alphaBlend(
       Colors.black.withValues(alpha: isDark ? 0.50 : 0.10),
       palette.surface,
@@ -109,11 +107,8 @@ class _TabState extends State<_Tab> with HoverStateMixin {
     final state = widget.state;
     final tab = widget.tab;
     final tabIndex = state.tabs.indexWhere((other) => other.id == tab.id);
-    final hasRight =
-        tabIndex >= 0 &&
-        state.tabs.skip(tabIndex + 1).any((other) => !other.pinned);
-    final hasLeft =
-        tabIndex > 0 && state.tabs.take(tabIndex).any((other) => !other.pinned);
+    final hasRight = tabIndex >= 0 && state.tabs.skip(tabIndex + 1).any((other) => !other.pinned);
+    final hasLeft = tabIndex > 0 && state.tabs.take(tabIndex).any((other) => !other.pinned);
     final hasOthers = state.tabs.any(
       (other) => other.id != tab.id && !other.pinned,
     );
@@ -177,11 +172,8 @@ class _TabState extends State<_Tab> with HoverStateMixin {
 
     // Active = body surface so the tab visually merges with the panel
     // below. Inactive = strip background so it blends with the chrome.
-    final background = isActive
-        ? palette.surface
-        : TabStrip.stripBgFor(palette);
-    final onBgBase =
-        ThemeData.estimateBrightnessForColor(background) == Brightness.dark
+    final background = isActive ? palette.surface : TabStrip.stripBgFor(palette);
+    final onBgBase = ThemeData.estimateBrightnessForColor(background) == Brightness.dark
         ? Colors.white
         : Colors.black;
     final foreground = isActive ? onBgBase : onBgBase.withValues(alpha: 0.6);
@@ -201,8 +193,7 @@ class _TabState extends State<_Tab> with HoverStateMixin {
         },
         child: GestureDetector(
           onTap: () => widget.state.selectTab(widget.tab.id),
-          onSecondaryTapDown: (details) =>
-              _showContextMenu(context, details.globalPosition),
+          onSecondaryTapDown: (details) => _showContextMenu(context, details.globalPosition),
           // Material owns background + textStyle so the per-item Material
           // that ReorderableListView wraps around us can't fall back to the
           // theme's default text colour and wash out the title/X.
@@ -235,14 +226,10 @@ class _TabState extends State<_Tab> with HoverStateMixin {
                         width: isActive ? 3 : 1,
                       ),
                       left: BorderSide(
-                        color: isActive
-                            ? palette.borderStrong
-                            : Colors.transparent,
+                        color: isActive ? palette.borderStrong : Colors.transparent,
                       ),
                       right: BorderSide(
-                        color: isActive
-                            ? palette.borderStrong
-                            : Colors.transparent,
+                        color: isActive ? palette.borderStrong : Colors.transparent,
                       ),
                       // Active tab's bottom edge merges with the body surface
                       // so it looks like one continuous panel.
@@ -279,9 +266,7 @@ class _TabState extends State<_Tab> with HoverStateMixin {
                                   widget.tab.title,
                                   style: TextStyle(
                                     color: foreground,
-                                    fontWeight: isActive
-                                        ? FontWeight.w600
-                                        : FontWeight.normal,
+                                    fontWeight: isActive ? FontWeight.w600 : FontWeight.normal,
                                   ),
                                   overflow: TextOverflow.ellipsis,
                                   maxLines: 1,
@@ -336,9 +321,7 @@ class _CloseDotState extends State<_CloseDot> with HoverStateMixin {
         onTap: widget.onTap,
         child: Container(
           decoration: BoxDecoration(
-            color: isHovered
-                ? widget.color.withValues(alpha: 0.18)
-                : Colors.transparent,
+            color: isHovered ? widget.color.withValues(alpha: 0.18) : Colors.transparent,
             borderRadius: BorderRadius.circular(4.0),
           ),
           child: Icon(Icons.close, size: 12.0, color: widget.color),
@@ -364,9 +347,7 @@ class _NewTabButtonState extends State<_NewTabButton> with HoverStateMixin {
     return Tooltip(
       message: 'New query (Cmd+T)',
       child: MouseRegion(
-        cursor: widget.enabled
-            ? SystemMouseCursors.click
-            : SystemMouseCursors.basic,
+        cursor: widget.enabled ? SystemMouseCursors.click : SystemMouseCursors.basic,
         onEnter: (_) => setHovered(hovered: true),
         onExit: (_) => setHovered(hovered: false),
         child: GestureDetector(

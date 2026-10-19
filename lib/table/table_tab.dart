@@ -34,8 +34,7 @@ enum AutoRefreshInterval {
   s5(Duration(seconds: 5), '5s'),
   s30(Duration(seconds: 30), '30s'),
   m1(Duration(minutes: 1), '1m'),
-  m5(Duration(minutes: 5), '5m')
-  ;
+  m5(Duration(minutes: 5), '5m');
 
   const AutoRefreshInterval(this.duration, this.label);
 
@@ -133,6 +132,5 @@ class TableTab extends TabModel {
   Object? loadedUnder;
 
   @override
-  String get title =>
-      metaFilter == null ? '$schema.$table' : '$table · ${metaFilter!.label}';
+  String get title => metaFilter == null ? '$schema.$table' : '$table · ${metaFilter!.label}';
 }

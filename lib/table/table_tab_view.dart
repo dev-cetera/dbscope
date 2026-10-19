@@ -146,8 +146,7 @@ class _TableTabViewState extends State<TableTabView> {
     await _load();
   }
 
-  DbExecutor? _executor() =>
-      ConnectionRegistry.instance.connectionFor(widget.tab.connectionId);
+  DbExecutor? _executor() => ConnectionRegistry.instance.connectionFor(widget.tab.connectionId);
 
   bool _readOnly() => false;
 
@@ -306,9 +305,7 @@ class _TableTabViewState extends State<TableTabView> {
   /// and come back empty.
   CancelToken _pageFetchToken() {
     final current = widget.tab.cancelToken;
-    final token = current == null || current.isCancelled
-        ? CancelToken()
-        : current;
+    final token = current == null || current.isCancelled ? CancelToken() : current;
     widget.tab.cancelToken = token;
     return token;
   }
@@ -327,8 +324,7 @@ class _TableTabViewState extends State<TableTabView> {
       // Consume an in-flight prefetch if we have one; otherwise issue
       // the fetch synchronously. Either way only one fetchNext is in
       // flight on the pager at a time.
-      final pendingFuture =
-          _nextPagePrefetch ?? pager.fetchNext(cancelToken: token);
+      final pendingFuture = _nextPagePrefetch ?? pager.fetchNext(cancelToken: token);
       _nextPagePrefetch = null;
       final page = await pendingFuture;
       // A reload started while this page was in flight; it belongs to
@@ -382,9 +378,7 @@ class _TableTabViewState extends State<TableTabView> {
       return;
     }
     final indexed = widget.tab.indexedColumns;
-    final isFast =
-        indexed.contains(event.column) ||
-        widget.tab.pkColumns.contains(event.column);
+    final isFast = indexed.contains(event.column) || widget.tab.pkColumns.contains(event.column);
     if (!isFast) {
       final ok = await confirmDialog(
         context,
@@ -420,12 +414,8 @@ class _TableTabViewState extends State<TableTabView> {
         table: tab.table,
         pkColumns: tab.pkColumns,
         column: event.column,
-        type: data.columns
-            .firstWhere((column) => column.name == event.column)
-            .pgType,
-        typeName: data.columns
-            .firstWhere((column) => column.name == event.column)
-            .typeName,
+        type: data.columns.firstWhere((column) => column.name == event.column).pgType,
+        typeName: data.columns.firstWhere((column) => column.name == event.column).typeName,
         nullable: true,
         isGenerated: false,
         isIdentity: false,
@@ -848,8 +838,7 @@ class _TableTabViewState extends State<TableTabView> {
     }
     final row = data.rows[rowIndex];
     return {
-      for (var i = 0; i < data.columns.length; i++)
-        data.columns[i].name: row[i],
+      for (var i = 0; i < data.columns.length; i++) data.columns[i].name: row[i],
     };
   }
 
@@ -946,9 +935,7 @@ class _TableTabViewState extends State<TableTabView> {
                   contentPadding: EdgeInsets.zero,
                   value: !hidden.contains(column.name),
                   title: Text(column.name),
-                  subtitle: column.defaultHidden
-                      ? const Text('hidden by default')
-                      : null,
+                  subtitle: column.defaultHidden ? const Text('hidden by default') : null,
                   onChanged: (visible) => setDialogState(() {
                     if (visible ?? false) {
                       hidden.remove(column.name);
@@ -970,9 +957,7 @@ class _TableTabViewState extends State<TableTabView> {
     final tab = widget.tab;
     final readOnly = _readOnly();
     final snapshot = MetadataCache.instance.snapshotFor(tab.connectionId);
-    final charts =
-        snapshot?.index.chartsForTable(tab.schema, tab.table) ??
-        const <ChartSpec>[];
+    final charts = snapshot?.index.chartsForTable(tab.schema, tab.table) ?? const <ChartSpec>[];
     final executor = _executor();
     final hasNoPrimaryKey = tab.pkColumns.isEmpty && tab.data != null;
     final appState = AppState.instance;
@@ -1007,9 +992,7 @@ class _TableTabViewState extends State<TableTabView> {
           },
           onPickColumns: _pickColumns,
           onTrustDefaultFilter: _trustDefaultFilter,
-          tableDescription: snapshot?.index
-              .describeTable(tab.schema, tab.table)
-              .toMarkdown(),
+          tableDescription: snapshot?.index.describeTable(tab.schema, tab.table).toMarkdown(),
         ),
         if (tab.chartsOpen && charts.isNotEmpty && executor != null)
           SizedBox(
@@ -1073,15 +1056,14 @@ class _TableTabViewState extends State<TableTabView> {
             onFollowLink: _followLink,
             displayByColumn: _displayByColumn(),
             contextMenuExtras: _menuExtras,
-            headerBuilder: (context, columnIndex, header) =>
-                MetaColumnHeader.forTable(
-                  connectionId: tab.connectionId,
-                  schema: tab.schema,
-                  table: tab.table,
-                  column: tab.data!.columns[columnIndex].name,
-                  columnType: tab.data!.columns[columnIndex].pgType,
-                  child: header,
-                ),
+            headerBuilder: (context, columnIndex, header) => MetaColumnHeader.forTable(
+              connectionId: tab.connectionId,
+              schema: tab.schema,
+              table: tab.table,
+              column: tab.data!.columns[columnIndex].name,
+              columnType: tab.data!.columns[columnIndex].pgType,
+              child: header,
+            ),
           ),
         ),
       ],
@@ -1256,9 +1238,7 @@ class TableTabHeader extends StatelessWidget {
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       Icon(
-                        tab.showDeleted
-                            ? Icons.visibility
-                            : Icons.visibility_off,
+                        tab.showDeleted ? Icons.visibility : Icons.visibility_off,
                         size: 12.0,
                       ),
                       const SizedBox(width: 3.0),
@@ -1337,9 +1317,7 @@ class TableTabHeader extends StatelessWidget {
             IconButton(
               tooltip: tab.chartsOpen ? 'Hide charts' : 'Show charts',
               icon: Icon(
-                tab.chartsOpen
-                    ? Icons.insert_chart
-                    : Icons.insert_chart_outlined,
+                tab.chartsOpen ? Icons.insert_chart : Icons.insert_chart_outlined,
                 size: 18.0,
               ),
               onPressed: onToggleCharts,
@@ -1348,9 +1326,7 @@ class TableTabHeader extends StatelessWidget {
             tooltip: 'Insert row',
             icon: const Icon(Icons.add_circle_outline, size: 18.0),
             onPressed:
-                (readOnly ||
-                    tab.isLoading ||
-                    !tab.tableAccess.level.atLeast(AccessLevel.full))
+                (readOnly || tab.isLoading || !tab.tableAccess.level.atLeast(AccessLevel.full))
                 ? null
                 : onInsert,
           ),
@@ -1360,13 +1336,9 @@ class TableTabHeader extends StatelessWidget {
             onPressed: tab.isLoading ? null : onRefresh,
           ),
           IconButton(
-            tooltip: inspectorCollapsed
-                ? 'Show row inspector'
-                : 'Hide row inspector',
+            tooltip: inspectorCollapsed ? 'Show row inspector' : 'Hide row inspector',
             icon: Icon(
-              inspectorCollapsed
-                  ? Icons.view_sidebar_outlined
-                  : Icons.view_sidebar,
+              inspectorCollapsed ? Icons.view_sidebar_outlined : Icons.view_sidebar,
               size: 18.0,
             ),
             onPressed: onToggleInspector,

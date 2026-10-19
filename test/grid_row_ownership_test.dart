@@ -141,9 +141,7 @@ void main() {
       ),
     );
     final handle = find.byWidgetPredicate(
-      (widget) =>
-          widget is MouseRegion &&
-          widget.cursor == SystemMouseCursors.resizeColumn,
+      (widget) => widget is MouseRegion && widget.cursor == SystemMouseCursors.resizeColumn,
     );
     final before = tester.getRect(handle).right;
     final gesture = await tester.startGesture(

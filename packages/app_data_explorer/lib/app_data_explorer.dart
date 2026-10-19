@@ -43,10 +43,8 @@ String? resolveAdbPath() {
   } catch (_) {}
   final env = Platform.environment;
   final candidates = <String>[
-    if (env['ANDROID_HOME'] != null)
-      '${env['ANDROID_HOME']}/platform-tools/adb',
-    if (env['ANDROID_SDK_ROOT'] != null)
-      '${env['ANDROID_SDK_ROOT']}/platform-tools/adb',
+    if (env['ANDROID_HOME'] != null) '${env['ANDROID_HOME']}/platform-tools/adb',
+    if (env['ANDROID_SDK_ROOT'] != null) '${env['ANDROID_SDK_ROOT']}/platform-tools/adb',
     '${env['HOME']}/Library/Android/sdk/platform-tools/adb',
     '${env['HOME']}/Android/Sdk/platform-tools/adb',
     '/usr/local/bin/adb',
@@ -108,8 +106,7 @@ class AndroidBackend extends Backend {
   final String? model;
 
   @override
-  String get deviceLabel =>
-      'android $serial${model == null ? '' : ' ($model)'}';
+  String get deviceLabel => 'android $serial${model == null ? '' : ' ($model)'}';
 
   @override
   String get appLabel => pkg;
@@ -188,8 +185,7 @@ class AndroidBackend extends Backend {
     if (relDir.isEmpty) {
       throw const AppDataExplorerException('refuse to clear container root');
     }
-    final result =
-        await _adbShell(_runAs('find ${_q(relDir)} -mindepth 1 -delete'));
+    final result = await _adbShell(_runAs('find ${_q(relDir)} -mindepth 1 -delete'));
     if (result.exitCode != 0) {
       throw AppDataExplorerException(_adbError('clear', result));
     }
@@ -204,8 +200,7 @@ class AndroidBackend extends Backend {
     );
     final sink = File(localPath).openWrite();
     final stderrBuffer = StringBuffer();
-    final stderrFut =
-        proc.stderr.transform(utf8.decoder).forEach(stderrBuffer.write);
+    final stderrFut = proc.stderr.transform(utf8.decoder).forEach(stderrBuffer.write);
     await proc.stdout.pipe(sink);
     final ec = await proc.exitCode;
     await stderrFut;
@@ -226,18 +221,15 @@ class AndroidBackend extends Backend {
     // it via run-as), then cp into place, then clean up.
     final adb = resolveAdbPath() ?? 'adb';
     final base = remoteRelPath.split('/').last;
-    final tmpRemote =
-        '/data/local/tmp/dbscope_push_${DateTime.now().microsecondsSinceEpoch}_$base';
-    final r1 =
-        await Process.run(adb, ['-s', serial, 'push', localPath, tmpRemote]);
+    final tmpRemote = '/data/local/tmp/dbscope_push_${DateTime.now().microsecondsSinceEpoch}_$base';
+    final r1 = await Process.run(adb, ['-s', serial, 'push', localPath, tmpRemote]);
     if (r1.exitCode != 0) {
       throw AppDataExplorerException(
         'adb push failed (exit ${r1.exitCode}): ${(r1.stderr as String).trim()}',
       );
     }
     try {
-      final r2 =
-          await _adbShell(_runAs('cp ${_q(tmpRemote)} ${_q(remoteRelPath)}'));
+      final r2 = await _adbShell(_runAs('cp ${_q(tmpRemote)} ${_q(remoteRelPath)}'));
       if (r2.exitCode != 0) {
         throw AppDataExplorerException(_adbError('push-cp', r2));
       }
@@ -304,8 +296,7 @@ Future<AndroidDetectionResult> detectAndroidDevices() async {
   if (adb == null) {
     return AndroidDetectionResult(
       devices: const [],
-      hint:
-          'adb not found on PATH or in standard SDK locations. Install Android '
+      hint: 'adb not found on PATH or in standard SDK locations. Install Android '
           'platform-tools or set ANDROID_HOME. Try: `brew install android-platform-tools` '
           r'or symlink $HOME/Library/Android/sdk/platform-tools/adb into PATH.',
     );
@@ -381,8 +372,7 @@ Future<List<String>> listAndroidPackages(
 Future<bool> isAndroidPackageDebuggable(String serial, String pkg) async {
   final adb = resolveAdbPath();
   if (adb == null) return false;
-  final result =
-      await Process.run(adb, ['-s', serial, 'shell', 'run-as', pkg, 'true']);
+  final result = await Process.run(adb, ['-s', serial, 'shell', 'run-as', pkg, 'true']);
   return result.exitCode == 0;
 }
 
@@ -514,12 +504,10 @@ class IosBackend extends Backend {
     final segments = _splitPath(relPath);
     if (segments.isEmpty) throw const AppDataExplorerException('invalid path');
     final fileName = segments.last;
-    final parentRel = segments.length == 1
-        ? ''
-        : segments.sublist(0, segments.length - 1).join('/');
+    final parentRel =
+        segments.length == 1 ? '' : segments.sublist(0, segments.length - 1).join('/');
 
-    onProgress?.call(
-        'iOS rm: downloading parent dir ${parentRel.isEmpty ? '<root>' : parentRel}/ '
+    onProgress?.call('iOS rm: downloading parent dir ${parentRel.isEmpty ? '<root>' : parentRel}/ '
         '(can be slow for large dirs)...');
     final tmpRoot = await Directory.systemTemp.createTemp('explorer_rm_');
     try {
@@ -586,8 +574,7 @@ class IosBackend extends Backend {
     if (relDir.isEmpty) {
       throw const AppDataExplorerException('refuse to clear container root');
     }
-    final tempDirectory =
-        await Directory.systemTemp.createTemp('explorer_clear_');
+    final tempDirectory = await Directory.systemTemp.createTemp('explorer_clear_');
     try {
       await _devicectlJson([
         'device',
@@ -738,12 +725,9 @@ Future<List<IosDeviceInfo>> detectIosDevices() async {
       if (device is! Map) continue;
       final id = device['identifier']?.toString();
       if (id == null) continue;
-      final name =
-          (device['deviceProperties'] as Map?)?['name']?.toString() ?? id;
-      final tunnel =
-          (device['connectionProperties'] as Map?)?['tunnelState']?.toString();
-      final pairing =
-          (device['connectionProperties'] as Map?)?['pairingState']?.toString();
+      final name = (device['deviceProperties'] as Map?)?['name']?.toString() ?? id;
+      final tunnel = (device['connectionProperties'] as Map?)?['tunnelState']?.toString();
+      final pairing = (device['connectionProperties'] as Map?)?['pairingState']?.toString();
       if (pairing != 'paired' || tunnel == 'unavailable') continue;
       out.add(IosDeviceInfo(identifier: id, name: name));
     }

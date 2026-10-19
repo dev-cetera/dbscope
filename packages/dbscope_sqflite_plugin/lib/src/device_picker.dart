@@ -61,9 +61,7 @@ Future<DeviceDiscovery> discoverDevices() async {
       DiscoveredDevice(
         kind: 'android',
         id: device.serial,
-        label: device.model == null
-            ? device.serial
-            : '${device.model} (${device.serial})',
+        label: device.model == null ? device.serial : '${device.model} (${device.serial})',
         model: device.model,
       ),
     );
@@ -138,9 +136,7 @@ Future<List<DiscoveredDbFile>> discoverDbFiles(Backend backend) async {
   for (final e in entries) {
     if (e.isDir) continue;
     final lower = e.name.toLowerCase();
-    if (lower.endsWith('-wal') ||
-        lower.endsWith('-shm') ||
-        lower.endsWith('-journal')) {
+    if (lower.endsWith('-wal') || lower.endsWith('-shm') || lower.endsWith('-journal')) {
       continue;
     }
     if (!exts.any(lower.endsWith)) continue;

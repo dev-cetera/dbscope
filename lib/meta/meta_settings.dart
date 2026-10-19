@@ -9,8 +9,7 @@ enum MetaTablesMode {
   custom,
 
   /// Never read metadata tables. The sidecar file still applies.
-  off
-  ;
+  off;
 
   static MetaTablesMode parse(Object? raw) {
     for (final mode in MetaTablesMode.values) {
@@ -36,8 +35,7 @@ class MetadataSettings {
 
   factory MetadataSettings.fromJson(Object? raw) {
     if (raw is! Map) return defaults;
-    String? text(Object? value) =>
-        value is String && value.trim().isNotEmpty ? value.trim() : null;
+    String? text(Object? value) => value is String && value.trim().isNotEmpty ? value.trim() : null;
     return MetadataSettings(
       tablesMode: MetaTablesMode.parse(raw['tablesMode']),
       customName: text(raw['customName']),
@@ -70,14 +68,12 @@ class MetadataSettings {
       claimedIdentity == null;
 
   /// Postgres schema the tables live in.
-  String get postgresSchema =>
-      tablesMode == MetaTablesMode.custom && (customName ?? '').isNotEmpty
+  String get postgresSchema => tablesMode == MetaTablesMode.custom && (customName ?? '').isNotEmpty
       ? customName!
       : kDefaultMetaSchema;
 
   /// SQLite table-name prefix.
-  String get sqlitePrefix =>
-      tablesMode == MetaTablesMode.custom && (customName ?? '').isNotEmpty
+  String get sqlitePrefix => tablesMode == MetaTablesMode.custom && (customName ?? '').isNotEmpty
       ? customName!
       : kDefaultMetaTablePrefix;
 
@@ -88,12 +84,8 @@ class MetadataSettings {
     Object? claimedIdentity = _unset,
   }) => MetadataSettings(
     tablesMode: tablesMode ?? this.tablesMode,
-    customName: identical(customName, _unset)
-        ? this.customName
-        : customName as String?,
-    sidecarPath: identical(sidecarPath, _unset)
-        ? this.sidecarPath
-        : sidecarPath as String?,
+    customName: identical(customName, _unset) ? this.customName : customName as String?,
+    sidecarPath: identical(sidecarPath, _unset) ? this.sidecarPath : sidecarPath as String?,
     claimedIdentity: identical(claimedIdentity, _unset)
         ? this.claimedIdentity
         : claimedIdentity as String?,

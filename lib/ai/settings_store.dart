@@ -13,6 +13,5 @@ class AiSettingsStore {
     return projectDocument.ai;
   }
 
-  Future<void> save(AiSettings settings) =>
-      ProjectStore.instance.setAiSettings(settings);
+  Future<void> save(AiSettings settings) => ProjectStore.instance.setAiSettings(settings);
 }

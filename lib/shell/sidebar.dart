@@ -299,9 +299,7 @@ class _SidebarState extends State<Sidebar> with ListenableStateMixin {
     final activeId = _registry.activeId;
     if (activeId == null || !_registry.isConnected) {
       return EmptyState(
-        icon: _registry.profiles.isEmpty
-            ? Icons.power_settings_new
-            : Icons.power,
+        icon: _registry.profiles.isEmpty ? Icons.power_settings_new : Icons.power,
         iconSize: 36.0,
         message: _registry.profiles.isEmpty
             ? 'No connection.\nUse Connection > Add…'
@@ -347,8 +345,7 @@ class _SidebarState extends State<Sidebar> with ListenableStateMixin {
       final queries = [
         for (final query in snapshot.index.queries)
           if (policy.forQuery(query.id).canSeeValues &&
-              (filterText.isEmpty ||
-                  query.label.toLowerCase().contains(filterText)))
+              (filterText.isEmpty || query.label.toLowerCase().contains(filterText)))
             query,
       ];
       final dashboards = snapshot.index.dashboards;
@@ -490,9 +487,7 @@ class _SidebarState extends State<Sidebar> with ListenableStateMixin {
     final all = _tablesBySchema[schema] ?? const [];
     if (_filter.isEmpty) return all;
     final filterText = _filter.toLowerCase();
-    return all
-        .where((table) => table.name.toLowerCase().contains(filterText))
-        .toList();
+    return all.where((table) => table.name.toLowerCase().contains(filterText)).toList();
   }
 }
 
@@ -521,8 +516,7 @@ class _SchemaRow extends StatelessWidget {
         .describeSchema(schema.name)
         .toMarkdown();
     final row = GestureDetector(
-      onSecondaryTapDown: (details) =>
-          onSecondaryTapDown(details.globalPosition),
+      onSecondaryTapDown: (details) => onSecondaryTapDown(details.globalPosition),
       child: InkWell(
         onTap: onToggle,
         child: Padding(
@@ -530,9 +524,7 @@ class _SchemaRow extends StatelessWidget {
           child: Row(
             children: [
               Icon(
-                isExpanded
-                    ? Icons.keyboard_arrow_down
-                    : Icons.keyboard_arrow_right,
+                isExpanded ? Icons.keyboard_arrow_down : Icons.keyboard_arrow_right,
                 size: 16.0,
                 color: theme.hintColor,
               ),
@@ -540,18 +532,14 @@ class _SchemaRow extends StatelessWidget {
               Icon(
                 schema.isSystem ? Icons.folder_outlined : Icons.folder,
                 size: 14.0,
-                color: schema.isSystem
-                    ? theme.hintColor
-                    : theme.colorScheme.primary,
+                color: schema.isSystem ? theme.hintColor : theme.colorScheme.primary,
               ),
               const SizedBox(width: 6.0),
               Expanded(
                 child: Text(
                   schema.name,
                   style: TextStyle(
-                    fontWeight: schema.isSystem
-                        ? FontWeight.normal
-                        : FontWeight.w600,
+                    fontWeight: schema.isSystem ? FontWeight.normal : FontWeight.w600,
                     color: schema.isSystem ? theme.hintColor : null,
                   ),
                   overflow: TextOverflow.ellipsis,
@@ -580,8 +568,7 @@ class _FlatRow {
     this.dashboardLabel,
   });
   _FlatRow.schema(SchemaInfo schemaInfo) : this._(schema: schemaInfo);
-  _FlatRow.table(String schema, TableInfo table)
-    : this._(tableSchema: schema, table: table);
+  _FlatRow.table(String schema, TableInfo table) : this._(tableSchema: schema, table: table);
   const _FlatRow.group(String label) : this._(groupLabel: label);
   const _FlatRow.metaHeader() : this._(isMetaHeader: true);
   const _FlatRow.query(NamedQuerySpec query) : this._(query: query);

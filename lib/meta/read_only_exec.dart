@@ -29,8 +29,7 @@ import '../query/cancel_token.dart';
 import 'meta_sources.dart';
 
 /// Whether [executor] can fence metadata SQL into read-only execution.
-bool canFenceReadOnly(DbExecutor executor) =>
-    executor.capabilities.transactions;
+bool canFenceReadOnly(DbExecutor executor) => executor.capabilities.transactions;
 
 class MetaSessionBusy implements Exception {
   const MetaSessionBusy(this.message);
@@ -114,8 +113,7 @@ Future<DbResult> executeReadOnly(
       // Restore whatever the session had: a read-only connection already
       // has query_only on, and must keep it.
       final before = await executor.execute('PRAGMA query_only');
-      final wasOn =
-          before.rows.isNotEmpty && '${before.rows.first.first}' == '1';
+      final wasOn = before.rows.isNotEmpty && '${before.rows.first.first}' == '1';
       if (!wasOn) await executor.execute('PRAGMA query_only = ON');
       try {
         return await run();

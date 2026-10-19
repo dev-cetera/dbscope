@@ -141,12 +141,8 @@ class _EdgePainter extends CustomPainter {
 
     if (bestASide == null || bestBSide == null) {
       final sourceOnRight = sourceRect.center.dx <= targetRect.center.dx;
-      bestASide = sourceOnRight
-          ? _LinkedAnchorSide.right
-          : _LinkedAnchorSide.left;
-      bestBSide = sourceOnRight
-          ? _LinkedAnchorSide.left
-          : _LinkedAnchorSide.right;
+      bestASide = sourceOnRight ? _LinkedAnchorSide.right : _LinkedAnchorSide.left;
+      bestBSide = sourceOnRight ? _LinkedAnchorSide.left : _LinkedAnchorSide.right;
       bestA = _anchorOn(source, sourceRect, bestASide, sourceField);
       bestB = _anchorOn(target, targetRect, bestBSide, targetField);
     }
@@ -186,9 +182,7 @@ class _EdgePainter extends CustomPainter {
       final toColor = _colorForNode(to);
       final hasSel = selectedId != null;
       final isHighlighted =
-          hasSel &&
-          highlighted.contains(edge.fromNodeId) &&
-          highlighted.contains(edge.toNodeId);
+          hasSel && highlighted.contains(edge.fromNodeId) && highlighted.contains(edge.toNodeId);
       final dimmed = hasSel && !isHighlighted;
       geoms.add(
         _LinkedEdgeGeom(

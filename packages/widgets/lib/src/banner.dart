@@ -60,10 +60,7 @@ class AppBanner extends StatelessWidget {
         style: TextStyle(
           color: foreground,
           fontSize: dense ? 11 : 12,
-          fontWeight:
-              severity == BannerSeverity.hint
-                  ? FontWeight.normal
-                  : FontWeight.w600,
+          fontWeight: severity == BannerSeverity.hint ? FontWeight.normal : FontWeight.w600,
           height: 1.2,
         ),
       ),

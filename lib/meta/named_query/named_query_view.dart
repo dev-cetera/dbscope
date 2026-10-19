@@ -32,8 +32,7 @@ class NamedQueryView extends StatefulWidget {
   State<NamedQueryView> createState() => _NamedQueryViewState();
 }
 
-class _NamedQueryViewState extends State<NamedQueryView>
-    with ListenableStateMixin {
+class _NamedQueryViewState extends State<NamedQueryView> with ListenableStateMixin {
   @override
   List<Listenable> get listenables => [MetadataCache.instance];
 
@@ -41,8 +40,7 @@ class _NamedQueryViewState extends State<NamedQueryView>
 
   NamedQueryTab get tab => widget.tab;
 
-  MetaSnapshot? get _snapshot =>
-      MetadataCache.instance.snapshotFor(tab.connectionId);
+  MetaSnapshot? get _snapshot => MetadataCache.instance.snapshotFor(tab.connectionId);
 
   NamedQuerySpec? get _spec {
     final id = tab.queryId;
@@ -53,8 +51,7 @@ class _NamedQueryViewState extends State<NamedQueryView>
   void initState() {
     super.initState();
     final id = tab.queryId;
-    final allowed =
-        id == null || (_snapshot?.policy.forQuery(id).canSeeValues ?? true);
+    final allowed = id == null || (_snapshot?.policy.forQuery(id).canSeeValues ?? true);
     if (tab.autoRun && allowed && (_spec?.inputs.isEmpty ?? true)) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (mounted) unawaited(_run());
@@ -71,11 +68,10 @@ class _NamedQueryViewState extends State<NamedQueryView>
     super.dispose();
   }
 
-  TextEditingController _controllerFor(ActionInput input) =>
-      _inputControllers.putIfAbsent(
-        input.name,
-        () => TextEditingController(text: tab.inputValues[input.name] ?? ''),
-      );
+  TextEditingController _controllerFor(ActionInput input) => _inputControllers.putIfAbsent(
+    input.name,
+    () => TextEditingController(text: tab.inputValues[input.name] ?? ''),
+  );
 
   AccessDecision _columnAccess(String column) {
     final snapshot = _snapshot;
@@ -134,8 +130,7 @@ class _NamedQueryViewState extends State<NamedQueryView>
     }
 
     final trusted =
-        !tab.fromMetadata ||
-        await ensureTrusted(context, tab.connectionId, TrustScope.read);
+        !tab.fromMetadata || await ensureTrusted(context, tab.connectionId, TrustScope.read);
     if (!mounted) return;
     if (!trusted) {
       setState(
@@ -206,9 +201,7 @@ class _NamedQueryViewState extends State<NamedQueryView>
             name: data.columns[i].name,
             type: data.columns[i].pgType,
             typeName: data.columns[i].typeName,
-            marker: data.rows.isNotEmpty && data.rows.first[i] is MaskedValue
-                ? '••'
-                : null,
+            marker: data.rows.isNotEmpty && data.rows.first[i] is MaskedValue ? '••' : null,
           ),
       ],
       rows: data.rows,
@@ -221,8 +214,7 @@ class _NamedQueryViewState extends State<NamedQueryView>
     final data = tab.data;
     if (id == null || index == null || data == null) return const {};
     return {
-      for (final column in data.columns)
-        column.name: index.displayQueryColumn(id, column.name),
+      for (final column in data.columns) column.name: index.displayQueryColumn(id, column.name),
     };
   }
 
@@ -239,8 +231,7 @@ class _NamedQueryViewState extends State<NamedQueryView>
       connectionId: tab.connectionId,
       queryId: tab.queryId,
       row: {
-        for (var i = 0; i < data.columns.length; i++)
-          data.columns[i].name: row[i],
+        for (var i = 0; i < data.columns.length; i++) data.columns[i].name: row[i],
       },
       column: column.name,
       columnType: column.pgType,
@@ -295,8 +286,7 @@ class _NamedQueryViewState extends State<NamedQueryView>
                 IconButton(
                   tooltip: tab.chartsOpen ? 'Hide charts' : 'Show charts',
                   icon: const Icon(Icons.insert_chart_outlined, size: 18.0),
-                  onPressed: () =>
-                      setState(() => tab.chartsOpen = !tab.chartsOpen),
+                  onPressed: () => setState(() => tab.chartsOpen = !tab.chartsOpen),
                 ),
               IconButton(
                 tooltip: tab.showSql ? 'Hide SQL' : 'Show SQL',

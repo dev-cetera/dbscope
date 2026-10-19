@@ -49,17 +49,13 @@ class _AppMenuBarState extends State<AppMenuBar> {
     return Container(
       decoration: BoxDecoration(
         color: palette.surface,
-        border:
-            palette.isBevel
-                ? null
-                : Border(bottom: BorderSide(color: palette.border)),
+        border: palette.isBevel ? null : Border(bottom: BorderSide(color: palette.border)),
       ),
       height: 20.0,
       padding: const EdgeInsets.symmetric(horizontal: 2.0),
       child: Row(
         children: [
-          for (var i = 0; i < widget.menus.length; i++)
-            _menuButton(i, widget.menus[i]),
+          for (var i = 0; i < widget.menus.length; i++) _menuButton(i, widget.menus[i]),
         ],
       ),
     );
@@ -92,8 +88,7 @@ class _AppMenuBarState extends State<AppMenuBar> {
   Future<void> _show(int index, Offset where, AppMenu m) async {
     final palette = AppPalette.of(context);
     setState(() => _open = index);
-    final overlay =
-        Overlay.of(context).context.findRenderObject()! as RenderBox;
+    final overlay = Overlay.of(context).context.findRenderObject()! as RenderBox;
     final radius = BorderRadius.circular(palette.cornerRadius);
     final selected = await showMenu<int>(
       context: context,

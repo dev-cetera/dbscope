@@ -24,8 +24,7 @@ class JobSpec {
 }
 
 class JobRecord {
-  JobRecord({required this.id, required this.spec})
-    : createdAt = DateTime.now();
+  JobRecord({required this.id, required this.spec}) : createdAt = DateTime.now();
   final String id;
   final JobSpec spec;
   JobState state = JobState.queued;

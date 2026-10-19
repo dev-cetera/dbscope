@@ -71,9 +71,7 @@ class _CopyTableDialogState extends State<CopyTableDialog> {
     );
     final targetReadOnly =
         _targetId != null &&
-        widget.profiles
-            .firstWhere((profile) => profile.id == _targetId)
-            .readOnly;
+        widget.profiles.firstWhere((profile) => profile.id == _targetId).readOnly;
     return AppFormDialog(
       title: 'Copy table to…',
       submitLabel: 'Run',

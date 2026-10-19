@@ -50,9 +50,7 @@ class _NavigatorTabViewState extends State<NavigatorTabView> {
   @override
   void initState() {
     super.initState();
-    _lastTrailingStepId = widget.tab.steps.isEmpty
-        ? null
-        : widget.tab.steps.last.id;
+    _lastTrailingStepId = widget.tab.steps.isEmpty ? null : widget.tab.steps.last.id;
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) unawaited(_loadFKsIfNeeded());
     });
@@ -61,9 +59,7 @@ class _NavigatorTabViewState extends State<NavigatorTabView> {
   @override
   void didUpdateWidget(covariant NavigatorTabView oldWidget) {
     super.didUpdateWidget(oldWidget);
-    final currentTrailing = widget.tab.steps.isEmpty
-        ? null
-        : widget.tab.steps.last.id;
+    final currentTrailing = widget.tab.steps.isEmpty ? null : widget.tab.steps.last.id;
     if (currentTrailing != _lastTrailingStepId) {
       // Trailing column changed (path grew OR a prior column was clicked
       // and replaced what comes after) — scroll the new rightmost into
@@ -192,8 +188,7 @@ class _NavigatorTabViewState extends State<NavigatorTabView> {
   /// far from the row text and looked broken on wide screens.
   List<double> _computeWidths(List<NavStep> steps) {
     return [
-      for (final step in steps)
-        widget.tab.stepWidths[step.id] ?? _defaultWidth(step),
+      for (final step in steps) widget.tab.stepWidths[step.id] ?? _defaultWidth(step),
     ];
   }
 

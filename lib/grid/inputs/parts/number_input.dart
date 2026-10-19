@@ -14,9 +14,7 @@ class _NumberInput extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final pattern = allowDecimal
-        ? RegExp(r'^-?\d*\.?\d*$')
-        : RegExp(r'^-?\d*$');
+    final pattern = allowDecimal ? RegExp(r'^-?\d*\.?\d*$') : RegExp(r'^-?\d*$');
     return _RawTextInput(
       value: value,
       enabled: enabled,

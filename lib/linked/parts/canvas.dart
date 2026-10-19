@@ -24,8 +24,7 @@ class _Canvas extends StatefulWidget {
 
   /// Right-click handler. Called with the node and the global pointer
   /// position so the host can show a context menu anchored to the click.
-  final void Function(LinkedNode node, Offset globalPosition)?
-  onNodeContextMenu;
+  final void Function(LinkedNode node, Offset globalPosition)? onNodeContextMenu;
 
   @override
   State<_Canvas> createState() => _CanvasState();
@@ -198,9 +197,7 @@ class _CanvasState extends State<_Canvas> with SingleTickerProviderStateMixin {
       for (final node in widget.tab.nodes)
         if (node is LinkedRowNode) node,
     ];
-    final topIndex = _topNodeId == null
-        ? -1
-        : rows.indexWhere((row) => row.id == _topNodeId);
+    final topIndex = _topNodeId == null ? -1 : rows.indexWhere((row) => row.id == _topNodeId);
     if (topIndex >= 0) {
       final top = rows.removeAt(topIndex);
       rows.add(top);
@@ -222,14 +219,10 @@ class _CanvasState extends State<_Canvas> with SingleTickerProviderStateMixin {
             key: ValueKey(node.id),
             left:
                 pan.dx +
-                (node.position.dx +
-                        (node.id == _dragNodeId ? _dragDelta.dx : 0.0)) *
-                    _scale,
+                (node.position.dx + (node.id == _dragNodeId ? _dragDelta.dx : 0.0)) * _scale,
             top:
                 pan.dy +
-                (node.position.dy +
-                        (node.id == _dragNodeId ? _dragDelta.dy : 0.0)) *
-                    _scale,
+                (node.position.dy + (node.id == _dragNodeId ? _dragDelta.dy : 0.0)) * _scale,
             width: width * _scale,
             height: height * _scale,
             child: _ScaledNode(

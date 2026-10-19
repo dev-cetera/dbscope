@@ -84,8 +84,7 @@ ChartSql buildTableChartSql({
   }
 
   final measures = [
-    for (var i = 0; i < chart.y.length; i++)
-      '${_measureSql(chart.y[i], chart.label)} AS y$i',
+    for (var i = 0; i < chart.y.length; i++) '${_measureSql(chart.y[i], chart.label)} AS y$i',
   ];
   final whereSql = where.isEmpty ? '' : ' WHERE ${where.join(' AND ')}';
 
@@ -180,9 +179,7 @@ String? _rangeClause(ChartSpec chart, SqlDialect dialect) {
   // chart plots values over time). A categorical x never takes a range.
   final column =
       chart.rangeColumn ??
-      (chart.bucket != null ||
-              chart.type == ChartType.line ||
-              chart.type == ChartType.area
+      (chart.bucket != null || chart.type == ChartType.line || chart.type == ChartType.area
           ? chart.x
           : null);
   if (duration == null || column == null) return null;

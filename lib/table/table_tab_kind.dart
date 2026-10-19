@@ -50,9 +50,7 @@ final tableTabKind = TabKind(
   },
   footerSummary: (tab) {
     final tableTab = tab as TableTab;
-    final rows = tableTab.estimatedRows < 0
-        ? '?'
-        : '~${_compact(tableTab.estimatedRows)}';
+    final rows = tableTab.estimatedRows < 0 ? '?' : '~${_compact(tableTab.estimatedRows)}';
     var summary = '$rows rows';
     if (tableTab.error != null) {
       summary += ' • error';

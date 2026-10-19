@@ -57,8 +57,7 @@ class ConnectionLinkFlow {
     }
 
     final location = await getSaveLocation(
-      suggestedName:
-          '${_safeName(profile.name)}.${ConnectionLink.fileExtension}',
+      suggestedName: '${_safeName(profile.name)}.${ConnectionLink.fileExtension}',
       acceptedTypeGroups: const [_typeGroup],
     );
     if (location == null) return;
@@ -228,8 +227,7 @@ class _PassphraseDialogState extends State<_PassphraseDialog> {
                   ),
                 ),
               ),
-              validator: (text) =>
-                  (text == null || text.isEmpty) ? 'required' : null,
+              validator: (text) => (text == null || text.isEmpty) ? 'required' : null,
               onFieldSubmitted: (_) {
                 if (!widget.confirm) _submit();
               },
@@ -242,8 +240,7 @@ class _PassphraseDialogState extends State<_PassphraseDialog> {
                 decoration: const InputDecoration(
                   labelText: 'Confirm passphrase',
                 ),
-                validator: (text) =>
-                    text != _pass.text ? 'passphrases do not match' : null,
+                validator: (text) => text != _pass.text ? 'passphrases do not match' : null,
               ),
             ],
           ],

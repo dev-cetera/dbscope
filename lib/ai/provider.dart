@@ -9,13 +9,7 @@
 library;
 
 export 'package:ai_broker/ai_broker.dart'
-    show
-        AiBroker,
-        AiBrokerException,
-        AiBrokerRegistry,
-        AiMessage,
-        AiRole,
-        ChatRequest;
+    show AiBroker, AiBrokerException, AiBrokerRegistry, AiMessage, AiRole, ChatRequest;
 
 /// User-visible AI configuration. Persisted via [AiSettingsStore]; API
 /// keys live in SecureStore and are merged in at consumption time.

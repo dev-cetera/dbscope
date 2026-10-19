@@ -9,11 +9,7 @@ import '../catalog/schema_catalog.dart';
 // colour-per-table source of truth. Re-export here so existing
 // `import '../shell/relationship_gutter.dart'` call sites keep working.
 export 'package:schema_viewer/schema_viewer.dart'
-    show
-        buildTableColorMap,
-        colorForTable,
-        colorIndexForTable,
-        kRelationshipPalette;
+    show buildTableColorMap, colorForTable, colorIndexForTable, kRelationshipPalette;
 
 const double kGutterWidth = 32;
 const double kGutterRowHeight = 24;
@@ -91,8 +87,7 @@ class RelationshipGutterPainter extends CustomPainter {
 
   Color _colorFor(String key) => tableColors?[key] ?? colorForTable(key);
 
-  double _yFor(int index) =>
-      index * kGutterRowHeight - scroll.pixels + kGutterRowHeight / 2;
+  double _yFor(int index) => index * kGutterRowHeight - scroll.pixels + kGutterRowHeight / 2;
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -122,8 +117,7 @@ class RelationshipGutterPainter extends CustomPainter {
       for (var i = 0; i < sorted.length; i++) {
         final foreignKey = sorted[i];
         if (foreignKey.fromKey == foreignKey.toKey) continue;
-        if (foreignKey.fromKey == selectedKey ||
-            foreignKey.toKey == selectedKey) {
+        if (foreignKey.fromKey == selectedKey || foreignKey.toKey == selectedKey) {
           incident.add(i);
         }
       }
@@ -148,8 +142,7 @@ class RelationshipGutterPainter extends CustomPainter {
     }) {
       final y1 = _yFor(from);
       final y2 = _yFor(to);
-      if ((y1 < viewportTop && y2 < viewportTop) ||
-          (y1 > viewportBottom && y2 > viewportBottom)) {
+      if ((y1 < viewportTop && y2 < viewportTop) || (y1 > viewportBottom && y2 > viewportBottom)) {
         return;
       }
       final cpX = laneMin + (laneIndex % laneCount) * laneSpacing;
@@ -187,9 +180,7 @@ class RelationshipGutterPainter extends CustomPainter {
     if (selectedKey == null) {
       // Topology mode: faint grey lines for every edge.
       final usable = (laneMax - laneMin) / laneSpacing;
-      final laneCount = sorted.isEmpty
-          ? 1
-          : usable.floor().clamp(1, sorted.length);
+      final laneCount = sorted.isEmpty ? 1 : usable.floor().clamp(1, sorted.length);
       const faint = Color(0x33808080);
       for (var i = 0; i < sorted.length; i++) {
         final foreignKey = sorted[i];
@@ -209,18 +200,14 @@ class RelationshipGutterPainter extends CustomPainter {
     } else {
       // Selection mode: bold, neighbour-coloured lines.
       final usable = (laneMax - laneMin) / laneSpacing;
-      final laneCount = incident.isEmpty
-          ? 1
-          : usable.floor().clamp(1, incident.length);
+      final laneCount = incident.isEmpty ? 1 : usable.floor().clamp(1, incident.length);
       for (var drawn = 0; drawn < incident.length; drawn++) {
         final i = incident[drawn];
         final foreignKey = sorted[i];
         final from = keyToIndex[foreignKey.fromKey];
         final to = keyToIndex[foreignKey.toKey];
         if (from == null || to == null) continue;
-        final other = foreignKey.fromKey == selectedKey
-            ? foreignKey.toKey
-            : foreignKey.fromKey;
+        final other = foreignKey.fromKey == selectedKey ? foreignKey.toKey : foreignKey.fromKey;
         drawLine(
           from: from,
           to: to,

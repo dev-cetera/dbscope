@@ -69,9 +69,7 @@ class _RawTextInputState extends State<_RawTextInput> {
     final style = TextStyle(
       color: widget.enabled ? palette.text : palette.mutedText,
       fontSize: palette.bodyFontSize,
-      fontFamily: widget.monospace
-          ? palette.monoFontFamily
-          : palette.uiFontFamily,
+      fontFamily: widget.monospace ? palette.monoFontFamily : palette.uiFontFamily,
     );
     final field = TextField(
       controller: _textController,

@@ -43,9 +43,7 @@ class TypedValueText extends StatelessWidget {
   Widget build(BuildContext context) {
     final palette = AppPalette.of(context);
     final isNull = value == null;
-    final color = isNull
-        ? palette.typeNull
-        : (colorOverride ?? colorFor(palette, pgType));
+    final color = isNull ? palette.typeNull : (colorOverride ?? colorFor(palette, pgType));
     final text = isNull ? 'NULL' : value.toString();
     final baseStyle = TextStyle(
       color: color,
@@ -55,9 +53,7 @@ class TypedValueText extends StatelessWidget {
       height: 1.5,
       decoration: decorationOverride ?? TextDecoration.none,
     );
-    final alignment =
-        align ??
-        (pgType == PgType.bool_ ? Alignment.center : Alignment.centerLeft);
+    final alignment = align ?? (pgType == PgType.bool_ ? Alignment.center : Alignment.centerLeft);
 
     // JSON / JSONB cells: render compact, syntax-highlighted spans so
     // strings, numbers, booleans, null, and keys each pick up their
@@ -67,9 +63,7 @@ class TypedValueText extends StatelessWidget {
     // syntax (`{a: 1}`), not valid JSON. Round-trip via jsonSourceOf
     // first so the highlighter sees parseable input. Skip the path
     // when colour-override is in effect (e.g. FK chip contexts).
-    if (!isNull &&
-        (pgType == PgType.json || pgType == PgType.jsonb) &&
-        colorOverride == null) {
+    if (!isNull && (pgType == PgType.json || pgType == PgType.jsonb) && colorOverride == null) {
       final monoStyle = baseStyle.copyWith(
         fontFamily: palette.monoFontFamily,
         fontSize: palette.bodyFontSize,
@@ -270,8 +264,7 @@ List<InlineSpan>? _buildSpansWithUrls(
           color: palette.accent,
           decoration: TextDecoration.underline,
         ),
-        recognizer: TapGestureRecognizer()
-          ..onTap = () => _open(match.launchUri),
+        recognizer: TapGestureRecognizer()..onTap = () => _open(match.launchUri),
         mouseCursor: SystemMouseCursors.click,
       ),
     );

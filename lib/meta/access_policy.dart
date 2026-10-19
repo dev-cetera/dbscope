@@ -59,8 +59,7 @@ class AccessDecision {
 /// Real Postgres privileges of the connected login, used as a ceiling.
 class PrivilegeCeilings {
   const PrivilegeCeilings({this.tables = const {}, this.columns = const {}});
-  final Map<String, ({bool select, bool insert, bool update, bool delete})>
-  tables;
+  final Map<String, ({bool select, bool insert, bool update, bool delete})> tables;
 
   /// Only filled for tables where the login has column-level but not
   /// table-level SELECT.

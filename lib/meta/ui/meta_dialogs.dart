@@ -89,9 +89,7 @@ Future<bool> showTrustDialog(
                       '${changed.contains(item.id) ? '● changed  ' : ''}'
                       '${item.label}  (${item.kind} ${item.id})',
                       style: theme.textTheme.labelLarge?.copyWith(
-                        color: changed.contains(item.id)
-                            ? theme.colorScheme.error
-                            : null,
+                        color: changed.contains(item.id) ? theme.colorScheme.error : null,
                       ),
                     ),
                     SelectableText(item.text, style: _mono),
@@ -116,8 +114,7 @@ Future<Map<String, Object?>?> showInputsDialog(
   Map<String, String> initial = const {},
 }) async {
   final controllers = {
-    for (final i in inputs)
-      i.name: TextEditingController(text: initial[i.name] ?? ''),
+    for (final i in inputs) i.name: TextEditingController(text: initial[i.name] ?? ''),
   };
   String? error;
   Map<String, Object?>? values() {
@@ -166,9 +163,7 @@ Future<Map<String, Object?>?> showInputsDialog(
                   child: TextField(
                     controller: controllers[i.name],
                     autofocus: i == inputs.first,
-                    keyboardType: i.type == 'number'
-                        ? TextInputType.number
-                        : TextInputType.text,
+                    keyboardType: i.type == 'number' ? TextInputType.number : TextInputType.text,
                     decoration: InputDecoration(
                       labelText: i.prompt,
                       isDense: true,
@@ -220,8 +215,7 @@ Future<bool> showExecConfirmDialog(
             ],
             SelectableText(sql, style: _mono),
             const SizedBox(height: 12.0),
-            for (final e in values.entries)
-              Text('@${e.key} = ${e.value}', style: _mono),
+            for (final e in values.entries) Text('@${e.key} = ${e.value}', style: _mono),
             const SizedBox(height: 12.0),
             Text(
               expectRows == null
@@ -326,9 +320,7 @@ Future<void> showAboutColumnDialog(
         ),
       );
       return AppFormDialog(
-        title: click.isTable
-            ? '${click.table}.$column'
-            : '${click.queryId}.$column',
+        title: click.isTable ? '${click.table}.$column' : '${click.queryId}.$column',
         width: 560.0,
         submitLabel: null,
         cancelLabel: 'Close',
@@ -373,8 +365,7 @@ Future<void> showAboutColumnDialog(
               '${access.defaultHidden ? ' (hidden by default)' : ''}',
               [
                 Text(access.reason, style: theme.textTheme.bodySmall),
-                if (policy.active)
-                  Text(policy.summary, style: theme.textTheme.bodySmall),
+                if (policy.active) Text(policy.summary, style: theme.textTheme.bodySmall),
               ],
             ),
             if (columnPolicy != null &&
@@ -385,17 +376,14 @@ Future<void> showAboutColumnDialog(
               section('Editing rules', [
                 if (columnPolicy.readOnly)
                   Text('Read-only: ${columnPolicy.reason ?? 'by metadata'}'),
-                if (columnPolicy.pattern != null)
-                  Text('Must match ${columnPolicy.pattern}'),
+                if (columnPolicy.pattern != null) Text('Must match ${columnPolicy.pattern}'),
                 if (columnPolicy.min != null) Text('Min ${columnPolicy.min}'),
                 if (columnPolicy.max != null) Text('Max ${columnPolicy.max}'),
               ]),
             if (sensitive.excludeFromAi || sensitive.excludeFromExport)
               section('Sensitive', [
-                if (sensitive.excludeFromAi)
-                  const Text('Never sent to an AI provider.'),
-                if (sensitive.excludeFromExport)
-                  const Text('Left out of exports.'),
+                if (sensitive.excludeFromAi) const Text('Never sent to an AI provider.'),
+                if (sensitive.excludeFromExport) const Text('Left out of exports.'),
               ]),
             if (links.isNotEmpty)
               section('Links', [
@@ -464,8 +452,7 @@ Future<void> showEditDescriptionDialog(
                 title: const Text(
                   'Also write COMMENT ON (psql, pg_dump see it)',
                 ),
-                onChanged: (checked) =>
-                    setState(() => alsoComment = checked ?? false),
+                onChanged: (checked) => setState(() => alsoComment = checked ?? false),
               ),
           ],
         ),
@@ -558,8 +545,7 @@ class _NativeFactsSectionState extends State<_NativeFactsSection> {
     );
     List<NativeFact> keep(List<NativeFact> list) => [
       for (final fact in list)
-        if (!pattern.hasMatch(fact.label) && !pattern.hasMatch(fact.detail))
-          fact,
+        if (!pattern.hasMatch(fact.label) && !pattern.hasMatch(fact.detail)) fact,
     ];
     return NativeFacts(
       comment: facts.comment,
@@ -610,9 +596,7 @@ class _NativeFactsSectionState extends State<_NativeFactsSection> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         SelectableText(
-                          fact.detail.isEmpty
-                              ? fact.label
-                              : '${fact.label}: ${fact.detail}',
+                          fact.detail.isEmpty ? fact.label : '${fact.label}: ${fact.detail}',
                           style: _mono,
                         ),
                         if (fact.comment != null)
@@ -709,8 +693,7 @@ Future<void> showAboutTableDialog(
               connectionId: connectionId,
               schema: schema,
               table: table,
-              load: (executor) =>
-                  loadTableFacts(executor, schema: schema, table: table),
+              load: (executor) => loadTableFacts(executor, schema: schema, table: table),
             ),
             Text(
               'Your access: ${access.level.name}',
@@ -725,14 +708,10 @@ Future<void> showAboutTableDialog(
               const SizedBox(height: 12.0),
               Text('Metadata', style: theme.textTheme.labelLarge),
               if (display.group != null) Text('Group: ${display.group}'),
-              if (display.rowLabel != null)
-                Text('Row label: ${display.rowLabel}'),
-              if (policy.softDelete != null)
-                Text('Soft-delete column: ${policy.softDelete}'),
-              if (policy.readOnly)
-                Text('Read-only: ${policy.reason ?? 'by metadata'}'),
-              if (policy.danger != null)
-                Text('Deletes: ${policy.message ?? policy.danger}'),
+              if (display.rowLabel != null) Text('Row label: ${display.rowLabel}'),
+              if (policy.softDelete != null) Text('Soft-delete column: ${policy.softDelete}'),
+              if (policy.readOnly) Text('Read-only: ${policy.reason ?? 'by metadata'}'),
+              if (policy.danger != null) Text('Deletes: ${policy.message ?? policy.danger}'),
             ],
           ],
         ),

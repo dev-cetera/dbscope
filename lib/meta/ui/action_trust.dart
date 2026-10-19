@@ -39,8 +39,7 @@ class TrustItem {
   final String label;
   final String text;
 
-  String get fingerprint =>
-      sha256.convert(utf8.encode(jsonEncode([id, kind, text]))).toString();
+  String get fingerprint => sha256.convert(utf8.encode(jsonEncode([id, kind, text]))).toString();
 }
 
 /// Every SQL-bearing item of [scope] in [index].
@@ -115,9 +114,8 @@ List<TrustItem> trustItems(MetaIndex index, TrustScope scope) {
 }
 
 class MetaTrust {
-  static String hashOf(List<TrustItem> items) => sha256
-      .convert(utf8.encode([for (final i in items) i.fingerprint].join('\n')))
-      .toString();
+  static String hashOf(List<TrustItem> items) =>
+      sha256.convert(utf8.encode([for (final i in items) i.fingerprint].join('\n'))).toString();
 
   /// This window's copy. Subwindows have no SharedPreferences, so without it
   /// a trust given there would be forgotten at once and every run would ask

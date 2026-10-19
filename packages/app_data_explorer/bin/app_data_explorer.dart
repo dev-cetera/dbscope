@@ -198,8 +198,7 @@ Future<int> dropIntoAdbShell(String serial, String pkg) async {
     );
   }
   stdout.writeln();
-  final proc =
-      await Process.start(adb, args, mode: ProcessStartMode.inheritStdio);
+  final proc = await Process.start(adb, args, mode: ProcessStartMode.inheritStdio);
   return proc.exitCode;
 }
 
@@ -344,9 +343,8 @@ class IosRepl {
 
   String _resolve(String arg) {
     if (arg == '/' || arg == '~') return '';
-    final base = arg.startsWith('/')
-        ? <String>[]
-        : cwd.split('/').where((s) => s.isNotEmpty).toList();
+    final base =
+        arg.startsWith('/') ? <String>[] : cwd.split('/').where((s) => s.isNotEmpty).toList();
     for (final seg in arg.split('/')) {
       if (seg.isEmpty || seg == '.') continue;
       if (seg == '..') {

@@ -83,19 +83,15 @@ TableWriteRules writeRulesFor(
   final tablePolicy = snapshot?.index.policyTable(schema, table);
   final names = {for (final column in columns) column.name};
   final softDelete =
-      profile?.overridesFor(schema, table).softDeleteColumn ??
-      tablePolicy?.softDelete;
+      profile?.overridesFor(schema, table).softDeleteColumn ?? tablePolicy?.softDelete;
   return TableWriteRules(
     access: policy.forTable(schema, table),
-    softDeleteColumn: softDelete != null && names.contains(softDelete)
-        ? softDelete
-        : null,
+    softDeleteColumn: softDelete != null && names.contains(softDelete) ? softDelete : null,
     deleteRefusal: (tablePolicy?.forbidsAnyDelete ?? false)
         ? (tablePolicy?.message ?? 'Metadata forbids deleting rows here.')
         : null,
     hardDeleteRefusal: (tablePolicy?.forbidsHardDelete ?? false)
-        ? (tablePolicy?.message ??
-              'Metadata forbids hard deletes on this table.')
+        ? (tablePolicy?.message ?? 'Metadata forbids hard deletes on this table.')
         : null,
     returningList: columns.isEmpty
         ? '*'

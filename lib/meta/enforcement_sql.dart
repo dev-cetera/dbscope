@@ -121,8 +121,7 @@ EnforcementPlan buildEnforcementPlan({
     final usageSchemas = <String>{};
     final insertSchemas = <String>{};
     for (final enforcementTable in tables) {
-      if (isMetaTable?.call(enforcementTable.schema, enforcementTable.table) ??
-          false) {
+      if (isMetaTable?.call(enforcementTable.schema, enforcementTable.table) ?? false) {
         continue;
       }
       final qualified = quoteQualified(
@@ -132,9 +131,7 @@ EnforcementPlan buildEnforcementPlan({
       // Per object (tables AND views), so nothing outside this plan's list
       // is revoked and every listed relation is re-granted below.
       statements.add('REVOKE ALL ON $qualified FROM $quotedRole;');
-      final tableLevel = policy
-          .forTable(enforcementTable.schema, enforcementTable.table)
-          .level;
+      final tableLevel = policy.forTable(enforcementTable.schema, enforcementTable.table).level;
       void expect(
         Privilege privilege, {
         required bool granted,

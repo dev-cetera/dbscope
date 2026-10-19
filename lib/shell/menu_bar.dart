@@ -35,8 +35,7 @@ class AppMenuBar extends StatefulWidget {
 }
 
 class _AppMenuBarState extends State<AppMenuBar> {
-  bool get _useNativeMacMenu =>
-      !kIsWeb && defaultTargetPlatform == TargetPlatform.macOS;
+  bool get _useNativeMacMenu => !kIsWeb && defaultTargetPlatform == TargetPlatform.macOS;
 
   /// The shell is a cached route page, so nothing else rebuilds this
   /// widget. Rebuilding on every notify would re-send the native macOS
@@ -267,8 +266,7 @@ class _MenuActions {
             children: [
               for (final theme in ThemeRegistry.instance.all)
                 MenuItemSpec(
-                  label:
-                      '${state.themeId == theme.id ? '● ' : ' '}${theme.label}',
+                  label: '${state.themeId == theme.id ? '● ' : ' '}${theme.label}',
                   onSelected: () => state.setThemeId(theme.id),
                 ),
             ],
@@ -425,8 +423,7 @@ class _MenuButton extends StatelessWidget {
   final MenuSpec menu;
 
   Future<void> _show(BuildContext context, Offset globalPosition) async {
-    final overlay =
-        Overlay.of(context).context.findRenderObject()! as RenderBox;
+    final overlay = Overlay.of(context).context.findRenderObject()! as RenderBox;
     final flattened = _flattenForPopup(menu.items);
     final picked = await showMenu<MenuItemSpec>(
       context: context,

@@ -37,10 +37,7 @@ class _VResizableState extends State<VResizable> {
         behavior: HitTestBehavior.translucent,
         onVerticalDragStart: (_) => _dragHeight = widget.height,
         onVerticalDragUpdate: (details) {
-          final delta =
-              widget.side == VResizeSide.bottom
-                  ? details.delta.dy
-                  : -details.delta.dy;
+          final delta = widget.side == VResizeSide.bottom ? details.delta.dy : -details.delta.dy;
           final next = ((_dragHeight ?? widget.height) + delta).clamp(
             widget.minHeight,
             widget.maxHeight,

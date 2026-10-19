@@ -3,5 +3,4 @@
 // that throws if anyone tries to construct it (the web build is
 // single-window).
 
-export 'isolate_transport_io.dart'
-    if (dart.library.js_interop) 'isolate_transport_web.dart';
+export 'isolate_transport_io.dart' if (dart.library.js_interop) 'isolate_transport_web.dart';

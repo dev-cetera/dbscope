@@ -24,8 +24,7 @@ abstract class Transport {
 // when multi-window isn't in play.
 class LocalTransport implements Transport {
   LocalTransport(this._handler);
-  final void Function(Envelope envelope, void Function(Envelope) reply)
-  _handler;
+  final void Function(Envelope envelope, void Function(Envelope) reply) _handler;
   // Single-subscription: BackendClient is the only listener. Broadcast
   // controllers' done future can fail to complete in the flutter_test
   // zone after a sub has been cancelled, deadlocking the test runner.

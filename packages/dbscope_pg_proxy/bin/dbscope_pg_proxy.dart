@@ -190,9 +190,7 @@ class _Session {
         settings: pg.ConnectionSettings(
           sslMode: ssl,
           connectTimeout: timeout,
-          typeRegistry: enumCodecs.isEmpty
-              ? null
-              : pg.TypeRegistry(codecs: enumCodecs),
+          typeRegistry: enumCodecs.isEmpty ? null : pg.TypeRegistry(codecs: enumCodecs),
         ),
       );
       await _send({'type': 'ready'});
@@ -274,8 +272,7 @@ class _Session {
     }
     if (v is Map) {
       return {
-        for (final entry in v.entries)
-          entry.key.toString: _serialize(entry.value),
+        for (final entry in v.entries) entry.key.toString: _serialize(entry.value),
       };
     }
     return v.toString();

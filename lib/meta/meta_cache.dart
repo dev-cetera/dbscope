@@ -38,17 +38,16 @@ class MetaSnapshot {
     this.viewAsRoleIds,
   });
 
-  factory MetaSnapshot.loading(String profileId, MetadataSettings settings) =>
-      MetaSnapshot(
-        profileId: profileId,
-        status: MetaLoadStatus.loading,
-        index: MetaIndex.empty,
-        policy: AccessPolicy.unrestricted,
-        tablesOutcome: MetaTablesOutcome.absent,
-        settings: settings,
-        identity: AccessIdentity.anonymous,
-        isSqlite: false,
-      );
+  factory MetaSnapshot.loading(String profileId, MetadataSettings settings) => MetaSnapshot(
+    profileId: profileId,
+    status: MetaLoadStatus.loading,
+    index: MetaIndex.empty,
+    policy: AccessPolicy.unrestricted,
+    tablesOutcome: MetaTablesOutcome.absent,
+    settings: settings,
+    identity: AccessIdentity.anonymous,
+    isSqlite: false,
+  );
   final String profileId;
   final MetaLoadStatus status;
   final MetaIndex index;
@@ -66,8 +65,7 @@ class MetaSnapshot {
   List<MetaProblem> get problems => [
     ...index.allProblems,
     ...policy.problems,
-    if (tablesError != null)
-      MetaProblem(MetaSourceKind.database, 'metadata tables', tablesError!),
+    if (tablesError != null) MetaProblem(MetaSourceKind.database, 'metadata tables', tablesError!),
   ];
 
   bool get hasAnyMetadata => !index.document.isEmpty;
@@ -107,8 +105,7 @@ class MetadataCache extends ChangeNotifier {
   /// connection registry to `bus.publish('meta.changed:<id>')`.
   Future<void> Function(String profileId)? onReloadedBroadcast;
 
-  MetaSnapshot? snapshotFor(String? profileId) =>
-      profileId == null ? null : _snapshots[profileId];
+  MetaSnapshot? snapshotFor(String? profileId) => profileId == null ? null : _snapshots[profileId];
 
   /// Snapshot for whichever profile [executor] belongs to.
   MetaSnapshot? snapshotForExecutor(DbExecutor executor) {
@@ -136,8 +133,7 @@ class MetadataCache extends ChangeNotifier {
       final same =
           previousArgs != null &&
           identical(previousArgs.executor, executor) &&
-          previousArgs.profile.toJson().toString() ==
-              profile.toJson().toString();
+          previousArgs.profile.toJson().toString() == profile.toJson().toString();
       if (same) return existing;
       // Different executor (a reconnect) or settings: the running load
       // answers an old question. Run a fresh one after it, so the newest
@@ -155,10 +151,9 @@ class MetadataCache extends ChangeNotifier {
     // A block body on purpose: `remove` returns this very future, and
     // whenComplete waits on any future its callback returns — returning it
     // would make the load wait on itself forever.
-    final future = _load(profile, executor, previous?.viewAsRoleIds)
-        .whenComplete(() {
-          unawaited(_inFlight.remove(profile.id));
-        });
+    final future = _load(profile, executor, previous?.viewAsRoleIds).whenComplete(() {
+      unawaited(_inFlight.remove(profile.id));
+    });
     _inFlight[profile.id] = future;
     return future;
   }
@@ -286,8 +281,7 @@ class MetadataCache extends ChangeNotifier {
     var identity = AccessIdentity(claimedUser: settings.claimedIdentity);
     PrivilegeCeilings? ceilings;
     final accessControlPossible =
-        document.hasAccessControl ||
-        tables.outcome == MetaTablesOutcome.unreadable;
+        document.hasAccessControl || tables.outcome == MetaTablesOutcome.unreadable;
     if (accessControlPossible && !sqlite) {
       identity = AccessIdentity(
         postgresRoles: await _postgresRoles(executor),
@@ -351,9 +345,7 @@ class MetadataCache extends ChangeNotifier {
         sqlite: isSqlite,
       ),
       viewAsRoleIds: viewAsRoleIds,
-      viewAsLabel: viewAsRoleIds == null
-          ? null
-          : (viewAsRoleIds.toList()..sort()).join(', '),
+      viewAsLabel: viewAsRoleIds == null ? null : (viewAsRoleIds.toList()..sort()).join(', '),
     );
   }
 
@@ -391,8 +383,7 @@ class MetadataCache extends ChangeNotifier {
  AND n.nspname NOT IN ('pg_catalog', 'information_schema')
  AND n.nspname NOT LIKE 'pg_toast%'
  ''');
-      final tables =
-          <String, ({bool select, bool insert, bool update, bool delete})>{};
+      final tables = <String, ({bool select, bool insert, bool update, bool delete})>{};
       for (final row in tableResult.rows) {
         tables[PrivilegeCeilings.tableKey(
           row[0]! as String,

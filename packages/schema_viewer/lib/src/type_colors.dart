@@ -46,8 +46,7 @@ SchemaTypeFamily classifyTypeName(String? rawTypeLabel) {
   final label = rawTypeLabel.trim();
   if (label.isEmpty) return SchemaTypeFamily.otherFamily;
   if (RegExp(r'\[\]\s*$').hasMatch(label)) return SchemaTypeFamily.arrayFamily;
-  if (RegExp(r'^(small|big|tiny|medium)?int(eger)?\d*$', caseSensitive: false)
-      .hasMatch(label)) {
+  if (RegExp(r'^(small|big|tiny|medium)?int(eger)?\d*$', caseSensitive: false).hasMatch(label)) {
     return SchemaTypeFamily.intFamily;
   }
   if (RegExp(r'^serial\d*$', caseSensitive: false).hasMatch(label)) {
@@ -93,6 +92,5 @@ Color colorForType(String? rawTypeLabel, {required bool darkMode}) {
   final fam = classifyTypeName(rawTypeLabel);
   final hue = _familyHue[fam]!;
   final lightness = darkMode ? 0.74 : 0.36;
-  return HSLColor.fromAHSL(1.0, hue.degrees, hue.saturation, lightness)
-      .toColor();
+  return HSLColor.fromAHSL(1.0, hue.degrees, hue.saturation, lightness).toColor();
 }

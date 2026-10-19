@@ -32,10 +32,7 @@ class AppPanel extends StatelessWidget {
     return Container(
       decoration: BoxDecoration(
         color: theme.colorScheme.surface,
-        border:
-            rightBorder
-                ? Border(right: BorderSide(color: theme.dividerColor))
-                : null,
+        border: rightBorder ? Border(right: BorderSide(color: theme.dividerColor)) : null,
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,

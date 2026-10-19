@@ -78,9 +78,7 @@ class JobService {
     try {
       final summary = await handler.run(jobContext);
       record.summary = summary;
-      record.state = jobContext.cancelled
-          ? JobState.cancelled
-          : JobState.completed;
+      record.state = jobContext.cancelled ? JobState.cancelled : JobState.completed;
     } on RpcError catch (e) {
       record.error = e.message;
       record.state = JobState.failed;

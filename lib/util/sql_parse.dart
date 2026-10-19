@@ -176,8 +176,7 @@ int _continuationQuote(String sql, int i) {
       break;
     }
   }
-  final continues =
-      sawNewline && j < sql.length && sql.codeUnitAt(j) == _singleQuote;
+  final continues = sawNewline && j < sql.length && sql.codeUnitAt(j) == _singleQuote;
   return continues ? j : -1;
 }
 
@@ -201,18 +200,14 @@ int _skipDollarQuoted(String sql, int i) {
   return close < 0 ? sql.length : close + delimiter.length;
 }
 
-bool _isSpace(int ch) =>
-    ch == _space || ch == _tab || ch == _lineFeed || ch == _carriageReturn;
+bool _isSpace(int ch) => ch == _space || ch == _tab || ch == _lineFeed || ch == _carriageReturn;
 
 bool _isDigit(int ch) => ch >= 0x30 && ch <= 0x39;
 
 // Postgres treats every non-ASCII byte as an identifier character; any
 // UTF-16 code unit above 0x7F is the equivalent here.
 bool _isIdentStart(int ch) =>
-    (ch >= 0x41 && ch <= 0x5A) ||
-    (ch >= 0x61 && ch <= 0x7A) ||
-    ch == _underscore ||
-    ch > 0x7F;
+    (ch >= 0x41 && ch <= 0x5A) || (ch >= 0x61 && ch <= 0x7A) || ch == _underscore || ch > 0x7F;
 
 bool _isTagPart(int ch) => _isIdentStart(ch) || _isDigit(ch);
 

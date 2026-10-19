@@ -109,8 +109,7 @@ class SchemaCanvas extends StatefulWidget {
   final void Function(String nodeId)? onResizeEnd;
 
   /// Called when the user toggles compact mode from the header button.
-  final void Function(String nodeId, {required bool willBeCompact})?
-      onCompactToggled;
+  final void Function(String nodeId, {required bool willBeCompact})? onCompactToggled;
 
   /// Custom card renderer. Defaults to a plain [SchemaCard]. Hosts
   /// that need a wrapper (e.g. to overlay a resize handle, or to embed
@@ -159,8 +158,7 @@ class SchemaCanvas extends StatefulWidget {
   State<SchemaCanvas> createState() => _SchemaCanvasState();
 }
 
-class _SchemaCanvasState extends State<SchemaCanvas>
-    with SingleTickerProviderStateMixin {
+class _SchemaCanvasState extends State<SchemaCanvas> with SingleTickerProviderStateMixin {
   Offset _panDelta = Offset.zero;
   String? _dragNodeId;
   Offset _dragDelta = Offset.zero;
@@ -528,8 +526,8 @@ class _SchemaCanvasState extends State<SchemaCanvas>
     const padding = 0.15;
     final usableW = viewport.width * (1 - padding * 2);
     final usableH = viewport.height * (1 - padding * 2);
-    var fitScale = (usableW / contentW)
-        .clamp(0.05, 1.0); // never zoom in past 1.0 — admin_site doesn't.
+    var fitScale =
+        (usableW / contentW).clamp(0.05, 1.0); // never zoom in past 1.0 — admin_site doesn't.
     final scaleY = (usableH / contentH).clamp(0.05, 1.0);
     if (scaleY < fitScale) fitScale = scaleY;
     final centreCanvasX = minX + contentW / 2;
@@ -590,10 +588,7 @@ class _SchemaCanvasState extends State<SchemaCanvas>
                   painter: _DotGridPainter(
                     pan: pan,
                     scale: scale,
-                    color: Theme.of(context)
-                        .colorScheme
-                        .onSurface
-                        .withValues(alpha: 0.15),
+                    color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.15),
                   ),
                 ),
               ),
@@ -629,13 +624,9 @@ class _SchemaCanvasState extends State<SchemaCanvas>
                 final nodeWidth = effectiveNodeWidth(node);
                 final nodeHeight = renderedNodeHeight(node);
                 final left = pan.dx +
-                    (node.position.dx +
-                            (node.id == _dragNodeId ? _dragDelta.dx : 0.0)) *
-                        scale;
+                    (node.position.dx + (node.id == _dragNodeId ? _dragDelta.dx : 0.0)) * scale;
                 final top = pan.dy +
-                    (node.position.dy +
-                            (node.id == _dragNodeId ? _dragDelta.dy : 0.0)) *
-                        scale;
+                    (node.position.dy + (node.id == _dragNodeId ? _dragDelta.dy : 0.0)) * scale;
                 final callbacks = SchemaCanvasCardCallbacks(
                   onTap: () {
                     setState(() => _topNodeId = node.id);

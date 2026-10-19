@@ -27,9 +27,7 @@ class BusService {
     // Windows publish only cross-window "please refresh" signals here;
     // server-side state changes still publish from their own services.
     server.onRequest('bus.publish', (params) async {
-      final paramsMap = params is Map<String, Object?>
-          ? params
-          : const <String, Object?>{};
+      final paramsMap = params is Map<String, Object?> ? params : const <String, Object?>{};
       final topic = paramsMap['topic'];
       if (topic is! String || topic.isEmpty) return false;
       publish(topic, paramsMap['data']);
@@ -38,9 +36,7 @@ class BusService {
   }
 
   Stream<Object?> _subscribe(Object? params) {
-    final paramsMap = params is Map<String, Object?>
-        ? params
-        : const <String, Object?>{};
+    final paramsMap = params is Map<String, Object?> ? params : const <String, Object?>{};
     final topic = paramsMap['topic'] as String? ?? '*';
     final matcher = _matcherFor(topic);
     return _events.stream

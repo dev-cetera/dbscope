@@ -34,8 +34,7 @@ class _SchemaTabViewState extends State<SchemaTabView> {
     });
   }
 
-  DbExecutor? _executor() =>
-      ConnectionRegistry.instance.connectionFor(widget.tab.connectionId);
+  DbExecutor? _executor() => ConnectionRegistry.instance.connectionFor(widget.tab.connectionId);
 
   Future<void> _loadSchema({bool force = false}) async {
     final tab = widget.tab;
@@ -248,9 +247,7 @@ class _SchemaTabViewState extends State<SchemaTabView> {
               IconButton(
                 tooltip: 'Zoom out',
                 icon: const Icon(Icons.remove, size: 18.0),
-                onPressed: tab.isLoaded
-                    ? () => _canvasController.zoomBy(1 / 1.5)
-                    : null,
+                onPressed: tab.isLoaded ? () => _canvasController.zoomBy(1 / 1.5) : null,
               ),
               IconButton(
                 tooltip: 'Fit to view',
@@ -258,16 +255,12 @@ class _SchemaTabViewState extends State<SchemaTabView> {
                   Icons.center_focus_strong_outlined,
                   size: 18.0,
                 ),
-                onPressed: tab.isLoaded
-                    ? () => _canvasController.fitView()
-                    : null,
+                onPressed: tab.isLoaded ? () => _canvasController.fitView() : null,
               ),
               IconButton(
                 tooltip: 'Zoom in',
                 icon: const Icon(Icons.add, size: 18.0),
-                onPressed: tab.isLoaded
-                    ? () => _canvasController.zoomBy(1.5)
-                    : null,
+                onPressed: tab.isLoaded ? () => _canvasController.zoomBy(1.5) : null,
               ),
               const SizedBox(width: 8.0),
               IconButton(
@@ -279,9 +272,7 @@ class _SchemaTabViewState extends State<SchemaTabView> {
                         child: CircularProgressIndicator(strokeWidth: 2.0),
                       )
                     : const Icon(Icons.refresh, size: 18.0),
-                onPressed: tab.isLoading
-                    ? null
-                    : () => _loadSchema(force: true),
+                onPressed: tab.isLoading ? null : () => _loadSchema(force: true),
               ),
             ],
           ),

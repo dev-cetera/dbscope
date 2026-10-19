@@ -197,8 +197,7 @@ class _PgProxyDialogState extends State<_PgProxyDialog> {
                       child: Text('verify-full'),
                     ),
                   ],
-                  onChanged: (mode) =>
-                      setState(() => _ssl = mode ?? SslMode.require),
+                  onChanged: (mode) => setState(() => _ssl = mode ?? SslMode.require),
                 ),
                 const SizedBox(height: 8.0),
                 SwitchListTile(

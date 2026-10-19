@@ -352,10 +352,8 @@ class SchemaEdgePainter extends CustomPainter {
     final bDirection = bSide.direction;
     // Signed distance: how far the target sits along the anchor's
     // outward direction. Positive = forward, negative = backward.
-    final aDist = (bPoint.dx - aPoint.dx) * aDirection.dx +
-        (bPoint.dy - aPoint.dy) * aDirection.dy;
-    final bDist = (aPoint.dx - bPoint.dx) * bDirection.dx +
-        (aPoint.dy - bPoint.dy) * bDirection.dy;
+    final aDist = (bPoint.dx - aPoint.dx) * aDirection.dx + (bPoint.dy - aPoint.dy) * aDirection.dy;
+    final bDist = (aPoint.dx - bPoint.dx) * bDirection.dx + (aPoint.dy - bPoint.dy) * bDirection.dy;
     double offsetFor(double dist) {
       if (dist >= 0) return 0.5 * dist;
       return curvature * 25 * math.sqrt(-dist);

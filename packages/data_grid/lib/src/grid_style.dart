@@ -140,8 +140,7 @@ class GridStyleExtension extends ThemeExtension<GridStyleExtension> {
   final GridStyle style;
 
   @override
-  GridStyleExtension copyWith({GridStyle? style}) =>
-      GridStyleExtension(style ?? this.style);
+  GridStyleExtension copyWith({GridStyle? style}) => GridStyleExtension(style ?? this.style);
 
   @override
   GridStyleExtension lerp(ThemeExtension<GridStyleExtension>? other, double t) {

@@ -31,8 +31,7 @@ import 'package:dbscope/meta/native_facts.dart';
 import 'package:dbscope/meta/read_only_exec.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-String _env(String key, String fallback) =>
-    Platform.environment[key] ?? fallback;
+String _env(String key, String fallback) => Platform.environment[key] ?? fallback;
 
 void main() {
   final enabled = Platform.environment['DBSCOPE_LIVE_PG'] != null;

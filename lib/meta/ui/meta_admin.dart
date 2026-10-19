@@ -38,9 +38,7 @@ const _kMaxDriftLinesShown = 200;
 ({String id, MetaSnapshot snapshot})? _active(BuildContext context) {
   final id = ConnectionRegistry.instance.activeId;
   final snapshot = MetadataCache.instance.snapshotFor(id);
-  if (id == null ||
-      snapshot == null ||
-      ConnectionRegistry.instance.connectionFor(id) == null) {
+  if (id == null || snapshot == null || ConnectionRegistry.instance.connectionFor(id) == null) {
     showToast(context, 'Connect to a database first.');
     return null;
   }
@@ -314,8 +312,7 @@ Future<void> showChecks(BuildContext context) async {
                       : checkResult.check.severity == CheckSeverity.error
                       ? Icons.cancel_outlined
                       : Icons.warning_amber,
-                  color:
-                      checkResult.error != null || (checkResult.count ?? 0) > 0
+                  color: checkResult.error != null || (checkResult.count ?? 0) > 0
                       ? (checkResult.check.severity == CheckSeverity.info
                             ? theme.hintColor
                             : theme.colorScheme.error)
@@ -353,9 +350,7 @@ Future<void> showChecks(BuildContext context) async {
 
 Future<void> showMetadataSettings(BuildContext context) async {
   final id = ConnectionRegistry.instance.activeId;
-  final profile = id == null
-      ? null
-      : ConnectionRegistry.instance.profileById(id);
+  final profile = id == null ? null : ConnectionRegistry.instance.profileById(id);
   if (id == null || profile == null) {
     showToast(context, 'Pick a connection first.');
     return;
@@ -601,8 +596,7 @@ Future<void> exportMetadataFile(BuildContext context) async {
   final document = active.snapshot.index.document;
   final rows = [
     for (final metaRow in document.rows)
-      if (metaRow.source == MetaSourceKind.database ||
-          metaRow.source == MetaSourceKind.file)
+      if (metaRow.source == MetaSourceKind.database || metaRow.source == MetaSourceKind.file)
         {
           'id': metaRow.id,
           'target': metaRow.target.raw,
@@ -629,8 +623,7 @@ Future<void> exportMetadataFile(BuildContext context) async {
         },
     ],
     'members': [
-      for (final member in document.members)
-        {'role': member.roleId, 'principal': member.principal},
+      for (final member in document.members) {'role': member.roleId, 'principal': member.principal},
     ],
     'grants': [
       for (final grant in document.grants)

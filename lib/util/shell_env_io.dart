@@ -135,9 +135,7 @@ class ShellEnv {
   /// meaningless, so the shell's own `$PWD` rule would be worse than
   /// useless here.
   static Future<String?> _readInclude(String path, Directory parent) async {
-    final absolute = path.startsWith('/')
-        ? path
-        : '${parent.path}${Platform.pathSeparator}$path';
+    final absolute = path.startsWith('/') ? path : '${parent.path}${Platform.pathSeparator}$path';
     final file = File(absolute);
     if (!file.existsSync()) return null;
     try {

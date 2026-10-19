@@ -25,8 +25,7 @@ void main() {
     password: 'super-secret-p@ss w0rd',
     readOnly: true,
     extra: const {
-      'instanceConnectionName':
-          'compledo-prod:australia-southeast1:compledo-db-prod',
+      'instanceConnectionName': 'compledo-prod:australia-southeast1:compledo-db-prod',
       'gcpProject': 'compledo-prod',
       'instanceName': 'compledo-db-prod',
       'localPort': 9480,

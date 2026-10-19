@@ -151,9 +151,8 @@ class SqlAssistant {
         final columns = await catalog.listColumns(schema.name, table.name);
         final columnDescriptions = columns
             .map(
-              (column) => column.typeName.isEmpty
-                  ? column.name
-                  : '${column.name}:${column.typeName}',
+              (column) =>
+                  column.typeName.isEmpty ? column.name : '${column.name}:${column.typeName}',
             )
             .join(', ');
         buffer.writeln('${schema.name}.${table.name}($columnDescriptions)');
@@ -176,9 +175,7 @@ class SqlAssistant {
       if (selector == null) return false;
       final column = selector.exactColumn;
       if (column != null) {
-        return !policy
-            .forColumn(column.schema, column.table, column.column)
-            .isNone;
+        return !policy.forColumn(column.schema, column.table, column.column).isNone;
       }
       final table = selector.exactTable;
       if (table != null) {

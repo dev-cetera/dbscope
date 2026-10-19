@@ -64,9 +64,7 @@ class MetaColumnHeader extends StatelessWidget {
     if (queryId != null) {
       return index.describeQueryColumn(queryId, column).toMarkdown();
     }
-    return index
-        .describeColumn(click.schema!, click.table!, column)
-        .toMarkdown();
+    return index.describeColumn(click.schema!, click.table!, column).toMarkdown();
   }
 
   Future<void> _showMenu(BuildContext context, Offset position) async {
@@ -90,8 +88,7 @@ class MetaColumnHeader extends StatelessWidget {
   Widget build(BuildContext context) {
     return GestureDetector(
       behavior: HitTestBehavior.opaque,
-      onSecondaryTapDown: (details) =>
-          _showMenu(context, details.globalPosition),
+      onSecondaryTapDown: (details) => _showMenu(context, details.globalPosition),
       child: DescriptionTooltip(markdown: _markdown(), child: child),
     );
   }

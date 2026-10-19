@@ -8,8 +8,7 @@ final linkedTabKind = TabKind(
   id: 'linked',
   modelType: LinkedTab,
   icon: Icons.hub_outlined,
-  buildView: (tab) =>
-      LinkedTabView(key: ValueKey(tab.id), tab: tab as LinkedTab),
+  buildView: (tab) => LinkedTabView(key: ValueKey(tab.id), tab: tab as LinkedTab),
   serialize: (tab) {
     final linkedTab = tab as LinkedTab;
     return {

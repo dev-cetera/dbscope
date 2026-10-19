@@ -87,9 +87,7 @@ const vsCodeDarkPalette = AppPalette(
 /// overrides the default `.AppleSystemUIFont`.
 ThemeData buildVsCodeDarkTheme({String? fontFamily}) {
   final palette =
-      fontFamily == null
-          ? vsCodeDarkPalette
-          : vsCodeDarkPalette.copyWith(uiFontFamily: fontFamily);
+      fontFamily == null ? vsCodeDarkPalette : vsCodeDarkPalette.copyWith(uiFontFamily: fontFamily);
   final radius = BorderRadius.circular(palette.cornerRadius);
 
   OutlineInputBorder outline(Color color) => OutlineInputBorder(

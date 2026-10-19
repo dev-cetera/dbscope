@@ -183,9 +183,7 @@ class _ConnectionPicker extends StatelessWidget {
           Icon(
             profile == null
                 ? Icons.power_settings_new
-                : (registry.isConnected
-                      ? Icons.check_circle
-                      : Icons.error_outline),
+                : (registry.isConnected ? Icons.check_circle : Icons.error_outline),
             size: 16.0,
             color: profile == null
                 ? theme.hintColor

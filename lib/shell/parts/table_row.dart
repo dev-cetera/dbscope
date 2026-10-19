@@ -81,16 +81,12 @@ class _TableRow extends StatelessWidget {
         ? theme.colorScheme.primaryContainer
         : (isRelated ? tableColor.withValues(alpha: 0.28) : Colors.transparent);
     return GestureDetector(
-      onSecondaryTapDown: (details) =>
-          _showContextMenu(context, details.globalPosition),
-      onLongPressStart: (details) =>
-          _showContextMenu(context, details.globalPosition),
+      onSecondaryTapDown: (details) => _showContextMenu(context, details.globalPosition),
+      onLongPressStart: (details) => _showContextMenu(context, details.globalPosition),
       child: DecoratedBox(
         decoration: BoxDecoration(
           color: bg,
-          border: isSelected
-              ? Border.all(color: theme.colorScheme.primary, width: 1.5)
-              : null,
+          border: isSelected ? Border.all(color: theme.colorScheme.primary, width: 1.5) : null,
         ),
         child: InkWell(
           onTap: _openTable,
@@ -103,9 +99,7 @@ class _TableRow extends StatelessWidget {
                     child: Text(
                       table.name,
                       style: theme.textTheme.bodySmall?.copyWith(
-                        fontWeight: isSelected || isRelated
-                            ? FontWeight.w600
-                            : null,
+                        fontWeight: isSelected || isRelated ? FontWeight.w600 : null,
                       ),
                       overflow: TextOverflow.ellipsis,
                     ),

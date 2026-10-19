@@ -52,8 +52,7 @@ class _DefaultHost implements DbscopeHost {
   @override
   MenuContributionRegistry get menus => MenuContributionRegistry.instance;
   @override
-  SidebarTableActionRegistry get sidebarActions =>
-      SidebarTableActionRegistry.instance;
+  SidebarTableActionRegistry get sidebarActions => SidebarTableActionRegistry.instance;
   @override
   AiBrokerRegistry get aiBrokers => AiBrokerRegistry.instance;
 }

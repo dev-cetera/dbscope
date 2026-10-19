@@ -32,17 +32,16 @@ import 'package:flutter_test/flutter_test.dart';
 
 import 'support/fake_executor.dart';
 
-ColumnInfo _col(String name, {AccessLevel level = AccessLevel.full}) =>
-    ColumnInfo(
-      name: name,
-      type: PgType.text,
-      typeName: 'text',
-      nullable: true,
-      defaultExpr: null,
-      isGenerated: false,
-      isIdentity: false,
-      accessLevel: level,
-    );
+ColumnInfo _col(String name, {AccessLevel level = AccessLevel.full}) => ColumnInfo(
+  name: name,
+  type: PgType.text,
+  typeName: 'text',
+  nullable: true,
+  defaultExpr: null,
+  isGenerated: false,
+  isIdentity: false,
+  accessLevel: level,
+);
 
 class _NoTxExecutor extends FakeDbExecutor {
   @override
@@ -326,9 +325,7 @@ grants:
       // One REVOKE per table — a second block would revoke the first's
       // grants.
       expect(
-        'REVOKE ALL ON "public"."notes" FROM "staff";'
-            .allMatches(script)
-            .length,
+        'REVOKE ALL ON "public"."notes" FROM "staff";'.allMatches(script).length,
         1,
       );
       expect(script, contains('GRANT SELECT ON "public"."notes" TO "staff";'));

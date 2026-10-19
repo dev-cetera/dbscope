@@ -51,12 +51,10 @@ class GridBodyRow<TypeTag> extends StatelessWidget {
     for (var viewIndex = 0; viewIndex < model.order.length; viewIndex++) {
       final originalIndex = model.viewToOriginal(viewIndex);
       final column = data.columns[originalIndex];
-      final value =
-          originalIndex < values.length ? values[originalIndex] : null;
+      final value = originalIndex < values.length ? values[originalIndex] : null;
       final isSelected = selection?.contains(rowIdx, viewIndex) ?? false;
-      final isFocused = selection != null &&
-          selection.focusRow == rowIdx &&
-          selection.focusCol == viewIndex;
+      final isFocused =
+          selection != null && selection.focusRow == rowIdx && selection.focusCol == viewIndex;
       final isEditing = editingRow == rowIdx && editingColumn == viewIndex;
       cells.add(
         GridCell<TypeTag>(
@@ -74,9 +72,8 @@ class GridBodyRow<TypeTag> extends StatelessWidget {
           width: model.widthAt(viewIndex),
           height: rowHeight,
           onTap: () => onCellTap(rowIdx, viewIndex, extend: _isShiftPressed()),
-          onDoubleTap: (editor?.canEdit(column) ?? false)
-              ? () => onCellDoubleTap(rowIdx, viewIndex)
-              : null,
+          onDoubleTap:
+              (editor?.canEdit(column) ?? false) ? () => onCellDoubleTap(rowIdx, viewIndex) : null,
           onCommit: (newValue) => onCommit(rowIdx, viewIndex, newValue),
           onCancel: onCancelEdit,
         ),

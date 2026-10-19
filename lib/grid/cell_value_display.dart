@@ -66,8 +66,7 @@ class CellValueDisplay extends StatelessWidget {
   /// `incoming = false` means an outbound FK (row this column points
   /// at). The caller decides what "navigate" means (open Navigator,
   /// push step, etc.).
-  final void Function(ForeignKey foreignKey, {required bool incoming})?
-  onFollowLink;
+  final void Function(ForeignKey foreignKey, {required bool incoming})? onFollowLink;
 
   /// When true the type-derived color is applied. When false the
   /// widget renders in the palette's text color (matches the grid's
@@ -82,8 +81,7 @@ class CellValueDisplay extends StatelessWidget {
   final DisplaySpec? display;
 
   bool get _isJson => pgType == PgType.json || pgType == PgType.jsonb;
-  bool get _hasLink =>
-      onFollowLink != null && (outboundFk != null || inboundRefs.isNotEmpty);
+  bool get _hasLink => onFollowLink != null && (outboundFk != null || inboundRefs.isNotEmpty);
   bool get _hasJsonExpand => _isJson && value != null;
 
   @override
@@ -93,9 +91,7 @@ class CellValueDisplay extends StatelessWidget {
     final formatted = renderer == null
         ? null
         : formatForRenderer(renderer, display!.rendererArgs, value);
-    final swatch = renderer == ValueRenderer.color
-        ? parseColorValue(value)
-        : null;
+    final swatch = renderer == ValueRenderer.color ? parseColorValue(value) : null;
     Widget text = TypedValueText(
       value: formatted ?? value,
       pgType: formatted == null ? pgType : PgType.text,
@@ -172,8 +168,7 @@ class _LinkButton extends StatelessWidget {
 
   Future<void> _showMenu(BuildContext context) async {
     final box = context.findRenderObject() as RenderBox?;
-    final overlay =
-        Overlay.of(context).context.findRenderObject() as RenderBox?;
+    final overlay = Overlay.of(context).context.findRenderObject() as RenderBox?;
     if (box == null || overlay == null) return;
     final position = box.localToGlobal(Offset.zero, ancestor: overlay);
     final size = box.size;

@@ -37,9 +37,7 @@ List<EditPolicy> buildEditPolicies({
     (column) => column.isMasked && pkColumns.contains(column.name),
   );
   final tableEditable =
-      tableAccess.level.atLeast(AccessLevel.edit) &&
-      !pkMasked &&
-      !(tablePolicy?.readOnly ?? false);
+      tableAccess.level.atLeast(AccessLevel.edit) && !pkMasked && !(tablePolicy?.readOnly ?? false);
 
   return [
     for (final column in columns)
@@ -106,9 +104,7 @@ EditPolicy _policyFor(
         connectionReadOnly ||
         reason != null,
     multiLine:
-        column.type == PgType.json ||
-        column.type == PgType.jsonb ||
-        column.type == PgType.text,
+        column.type == PgType.json || column.type == PgType.jsonb || column.type == PgType.text,
     nullIfBlank: column.nullable,
     enumValues: column.enumValues,
     readOnlyReason: reason,

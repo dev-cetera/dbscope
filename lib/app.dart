@@ -104,22 +104,17 @@ class _DBScopeAppState extends State<DBScopeApp> {
       // Theme + its overlays both come from the registry — Doom's mugshot
       // only ships when the Doom plugin is registered, etc.
       child: MaterialApp(
-        title: widget.windowId == 0
-            ? 'DBScope'
-            : 'DBScope — window ${widget.windowId}',
+        title: widget.windowId == 0 ? 'DBScope' : 'DBScope — window ${widget.windowId}',
         debugShowCheckedModeBanner: false,
         theme: _theme,
         darkTheme: _theme,
-        themeMode: _theme.brightness == Brightness.dark
-            ? ThemeMode.dark
-            : ThemeMode.light,
+        themeMode: _theme.brightness == Brightness.dark ? ThemeMode.dark : ThemeMode.light,
         home: const _Shell(),
         builder: (context, child) {
           return Stack(
             children: [
               ?child,
-              for (final builder
-                  in _themePlugin?.overlays ?? const <WidgetBuilder>[])
+              for (final builder in _themePlugin?.overlays ?? const <WidgetBuilder>[])
                 builder(context),
             ],
           );
@@ -239,8 +234,7 @@ class _MainArea extends StatelessWidget {
         child: const EmptyState(
           icon: Icons.lan_outlined,
           iconSize: 64.0,
-          message:
-              'Open a table from the sidebar, or press Cmd+T for a new query.',
+          message: 'Open a table from the sidebar, or press Cmd+T for a new query.',
         ),
       );
     }

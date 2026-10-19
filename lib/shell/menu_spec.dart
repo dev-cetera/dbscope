@@ -62,9 +62,8 @@ class MenuContributionRegistry {
 
   void register(MenuContribution c) => _contributions.add(c);
 
-  List<MenuContribution> forMenu(String menu) => _contributions
-      .where((contribution) => contribution.menu == menu)
-      .toList(growable: false);
+  List<MenuContribution> forMenu(String menu) =>
+      _contributions.where((contribution) => contribution.menu == menu).toList(growable: false);
 
   Iterable<String> get extraMenuLabels {
     final builtins = {'File', 'View', 'Connection', 'AI'};

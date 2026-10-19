@@ -32,8 +32,7 @@ class GridHeader<TypeTag> extends StatelessWidget {
   final void Function(int originalIdx)? onSortToggle;
   final void Function(int originalIdx, double width) onWidthChanged;
   final void Function(int fromView, int toView) onReorder;
-  final Widget Function(BuildContext context, int columnIdx, Widget header)?
-      headerBuilder;
+  final Widget Function(BuildContext context, int columnIdx, Widget header)? headerBuilder;
 
   @override
   Widget build(BuildContext context) {
@@ -55,8 +54,7 @@ class GridHeader<TypeTag> extends StatelessWidget {
               width: model.widthAt(viewIndex),
               height: height,
               style: style,
-              isSorted: sortColumn ==
-                  data.columns[model.viewToOriginal(viewIndex)].name,
+              isSorted: sortColumn == data.columns[model.viewToOriginal(viewIndex)].name,
               sortDescending: sortDescending,
               onSortToggle: onSortToggle,
               onWidthChanged: onWidthChanged,
@@ -136,8 +134,7 @@ class _HeaderCell<TypeTag> extends StatelessWidget {
   final void Function(int originalIdx)? onSortToggle;
   final void Function(int originalIdx, double width) onWidthChanged;
   final void Function(int fromView, int toView) onReorder;
-  final Widget Function(BuildContext context, int columnIdx, Widget header)?
-      headerBuilder;
+  final Widget Function(BuildContext context, int columnIdx, Widget header)? headerBuilder;
 
   @override
   Widget build(BuildContext context) {
@@ -189,9 +186,7 @@ class _HeaderCell<TypeTag> extends StatelessWidget {
                       ),
                     if (isSorted)
                       Icon(
-                        sortDescending
-                            ? Icons.arrow_drop_down
-                            : Icons.arrow_drop_up,
+                        sortDescending ? Icons.arrow_drop_down : Icons.arrow_drop_up,
                         size: 14.0,
                         color: style.textColor,
                       ),

@@ -19,11 +19,9 @@
 import 'package:dbscope/util/sql_parse.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-bool _pgMulti(String sql) =>
-    containsMultipleStatements(sql, dialect: SqlDialect.postgres);
+bool _pgMulti(String sql) => containsMultipleStatements(sql, dialect: SqlDialect.postgres);
 
-String _pgStrip(String sql) =>
-    stripCommentsAndLeading(sql, dialect: SqlDialect.postgres);
+String _pgStrip(String sql) => stripCommentsAndLeading(sql, dialect: SqlDialect.postgres);
 
 void main() {
   group('containsMultipleStatements — statement boundaries', () {
@@ -233,8 +231,7 @@ void main() {
   });
 
   group('SqlDialect.sqlite', () {
-    bool multi(String sql) =>
-        containsMultipleStatements(sql, dialect: SqlDialect.sqlite);
+    bool multi(String sql) => containsMultipleStatements(sql, dialect: SqlDialect.sqlite);
 
     test("a backslash doesn't escape a quote", () {
       // SQLite reads `E` `'\'` then a real second statement.

@@ -1,7 +1,6 @@
 import 'package:flutter/widgets.dart';
 
-import '../data_grid.dart'
-    show CellEditor, CellRenderer, DataGrid, DataGridController;
+import '../data_grid.dart' show CellEditor, CellRenderer, DataGrid, DataGridController;
 
 /// Spec for one column in a [GridData].
 ///

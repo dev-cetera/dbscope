@@ -57,8 +57,7 @@ class DbmlExportFlow {
         );
         return;
       }
-      if (context.mounted &&
-          Navigator.of(context, rootNavigator: true).canPop()) {
+      if (context.mounted && Navigator.of(context, rootNavigator: true).canPop()) {
         Navigator.of(context, rootNavigator: true).pop();
       }
       await dialogFuture;
@@ -158,19 +157,16 @@ class _PostExportDialog extends StatelessWidget {
       ),
       actions: [
         TextButton(
-          onPressed: () =>
-              Navigator.of(context).pop(_PostExportAction.copyToClipboard),
+          onPressed: () => Navigator.of(context).pop(_PostExportAction.copyToClipboard),
           child: const Text('Copy to clipboard'),
         ),
         TextButton(
-          onPressed: () =>
-              Navigator.of(context).pop(_PostExportAction.viewInBrowser),
+          onPressed: () => Navigator.of(context).pop(_PostExportAction.viewInBrowser),
           child: const Text('View on dbdiagram.io'),
         ),
         if (!kIsWeb)
           FilledButton(
-            onPressed: () =>
-                Navigator.of(context).pop(_PostExportAction.saveToFile),
+            onPressed: () => Navigator.of(context).pop(_PostExportAction.saveToFile),
             child: const Text('Save to file…'),
           ),
       ],

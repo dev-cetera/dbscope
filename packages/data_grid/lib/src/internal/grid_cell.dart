@@ -87,8 +87,7 @@ class _GridCellState<TypeTag> extends State<GridCell<TypeTag>> {
   }
 
   void _commit() {
-    final canon =
-        widget.editor?.canonicalize(_pending, widget.column) ?? _pending;
+    final canon = widget.editor?.canonicalize(_pending, widget.column) ?? _pending;
     widget.onCommit?.call(canon);
   }
 
@@ -99,9 +98,7 @@ class _GridCellState<TypeTag> extends State<GridCell<TypeTag>> {
     final style = widget.style;
     final background = widget.isFocused
         ? style.focusBackground
-        : (widget.isSelected
-            ? style.selectionBackground
-            : style.cellBackground);
+        : (widget.isSelected ? style.selectionBackground : style.cellBackground);
     final border = widget.isFocused
         ? Border.all(color: style.accent)
         : Border(
@@ -109,8 +106,7 @@ class _GridCellState<TypeTag> extends State<GridCell<TypeTag>> {
             bottom: BorderSide(color: style.cellBorder, width: 0.5),
           );
 
-    final cellChild =
-        widget.isEditing && widget.editor != null ? _editor() : _display();
+    final cellChild = widget.isEditing && widget.editor != null ? _editor() : _display();
 
     return SizedBox(
       width: widget.width,

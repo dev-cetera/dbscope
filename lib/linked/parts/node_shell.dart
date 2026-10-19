@@ -53,14 +53,12 @@ List<String> _compactColumnsFor(
   final pkSet = node.pkColumns.toSet();
   final foreignKeyColumns = <String>{
     for (final foreignKey in allForeignKeys)
-      if (foreignKey.fromSchema == node.schema &&
-          foreignKey.fromTable == node.table)
+      if (foreignKey.fromSchema == node.schema && foreignKey.fromTable == node.table)
         foreignKey.fromColumn,
   };
   final refTargets = <String>{
     for (final foreignKey in allForeignKeys)
-      if (foreignKey.toSchema == node.schema &&
-          foreignKey.toTable == node.table)
+      if (foreignKey.toSchema == node.schema && foreignKey.toTable == node.table)
         foreignKey.toColumn,
   };
   return [
@@ -92,16 +90,14 @@ SchemaNodeData _toSchemaNode(
 }) {
   final fkByColumn = <String, ForeignKey>{};
   for (final foreignKey in allForeignKeys) {
-    if (foreignKey.fromSchema != node.schema ||
-        foreignKey.fromTable != node.table) {
+    if (foreignKey.fromSchema != node.schema || foreignKey.fromTable != node.table) {
       continue;
     }
     fkByColumn.putIfAbsent(foreignKey.fromColumn, () => foreignKey);
   }
   final inboundRefTargets = <String>{};
   for (final foreignKey in allForeignKeys) {
-    if (foreignKey.toSchema != node.schema ||
-        foreignKey.toTable != node.table) {
+    if (foreignKey.toSchema != node.schema || foreignKey.toTable != node.table) {
       continue;
     }
     inboundRefTargets.add(foreignKey.toColumn);
@@ -114,8 +110,7 @@ SchemaNodeData _toSchemaNode(
   final columns = node.columns.isNotEmpty
       ? node.columns.map((c) => (name: c.name, type: c.typeName)).toList()
       : [
-          for (final c in node.bodyColumnOrder(allForeignKeys))
-            (name: c, type: ''),
+          for (final c in node.bodyColumnOrder(allForeignKeys)) (name: c, type: ''),
         ];
 
   final fields = <SchemaFieldSpec>[];

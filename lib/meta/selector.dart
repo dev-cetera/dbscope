@@ -179,9 +179,7 @@ class Selector {
 
   /// Is this exactly a schema-level selector that matches [schema]?
   bool matchesSchemaOnly(String schema) =>
-      scope == SelectorScope.relation &&
-      _segments.length == 1 &&
-      _segments[0].matches(schema);
+      scope == SelectorScope.relation && _segments.length == 1 && _segments[0].matches(schema);
 
   /// Does this selector apply to the named query [queryId] as a whole?
   bool matchesQuery(String queryId) {

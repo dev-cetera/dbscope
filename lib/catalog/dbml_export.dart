@@ -30,17 +30,14 @@ class DbmlExporter {
 
   /// Schema metadata for this connection, when loaded: descriptions become
   /// DBML notes, which is how the AI features learn what columns mean.
-  MetaIndex? get _meta =>
-      MetadataCache.instance.snapshotForExecutor(conn)?.index;
+  MetaIndex? get _meta => MetadataCache.instance.snapshotForExecutor(conn)?.index;
 
   Future<String> generate({DbmlProgressCallback? onProgress}) async {
     // The filtered catalog: tables and columns at access level `none` never
     // reach the DBML (and so never reach an AI prompt).
     final catalog = SchemaCatalog(conn);
 
-    final schemas = (await catalog.listSchemas())
-        .where((schema) => !schema.isSystem)
-        .toList();
+    final schemas = (await catalog.listSchemas()).where((schema) => !schema.isSystem).toList();
 
     final allTables = <TableInfo>[];
     for (final schema in schemas) {
@@ -116,8 +113,7 @@ class DbmlExporter {
       (grouped[key] ??= <String>[]).add(row[2]! as String);
     }
     return [
-      for (final entry in grouped.entries)
-        DbmlEnum(entry.key.$1, entry.key.$2, entry.value),
+      for (final entry in grouped.entries) DbmlEnum(entry.key.$1, entry.key.$2, entry.value),
     ];
   }
 
@@ -153,16 +149,12 @@ class DbmlExporter {
       }
       final note = _columnNote(table, column);
       if (note != null) attributes.add("note: '${_escapeNote(note)}'");
-      final attributeSuffix = attributes.isEmpty
-          ? ''
-          : ' [${attributes.join(', ')}]';
+      final attributeSuffix = attributes.isEmpty ? '' : ' [${attributes.join(', ')}]';
       buffer.writeln(
         ' ${_columnName(column.name)} ${_dbmlType(column)}$attributeSuffix',
       );
     }
-    final tableNote = _meta
-        ?.describeTable(table.schema, table.name)
-        .description;
+    final tableNote = _meta?.describeTable(table.schema, table.name).description;
     if (tableNote != null) buffer.writeln(" Note: '${_escapeNote(tableNote)}'");
     if (primaryKey.length > 1) {
       buffer.writeln(' indexes {');

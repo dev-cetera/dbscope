@@ -145,9 +145,7 @@ class _SqliteConnectionDialogState extends State<SqliteConnectionDialog> {
   Widget build(BuildContext context) {
     return AlertDialog(
       title: Text(
-        widget.initial == null
-            ? 'New SQLite connection'
-            : 'Edit SQLite connection',
+        widget.initial == null ? 'New SQLite connection' : 'Edit SQLite connection',
       ),
       content: SizedBox(
         width: 480.0,

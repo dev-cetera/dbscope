@@ -103,8 +103,7 @@ class _SoftDeleteDialogState extends State<_SoftDeleteDialog> {
         ),
         if (widget.initialColumn != null)
           TextButton(
-            onPressed: () =>
-                Navigator.of(context).pop(const SoftDeleteResult.cleared()),
+            onPressed: () => Navigator.of(context).pop(const SoftDeleteResult.cleared()),
             child: const Text('Clear'),
           ),
         FilledButton(onPressed: _save, child: const Text('Save')),

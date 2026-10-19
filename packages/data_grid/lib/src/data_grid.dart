@@ -51,8 +51,7 @@ class DataGridController<TypeTag> {
 
   /// Set an explicit height for a single row. Pass `null` to clear the
   /// override and fall back to the grid's default `rowHeight`.
-  void setRowHeight(int rowIdx, double? height) =>
-      _state?._applySetRowHeight(rowIdx, height);
+  void setRowHeight(int rowIdx, double? height) => _state?._applySetRowHeight(rowIdx, height);
 
   /// Drop all per-row overrides so every row reverts to the default
   /// `rowHeight`.
@@ -177,8 +176,7 @@ class DataGrid<TypeTag> extends StatefulWidget {
   /// Wraps each column header (ORIGINAL column index) — e.g. a rich
   /// description tooltip and a right-click menu. Null shows the column's
   /// plain [GridColumnSpec.tooltip], if any, over the whole header.
-  final Widget Function(BuildContext context, int columnIdx, Widget header)?
-      headerBuilder;
+  final Widget Function(BuildContext context, int columnIdx, Widget header)? headerBuilder;
 
   @override
   State<DataGrid<TypeTag>> createState() => _DataGridState<TypeTag>();
@@ -208,8 +206,7 @@ class _DataGridState<TypeTag> extends State<DataGrid<TypeTag>> {
   var _syncingScroll = false;
   var _isDragging = false;
 
-  ValueListenable<double> get _rowHeightListenable =>
-      widget.rowHeight ?? _fallbackRowHeight;
+  ValueListenable<double> get _rowHeightListenable => widget.rowHeight ?? _fallbackRowHeight;
   double get _rowHeight => _rowHeightListenable.value;
 
   /// Per-row height overrides, keyed by row index. Lost on data
@@ -218,8 +215,7 @@ class _DataGridState<TypeTag> extends State<DataGrid<TypeTag>> {
 
   /// Effective height for the row at [rowIndex]: override if set,
   /// otherwise the default `rowHeight`.
-  double _heightFor(int rowIndex) =>
-      _rowHeightOverrides[rowIndex] ?? _rowHeight;
+  double _heightFor(int rowIndex) => _rowHeightOverrides[rowIndex] ?? _rowHeight;
 
   /// Row height used when the host supplies no `rowHeight` notifier.
   static const double _kDefaultRowHeight = 32;
@@ -275,8 +271,7 @@ class _DataGridState<TypeTag> extends State<DataGrid<TypeTag>> {
     _model.resetColumns(
       _currentData.columns.length,
       [
-        for (final column in _currentData.columns)
-          column.defaultWidth ?? widget.defaultColumnWidth,
+        for (final column in _currentData.columns) column.defaultWidth ?? widget.defaultColumnWidth,
       ],
       hidden: {
         for (var i = 0; i < _currentData.columns.length; i++)
@@ -378,8 +373,7 @@ class _DataGridState<TypeTag> extends State<DataGrid<TypeTag>> {
     final scroll = _vScroll;
     if (scroll.hasClients) {
       final previous = scroll.position.pixels;
-      final target = (previous - removedExtent)
-          .clamp(0.0, scroll.position.maxScrollExtent);
+      final target = (previous - removedExtent).clamp(0.0, scroll.position.maxScrollExtent);
       if (target != previous) scroll.jumpTo(target);
     }
     _model.rowsRemoved(0, actual);
@@ -486,8 +480,7 @@ class _DataGridState<TypeTag> extends State<DataGrid<TypeTag>> {
   void _onWidthChanged(int originalIndex, double width) =>
       _model.setColumnWidth(originalIndex, width);
 
-  void _onReorder(int fromView, int toView) =>
-      _model.reorderColumn(fromView, toView);
+  void _onReorder(int fromView, int toView) => _model.reorderColumn(fromView, toView);
 
   // --- Cell interaction --------------------------------------------------
 
@@ -620,10 +613,8 @@ class _DataGridState<TypeTag> extends State<DataGrid<TypeTag>> {
       }
       return;
     }
-    final nextRow =
-        (selection.focusRow + deltaRow).clamp(0, _currentData.rows.length - 1);
-    final nextColumn =
-        (selection.focusCol + deltaColumn).clamp(0, _model.order.length - 1);
+    final nextRow = (selection.focusRow + deltaRow).clamp(0, _currentData.rows.length - 1);
+    final nextColumn = (selection.focusCol + deltaColumn).clamp(0, _model.order.length - 1);
     _model.selectSingle(nextRow, nextColumn);
   }
 
@@ -677,22 +668,14 @@ class _DataGridState<TypeTag> extends State<DataGrid<TypeTag>> {
     final totalWidth = _model.totalWidth;
 
     final shortcuts = <ShortcutActivator, Intent>{
-      const SingleActivator(LogicalKeyboardKey.arrowLeft):
-          const _MoveIntent(0, -1),
-      const SingleActivator(LogicalKeyboardKey.arrowRight):
-          const _MoveIntent(0, 1),
-      const SingleActivator(LogicalKeyboardKey.arrowUp):
-          const _MoveIntent(-1, 0),
-      const SingleActivator(LogicalKeyboardKey.arrowDown):
-          const _MoveIntent(1, 0),
-      const SingleActivator(LogicalKeyboardKey.keyC, meta: true):
-          const _CopyIntent(),
-      const SingleActivator(LogicalKeyboardKey.keyC, control: true):
-          const _CopyIntent(),
-      const SingleActivator(LogicalKeyboardKey.keyA, meta: true):
-          const _SelectAllIntent(),
-      const SingleActivator(LogicalKeyboardKey.keyA, control: true):
-          const _SelectAllIntent(),
+      const SingleActivator(LogicalKeyboardKey.arrowLeft): const _MoveIntent(0, -1),
+      const SingleActivator(LogicalKeyboardKey.arrowRight): const _MoveIntent(0, 1),
+      const SingleActivator(LogicalKeyboardKey.arrowUp): const _MoveIntent(-1, 0),
+      const SingleActivator(LogicalKeyboardKey.arrowDown): const _MoveIntent(1, 0),
+      const SingleActivator(LogicalKeyboardKey.keyC, meta: true): const _CopyIntent(),
+      const SingleActivator(LogicalKeyboardKey.keyC, control: true): const _CopyIntent(),
+      const SingleActivator(LogicalKeyboardKey.keyA, meta: true): const _SelectAllIntent(),
+      const SingleActivator(LogicalKeyboardKey.keyA, control: true): const _SelectAllIntent(),
       const SingleActivator(LogicalKeyboardKey.enter): const _EditIntent(),
       const SingleActivator(LogicalKeyboardKey.f2): const _EditIntent(),
     };
@@ -747,8 +730,7 @@ class _DataGridState<TypeTag> extends State<DataGrid<TypeTag>> {
         Scrollbar(
           controller: _hScroll,
           thumbVisibility: true,
-          notificationPredicate: (notification) =>
-              notification.metrics.axis == Axis.horizontal,
+          notificationPredicate: (notification) => notification.metrics.axis == Axis.horizontal,
           child: SingleChildScrollView(
             controller: _hScroll,
             scrollDirection: Axis.horizontal,
@@ -777,10 +759,8 @@ class _DataGridState<TypeTag> extends State<DataGrid<TypeTag>> {
                       ),
                       child: Listener(
                         behavior: HitTestBehavior.translucent,
-                        onPointerDown: (e) =>
-                            _onBodyPointerDown(e, e.localPosition),
-                        onPointerMove: (e) =>
-                            _onBodyPointerMove(e, e.localPosition),
+                        onPointerDown: (e) => _onBodyPointerDown(e, e.localPosition),
+                        onPointerMove: (e) => _onBodyPointerMove(e, e.localPosition),
                         onPointerUp: _onBodyPointerUp,
                         child: Scrollbar(
                           controller: _vScroll,
@@ -869,10 +849,7 @@ class _DataGridState<TypeTag> extends State<DataGrid<TypeTag>> {
       final selectedRows = currentSelection == null
           ? [hit.row]
           : [
-              for (var r = currentSelection.rowMin;
-                  r <= currentSelection.rowMax;
-                  r++)
-                r,
+              for (var r = currentSelection.rowMin; r <= currentSelection.rowMax; r++) r,
             ];
       extras.addAll(
         builder(hit.row, _model.viewToOriginal(hit.col), selectedRows),
@@ -1031,23 +1008,20 @@ class _GutterColumn extends StatelessWidget {
           ),
           Expanded(
             child: ScrollConfiguration(
-              behavior:
-                  ScrollConfiguration.of(context).copyWith(scrollbars: false),
+              behavior: ScrollConfiguration.of(context).copyWith(scrollbars: false),
               child: ListView.builder(
                 controller: scrollController,
                 itemExtentBuilder: (i, _) => rowHeightFor(i),
                 itemCount: rowCount,
                 itemBuilder: (_, i) {
-                  final isSelected = selection != null &&
-                      i >= selection!.rowMin &&
-                      i <= selection!.rowMax;
+                  final isSelected =
+                      selection != null && i >= selection!.rowMin && i <= selection!.rowMax;
                   return _GutterCell(
                     rowIndex: i,
                     height: rowHeightFor(i),
                     style: style,
                     isSelected: isSelected,
-                    onTap: ({required extend}) =>
-                        onSelectRow(i, extend: extend),
+                    onTap: ({required extend}) => onSelectRow(i, extend: extend),
                     onResizeDelta: (delta) => onRowResizeDelta(i, delta),
                   );
                 },
@@ -1113,8 +1087,7 @@ class _GutterCell extends StatelessWidget {
             cursor: SystemMouseCursors.resizeRow,
             child: GestureDetector(
               behavior: HitTestBehavior.translucent,
-              onVerticalDragUpdate: (details) =>
-                  onResizeDelta(details.delta.dy),
+              onVerticalDragUpdate: (details) => onResizeDelta(details.delta.dy),
             ),
           ),
         ),

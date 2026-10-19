@@ -34,13 +34,7 @@ export 'src/schema_layout.dart'
         renderedNodeHeight,
         schemaNodeHeight,
         visibleFieldCountFor;
-export 'src/schema_model.dart'
-    show SchemaEdgeData, SchemaFieldSpec, SchemaNodeData;
+export 'src/schema_model.dart' show SchemaEdgeData, SchemaFieldSpec, SchemaNodeData;
 export 'src/table_colors.dart'
-    show
-        buildTableColorMap,
-        colorForTable,
-        colorIndexForTable,
-        kRelationshipPalette;
-export 'src/type_colors.dart'
-    show SchemaTypeFamily, classifyTypeName, colorForType;
+    show buildTableColorMap, colorForTable, colorIndexForTable, kRelationshipPalette;
+export 'src/type_colors.dart' show SchemaTypeFamily, classifyTypeName, colorForType;

@@ -64,8 +64,7 @@ class PgProxyExecutor implements DbExecutor {
       'username': profile.username,
       'password': profile.password,
       'sslMode': _sslName(profile.sslMode),
-      if ((extra['sharedSecret'] as String?)?.isNotEmpty ?? false)
-        'secret': extra['sharedSecret'],
+      if ((extra['sharedSecret'] as String?)?.isNotEmpty ?? false) 'secret': extra['sharedSecret'],
     };
     final ready = Completer<void>();
     executor._readyCompleter = ready;
@@ -110,8 +109,7 @@ class PgProxyExecutor implements DbExecutor {
       'type': 'execute',
       'id': id,
       'sql': sql,
-      if (named != null)
-        'named': named.map((key, value) => MapEntry(key, _wire(value))),
+      if (named != null) 'named': named.map((key, value) => MapEntry(key, _wire(value))),
       if (named == null && positional != null)
         'positional': [for (final value in positional) _wire(value)],
     };

@@ -87,14 +87,12 @@ class DbmlCache extends ChangeNotifier {
   /// that want to render fast without blocking on generation.
   String? peek(String profileId) => _entries[profileId]?.dbml;
 
-  DbmlStatus statusFor(String profileId) =>
-      _entries[profileId]?.status ?? DbmlStatus.none;
+  DbmlStatus statusFor(String profileId) => _entries[profileId]?.status ?? DbmlStatus.none;
 
   /// Pending future for [profileId], or null if not pending. Lets the
   /// AI Infer flow await an in-progress warm instead of telling the
   /// user "schema not ready" while it's loading.
-  Future<String>? pendingFuture(String profileId) =>
-      _entries[profileId]?.inFlight;
+  Future<String>? pendingFuture(String profileId) => _entries[profileId]?.inFlight;
 
   Object? errorFor(String profileId) => _entries[profileId]?.error;
 

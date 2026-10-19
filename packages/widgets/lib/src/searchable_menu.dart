@@ -121,9 +121,7 @@ class _SearchablePopupState<T> extends State<_SearchablePopup<T>> {
   List<SearchableMenuItem<T>> get _matches {
     if (_filter.isEmpty) return widget.items;
     final filterText = _filter.toLowerCase();
-    return widget.items
-        .where((e) => e.searchKey.toLowerCase().contains(filterText))
-        .toList();
+    return widget.items.where((e) => e.searchKey.toLowerCase().contains(filterText)).toList();
   }
 
   void _moveHighlight(int delta) {
@@ -180,14 +178,10 @@ class _SearchablePopupState<T> extends State<_SearchablePopup<T>> {
                   bindings: <ShortcutActivator, VoidCallback>{
                     const SingleActivator(LogicalKeyboardKey.escape):
                         () => Navigator.of(context).pop(),
-                    const SingleActivator(LogicalKeyboardKey.arrowDown):
-                        () => _moveHighlight(1),
-                    const SingleActivator(LogicalKeyboardKey.arrowUp):
-                        () => _moveHighlight(-1),
-                    const SingleActivator(LogicalKeyboardKey.enter):
-                        _selectHighlight,
-                    const SingleActivator(LogicalKeyboardKey.numpadEnter):
-                        _selectHighlight,
+                    const SingleActivator(LogicalKeyboardKey.arrowDown): () => _moveHighlight(1),
+                    const SingleActivator(LogicalKeyboardKey.arrowUp): () => _moveHighlight(-1),
+                    const SingleActivator(LogicalKeyboardKey.enter): _selectHighlight,
+                    const SingleActivator(LogicalKeyboardKey.numpadEnter): _selectHighlight,
                   },
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
@@ -231,8 +225,7 @@ class _SearchablePopupState<T> extends State<_SearchablePopup<T>> {
                                   itemCount: matches.length,
                                   itemBuilder: (_, i) {
                                     final item = matches[i];
-                                    final selectable =
-                                        item.value != null && item.enabled;
+                                    final selectable = item.value != null && item.enabled;
                                     final highlighted = i == _highlight;
                                     return InkWell(
                                       onTap:
@@ -244,10 +237,9 @@ class _SearchablePopupState<T> extends State<_SearchablePopup<T>> {
                                       child: Container(
                                         color:
                                             highlighted && selectable
-                                                ? theme
-                                                    .colorScheme
-                                                    .primaryContainer
-                                                    .withValues(alpha: 0.4)
+                                                ? theme.colorScheme.primaryContainer.withValues(
+                                                  alpha: 0.4,
+                                                )
                                                 : null,
                                         padding: const EdgeInsets.symmetric(
                                           horizontal: 8.0,
@@ -259,26 +251,20 @@ class _SearchablePopupState<T> extends State<_SearchablePopup<T>> {
                                             if (item.onSecondary != null) ...[
                                               const SizedBox(width: 4.0),
                                               GestureDetector(
-                                                behavior:
-                                                    HitTestBehavior.opaque,
+                                                behavior: HitTestBehavior.opaque,
                                                 onTap: () {
-                                                  final onSecondary =
-                                                      item.onSecondary!;
+                                                  final onSecondary = item.onSecondary!;
                                                   Navigator.of(context).pop();
                                                   onSecondary();
                                                 },
                                                 child: Tooltip(
-                                                  message:
-                                                      item.secondaryTooltip ??
-                                                      '',
+                                                  message: item.secondaryTooltip ?? '',
                                                   child: Padding(
-                                                    padding:
-                                                        const EdgeInsets.all(
-                                                          4.0,
-                                                        ),
+                                                    padding: const EdgeInsets.all(
+                                                      4.0,
+                                                    ),
                                                     child: Icon(
-                                                      item.secondaryIcon ??
-                                                          Icons.close,
+                                                      item.secondaryIcon ?? Icons.close,
                                                       size: 14.0,
                                                       color: theme.hintColor,
                                                     ),

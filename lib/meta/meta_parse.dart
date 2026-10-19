@@ -208,9 +208,7 @@ class MetaSourceBuilder {
         description: _trimmedStringOrNull(entry['description']),
         inherits: inherits,
         capabilities: capabilities,
-        dbRole:
-            _trimmedStringOrNull(entry['db_role']) ??
-            _trimmedStringOrNull(entry['dbRole']),
+        dbRole: _trimmedStringOrNull(entry['db_role']) ?? _trimmedStringOrNull(entry['dbRole']),
         spec: spec,
         source: source,
       ),
@@ -218,9 +216,7 @@ class MetaSourceBuilder {
   }
 
   void addMember(Map<String, Object?> entry, {required String where}) {
-    final roleId =
-        _trimmedStringOrNull(entry['role_id']) ??
-        _trimmedStringOrNull(entry['role']);
+    final roleId = _trimmedStringOrNull(entry['role_id']) ?? _trimmedStringOrNull(entry['role']);
     final principal = _trimmedStringOrNull(entry['principal']);
     if (roleId == null || principal == null) {
       problems.add(
@@ -249,9 +245,7 @@ class MetaSourceBuilder {
 
   void addGrant(Map<String, Object?> entry, {required String where}) {
     final id = _trimmedStringOrNull(entry['id']);
-    final roleId =
-        _trimmedStringOrNull(entry['role_id']) ??
-        _trimmedStringOrNull(entry['role']);
+    final roleId = _trimmedStringOrNull(entry['role_id']) ?? _trimmedStringOrNull(entry['role']);
     final targetRaw = _trimmedStringOrNull(entry['target']);
     if (id == null) {
       problems.add(MetaProblem(source, where, 'A grant needs an id.'));

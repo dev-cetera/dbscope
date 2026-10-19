@@ -167,17 +167,14 @@ class TableLoader {
     var sort = sortColumn == null
         ? display?.parsedDefaultSort
         : (column: sortColumn, descending: descending);
-    if (sort != null &&
-        (!columnNames.contains(sort.column) ||
-            maskedNames.contains(sort.column))) {
+    if (sort != null && (!columnNames.contains(sort.column) || maskedNames.contains(sort.column))) {
       sort = null;
     }
 
     // A metadata default filter is SQL from the metadata: it applies only
     // once the user trusted the connection's metadata SQL.
     final defaultFilter = defaultFilterTrusted ? display?.defaultFilter : null;
-    final defaultFilterPending =
-        !defaultFilterTrusted && display?.defaultFilter != null;
+    final defaultFilterPending = !defaultFilterTrusted && display?.defaultFilter != null;
     final composed = _composeBaseWhere(
       profile: profile,
       metaSoftDelete: tablePolicy?.softDelete,
@@ -238,8 +235,7 @@ class TableLoader {
       defaultFilterPending: defaultFilterPending,
       effectiveSort: sort,
       hardDeleteRefusal: (tablePolicy?.forbidsHardDelete ?? false)
-          ? (tablePolicy?.message ??
-                'Metadata forbids hard deletes on this table.')
+          ? (tablePolicy?.message ?? 'Metadata forbids hard deletes on this table.')
           : null,
       deleteRefusal: (tablePolicy?.forbidsAnyDelete ?? false)
           ? (tablePolicy?.message ?? 'Metadata forbids deleting rows here.')

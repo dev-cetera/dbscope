@@ -10,8 +10,7 @@ final namedQueryTabKind = TabKind(
   id: 'named_query',
   modelType: NamedQueryTab,
   icon: Icons.manage_search,
-  buildView: (tab) =>
-      NamedQueryView(key: ValueKey(tab.id), tab: tab as NamedQueryTab),
+  buildView: (tab) => NamedQueryView(key: ValueKey(tab.id), tab: tab as NamedQueryTab),
   serialize: (tab) {
     final namedQueryTab = tab as NamedQueryTab;
     final queryId = namedQueryTab.queryId;

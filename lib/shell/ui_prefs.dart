@@ -66,10 +66,8 @@ class UiPrefs {
   String? get envFilePath => _prefs?.getString(_kEnvFilePath);
 
   void setSidebarWidth(double v) => _prefs?.setDouble(_kSidebarWidth, v);
-  void setSidebarOnRight({required bool onRight}) =>
-      _prefs?.setBool(_kSidebarOnRight, onRight);
-  void setSidebarVisible({required bool visible}) =>
-      _prefs?.setBool(_kSidebarVisible, visible);
+  void setSidebarOnRight({required bool onRight}) => _prefs?.setBool(_kSidebarOnRight, onRight);
+  void setSidebarVisible({required bool visible}) => _prefs?.setBool(_kSidebarVisible, visible);
   void setInspectorWidth(double v) => _prefs?.setDouble(_kInspectorWidth, v);
   void setInspectorCollapsed({required bool collapsed}) =>
       _prefs?.setBool(_kInspectorCollapsed, collapsed);
@@ -89,11 +87,9 @@ class UiPrefs {
   /// `{"read": "<sha256>", "exec": "<sha256>"}`). Machine-local on purpose:
   /// trust never travels with a shared profile or connection link. Null in
   /// windows without SharedPreferences, which only means "ask again".
-  String? metaTrust(String profileId) =>
-      _prefs?.getString('$_kMetaTrustPrefix$profileId');
+  String? metaTrust(String profileId) => _prefs?.getString('$_kMetaTrustPrefix$profileId');
 
-  void setMetaTrust(String profileId, String? v) =>
-      _setOrRemove('$_kMetaTrustPrefix$profileId', v);
+  void setMetaTrust(String profileId, String? v) => _setOrRemove('$_kMetaTrustPrefix$profileId', v);
 
   /// Stores [value] trimmed, or drops the key when there is nothing to store.
   /// Removing rather than writing `''` is what lets a reader tell "never set"

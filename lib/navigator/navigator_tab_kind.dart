@@ -8,8 +8,7 @@ final navigatorTabKind = TabKind(
   id: 'navigator',
   modelType: NavigatorTab,
   icon: Icons.view_column_outlined,
-  buildView: (tab) =>
-      NavigatorTabView(key: ValueKey(tab.id), tab: tab as NavigatorTab),
+  buildView: (tab) => NavigatorTabView(key: ValueKey(tab.id), tab: tab as NavigatorTab),
   serialize: (tab) {
     final navigatorTab = tab as NavigatorTab;
     return {

@@ -135,8 +135,8 @@ class GridModel extends ChangeNotifier {
     int? follow(int row) => row < start
         ? row
         : row < start + count
-        ? null
-        : row - count;
+            ? null
+            : row - count;
     _moveRows(follow);
   }
 

@@ -22,18 +22,15 @@ const double kSchemaNodeMaxWidth = 480;
 const double kSchemaNodeMargin = 32;
 
 double schemaNodeHeight(int visibleFieldCount, {bool hasSubtitle = false}) {
-  final body = visibleFieldCount == 0
-      ? kSchemaEmptyBodyHeight
-      : visibleFieldCount * kSchemaRowHeight;
+  final body =
+      visibleFieldCount == 0 ? kSchemaEmptyBodyHeight : visibleFieldCount * kSchemaRowHeight;
   final extra = hasSubtitle ? kSchemaSubtitleHeight : 0;
   return kSchemaHeaderHeight + extra + body;
 }
 
 int visibleFieldCountFor(SchemaNodeData node, {bool compact = false}) {
   if (!compact) return node.fields.length;
-  return node.fields
-      .where((field) => field.pk || field.fk || field.isRefTarget)
-      .length;
+  return node.fields.where((field) => field.pk || field.fk || field.isRefTarget).length;
 }
 
 double renderedNodeHeight(SchemaNodeData node) {
@@ -332,8 +329,7 @@ double? columnLocalCentreY(SchemaNodeData node, String columnName) {
   }
   final index = visible.indexWhere((field) => field.name == columnName);
   if (index < 0) return null;
-  final headerOffset =
-      kSchemaHeaderHeight + (node.subtitle != null ? kSchemaSubtitleHeight : 0);
+  final headerOffset = kSchemaHeaderHeight + (node.subtitle != null ? kSchemaSubtitleHeight : 0);
   return headerOffset + index * kSchemaRowHeight + kSchemaRowHeight / 2;
 }
 
@@ -356,10 +352,8 @@ Map<String, ({bool sourceOnRight, bool targetOnRight})> pickEdgeSides(
     final sLeft = source.x;
     final tRight = target.x + target.w;
     final tLeft = target.x;
-    final distRtoL =
-        math.sqrt(math.pow(tLeft - sRight, 2) + math.pow(ty - sy, 2));
-    final distLtoR =
-        math.sqrt(math.pow(tRight - sLeft, 2) + math.pow(ty - sy, 2));
+    final distRtoL = math.sqrt(math.pow(tLeft - sRight, 2) + math.pow(ty - sy, 2));
+    final distLtoR = math.sqrt(math.pow(tRight - sLeft, 2) + math.pow(ty - sy, 2));
     final sourceOnRight = distRtoL <= distLtoR;
     out[e.id] = (sourceOnRight: sourceOnRight, targetOnRight: !sourceOnRight);
   }

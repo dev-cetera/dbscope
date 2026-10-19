@@ -98,9 +98,7 @@ class ResultExporter {
       final table = quoteIdent(tableName);
       db.execute('CREATE TABLE $table (${colDefs.join(', ')})');
       if (data.rows.isNotEmpty) {
-        final columns = data.columns
-            .map((column) => quoteIdent(column.name))
-            .join(', ');
+        final columns = data.columns.map((column) => quoteIdent(column.name)).join(', ');
         final placeholders = List.generate(
           data.columns.length,
           (i) => '?',

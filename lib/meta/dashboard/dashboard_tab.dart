@@ -32,8 +32,7 @@ class DashboardView extends StatefulWidget {
   State<DashboardView> createState() => _DashboardViewState();
 }
 
-class _DashboardViewState extends State<DashboardView>
-    with ListenableStateMixin {
+class _DashboardViewState extends State<DashboardView> with ListenableStateMixin {
   @override
   List<Listenable> get listenables => [MetadataCache.instance];
 
@@ -53,9 +52,7 @@ class _DashboardViewState extends State<DashboardView>
     final index = snapshot.index;
     final spec = tab.dashboardId == null
         ? null
-        : index.dashboards
-              .where((dashboard) => dashboard.id == tab.dashboardId)
-              .firstOrNull;
+        : index.dashboards.where((dashboard) => dashboard.id == tab.dashboardId).firstOrNull;
     final charts = spec == null
         ? [
             for (final chart in index.charts)
@@ -67,8 +64,7 @@ class _DashboardViewState extends State<DashboardView>
     if (tab.dashboardId != null && spec == null) {
       return EmptyState(
         icon: Icons.dashboard_outlined,
-        message:
-            'The dashboard "${tab.label}" no longer exists in the metadata.',
+        message: 'The dashboard "${tab.label}" no longer exists in the metadata.',
       );
     }
     final columns = spec?.columns ?? 2;
@@ -94,8 +90,7 @@ class _DashboardViewState extends State<DashboardView>
               : LayoutBuilder(
                   builder: (context, constraints) {
                     const gap = 12.0;
-                    final width =
-                        (constraints.maxWidth - gap * (columns + 1)) / columns;
+                    final width = (constraints.maxWidth - gap * (columns + 1)) / columns;
                     return SingleChildScrollView(
                       padding: const EdgeInsets.all(gap),
                       child: Wrap(
@@ -127,8 +122,7 @@ final dashboardTabKind = TabKind(
   id: 'dashboard',
   modelType: DashboardTab,
   icon: Icons.dashboard_outlined,
-  buildView: (tab) =>
-      DashboardView(key: ValueKey(tab.id), tab: tab as DashboardTab),
+  buildView: (tab) => DashboardView(key: ValueKey(tab.id), tab: tab as DashboardTab),
   serialize: (tab) {
     final dashboardTab = tab as DashboardTab;
     return {

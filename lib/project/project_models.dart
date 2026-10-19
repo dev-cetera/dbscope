@@ -70,12 +70,10 @@ class ProjectDocument {
     'name': name,
     'profiles': profiles,
     'savedQueries': {
-      for (final e in savedQueries.entries)
-        e.key: [for (final query in e.value) query.toJson()],
+      for (final e in savedQueries.entries) e.key: [for (final query in e.value) query.toJson()],
     },
     'savedAiQueries': {
-      for (final e in savedAiQueries.entries)
-        e.key: [for (final query in e.value) query.toJson()],
+      for (final e in savedAiQueries.entries) e.key: [for (final query in e.value) query.toJson()],
     },
     'ai': ai.toJson(),
   };

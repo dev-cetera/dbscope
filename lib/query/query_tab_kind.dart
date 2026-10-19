@@ -19,9 +19,7 @@ QueryTab _deserialize(Map<String, Object?> j) {
   // (kind: 'ai', generatedSql, prompt, focusSchema/Table). Legacy AI
   // tabs come back with the generated SQL pre-populated in the editor.
   final legacyAi = j['kind'] == 'ai';
-  final sql =
-      (j['sql'] as String?) ??
-      (legacyAi ? (j['generatedSql'] as String?) ?? '' : '');
+  final sql = (j['sql'] as String?) ?? (legacyAi ? (j['generatedSql'] as String?) ?? '' : '');
   return QueryTab(
     id: j['id'] as String?,
     connectionId: j['connectionId'] as String? ?? '',

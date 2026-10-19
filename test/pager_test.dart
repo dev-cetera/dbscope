@@ -29,8 +29,7 @@ ColumnInfo _col(String name) => ColumnInfo(
   isIdentity: false,
 );
 
-DbResult _rows(List<List<Object?>> rows) =>
-    DbResult(columns: const [], rows: rows);
+DbResult _rows(List<List<Object?>> rows) => DbResult(columns: const [], rows: rows);
 
 void main() {
   group('KeysetPager — happy path with PK', () {

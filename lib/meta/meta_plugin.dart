@@ -37,8 +37,7 @@ class MetaPlugin extends DbscopePlugin {
     }) => MenuContribution(
       menu: 'Metadata',
       startsGroup: startsGroup,
-      build: (context) =>
-          MenuItemSpec(label: label, onSelected: () => run(context)),
+      build: (context) => MenuItemSpec(label: label, onSelected: () => run(context)),
     );
 
     [

@@ -40,8 +40,7 @@ class ColumnTarget extends MetaTarget {
   final String table;
   final String column;
   @override
-  bool matches(Selector selector) =>
-      selector.matchesColumn(schema, table, column);
+  bool matches(Selector selector) => selector.matchesColumn(schema, table, column);
 }
 
 class QueryTarget extends MetaTarget {
@@ -56,8 +55,7 @@ class QueryColumnTarget extends MetaTarget {
   final String queryId;
   final String column;
   @override
-  bool matches(Selector selector) =>
-      selector.matchesQueryColumn(queryId, column);
+  bool matches(Selector selector) => selector.matchesQueryColumn(queryId, column);
 }
 
 class MetaIndex {
@@ -205,32 +203,29 @@ class MetaIndex {
     _mergedExact(MetaKinds.describe, SchemaTarget(schema), depth: 1),
   );
 
-  DescribeSpec describeTable(String schema, String table) =>
-      DescribeSpec.fromJson(
-        _mergedExact(MetaKinds.describe, TableTarget(schema, table), depth: 2),
-      );
+  DescribeSpec describeTable(String schema, String table) => DescribeSpec.fromJson(
+    _mergedExact(MetaKinds.describe, TableTarget(schema, table), depth: 2),
+  );
 
-  DescribeSpec describeColumn(String schema, String table, String column) =>
-      DescribeSpec.fromJson(
-        merged(
-          MetaKinds.describe,
-          ColumnTarget(schema, table, column),
-          columnDepthOnly: true,
-        ),
-      );
+  DescribeSpec describeColumn(String schema, String table, String column) => DescribeSpec.fromJson(
+    merged(
+      MetaKinds.describe,
+      ColumnTarget(schema, table, column),
+      columnDepthOnly: true,
+    ),
+  );
 
   DescribeSpec describeQuery(String queryId) => DescribeSpec.fromJson(
     _mergedExact(MetaKinds.describe, QueryTarget(queryId), depth: 2),
   );
 
-  DescribeSpec describeQueryColumn(String queryId, String column) =>
-      DescribeSpec.fromJson(
-        merged(
-          MetaKinds.describe,
-          QueryColumnTarget(queryId, column),
-          columnDepthOnly: true,
-        ),
-      );
+  DescribeSpec describeQueryColumn(String queryId, String column) => DescribeSpec.fromJson(
+    merged(
+      MetaKinds.describe,
+      QueryColumnTarget(queryId, column),
+      columnDepthOnly: true,
+    ),
+  );
 
   /// Like [merged] but only selectors whose depth is exactly [depth] — a
   /// schema-wide `describe` must not label every table.
@@ -259,30 +254,27 @@ class MetaIndex {
   );
 
   /// Column-level display (renderer, rendererArgs). Column selectors only.
-  DisplaySpec displayColumn(String schema, String table, String column) =>
-      DisplaySpec.fromJson(
-        merged(
-          MetaKinds.display,
-          ColumnTarget(schema, table, column),
-          columnDepthOnly: true,
-        ),
-      );
+  DisplaySpec displayColumn(String schema, String table, String column) => DisplaySpec.fromJson(
+    merged(
+      MetaKinds.display,
+      ColumnTarget(schema, table, column),
+      columnDepthOnly: true,
+    ),
+  );
 
   DisplaySpec displayQuery(String queryId) =>
       DisplaySpec.fromJson(merged(MetaKinds.display, QueryTarget(queryId)));
 
-  DisplaySpec displayQueryColumn(String queryId, String column) =>
-      DisplaySpec.fromJson(
-        merged(
-          MetaKinds.display,
-          QueryColumnTarget(queryId, column),
-          columnDepthOnly: true,
-        ),
-      );
+  DisplaySpec displayQueryColumn(String queryId, String column) => DisplaySpec.fromJson(
+    merged(
+      MetaKinds.display,
+      QueryColumnTarget(queryId, column),
+      columnDepthOnly: true,
+    ),
+  );
 
   /// The display group of a table, for sidebar folders. Null = ungrouped.
-  String? groupOf(String schema, String table) =>
-      displayTable(schema, table).group;
+  String? groupOf(String schema, String table) => displayTable(schema, table).group;
 
   // ─── Sensitive / policy / ai ──────────────────────────────────────
 
@@ -293,19 +285,17 @@ class MetaIndex {
         merged(MetaKinds.sensitive, ColumnTarget(schema, table, column)),
       );
 
-  SensitiveSpec sensitiveQueryColumn(String queryId, String column) =>
-      SensitiveSpec.fromJson(
-        merged(MetaKinds.sensitive, QueryColumnTarget(queryId, column)),
-      );
+  SensitiveSpec sensitiveQueryColumn(String queryId, String column) => SensitiveSpec.fromJson(
+    merged(MetaKinds.sensitive, QueryColumnTarget(queryId, column)),
+  );
 
   PolicySpec policyTable(String schema, String table) => PolicySpec.fromJson(
     merged(MetaKinds.policy, TableTarget(schema, table)),
   );
 
-  PolicySpec policyColumn(String schema, String table, String column) =>
-      PolicySpec.fromJson(
-        merged(MetaKinds.policy, ColumnTarget(schema, table, column)),
-      );
+  PolicySpec policyColumn(String schema, String table, String column) => PolicySpec.fromJson(
+    merged(MetaKinds.policy, ColumnTarget(schema, table, column)),
+  );
 
   /// Every `ai` note that applies anywhere, most general first, for the
   /// SQL assistant's prompt.
@@ -334,15 +324,12 @@ class MetaIndex {
   /// links, JSON-path links and URL links).
   List<LinkSpec> linksForColumn(String schema, String table, String column) => [
     for (final link in links)
-      if (link.target.isColumnLevel &&
-          link.target.matchesColumn(schema, table, column))
-        link,
+      if (link.target.isColumnLevel && link.target.matchesColumn(schema, table, column)) link,
   ];
 
   List<LinkSpec> linksForQueryColumn(String queryId, String column) => [
     for (final link in links)
-      if (link.target.matchesQueryColumn(queryId, column) &&
-          link.target.exactColumnName != null)
+      if (link.target.matchesQueryColumn(queryId, column) && link.target.exactColumnName != null)
         link,
   ];
 
@@ -354,17 +341,14 @@ class MetaIndex {
     String table,
   ) => [
     for (final action in actions)
-      if (action.scope == scope && action.target.matchesTable(schema, table))
-        action,
+      if (action.scope == scope && action.target.matchesTable(schema, table)) action,
   ];
 
-  List<ActionSpec> actionsForCell(String schema, String table, String column) =>
-      [
-        for (final action in actions)
-          if (action.scope == ActionScope.cell &&
-              action.target.matchesColumn(schema, table, column))
-            action,
-      ];
+  List<ActionSpec> actionsForCell(String schema, String table, String column) => [
+    for (final action in actions)
+      if (action.scope == ActionScope.cell && action.target.matchesColumn(schema, table, column))
+        action,
+  ];
 
   List<ActionSpec> actionsForQuery(ActionScope scope, String queryId) => [
     for (final action in actions)
@@ -373,8 +357,7 @@ class MetaIndex {
 
   List<ActionSpec> actionsForQueryCell(String queryId, String column) => [
     for (final action in actions)
-      if (action.scope == ActionScope.cell &&
-          action.target.matchesQueryColumn(queryId, column))
+      if (action.scope == ActionScope.cell && action.target.matchesQueryColumn(queryId, column))
         action,
   ];
 
@@ -408,14 +391,11 @@ class MetaIndex {
     if (source is ChartTableSource) {
       return source.schema == schema && source.table == table;
     }
-    return chart.target.exactTable?.schema == schema &&
-        chart.target.exactTable?.table == table;
+    return chart.target.exactTable?.schema == schema && chart.target.exactTable?.table == table;
   }
 
   List<CheckSpec> checksForTable(String schema, String table) => [
     for (final check in checks)
-      if (check.target.exactTable != null &&
-          check.target.matchesTable(schema, table))
-        check,
+      if (check.target.exactTable != null && check.target.matchesTable(schema, table)) check,
   ];
 }

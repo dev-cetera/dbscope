@@ -62,8 +62,7 @@ class DataGrid extends StatefulWidget {
   final List<ForeignKey> foreignKeys;
   final String? schema;
   final String? table;
-  final void Function(ForeignKey foreignKey, {required bool incoming})?
-  onFollowLink;
+  final void Function(ForeignKey foreignKey, {required bool incoming})? onFollowLink;
 
   /// Extra right-click entries for the clicked cell (row index, original
   /// column index) — metadata actions, links, "About this column", …
@@ -76,8 +75,7 @@ class DataGrid extends StatefulWidget {
 
   /// Wraps each column header (original column index): description
   /// tooltip, right-click "About this column".
-  final Widget Function(BuildContext context, int columnIndex, Widget header)?
-  headerBuilder;
+  final Widget Function(BuildContext context, int columnIndex, Widget header)? headerBuilder;
 
   /// Metadata display (value renderers) by column name.
   final Map<String, DisplaySpec> displayByColumn;
@@ -124,17 +122,11 @@ class _DataGridState extends State<DataGrid> {
       // misrender as a per-cell single link.
       final outboundGroups = <String, List<ForeignKey>>{};
       for (final foreignKey in widget.foreignKeys) {
-        if (foreignKey.fromSchema == widget.schema &&
-            foreignKey.fromTable == widget.table) {
-          outboundGroups
-              .putIfAbsent(foreignKey.constraintKey, () => [])
-              .add(foreignKey);
+        if (foreignKey.fromSchema == widget.schema && foreignKey.fromTable == widget.table) {
+          outboundGroups.putIfAbsent(foreignKey.constraintKey, () => []).add(foreignKey);
         }
-        if (foreignKey.toSchema == widget.schema &&
-            foreignKey.toTable == widget.table) {
-          inboundByColumn
-              .putIfAbsent(foreignKey.toColumn, () => [])
-              .add(foreignKey);
+        if (foreignKey.toSchema == widget.schema && foreignKey.toTable == widget.table) {
+          inboundByColumn.putIfAbsent(foreignKey.toColumn, () => []).add(foreignKey);
         }
       }
       for (final entry in outboundGroups.entries) {
@@ -162,8 +154,7 @@ class _DataGridState extends State<DataGrid> {
               primaryKey: column.primaryKey,
               indexed: column.indexed,
               defaultWidth:
-                  column.defaultWidth ??
-                  defaultWidthForPgType(column.type ?? PgType.unknown),
+                  column.defaultWidth ?? defaultWidthForPgType(column.type ?? PgType.unknown),
               hidden: column.hidden,
               tooltip: column.tooltip,
               marker: column.marker,

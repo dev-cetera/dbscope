@@ -19,8 +19,7 @@ class _InsertRowDialogState extends State<InsertRowDialog> {
   void initState() {
     super.initState();
     _values = {
-      for (final policy in widget.policies.where((policy) => !policy.readOnly))
-        policy.column: null,
+      for (final policy in widget.policies.where((policy) => !policy.readOnly)) policy.column: null,
     };
     _touched = <String>{};
   }
@@ -43,9 +42,7 @@ class _InsertRowDialogState extends State<InsertRowDialog> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final editable = widget.policies
-        .where((policy) => !policy.readOnly)
-        .toList();
+    final editable = widget.policies.where((policy) => !policy.readOnly).toList();
     return AlertDialog(
       title: const Text('Insert row'),
       content: SizedBox(

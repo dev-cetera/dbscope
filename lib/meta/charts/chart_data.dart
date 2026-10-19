@@ -51,8 +51,7 @@ class ChartData {
   /// For `stat`: the single value.
   final double? stat;
 
-  bool get isEmpty =>
-      series.every((entry) => entry.values.isEmpty) && stat == null;
+  bool get isEmpty => series.every((entry) => entry.values.isEmpty) && stat == null;
 }
 
 class ChartRunError implements Exception {
@@ -116,8 +115,7 @@ Future<ChartData> runChart(
   final source = chart.source;
   switch (source) {
     case ChartTableSource(:final schema, :final table):
-      if (policy.forTable(schema, table).level.index <
-          AccessLevel.masked.index) {
+      if (policy.forTable(schema, table).level.index < AccessLevel.masked.index) {
         throw ChartRunError('$schema.$table is not available.');
       }
       final columns = await SchemaCatalog(executor).listColumns(schema, table);
@@ -235,14 +233,9 @@ ChartData _shape(
 
   if (chart.type == ChartType.stat || xName == null) {
     final first = result.rows.isEmpty ? null : result.rows.first;
-    final measureColumnIndex = measureIndexes.isEmpty
-        ? 0
-        : measureIndexes.first;
+    final measureColumnIndex = measureIndexes.isEmpty ? 0 : measureIndexes.first;
     return ChartData(
-      stat:
-          first == null ||
-              measureColumnIndex < 0 ||
-              measureColumnIndex >= first.length
+      stat: first == null || measureColumnIndex < 0 || measureColumnIndex >= first.length
           ? null
           : _toDouble(first[measureColumnIndex]),
     );
@@ -298,9 +291,7 @@ List<List<Object?>> _ascendingByX(List<List<Object?>> rows, int xi) {
   if (!allTimes && !allNumbers) return rows;
   double keyOf(List<Object?> row) {
     final value = xOf(row);
-    return value is DateTime
-        ? value.microsecondsSinceEpoch.toDouble()
-        : (value! as num).toDouble();
+    return value is DateTime ? value.microsecondsSinceEpoch.toDouble() : (value! as num).toDouble();
   }
 
   // List.sort isn't stable; the index tie-break keeps equal x values (one

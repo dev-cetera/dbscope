@@ -29,8 +29,7 @@ enum EnvelopeKind {
   unsub('unsub'),
   evt('evt'),
   end('end'),
-  err('err')
-  ;
+  err('err');
 
   const EnvelopeKind(this.wire);
 

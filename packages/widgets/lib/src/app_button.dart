@@ -145,8 +145,7 @@ class _AppToggleButtonState extends State<AppToggleButton> {
                             : _hover && enabled
                             ? palette.rowHover
                             : palette.surfaceRaised,
-                    borderColor:
-                        widget.selected ? palette.accent : palette.border,
+                    borderColor: widget.selected ? palette.accent : palette.border,
                     padding: widget.padding,
                     child: centered,
                   ),

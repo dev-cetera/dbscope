@@ -62,9 +62,7 @@ class _QueryRow extends StatelessWidget {
               const SizedBox(width: 6.0),
               Expanded(
                 child: Text(
-                  query.group == null
-                      ? query.label
-                      : '${query.group} ▸ ${query.label}',
+                  query.group == null ? query.label : '${query.group} ▸ ${query.label}',
                   style: theme.textTheme.bodySmall,
                   overflow: TextOverflow.ellipsis,
                 ),
@@ -89,8 +87,7 @@ class _DashboardRow extends StatelessWidget {
 
   void _open() {
     final existing = AppState.instance.tabs.whereType<DashboardTab>().where(
-      (tab) =>
-          tab.connectionId == connectionId && tab.dashboardId == dashboardId,
+      (tab) => tab.connectionId == connectionId && tab.dashboardId == dashboardId,
     );
     if (existing.isNotEmpty) {
       AppState.instance.selectTab(existing.first.id);

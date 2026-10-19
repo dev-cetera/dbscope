@@ -56,8 +56,7 @@ class CodeEditorSubwindowScreen extends StatefulWidget {
   final CodeEditorLaunchPayload payload;
 
   @override
-  State<CodeEditorSubwindowScreen> createState() =>
-      _CodeEditorSubwindowScreenState();
+  State<CodeEditorSubwindowScreen> createState() => _CodeEditorSubwindowScreenState();
 }
 
 class _CodeEditorSubwindowScreenState extends State<CodeEditorSubwindowScreen> {
@@ -65,8 +64,7 @@ class _CodeEditorSubwindowScreenState extends State<CodeEditorSubwindowScreen> {
   var _isValid = true;
   var _replied = false;
 
-  CodeValidator? get _validator =>
-      widget.payload.formatJson ? _validateJson : null;
+  CodeValidator? get _validator => widget.payload.formatJson ? _validateJson : null;
 
   CodeFormatter? get _formatter => widget.payload.formatLabel == null
       ? null

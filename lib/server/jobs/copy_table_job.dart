@@ -79,9 +79,7 @@ class CopyTableJob implements JobHandler {
         'sourceConnectionId/targetConnectionId/sourceSchema/sourceTable required',
       );
     }
-    if (sourceId == targetId &&
-        sourceSchema == targetSchema &&
-        sourceTable == targetTable) {
+    if (sourceId == targetId && sourceSchema == targetSchema && sourceTable == targetTable) {
       throw const RpcError(
         'bad_params',
         'source and target are the same table',
@@ -157,9 +155,7 @@ class CopyTableJob implements JobHandler {
     if (targetColumns.isEmpty) {
       throw RpcError('missing_target', 'target $qTarget not found');
     }
-    final missing = columns
-        .where((column) => !targetColumns.contains(column))
-        .toList();
+    final missing = columns.where((column) => !targetColumns.contains(column)).toList();
     if (missing.isNotEmpty) {
       throw RpcError(
         'schema_mismatch',

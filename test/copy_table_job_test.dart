@@ -62,8 +62,7 @@ class _FakeSession implements pg.Session {
     _rows.removeRange(0, take);
     return pg.Result(
       rows: [
-        for (final values in batch)
-          pg.ResultRow(values: values, schema: schema),
+        for (final values in batch) pg.ResultRow(values: values, schema: schema),
       ],
       affectedRows: batch.length,
       schema: schema,

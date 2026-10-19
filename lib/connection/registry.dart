@@ -46,8 +46,7 @@ class ConnectionRegistry extends ChangeNotifier {
 
   /// Identifies this window on the bus so it ignores its own
   /// `meta.changed` broadcasts.
-  final _windowNonce =
-      '${DateTime.now().microsecondsSinceEpoch}-${identityHashCode(Object())}';
+  final _windowNonce = '${DateTime.now().microsecondsSinceEpoch}-${identityHashCode(Object())}';
 
   final Map<String, _ConnState> _states = {};
   final List<ConnectionProfile> _profiles = [];
@@ -55,24 +54,17 @@ class ConnectionRegistry extends ChangeNotifier {
 
   List<ConnectionProfile> get profiles => List.unmodifiable(_profiles);
   String? get activeId => _activeId;
-  ConnectionProfile? get profile =>
-      _activeId == null ? null : _states[_activeId]?.profile;
-  DbExecutor? get connection =>
-      _activeId == null ? null : _states[_activeId]?.executor;
-  bool get isConnected =>
-      !(_activeId == null) && (_states[_activeId]?.isConnected ?? false);
-  bool get isConnecting =>
-      !(_activeId == null) && (_states[_activeId]?.isConnecting ?? false);
-  String? get lastError =>
-      _activeId == null ? null : _states[_activeId]?.lastError;
-  bool get isReadOnly =>
-      !(_activeId == null) && (_states[_activeId]?.effectiveReadOnly ?? false);
+  ConnectionProfile? get profile => _activeId == null ? null : _states[_activeId]?.profile;
+  DbExecutor? get connection => _activeId == null ? null : _states[_activeId]?.executor;
+  bool get isConnected => !(_activeId == null) && (_states[_activeId]?.isConnected ?? false);
+  bool get isConnecting => !(_activeId == null) && (_states[_activeId]?.isConnecting ?? false);
+  String? get lastError => _activeId == null ? null : _states[_activeId]?.lastError;
+  bool get isReadOnly => !(_activeId == null) && (_states[_activeId]?.effectiveReadOnly ?? false);
 
   DbExecutor? connectionFor(String profileId) => _states[profileId]?.executor;
 
   /// Whether [profileId]'s connection is in read-only mode.
-  bool isReadOnlyFor(String profileId) =>
-      _states[profileId]?.effectiveReadOnly ?? false;
+  bool isReadOnlyFor(String profileId) => _states[profileId]?.effectiveReadOnly ?? false;
 
   /// Return [id]'s profile with its stored password populated (from the
   /// server-side keychain). Used by connection-link export, which needs a
@@ -91,20 +83,17 @@ class ConnectionRegistry extends ChangeNotifier {
     }
   }
 
-  ConnectionProfile? profileById(String id) =>
-      _profiles.cast<ConnectionProfile?>().firstWhere(
-        (profile) => profile?.id == id,
-        orElse: () => null,
-      );
+  ConnectionProfile? profileById(String id) => _profiles.cast<ConnectionProfile?>().firstWhere(
+    (profile) => profile?.id == id,
+    orElse: () => null,
+  );
 
   // Bind to a backend. Must be called once at startup, before load().
   void bind({required BackendClient client}) {
     _profileClient = ProfileServiceClient(client);
     _busClient = BusClient(client);
     unawaited(_profileSub?.cancel());
-    _profileSub = _busClient!
-        .subscribe('profile.changed')
-        .listen(_onProfileEvent);
+    _profileSub = _busClient!.subscribe('profile.changed').listen(_onProfileEvent);
     unawaited(_metaSub?.cancel());
     // BusService wildcards only match a `.*` suffix, so subscribe to
     // `meta.*` and filter for `meta.changed:<profileId>` here.
@@ -133,8 +122,7 @@ class ConnectionRegistry extends ChangeNotifier {
 
   /// Reloads schema metadata for [profileId] and rebuilds the DBML cache
   /// (which carries descriptions and respects access control).
-  Future<void> reloadMetadata(String profileId) =>
-      _reloadMetadata(profileId, broadcast: true);
+  Future<void> reloadMetadata(String profileId) => _reloadMetadata(profileId, broadcast: true);
 
   Future<void> _reloadMetadata(
     String profileId, {
@@ -176,11 +164,9 @@ class ConnectionRegistry extends ChangeNotifier {
         // If another window flipped readOnly on a profile we have open,
         // re-apply it to the executor here so this window stops issuing
         // writes (or starts allowing them) without needing a reconnect.
-        final readOnlyChanged =
-            state.isReadOnlyOverride != freshProfile.readOnly;
+        final readOnlyChanged = state.isReadOnlyOverride != freshProfile.readOnly;
         final metadataChanged =
-            state.profile.metadata.toJson().toString() !=
-            freshProfile.metadata.toJson().toString();
+            state.profile.metadata.toJson().toString() != freshProfile.metadata.toJson().toString();
         state.profile = freshProfile;
         if (metadataChanged && state.executor != null) {
           final executor = state.executor!;
@@ -195,9 +181,7 @@ class ConnectionRegistry extends ChangeNotifier {
         if (readOnlyChanged) {
           state.isReadOnlyOverride = freshProfile.readOnly;
           final executor = state.executor;
-          if (executor != null &&
-              executor.isOpen &&
-              executor.capabilities.sessionReadOnly) {
+          if (executor != null && executor.isOpen && executor.capabilities.sessionReadOnly) {
             unawaited(executor.setReadOnly(readOnly: freshProfile.readOnly));
           }
         }
@@ -354,8 +338,7 @@ class ConnectionRegistry extends ChangeNotifier {
           await _profileClient?.upsert(opened.updatedProfile!);
         } catch (_) {}
       }
-      if (state.effectiveReadOnly &&
-          opened.executor.capabilities.sessionReadOnly) {
+      if (state.effectiveReadOnly && opened.executor.capabilities.sessionReadOnly) {
         await opened.executor.setReadOnly(readOnly: true);
       }
       // Schema metadata (descriptions, access control, …) loads before the
@@ -475,9 +458,7 @@ class ConnectionRegistry extends ChangeNotifier {
     if (state == null) return;
     state.isReadOnlyOverride = readOnly;
     final executor = state.executor;
-    if (executor != null &&
-        executor.isOpen &&
-        executor.capabilities.sessionReadOnly) {
+    if (executor != null && executor.isOpen && executor.capabilities.sessionReadOnly) {
       await executor.setReadOnly(readOnly: readOnly);
     }
     final index = _profiles.indexWhere((profile) => profile.id == profileId);

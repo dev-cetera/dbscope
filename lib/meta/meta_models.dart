@@ -20,8 +20,7 @@ enum MetaSourceKind {
   file,
 
   /// This machine's per-profile overrides (soft-delete column, tenant).
-  profile
-  ;
+  profile;
 
   String get label => switch (this) {
     MetaSourceKind.native => 'database comments',
@@ -122,8 +121,7 @@ enum AccessLevel {
   masked,
   read,
   edit,
-  full
-  ;
+  full;
 
   bool atLeast(AccessLevel other) => index >= other.index;
 
@@ -135,11 +133,9 @@ enum AccessLevel {
     return null;
   }
 
-  static AccessLevel min(AccessLevel a, AccessLevel b) =>
-      a.index <= b.index ? a : b;
+  static AccessLevel min(AccessLevel a, AccessLevel b) => a.index <= b.index ? a : b;
 
-  static AccessLevel max(AccessLevel a, AccessLevel b) =>
-      a.index >= b.index ? a : b;
+  static AccessLevel max(AccessLevel a, AccessLevel b) => a.index >= b.index ? a : b;
 }
 
 /// Tool features a role may use. Capabilities add up across roles.
@@ -157,8 +153,7 @@ enum Capability {
   exec,
 
   /// Edit metadata and access control; use "View as…".
-  manage
-  ;
+  manage;
 
   static Capability? tryParse(Object? raw) {
     if (raw is! String) return null;
@@ -178,8 +173,7 @@ enum IdentityMode {
   claimed,
 
   /// Both.
-  either
-  ;
+  either;
 
   static IdentityMode? tryParse(Object? raw) {
     if (raw is! String) return null;
@@ -281,11 +275,9 @@ class MetaDocument {
 
   static const empty = MetaDocument();
 
-  bool get isEmpty =>
-      rows.isEmpty && roles.isEmpty && members.isEmpty && grants.isEmpty;
+  bool get isEmpty => rows.isEmpty && roles.isEmpty && members.isEmpty && grants.isEmpty;
 
-  Iterable<MetaRow> rowsOfKind(String kind) =>
-      rows.where((row) => row.kind == kind);
+  Iterable<MetaRow> rowsOfKind(String kind) => rows.where((row) => row.kind == kind);
 }
 
 /// One source's raw contribution before merging.
@@ -316,8 +308,7 @@ class MetaSourceData {
 /// Merges sources lowest-precedence first. Same id → the later source
 /// wins; `enabled: false` in a later source removes the id.
 MetaDocument mergeMetaSources(List<MetaSourceData> sources) {
-  final ordered = [...sources]
-    ..sort((a, b) => a.source.index.compareTo(b.source.index));
+  final ordered = [...sources]..sort((a, b) => a.source.index.compareTo(b.source.index));
   final rowsById = <String, MetaRow>{};
   final rolesById = <String, MetaRole>{};
   final grantsById = <String, MetaGrant>{};
@@ -350,9 +341,7 @@ MetaDocument mergeMetaSources(List<MetaSourceData> sources) {
     hasAccessControl = true;
   }
 
-  final formatRow = rowsById.values
-      .where((row) => row.kind == MetaKinds.format)
-      .firstOrNull;
+  final formatRow = rowsById.values.where((row) => row.kind == MetaKinds.format).firstOrNull;
   final version = formatRow?.spec['version'];
   if (version is num && version > kSupportedMetaFormatVersion) {
     problems.add(
@@ -435,8 +424,7 @@ List<Map<String, Object?>> specMapList(Map<String, Object?> spec, String key) {
   if (value is! List) return const [];
   return [
     for (final e in value)
-      if (e is Map)
-        {for (final entry in e.entries) entry.key.toString(): entry.value},
+      if (e is Map) {for (final entry in e.entries) entry.key.toString(): entry.value},
   ];
 }
 
@@ -490,8 +478,7 @@ class DescribeSpec {
       if (unit != null) '- **Unit:** $unit',
       if (owner != null) '- **Owner:** $owner',
       if (deprecated != null) '- **Deprecated:** $deprecated',
-      if (examples.isNotEmpty)
-        '- **Examples:** ${examples.map((e) => '`$e`').join(', ')}',
+      if (examples.isNotEmpty) '- **Examples:** ${examples.map((e) => '`$e`').join(', ')}',
       for (final e in values.entries) '- `${e.key}` — ${e.value}',
     ];
     return [
@@ -513,8 +500,7 @@ enum ValueRenderer {
   url,
   color,
   markdown,
-  json
-  ;
+  json;
 
   static ValueRenderer? tryParse(Object? raw) {
     if (raw is! String) return null;
@@ -672,8 +658,7 @@ class RbacSettings {
 enum TableNameTransform {
   asIs,
   lower,
-  upper
-  ;
+  upper;
 
   static TableNameTransform? tryParse(Object? raw) => switch (raw) {
     'as_is' || 'asIs' => TableNameTransform.asIs,
@@ -710,9 +695,7 @@ class LinkSpec {
     final url = specMap(spec, 'url');
     final map = <String, Selector>{};
     for (final e in specMap(poly, 'map').entries) {
-      final selector = e.value is String
-          ? Selector.tryParse(e.value! as String)
-          : null;
+      final selector = e.value is String ? Selector.tryParse(e.value! as String) : null;
       if (selector != null) map[e.key] = selector;
     }
     final toRaw = specString(spec, 'to');
@@ -762,8 +745,7 @@ enum ActionScope {
   table,
   row,
   cell,
-  selection
-  ;
+  selection;
 
   static ActionScope? tryParse(Object? raw) {
     if (raw is! String) return null;
@@ -779,8 +761,7 @@ enum ActionRun {
   openTable,
   exec,
   url,
-  copy
-  ;
+  copy;
 
   static ActionRun? tryParse(Object? raw) {
     if (raw is! String) return null;
@@ -954,8 +935,7 @@ enum ChartType {
   pie,
   scatter,
   histogram,
-  stat
-  ;
+  stat;
 
   static ChartType? tryParse(Object? raw) {
     if (raw is! String) return null;
@@ -973,8 +953,7 @@ enum ChartAggregate {
   avg,
   min,
   max,
-  countDistinct
-  ;
+  countDistinct;
 
   static ChartAggregate? tryParse(Object? raw) {
     if (raw is! String) return null;
@@ -991,8 +970,7 @@ enum ChartBucket {
   day,
   week,
   month,
-  year
-  ;
+  year;
 
   static ChartBucket? tryParse(Object? raw) {
     if (raw is! String) return null;
@@ -1009,8 +987,7 @@ enum ChartRange {
   last30Days,
   last90Days,
   last365Days,
-  all
-  ;
+  all;
 
   static ChartRange? tryParse(Object? raw) => switch (raw) {
     'last_24_hours' || 'last24Hours' => ChartRange.last24Hours,
@@ -1165,9 +1142,7 @@ class ChartSpec {
       source: source,
       x: specString(spec, 'x'),
       bucket: ChartBucket.tryParse(spec['bucket']),
-      y: measures.isEmpty
-          ? const [ChartMeasure(aggregate: ChartAggregate.count)]
-          : measures,
+      y: measures.isEmpty ? const [ChartMeasure(aggregate: ChartAggregate.count)] : measures,
       series: specString(spec, 'series'),
       range: ChartRange.tryParse(spec['range']) ?? ChartRange.all,
       rangeColumn: specString(spec, 'rangeColumn'),
@@ -1181,8 +1156,7 @@ class ChartSpec {
 enum CheckSeverity {
   info,
   warning,
-  error
-  ;
+  error;
 
   static CheckSeverity tryParse(Object? raw) => switch (raw) {
     'info' => CheckSeverity.info,

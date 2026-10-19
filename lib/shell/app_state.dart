@@ -17,8 +17,7 @@ export '../jobs/job_tab.dart' show JobTab;
 // every tab type. Each export's underlying file is the source of truth.
 export '../json_viewer/json_tab.dart' show JsonTab;
 export '../query/query_tab.dart' show QueryTab;
-export '../table/table_tab.dart'
-    show AutoRefreshInterval, TableSortState, TableTab;
+export '../table/table_tab.dart' show AutoRefreshInterval, TableSortState, TableTab;
 export '../tabs/tab_model.dart' show TabModel;
 
 class AppState extends ChangeNotifier {
@@ -60,8 +59,7 @@ class AppState extends ChangeNotifier {
   /// persisted id is empty or doesn't resolve — keeps the app
   /// renderable when a theme plugin is removed between sessions.
   ThemePlugin? get themePlugin =>
-      ThemeRegistry.instance.lookup(_themeId) ??
-      ThemeRegistry.instance.fallback;
+      ThemeRegistry.instance.lookup(_themeId) ?? ThemeRegistry.instance.fallback;
 
   String get themeId => themePlugin?.id ?? '';
 
@@ -218,9 +216,7 @@ class AppState extends ChangeNotifier {
     final all = ThemeRegistry.instance.all;
     if (all.isEmpty) return;
     final current = themePlugin;
-    final index = current == null
-        ? -1
-        : all.indexWhere((theme) => theme.id == current.id);
+    final index = current == null ? -1 : all.indexWhere((theme) => theme.id == current.id);
     final next = all[(index + 1) % all.length];
     setThemeId(next.id);
   }
@@ -279,9 +275,7 @@ class AppState extends ChangeNotifier {
   /// in [openTab] / [selectTab] and has the largest `lastActivatedAt`.
   void _evictIfOverCap() {
     while (tabs.length > maxTabs) {
-      final candidates = tabs
-          .where((tab) => !tab.pinned && tab.id != _active?.id)
-          .toList();
+      final candidates = tabs.where((tab) => !tab.pinned && tab.id != _active?.id).toList();
       if (candidates.isEmpty) return;
       candidates.sort((a, b) => a.lastActivatedAt.compareTo(b.lastActivatedAt));
       final victim = candidates.first;
@@ -433,9 +427,7 @@ class AppState extends ChangeNotifier {
 
   /// Close every tab except [keepId] and any pinned tab.
   void closeOtherTabs(String keepId) {
-    final removed = tabs
-        .where((tab) => tab.id != keepId && !tab.pinned)
-        .toList();
+    final removed = tabs.where((tab) => tab.id != keepId && !tab.pinned).toList();
     for (final tab in removed) {
       tab.cancelToken?.cancel();
     }
@@ -486,9 +478,7 @@ class AppState extends ChangeNotifier {
   }
 
   void closeTabsForConnection(String connectionId) {
-    final removed = tabs
-        .where((tab) => tab.connectionId == connectionId)
-        .toList();
+    final removed = tabs.where((tab) => tab.connectionId == connectionId).toList();
     for (final tab in removed) {
       tab.cancelToken?.cancel();
     }

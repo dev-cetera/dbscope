@@ -32,8 +32,7 @@ List<TextSpan> _leaves(String source) {
   return out;
 }
 
-TextSpan _find(List<TextSpan> spans, String text) =>
-    spans.firstWhere((span) => span.text == text);
+TextSpan _find(List<TextSpan> spans, String text) => spans.firstWhere((span) => span.text == text);
 
 void main() {
   test('bold and code take their colours', () {

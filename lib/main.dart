@@ -61,8 +61,7 @@ Future<void> main(List<String> args) async {
   // desktop_multi_window subwindows.
   await loadBundledGrammars();
 
-  final isSubwindow =
-      !kIsWeb && args.isNotEmpty && args.first == 'multi_window';
+  final isSubwindow = !kIsWeb && args.isNotEmpty && args.first == 'multi_window';
 
   // Code-editor subwindow: detect FIRST, before any plugin-channel work.
   // The subwindow's Flutter engine doesn't auto-register the host's

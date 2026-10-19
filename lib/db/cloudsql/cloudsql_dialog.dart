@@ -55,9 +55,7 @@ class _CloudSqlDialogState extends State<CloudSqlDialog> {
 
   void _maybeSyncProject() {
     final segs = _instance.text.trim().split(':');
-    if (segs.isNotEmpty &&
-        segs.first.isNotEmpty &&
-        _project.text.trim().isEmpty) {
+    if (segs.isNotEmpty && segs.first.isNotEmpty && _project.text.trim().isEmpty) {
       _project.text = segs.first;
     }
   }
@@ -115,9 +113,7 @@ class _CloudSqlDialogState extends State<CloudSqlDialog> {
   @override
   Widget build(BuildContext context) {
     return AppFormDialog(
-      title: widget.initial == null
-          ? 'New Cloud SQL connection'
-          : 'Edit Cloud SQL connection',
+      title: widget.initial == null ? 'New Cloud SQL connection' : 'Edit Cloud SQL connection',
       submitLabel: 'Connect',
       onSubmit: _submit,
       content: Form(
@@ -172,9 +168,7 @@ class _CloudSqlDialogState extends State<CloudSqlDialog> {
                     keyboardType: TextInputType.number,
                     validator: (value) {
                       final portNumber = int.tryParse(value?.trim() ?? '');
-                      if (portNumber == null ||
-                          portNumber <= 0 ||
-                          portNumber > 65535) {
+                      if (portNumber == null || portNumber <= 0 || portNumber > 65535) {
                         return 'invalid';
                       }
                       return null;
@@ -196,8 +190,7 @@ class _CloudSqlDialogState extends State<CloudSqlDialog> {
               decoration: InputDecoration(
                 labelText: 'Password',
                 suffixIcon: IconButton(
-                  onPressed: () =>
-                      setState(() => _passwordVisible = !_passwordVisible),
+                  onPressed: () => setState(() => _passwordVisible = !_passwordVisible),
                   icon: Icon(
                     _passwordVisible ? Icons.visibility_off : Icons.visibility,
                   ),

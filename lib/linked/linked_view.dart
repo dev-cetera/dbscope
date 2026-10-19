@@ -133,8 +133,7 @@ double _autoWidthFor(LinkedRowNode node, List<ForeignKey> foreignKeys) {
   final columns = node.columns.isNotEmpty
       ? [for (final c in node.columns) (name: c.name, type: c.typeName)]
       : [
-          for (final c in node.bodyColumnOrder(foreignKeys))
-            (name: c, type: ''),
+          for (final c in node.bodyColumnOrder(foreignKeys)) (name: c, type: ''),
         ];
   for (final column in columns) {
     final right = node.row != null
@@ -148,8 +147,7 @@ double _autoWidthFor(LinkedRowNode node, List<ForeignKey> foreignKeys) {
           })()
         : column.type;
     // 8px gap between left + right, plus prefix glyph ("* "/"+ ") width.
-    final width =
-        measure(column.name, nameStyle) + 12 + measure(right, typeStyle) + 8;
+    final width = measure(column.name, nameStyle) + 12 + measure(right, typeStyle) + 8;
     if (width > widest) widest = width;
   }
 
@@ -194,8 +192,7 @@ class _LinkedTabViewState extends State<LinkedTabView> {
     });
   }
 
-  DbExecutor? _executor() =>
-      ConnectionRegistry.instance.connectionFor(widget.tab.connectionId);
+  DbExecutor? _executor() => ConnectionRegistry.instance.connectionFor(widget.tab.connectionId);
 
   Future<void> _loadFKs() async {
     final tab = widget.tab;
@@ -376,9 +373,7 @@ class _LinkedTabViewState extends State<LinkedTabView> {
       );
       ref.row = row;
       ref.isLoading = false;
-      ref.error = row == null
-          ? 'Row not found (it may have been deleted).'
-          : null;
+      ref.error = row == null ? 'Row not found (it may have been deleted).' : null;
     } catch (e) {
       if (!mounted) return;
       if (widget.tab.previewRow != ref) return;
@@ -440,9 +435,7 @@ class _LinkedTabViewState extends State<LinkedTabView> {
       return existing;
     }
     final source = tab.selectedRowNode;
-    final position = source == null
-        ? const Offset(60.0, 60.0)
-        : _placeNextTo(source);
+    final position = source == null ? const Offset(60.0, 60.0) : _placeNextTo(source);
     final node = LinkedRowNode(
       position: position,
       schema: ref.schema,
@@ -478,9 +471,7 @@ class _LinkedTabViewState extends State<LinkedTabView> {
           node.position.dx,
           node.position.dy,
           node.width,
-          node is LinkedRowNode
-              ? _nodeHeightFor(node, foreignKeys)
-              : _kHeaderHeight + _kRowHeight,
+          node is LinkedRowNode ? _nodeHeightFor(node, foreignKeys) : _kHeaderHeight + _kRowHeight,
         ),
     ];
     const fallbackHeight = _kHeaderHeight + 4 * _kRowHeight;
@@ -542,9 +533,7 @@ class _LinkedTabViewState extends State<LinkedTabView> {
       node.row = row;
       node.rowLabel = _metaRowLabel(node.schema, node.table, row);
       node.isLoading = false;
-      node.error = row == null
-          ? 'Row not found (it may have been deleted).'
-          : null;
+      node.error = row == null ? 'Row not found (it may have been deleted).' : null;
     } catch (e) {
       if (!mounted) return;
       node.isLoading = false;
@@ -574,11 +563,8 @@ class _LinkedTabViewState extends State<LinkedTabView> {
     // child, not one per column.
     final outboundByConstraint = <String, List<ForeignKey>>{};
     for (final foreignKey in tab.foreignKeys) {
-      if (foreignKey.fromSchema == node.schema &&
-          foreignKey.fromTable == node.table) {
-        outboundByConstraint
-            .putIfAbsent(foreignKey.constraintKey, () => [])
-            .add(foreignKey);
+      if (foreignKey.fromSchema == node.schema && foreignKey.fromTable == node.table) {
+        outboundByConstraint.putIfAbsent(foreignKey.constraintKey, () => []).add(foreignKey);
       }
     }
     for (final group in outboundByConstraint.values) {
@@ -598,11 +584,8 @@ class _LinkedTabViewState extends State<LinkedTabView> {
     // that reference us.
     final inboundByConstraint = <String, List<ForeignKey>>{};
     for (final foreignKey in tab.foreignKeys) {
-      if (foreignKey.toSchema == node.schema &&
-          foreignKey.toTable == node.table) {
-        inboundByConstraint
-            .putIfAbsent(foreignKey.constraintKey, () => [])
-            .add(foreignKey);
+      if (foreignKey.toSchema == node.schema && foreignKey.toTable == node.table) {
+        inboundByConstraint.putIfAbsent(foreignKey.constraintKey, () => []).add(foreignKey);
       }
     }
     for (final group in inboundByConstraint.values) {
@@ -662,10 +645,7 @@ class _LinkedTabViewState extends State<LinkedTabView> {
     final existing = tab.findRow(target.toSchema, target.toTable, pkValues);
     if (existing != null) {
       if (!tab.edges.any(
-        (e) =>
-            e.fromNodeId == source.id &&
-            e.toNodeId == existing.id &&
-            e.fromColumn == fromColumn,
+        (e) => e.fromNodeId == source.id && e.toNodeId == existing.id && e.fromColumn == fromColumn,
       )) {
         tab.edges.add(
           LinkedEdge(
@@ -727,9 +707,7 @@ class _LinkedTabViewState extends State<LinkedTabView> {
       final catalog = SchemaCatalog(executor);
       final primaryKey = await catalog.primaryKey(fromSchema, fromTable);
       if (primaryKey.isEmpty) return;
-      final whereColumns = group
-          .map((member) => quoteIdent(member.fromColumn))
-          .toList();
+      final whereColumns = group.map((member) => quoteIdent(member.fromColumn)).toList();
       final params = <Object?>[];
       final placeholders = <String>[];
       for (final member in group) {
@@ -852,9 +830,7 @@ class _LinkedTabViewState extends State<LinkedTabView> {
                       canvas: _Canvas(
                         tab: tab,
                         onRowNodeMounted: (node) {
-                          if (node.row == null &&
-                              !node.isLoading &&
-                              node.error == null) {
+                          if (node.row == null && !node.isLoading && node.error == null) {
                             unawaited(_loadRowNode(node));
                           }
                         },
@@ -967,9 +943,7 @@ class _Header extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 4.0),
       titleIcon: Icons.hub_outlined,
       title: 'Linked view',
-      subtitle:
-          tab.fksError ??
-          (tab.fksLoaded ? '$rowCount rows on canvas' : 'loading FKs…'),
+      subtitle: tab.fksError ?? (tab.fksLoaded ? '$rowCount rows on canvas' : 'loading FKs…'),
       trailing: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
@@ -1022,8 +996,7 @@ class _RightInspector extends StatelessWidget {
   });
   final LinkedTab tab;
   final Future<void> Function(EditPolicy policy, Object? newRaw) onSave;
-  final void Function(String fromColumn, Object? value, List<ForeignKey> group)
-  onFollowOutbound;
+  final void Function(String fromColumn, Object? value, List<ForeignKey> group) onFollowOutbound;
   final void Function(List<ForeignKey> group) onOpenInbound;
   final VoidCallback onReload;
 
@@ -1040,15 +1013,9 @@ class _RightInspector extends StatelessWidget {
     final rowMap = hasPreview ? preview.row : selected?.row;
     final schema = hasPreview ? preview.schema : selected?.schema;
     final table = hasPreview ? preview.table : selected?.table;
-    final columns = hasPreview
-        ? preview.columns
-        : (selected?.columns ?? const []);
-    final editPolicies = hasPreview
-        ? preview.editPolicies
-        : (selected?.editPolicies ?? const []);
-    final pkColumns = hasPreview
-        ? preview.pkColumns
-        : (selected?.pkColumns ?? const []);
+    final columns = hasPreview ? preview.columns : (selected?.columns ?? const []);
+    final editPolicies = hasPreview ? preview.editPolicies : (selected?.editPolicies ?? const []);
+    final pkColumns = hasPreview ? preview.pkColumns : (selected?.pkColumns ?? const []);
 
     final title = table == null
         ? 'Row inspector (no selection)'
@@ -1098,9 +1065,7 @@ class _RightInspector extends StatelessWidget {
       ),
       child: AppPanel(
         title: title,
-        titleIcon: hasPreview
-            ? Icons.visibility_outlined
-            : Icons.article_outlined,
+        titleIcon: hasPreview ? Icons.visibility_outlined : Icons.article_outlined,
         trailing: IconButton(
           tooltip: 'Hide inspector',
           icon: const Icon(Icons.close, size: 14.0),
@@ -1194,9 +1159,7 @@ class _MiddlePane extends StatelessWidget {
     }
     final preview = tab.previewRow;
     final selectedPrimaryKey =
-        preview != null &&
-            preview.schema == selected.schema &&
-            preview.table == selected.table
+        preview != null && preview.schema == selected.schema && preview.table == selected.table
         ? preview.pkValues
         : selected.pkValues;
     return Resizable(

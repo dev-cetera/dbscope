@@ -18,11 +18,10 @@ import 'package:flutter/services.dart';
 import 'envelope.dart';
 import 'transport.dart';
 
-typedef WindowRoute =
-    Future<dynamic> Function(
-      MethodCall call,
-      int fromWindowId,
-    );
+typedef WindowRoute = Future<dynamic> Function(
+  MethodCall call,
+  int fromWindowId,
+);
 
 // Singleton router. Set up once per isolate.
 class WindowRouter {

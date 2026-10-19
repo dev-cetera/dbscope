@@ -99,9 +99,7 @@ class PostgresKindPlugin implements ConnectionKindPlugin {
       settings: pg.ConnectionSettings(
         sslMode: mode,
         connectTimeout: timeout,
-        typeRegistry: enumCodecs.isEmpty
-            ? null
-            : pg.TypeRegistry(codecs: enumCodecs),
+        typeRegistry: enumCodecs.isEmpty ? null : pg.TypeRegistry(codecs: enumCodecs),
       ),
     );
   }

@@ -187,9 +187,7 @@ class MetaActionRunner {
   ) async {
     final bound = _bind(context, action.sql, binding, action.label);
     if (bound == null) return;
-    final confirmText = action.confirm == null
-        ? null
-        : renderTemplate(action.confirm!, binding);
+    final confirmText = action.confirm == null ? null : renderTemplate(action.confirm!, binding);
     final ok = await showExecConfirmDialog(
       context,
       title: action.label,

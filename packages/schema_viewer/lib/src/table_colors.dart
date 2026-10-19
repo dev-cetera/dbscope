@@ -27,8 +27,7 @@ int colorIndexForTable(String tableKey) {
 
 /// Stable per-name colour. Used to tint card headers, FK row text, and
 /// the gradient that fills each edge.
-Color colorForTable(String tableKey) =>
-    kRelationshipPalette[colorIndexForTable(tableKey)];
+Color colorForTable(String tableKey) => kRelationshipPalette[colorIndexForTable(tableKey)];
 
 /// Walks [tableKeysInOrder] (the order they appear in a list) and
 /// assigns each a palette colour, shifting by a coprime stride whenever

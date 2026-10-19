@@ -31,12 +31,8 @@ class SqfliteRemoteKindPlugin implements ConnectionKindPlugin {
     final deviceId = (profile.extra['deviceId'] as String?)?.trim() ?? '';
     final appId = (profile.extra['appId'] as String?)?.trim() ?? '';
     final dbPath = (profile.extra['dbPath'] as String?)?.trim() ?? '';
-    final deviceLabel =
-        (profile.extra['deviceLabel'] as String?)?.trim() ?? deviceId;
-    if (deviceKind.isEmpty ||
-        deviceId.isEmpty ||
-        appId.isEmpty ||
-        dbPath.isEmpty) {
+    final deviceLabel = (profile.extra['deviceLabel'] as String?)?.trim() ?? deviceId;
+    if (deviceKind.isEmpty || deviceId.isEmpty || appId.isEmpty || dbPath.isEmpty) {
       throw StateError(
         'Device-SQLite profile is missing fields (was it saved with the '
         'old VM-service plugin? Re-add the connection).',

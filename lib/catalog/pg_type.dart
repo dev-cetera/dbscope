@@ -94,10 +94,7 @@ PgType pgTypeFromSqlite(String declared) {
     return PgType.text;
   }
   if (base == 'BLOB') return PgType.bytea;
-  if (base == 'REAL' ||
-      base == 'FLOAT' ||
-      base == 'DOUBLE' ||
-      base == 'DOUBLE PRECISION') {
+  if (base == 'REAL' || base == 'FLOAT' || base == 'DOUBLE' || base == 'DOUBLE PRECISION') {
     return PgType.doublePrecision;
   }
   if (base.contains('NUMERIC') || base.contains('DECIMAL')) {
@@ -147,8 +144,7 @@ PgType pgTypeFromTypeName(String? typeName) {
   if (lowerName.contains('json')) return PgType.json;
   if (lowerName.contains('bytea')) return PgType.bytea;
   if (lowerName.contains('text')) return PgType.text;
-  if (lowerName.contains('varchar') ||
-      lowerName.contains('character varying')) {
+  if (lowerName.contains('varchar') || lowerName.contains('character varying')) {
     return PgType.varchar;
   }
   return PgType.unknown;

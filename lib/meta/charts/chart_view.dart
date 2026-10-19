@@ -74,13 +74,10 @@ class _MetaChartCardState extends State<MetaChartCard> {
 
   /// Auto-run never prompts: an untrusted SQL chart waits for a click.
   void _autoLoad() {
-    final connectionId = MetadataCache.instance
-        .snapshotForExecutor(widget.executor)
-        ?.profileId;
+    final connectionId = MetadataCache.instance.snapshotForExecutor(widget.executor)?.profileId;
     if (_needsTrust && connectionId != null) {
       final snapshot = MetadataCache.instance.snapshotFor(connectionId);
-      if (snapshot == null ||
-          !MetaTrust.isTrusted(connectionId, snapshot.index, TrustScope.read)) {
+      if (snapshot == null || !MetaTrust.isTrusted(connectionId, snapshot.index, TrustScope.read)) {
         return;
       }
     }
@@ -90,8 +87,7 @@ class _MetaChartCardState extends State<MetaChartCard> {
   @override
   void didUpdateWidget(covariant MetaChartCard oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (oldWidget.chart.id != widget.chart.id ||
-        oldWidget.row.row != widget.row.row) {
+    if (oldWidget.chart.id != widget.chart.id || oldWidget.row.row != widget.row.row) {
       _data = null;
       _error = null;
       if (widget.autoRun) _autoLoad();
@@ -103,9 +99,7 @@ class _MetaChartCardState extends State<MetaChartCard> {
   bool get _needsTrust => widget.chart.source is! ChartTableSource;
 
   Future<void> _load() async {
-    final connectionId = MetadataCache.instance
-        .snapshotForExecutor(widget.executor)
-        ?.profileId;
+    final connectionId = MetadataCache.instance.snapshotForExecutor(widget.executor)?.profileId;
     if (_needsTrust) {
       // Fail closed: metadata SQL with no identifiable connection can't be
       // checked for trust, so it doesn't run.
@@ -226,8 +220,7 @@ class _MetaChartCardState extends State<MetaChartCard> {
   }
 }
 
-Color _seriesColor(int i) =>
-    kRelationshipPalette[i % kRelationshipPalette.length];
+Color _seriesColor(int i) => kRelationshipPalette[i % kRelationshipPalette.length];
 
 class MetaChartPlot extends StatelessWidget {
   const MetaChartPlot({super.key, required this.type, required this.data});
@@ -398,11 +391,7 @@ class _BarPlot extends StatelessWidget {
       if (stacked) {
         var acc = 0.0;
         final items = <BarChartRodStackItem>[];
-        for (
-          var seriesIndex = 0;
-          seriesIndex < data.series.length;
-          seriesIndex++
-        ) {
+        for (var seriesIndex = 0; seriesIndex < data.series.length; seriesIndex++) {
           final value = data.series[seriesIndex].values[i] ?? 0;
           items.add(
             BarChartRodStackItem(acc, acc + value, _seriesColor(seriesIndex)),
@@ -428,11 +417,7 @@ class _BarPlot extends StatelessWidget {
           BarChartGroupData(
             x: i,
             barRods: [
-              for (
-                var seriesIndex = 0;
-                seriesIndex < data.series.length;
-                seriesIndex++
-              )
+              for (var seriesIndex = 0; seriesIndex < data.series.length; seriesIndex++)
                 BarChartRodData(
                   toY: data.series[seriesIndex].values[i] ?? 0,
                   width: width / math.max(1, data.series.length),
@@ -455,11 +440,10 @@ class _BarPlot extends StatelessWidget {
               borderData: FlBorderData(show: false),
               barTouchData: BarTouchData(
                 touchTooltipData: BarTouchTooltipData(
-                  getTooltipItem: (group, groupIndex, rod, rodIndex) =>
-                      BarTooltipItem(
-                        '${data.xLabels[group.x]}\n${_compact(rod.toY)}',
-                        const TextStyle(fontSize: 11.0, color: Colors.white),
-                      ),
+                  getTooltipItem: (group, groupIndex, rod, rodIndex) => BarTooltipItem(
+                    '${data.xLabels[group.x]}\n${_compact(rod.toY)}',
+                    const TextStyle(fontSize: 11.0, color: Colors.white),
+                  ),
                 ),
               ),
             ),
@@ -477,9 +461,7 @@ class _PiePlot extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final values = data.series.isEmpty
-        ? const <double?>[]
-        : data.series.first.values;
+    final values = data.series.isEmpty ? const <double?>[] : data.series.first.values;
     final total = values.fold<double>(0, (a, b) => a + (b ?? 0));
     final sections = <PieChartSectionData>[];
     for (var i = 0; i < values.length && i < _kMaxPieSlices; i++) {
@@ -507,11 +489,7 @@ class _PiePlot extends StatelessWidget {
           width: 140.0,
           child: ListView(
             children: [
-              for (
-                var i = 0;
-                i < data.xLabels.length && i < _kMaxPieSlices;
-                i++
-              )
+              for (var i = 0; i < data.xLabels.length && i < _kMaxPieSlices; i++)
                 Row(
                   children: [
                     Container(width: 8.0, height: 8.0, color: _seriesColor(i)),

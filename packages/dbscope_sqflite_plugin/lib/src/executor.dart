@@ -56,8 +56,7 @@ class DeviceSqliteExecutor implements DbExecutor {
     required Backend backend,
     required String remoteDbPath,
   }) async {
-    final temporaryDirectory =
-        await Directory.systemTemp.createTemp('dbscope_device_');
+    final temporaryDirectory = await Directory.systemTemp.createTemp('dbscope_device_');
     final localDbPath = '${temporaryDirectory.path}/${_basename(remoteDbPath)}';
     final walPath = '$localDbPath-wal';
     try {
@@ -159,8 +158,7 @@ class DeviceSqliteExecutor implements DbExecutor {
   }
 
   @override
-  Future<void> setReadOnly({required bool readOnly}) =>
-      _inner.setReadOnly(readOnly: readOnly);
+  Future<void> setReadOnly({required bool readOnly}) => _inner.setReadOnly(readOnly: readOnly);
 
   @override
   Future<void> close({bool force = false}) async {

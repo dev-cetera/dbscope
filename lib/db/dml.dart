@@ -35,8 +35,7 @@ class CellEditor {
     // CURRENT_TIMESTAMP rather than now(): it works on Postgres and SQLite.
     final touches = [
       for (final touchColumn in policy.touchColumns)
-        if (touchColumn != policy.column)
-          ', ${quoteIdent(touchColumn)} = CURRENT_TIMESTAMP',
+        if (touchColumn != policy.column) ', ${quoteIdent(touchColumn)} = CURRENT_TIMESTAMP',
     ].join();
     final sql =
         'UPDATE $qualified '
@@ -61,8 +60,7 @@ class CellEditor {
       params.add(pkValues[primaryKey]);
       wherePlaceholders.add('${quoteIdent(primaryKey)} = \$${params.length}');
     }
-    final sql =
-        'DELETE FROM $qualified WHERE ${wherePlaceholders.join(' AND ')}';
+    final sql = 'DELETE FROM $qualified WHERE ${wherePlaceholders.join(' AND ')}';
     final result = await conn.execute(sql, positional: params);
     return result.affectedRows;
   }

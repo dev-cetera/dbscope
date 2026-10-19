@@ -8,5 +8,4 @@
 // Same single entry point either way: `openCodeEditor(...)` returns the
 // saved text or null if cancelled.
 
-export 'code_editor_launcher_io.dart'
-    if (dart.library.js_interop) 'code_editor_launcher_web.dart';
+export 'code_editor_launcher_io.dart' if (dart.library.js_interop) 'code_editor_launcher_web.dart';

@@ -191,9 +191,7 @@ String translateNamedToSqlite(String sql) {
       }
       continue;
     }
-    if (ch == '@' &&
-        i + 1 < sql.length &&
-        _isNameStart(sql.codeUnitAt(i + 1))) {
+    if (ch == '@' && i + 1 < sql.length && _isNameStart(sql.codeUnitAt(i + 1))) {
       var j = i + 1;
       while (j < sql.length && _isNamePart(sql.codeUnitAt(j))) {
         j++;

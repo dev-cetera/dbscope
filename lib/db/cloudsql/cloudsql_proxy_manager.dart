@@ -292,10 +292,7 @@ class CloudSqlProxyManager {
       return File(explicit).existsSync() ? explicit : null;
     }
     final sep = Platform.isWindows ? ';' : ':';
-    final home =
-        Platform.environment['HOME'] ??
-        Platform.environment['USERPROFILE'] ??
-        '';
+    final home = Platform.environment['HOME'] ?? Platform.environment['USERPROFILE'] ?? '';
     final dirs = <String>[
       ...(Platform.environment['PATH'] ?? '').split(sep),
       // PATH is the one variable where the shell file supplements the
@@ -315,9 +312,7 @@ class CloudSqlProxyManager {
       // repeat is another File.exists() stat on the connect path.
     ].where((directory) => directory.isNotEmpty).toSet();
 
-    final names = Platform.isWindows
-        ? ['$name.exe', '$name.cmd', name]
-        : [name];
+    final names = Platform.isWindows ? ['$name.exe', '$name.cmd', name] : [name];
     for (final directory in dirs) {
       for (final candidateName in names) {
         final candidate = '$directory${Platform.pathSeparator}$candidateName';

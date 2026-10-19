@@ -108,9 +108,7 @@ bool _canCopyOut(SidebarTableActionContext actionContext) {
   final policy = snapshot?.policy;
   if (policy == null || !policy.active) return true;
   if (!policy.can(Capability.export)) return false;
-  return policy
-      .forTable(actionContext.schema, actionContext.table)
-      .canSeeValues;
+  return policy.forTable(actionContext.schema, actionContext.table).canSeeValues;
 }
 
 bool _backendSupportsDml(SidebarTableActionContext actionContext) {
@@ -141,9 +139,7 @@ final _configureSoftDelete = SidebarTableAction(
       initialColumn: existing,
     );
     if (result == null || !actionContext.buildContext.mounted) return;
-    final overrides = result.clear
-        ? null
-        : TableOverrides(softDeleteColumn: result.column);
+    final overrides = result.clear ? null : TableOverrides(softDeleteColumn: result.column);
     await registry.setTableOverride(
       profile.id,
       actionContext.schema,
@@ -173,8 +169,7 @@ final _copyToAnother = SidebarTableAction(
     final source = ConnectionRegistry.instance.connectionFor(
       actionContext.connectionId,
     );
-    if (source != null &&
-        MetadataCache.instance.policyForExecutor(source).active) {
+    if (source != null && MetadataCache.instance.policyForExecutor(source).active) {
       final visible = await SchemaCatalog(source).listColumns(
         actionContext.schema,
         actionContext.table,

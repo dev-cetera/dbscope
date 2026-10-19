@@ -49,12 +49,11 @@ class TableOverrides {
 
   bool get isEmpty => softDeleteColumn == null;
 
-  TableOverrides copyWith({Object? softDeleteColumn = _sentinel}) =>
-      TableOverrides(
-        softDeleteColumn: identical(softDeleteColumn, _sentinel)
-            ? this.softDeleteColumn
-            : softDeleteColumn as String?,
-      );
+  TableOverrides copyWith({Object? softDeleteColumn = _sentinel}) => TableOverrides(
+    softDeleteColumn: identical(softDeleteColumn, _sentinel)
+        ? this.softDeleteColumn
+        : softDeleteColumn as String?,
+  );
 
   Map<String, Object?> toJson() => {
     if (softDeleteColumn != null) 'softDeleteColumn': softDeleteColumn,

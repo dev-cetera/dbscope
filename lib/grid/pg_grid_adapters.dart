@@ -29,8 +29,7 @@ class PgTypeCellRenderer extends g.CellRenderer<PgType> {
   });
   final Map<String, ForeignKey> outboundByColumn;
   final Map<String, List<ForeignKey>> inboundByColumn;
-  final void Function(ForeignKey foreignKey, {required bool incoming})?
-  onFollowLink;
+  final void Function(ForeignKey foreignKey, {required bool incoming})? onFollowLink;
   final GridViewMode viewMode;
 
   /// Metadata display (renderers) by column name.

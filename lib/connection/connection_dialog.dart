@@ -180,8 +180,7 @@ class _ConnectionDialogState extends State<ConnectionDialog> {
                   child: Text('verify-full'),
                 ),
               ],
-              onChanged: (mode) =>
-                  setState(() => _sslMode = mode ?? SslMode.disable),
+              onChanged: (mode) => setState(() => _sslMode = mode ?? SslMode.disable),
             ),
             const SizedBox(height: 12.0),
             SwitchListTile(

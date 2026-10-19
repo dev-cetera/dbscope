@@ -245,9 +245,7 @@ ON CONFLICT (id) DO NOTHING;''';
         'role_id': grant.roleId,
         'target': grant.target.raw,
         'level': grant.level.name,
-        'default_hidden': _sqlite
-            ? (grant.defaultHidden ? 1 : 0)
-            : grant.defaultHidden,
+        'default_hidden': _sqlite ? (grant.defaultHidden ? 1 : 0) : grant.defaultHidden,
         'note': grant.note,
       };
       await executor.execute(
@@ -333,6 +331,5 @@ String describeTarget(String schema, String table, [String? column]) {
   return column == null ? base : '$base.${_q(column)}';
 }
 
-String _q(String name) => RegExp(r'^[A-Za-z_][A-Za-z0-9_]*$').hasMatch(name)
-    ? name
-    : '"${name.replaceAll('"', '""')}"';
+String _q(String name) =>
+    RegExp(r'^[A-Za-z_][A-Za-z0-9_]*$').hasMatch(name) ? name : '"${name.replaceAll('"', '""')}"';

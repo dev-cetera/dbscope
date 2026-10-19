@@ -27,8 +27,7 @@ class _TableListColumnState extends State<TableListColumn> {
     unawaited(_load());
   }
 
-  DbExecutor? _executor() =>
-      ConnectionRegistry.instance.connectionFor(widget.tab.connectionId);
+  DbExecutor? _executor() => ConnectionRegistry.instance.connectionFor(widget.tab.connectionId);
 
   Future<void> _load() async {
     final executor = _executor();
@@ -96,9 +95,7 @@ class _TableListColumnState extends State<TableListColumn> {
     final all = _tables[schema] ?? const [];
     if (_filter.isEmpty) return all;
     final filter = _filter.toLowerCase();
-    return all
-        .where((table) => table.name.toLowerCase().contains(filter))
-        .toList();
+    return all.where((table) => table.name.toLowerCase().contains(filter)).toList();
   }
 
   @override
@@ -141,8 +138,7 @@ class _TableListColumnState extends State<TableListColumn> {
             )
           : ListView(
               children: [
-                for (final schema in _schemas)
-                  ..._schemaRows(schema, selected, related, theme),
+                for (final schema in _schemas) ..._schemaRows(schema, selected, related, theme),
               ],
             ),
     );
@@ -173,18 +169,14 @@ class _TableListColumnState extends State<TableListColumn> {
               Icon(
                 schema.isSystem ? Icons.folder_outlined : Icons.folder,
                 size: 14.0,
-                color: schema.isSystem
-                    ? theme.hintColor
-                    : theme.colorScheme.primary,
+                color: schema.isSystem ? theme.hintColor : theme.colorScheme.primary,
               ),
               const SizedBox(width: 6.0),
               Expanded(
                 child: Text(
                   schema.name,
                   style: TextStyle(
-                    fontWeight: schema.isSystem
-                        ? FontWeight.normal
-                        : FontWeight.w600,
+                    fontWeight: schema.isSystem ? FontWeight.normal : FontWeight.w600,
                     color: schema.isSystem ? theme.hintColor : null,
                   ),
                 ),

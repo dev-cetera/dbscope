@@ -203,13 +203,12 @@ void main() {
   });
 
   test('metadata tables carry the dbscope_ prefix; app tables never match', () {
-    bool isMeta(String schema, String table, {bool sqlite = false}) =>
-        MetaTableNames.isMetaTable(
-          schema,
-          table,
-          MetadataSettings.defaults,
-          sqlite: sqlite,
-        );
+    bool isMeta(String schema, String table, {bool sqlite = false}) => MetaTableNames.isMetaTable(
+      schema,
+      table,
+      MetadataSettings.defaults,
+      sqlite: sqlite,
+    );
     expect(isMeta('dbscope', 'dbscope_metadata'), isTrue);
     expect(isMeta('dbscope', 'dbscope_access_roles'), isTrue);
     expect(isMeta('dbscope', 'dbscope_access_role_members'), isTrue);

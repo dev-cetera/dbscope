@@ -9,20 +9,13 @@ import 'package:data_grid/data_grid.dart' as g;
 import '../catalog/pg_type.dart';
 
 export 'package:data_grid/data_grid.dart'
-    show
-        CellRange,
-        GridEditEvent,
-        GridMenuEntry,
-        GridSortEvent,
-        GridStyle,
-        GridStyleExtension;
+    show CellRange, GridEditEvent, GridMenuEntry, GridSortEvent, GridStyle, GridStyleExtension;
 
 /// How the grid renders cells. New modes plug in by adding an enum
 /// value and a branch in `PgTypeCellRenderer`.
 enum GridViewMode {
   table('Table'),
-  typed('Typed')
-  ;
+  typed('Typed');
 
   const GridViewMode(this.label);
 

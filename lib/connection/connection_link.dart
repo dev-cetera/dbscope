@@ -56,8 +56,7 @@ class ConnectionLink {
 
   static final _rng = Random.secure();
 
-  static List<int> _randomBytes(int length) =>
-      List<int>.generate(length, (_) => _rng.nextInt(256));
+  static List<int> _randomBytes(int length) => List<int>.generate(length, (_) => _rng.nextInt(256));
 
   /// Encode [profile] (with its password) into the JSON text of a
   /// `.dbscopeconn` file, encrypting the password under [passphrase].
@@ -123,12 +122,10 @@ class ConnectionLink {
     }
     final profileJson = raw['profile'];
     final secret = raw['secret'];
-    if (profileJson is! Map<String, Object?> ||
-        secret is! Map<String, Object?>) {
+    if (profileJson is! Map<String, Object?> || secret is! Map<String, Object?>) {
       throw const FormatException('Connection file is missing fields.');
     }
-    final iterations =
-        (secret['iterations'] as num?)?.toInt() ?? _defaultIterations;
+    final iterations = (secret['iterations'] as num?)?.toInt() ?? _defaultIterations;
     final salt = _decodeB64(secret['salt']);
     final nonce = _decodeB64(secret['nonce']);
     final cipher = _decodeB64(secret['ciphertext']);

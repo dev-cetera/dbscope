@@ -60,19 +60,18 @@ class ColumnInfo {
 
   bool get isMasked => accessLevel == AccessLevel.masked;
 
-  ColumnInfo withAccess(AccessLevel level, {required bool defaultHidden}) =>
-      ColumnInfo(
-        name: name,
-        type: type,
-        typeName: typeName,
-        nullable: nullable,
-        defaultExpr: defaultExpr,
-        isGenerated: isGenerated,
-        isIdentity: isIdentity,
-        enumValues: enumValues,
-        accessLevel: level,
-        defaultHidden: defaultHidden,
-      );
+  ColumnInfo withAccess(AccessLevel level, {required bool defaultHidden}) => ColumnInfo(
+    name: name,
+    type: type,
+    typeName: typeName,
+    nullable: nullable,
+    defaultExpr: defaultExpr,
+    isGenerated: isGenerated,
+    isIdentity: isIdentity,
+    enumValues: enumValues,
+    accessLevel: level,
+    defaultHidden: defaultHidden,
+  );
 }
 
 class ForeignKey {
@@ -138,9 +137,8 @@ class SchemaCatalog {
 
   bool get _isSqlite => conn.kind == kSqliteKind;
 
-  AccessPolicy get _policy => _applyPolicy
-      ? MetadataCache.instance.policyForExecutor(conn)
-      : AccessPolicy.unrestricted;
+  AccessPolicy get _policy =>
+      _applyPolicy ? MetadataCache.instance.policyForExecutor(conn) : AccessPolicy.unrestricted;
 
   MetaSnapshot? get _snapshot =>
       _applyPolicy ? MetadataCache.instance.snapshotForExecutor(conn) : null;
@@ -476,9 +474,7 @@ class SchemaCatalog {
   Future<List<ForeignKey>> listForeignKeys() async {
     final real = await _listForeignKeysRaw();
     final snapshot = _snapshot;
-    final virtual = snapshot == null
-        ? const <ForeignKey>[]
-        : await _virtualForeignKeys(snapshot);
+    final virtual = snapshot == null ? const <ForeignKey>[] : await _virtualForeignKeys(snapshot);
     final all = [...real, ...virtual];
     final policy = _policy;
     if (!policy.active) return all;
@@ -568,8 +564,7 @@ class SchemaCatalog {
  WHERE table_schema NOT IN ('pg_catalog', 'information_schema')
  ''');
     return [
-      for (final row in result.rows)
-        (row[0]! as String, row[1]! as String, row[2]! as String),
+      for (final row in result.rows) (row[0]! as String, row[1]! as String, row[2]! as String),
     ];
   }
 
@@ -644,9 +639,7 @@ class SchemaCatalog {
             _kSqliteMainSchema,
             refTable,
           );
-          toColumn = (seq >= 0 && seq < primaryKeyColumns.length)
-              ? primaryKeyColumns[seq]
-              : '';
+          toColumn = (seq >= 0 && seq < primaryKeyColumns.length) ? primaryKeyColumns[seq] : '';
         }
         out.add(
           ForeignKey(

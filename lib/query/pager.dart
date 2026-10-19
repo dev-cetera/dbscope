@@ -78,14 +78,9 @@ class KeysetPager {
       final sortClause = sortColumn == null
           ? ''
           : ' ORDER BY ${quoteIdent(sortColumn!)} ${descending ? "DESC" : "ASC"}';
-      final whereSql = (baseWhere == null || baseWhere!.isEmpty)
-          ? ''
-          : ' WHERE $baseWhere';
-      final selectList = explicitColumns && columns.isNotEmpty
-          ? _selectList
-          : '*';
-      final sql =
-          'SELECT $selectList FROM $qualified$whereSql$sortClause LIMIT $pageSize';
+      final whereSql = (baseWhere == null || baseWhere!.isEmpty) ? '' : ' WHERE $baseWhere';
+      final selectList = explicitColumns && columns.isNotEmpty ? _selectList : '*';
+      final sql = 'SELECT $selectList FROM $qualified$whereSql$sortClause LIMIT $pageSize';
       final result = baseWhereParams.isEmpty
           ? await conn.execute(sql, cancelToken: cancelToken)
           : await conn.execute(
@@ -170,12 +165,9 @@ class KeysetPager {
       whereParts.add('($tupleColumns) $op (${placeholders.join(', ')})');
     }
 
-    final whereClause = whereParts.isEmpty
-        ? ''
-        : ' WHERE ${whereParts.join(' AND ')}';
+    final whereClause = whereParts.isEmpty ? '' : ' WHERE ${whereParts.join(' AND ')}';
 
-    final sql =
-        'SELECT $colsSql FROM $qualified$whereClause$orderClause LIMIT $pageSize';
+    final sql = 'SELECT $colsSql FROM $qualified$whereClause$orderClause LIMIT $pageSize';
     final result = params.isEmpty
         ? await conn.execute(sql, cancelToken: cancelToken)
         : await conn.execute(sql, positional: params, cancelToken: cancelToken);
@@ -199,18 +191,12 @@ class KeysetPager {
     final columnNames = columns.map((column) => column.name).toList();
     final primaryKeyValues = [
       for (final primaryKey in pkColumns)
-        if (columnNames.contains(primaryKey))
-          last[columnNames.indexOf(primaryKey)]
-        else
-          null,
+        if (columnNames.contains(primaryKey)) last[columnNames.indexOf(primaryKey)] else null,
     ];
     final sortValues = sortColumn == null
         ? null
         : [
-            if (columnNames.contains(sortColumn))
-              last[columnNames.indexOf(sortColumn!)]
-            else
-              null,
+            if (columnNames.contains(sortColumn)) last[columnNames.indexOf(sortColumn!)] else null,
           ];
     return Page(
       rows: maskRows(rows, _maskedIndexes),

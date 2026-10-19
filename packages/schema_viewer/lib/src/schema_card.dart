@@ -98,8 +98,7 @@ class SchemaCard extends StatelessWidget {
     // Column inside the AnimatedContainer doesn't overflow by
     // `borderWidth × 2` pixels. (Default strokeAlignInside would
     // claim borderWidth of every inner edge.)
-    final borderColor =
-        highlighted ? theme.colorScheme.primary : theme.colorScheme.outline;
+    final borderColor = highlighted ? theme.colorScheme.primary : theme.colorScheme.outline;
     final borderWidth = highlighted ? 2.0 : 1.0;
 
     return AnimatedOpacity(
@@ -233,8 +232,7 @@ class _SchemaCardHeader extends StatelessWidget {
       child: MouseRegion(
         cursor: SystemMouseCursors.move,
         child: Container(
-          height: kSchemaHeaderHeight +
-              (node.subtitle != null ? kSchemaSubtitleHeight : 0),
+          height: kSchemaHeaderHeight + (node.subtitle != null ? kSchemaSubtitleHeight : 0),
           // admin_site uses padding "0 12px"; the Column's centred
           // mainAxis handles vertical placement.
           padding: const EdgeInsets.symmetric(horizontal: 12.0),
@@ -273,9 +271,7 @@ class _SchemaCardHeader extends StatelessWidget {
                   if (onToggleCompact != null) ...[
                     const SizedBox(width: 6.0),
                     _HeaderButton(
-                      tooltip: node.compact
-                          ? 'Show all fields'
-                          : 'Show only PKs and FKs',
+                      tooltip: node.compact ? 'Show all fields' : 'Show only PKs and FKs',
                       onHeaderColor: onHeader,
                       onPressed: onToggleCompact!,
                       // admin_site renders the glyph as plain "+" or
@@ -396,9 +392,8 @@ class _SchemaFieldRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final fkColor = field.fk && field.linkedTable != null
-        ? colorForTable(field.linkedTable!)
-        : null;
+    final fkColor =
+        field.fk && field.linkedTable != null ? colorForTable(field.linkedTable!) : null;
     // admin_site: FK rows tint with linkedTable color so the chain row
     // -> edge -> remote header reads as one colour. PK rows + plain
     // rows use theme.textOnDark (text-on-surface in Flutter).
@@ -413,8 +408,7 @@ class _SchemaFieldRow extends StatelessWidget {
         ? (field.valueIsNull
             ? theme.colorScheme.onSurface.withValues(alpha: 0.45)
             : theme.colorScheme.onSurface.withValues(alpha: 0.85))
-        : colorForType(field.typeLabel, darkMode: darkMode)
-            .withValues(alpha: 0.95);
+        : colorForType(field.typeLabel, darkMode: darkMode).withValues(alpha: 0.95);
     // admin_site: borderTop is theme.border at 0x40 (25% alpha) — a
     // subtle hairline between rows.
     return Container(

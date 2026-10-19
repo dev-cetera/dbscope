@@ -209,8 +209,7 @@ class _CodeViewerState extends State<CodeViewer> {
           height: 1.3,
         );
 
-    final radius =
-        widget.borderRadius ?? BorderRadius.circular(palette.cornerRadius);
+    final radius = widget.borderRadius ?? BorderRadius.circular(palette.cornerRadius);
     final decoration = BoxDecoration(
       color: widget.background ?? palette.field,
       borderRadius: radius,

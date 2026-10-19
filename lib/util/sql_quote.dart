@@ -1,7 +1,6 @@
 String quoteIdent(String name) => '"${name.replaceAll('"', '""')}"';
 
-String quoteQualified(String schema, String name) =>
-    '${quoteIdent(schema)}.${quoteIdent(name)}';
+String quoteQualified(String schema, String name) => '${quoteIdent(schema)}.${quoteIdent(name)}';
 
 /// Render [value] as a self-contained PostgreSQL literal. Used when we
 /// need to embed a known value (e.g. a PK fetched from the same database)

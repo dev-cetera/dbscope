@@ -44,8 +44,7 @@ class SidebarTableAction {
   final bool Function(SidebarTableActionContext actionContext)? visibleWhen;
 
   /// What to do when the user picks the action.
-  final Future<void> Function(SidebarTableActionContext actionContext)
-  onSelected;
+  final Future<void> Function(SidebarTableActionContext actionContext) onSelected;
 }
 
 /// Process-wide registry. Built-ins register from `main.dart`; plugins
@@ -58,14 +57,11 @@ class SidebarTableActionRegistry {
 
   /// Providers compute extra actions per table at menu time (e.g. schema
   /// metadata actions, which depend on the connection and table).
-  final List<
-    List<SidebarTableAction> Function(SidebarTableActionContext actionContext)
-  >
+  final List<List<SidebarTableAction> Function(SidebarTableActionContext actionContext)>
   _providers = [];
 
   void registerProvider(
-    List<SidebarTableAction> Function(SidebarTableActionContext actionContext)
-    provider,
+    List<SidebarTableAction> Function(SidebarTableActionContext actionContext) provider,
   ) {
     _providers.add(provider);
   }

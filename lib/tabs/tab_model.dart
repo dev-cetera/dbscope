@@ -14,8 +14,7 @@ import '../query/cancel_token.dart';
 /// subclass; transient state (in-flight Futures, scroll controllers)
 /// lives on the matching view widget.
 abstract class TabModel {
-  TabModel({String? id, required this.connectionId})
-    : id = id ?? const Uuid().v4();
+  TabModel({String? id, required this.connectionId}) : id = id ?? const Uuid().v4();
   final String id;
   final String connectionId;
   CancelToken? cancelToken;
