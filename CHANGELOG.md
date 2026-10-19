@@ -1,5 +1,9 @@
 # Changelog
 
+## 2026-10-19
+
+- Launching with `DBSCOPE_AUTO_HOST` (plus `DBSCOPE_AUTO_DATABASE`/`DBSCOPE_AUTO_USERNAME`/etc., or `DBSCOPE_AUTO_CLOUDSQL_INSTANCE` for Cloud SQL) set auto-connects to that database on startup instead of restoring the last GUI connection — a fully command-line launch, no "Import connection link" step. See `lib/connection/cli_auto_connect.dart`; the compledo repo's `backend/scripts/dbscope/connect.sh local|dev|prod` drives it. (2026-10-19)
+
 ## 2026-10-16
 
 - Flutter 3.47.7 / Dart 3.13.5 (was 3.41.9 / 3.11.5). The app and app-specific plugin packages now require Dart `^3.13.5`; the new SDK's lint fixes are applied, and three deprecated lint rules are dropped. The macOS build now requires **macOS 12** (was 10.15) and pulls plugins through Swift Package Manager; `desktop_multi_window` still comes through CocoaPods, which Flutter warns will eventually be an error. (2026-10-16)

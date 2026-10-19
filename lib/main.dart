@@ -16,6 +16,7 @@ import 'package:flutter/material.dart';
 import 'app.dart';
 import 'code/code_editor_payload.dart';
 import 'code/code_editor_subwindow.dart';
+import 'connection/cli_auto_connect.dart';
 import 'connection/registry.dart';
 import 'firebase_options.dart';
 import 'meta/meta_plugin.dart';
@@ -136,13 +137,22 @@ Future<void> main(List<String> args) async {
   // persisted session.
   AppState.instance.enableTabPersistence();
   AppState.instance.restorePersistedTabs();
-  final lastConnectionId = UiPrefs.instance.lastConnectionId;
-  if (lastConnectionId != null &&
-      ConnectionRegistry.instance.profileById(lastConnectionId) != null) {
-    // Don't await: auto-connect must not block the first frame, and
-    // backends that prompt for credentials (e.g. TOTP) need a
-    // BuildContext that doesn't exist yet.
-    unawaited(ConnectionRegistry.instance.setActive(lastConnectionId));
+  // A command-line launch (`backend/scripts/dbscope/connect.sh` in
+  // compledo) sets DBSCOPE_AUTO_* to say which database to open — that
+  // wins over whatever connection was last open in the GUI.
+  final cliProfile = autoConnectProfileFromEnv();
+  if (cliProfile != null) {
+    // Don't await, for the same reason as the branch below.
+    unawaited(ConnectionRegistry.instance.connectProfile(cliProfile));
+  } else {
+    final lastConnectionId = UiPrefs.instance.lastConnectionId;
+    if (lastConnectionId != null &&
+        ConnectionRegistry.instance.profileById(lastConnectionId) != null) {
+      // Don't await: auto-connect must not block the first frame, and
+      // backends that prompt for credentials (e.g. TOTP) need a
+      // BuildContext that doesn't exist yet.
+      unawaited(ConnectionRegistry.instance.setActive(lastConnectionId));
+    }
   }
   WidgetsBinding.instance.addObserver(_HostQuitHook(host: host));
   runApp(
