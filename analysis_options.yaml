@@ -238,7 +238,12 @@ linter:
     prefer_generic_function_type_aliases: true
     prefer_if_elements_to_conditional_expressions: true
     prefer_if_null_operators: true
-    prefer_initializing_formals: true
+    # Off, as in compledo's root analysis_options.yaml: it now demands
+    # `{required this._x}` for a private field set from a named parameter,
+    # the experimental private-named-parameters feature, which older SDKs and
+    # IDEs refuse. Named private fields take `Type x` and an `_x = x`
+    # initializer instead.
+    prefer_initializing_formals: false
     prefer_inlined_adds: true
     prefer_interpolation_to_compose_strings: true
     prefer_is_empty: true
