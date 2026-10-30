@@ -1,0 +1,4 @@
+interface:
+  display_name: "dart-discipline"
+  short_description: "Apply Effective Dart + project dart-discipline rules"
+  default_prompt: "Use $dart-discipline to apply Dart/Flutter discipline to the current work."

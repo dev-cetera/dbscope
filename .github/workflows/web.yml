@@ -1,8 +1,14 @@
 # Builds the web app and deploys it to Firebase Hosting (dbscope-prod, see
 # firebase.json / .firebaserc) on every push to main that touches app code.
-# Needs the FIREBASE_SERVICE_ACCOUNT secret (JSON key of a service account
-# with the "Firebase Hosting Admin" role); without it the build still runs
-# but the deploy step is skipped.
+#
+# Auth is keyless Workload Identity Federation: GitHub's OIDC token for this
+# repo on main is exchanged for a short-lived token of the github-deploy
+# service account (role: Firebase Hosting Admin). No key is stored anywhere.
+# Needs two repository *variables* (not secrets, nothing in them is
+# sensitive), set up by scripts/setup_firebase_deploy.sh:
+#   GCP_WIF_PROVIDER  projects/<number>/locations/global/workloadIdentityPools/github/providers/github
+#   GCP_DEPLOY_SA     github-deploy@dbscope-prod.iam.gserviceaccount.com
+# Without them the build still runs and the deploy is skipped.
 name: Web
 
 on:
@@ -26,13 +32,14 @@ concurrency:
 
 permissions:
   contents: read
+  id-token: write
 
 jobs:
   deploy:
     runs-on: ubuntu-latest
     timeout-minutes: 20
     env:
-      HAS_FIREBASE: ${{ secrets.FIREBASE_SERVICE_ACCOUNT != '' }}
+      CAN_DEPLOY: ${{ vars.GCP_WIF_PROVIDER != '' && vars.GCP_DEPLOY_SA != '' && github.ref == 'refs/heads/main' }}
     steps:
       - uses: actions/checkout@v4
 
@@ -49,15 +56,23 @@ jobs:
       - run: flutter pub get
       - run: flutter build web --release
 
-      - name: Deploy to Firebase Hosting
-        if: env.HAS_FIREBASE == 'true'
-        uses: FirebaseExtended/action-hosting-deploy@v0
+      - name: Authenticate to Google Cloud
+        if: env.CAN_DEPLOY == 'true'
+        uses: google-github-actions/auth@v2
         with:
-          repoToken: ${{ secrets.GITHUB_TOKEN }}
-          firebaseServiceAccount: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
-          projectId: dbscope-prod
-          channelId: live
+          workload_identity_provider: ${{ vars.GCP_WIF_PROVIDER }}
+          service_account: ${{ vars.GCP_DEPLOY_SA }}
+
+      - name: Deploy to Firebase Hosting
+        if: env.CAN_DEPLOY == 'true'
+        run: npx --yes firebase-tools@14.22.0 deploy --only hosting --project dbscope-prod --non-interactive
+
+      - name: Smoke-test the live site
+        if: env.CAN_DEPLOY == 'true'
+        run: |
+          curl -fsS https://dbscope-prod.web.app/ | grep -q 'flutter_bootstrap.js'
+          echo "Live: https://dbscope-prod.web.app"
 
       - name: Deploy skipped
-        if: env.HAS_FIREBASE != 'true'
-        run: echo "::warning::FIREBASE_SERVICE_ACCOUNT is not set; built but did not deploy."
+        if: env.CAN_DEPLOY != 'true'
+        run: echo "::warning::GCP_WIF_PROVIDER / GCP_DEPLOY_SA repository variables are not set; built but did not deploy."

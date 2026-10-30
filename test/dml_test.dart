@@ -1,7 +1,7 @@
 // CellEditor produces the SQL that mutates user data. The contract worth
 // guarding here:
 // * UPDATE always carries the optimistic-concurrency clause
-// `IS NOT DISTINCT FROM $oldValue` (CLAUDE.md SQL safety invariants).
+// `IS NOT DISTINCT FROM $oldValue` (docs/architecture.md, SQL safety invariants).
 // * Identifiers go through quoteIdent — no raw interpolation of user
 // column/table names.
 // * parseValue coerces strings to typed values per PgType, and honours

@@ -6,8 +6,10 @@ two things for you:
 
 - There are rough edges. Bug reports are genuinely useful, even small ones.
 - The architecture and its rules are written down, because the AI needed them
-  too. Read [`CLAUDE.md`](CLAUDE.md) before a non-trivial change — it is the
-  best map of the codebase, for humans and agents alike.
+  too. Read [`docs/architecture.md`](docs/architecture.md) before a
+  non-trivial change — it is the best map of the codebase, for humans and
+  agents alike. [`AGENTS.md`](AGENTS.md) holds the workflow rules every coding
+  agent here follows (Claude Code, Codex, Cursor, Gemini and others).
 
 ## Reporting a bug
 
@@ -46,7 +48,7 @@ CI runs the same two commands on every PR.
   Comment on one before starting something large so work isn't duplicated.
 - Each file under `test/` opens with a comment stating the contract it pins
   down. Read it before editing the code it covers, and keep it true.
-- The SQL safety invariants in `CLAUDE.md` are non-negotiable: identifiers go
+- The SQL safety invariants in `docs/architecture.md` are non-negotiable: identifiers go
   through `quoteIdent`, values are positional parameters, cell edits keep the
   optimistic-concurrency check.
 - New database backends, themes, tabs, menus and sidebar actions are all

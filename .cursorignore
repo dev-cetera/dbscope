@@ -1,0 +1,5 @@
+# Files the agent must not open. CHANGELOG.md is write-only: add to it with
+# scripts/add_changelog_line.sh, which never reads the rest of the file.
+CHANGELOG.md
+.env
+.env.*

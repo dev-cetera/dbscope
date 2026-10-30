@@ -1,0 +1,1 @@
+../../.agents/commands/find-stale-references.md

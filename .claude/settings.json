@@ -1,0 +1,31 @@
+{
+  "permissions": {
+    "deny": [
+      "Read(**/CHANGELOG.md)",
+      "Bash(cat *CHANGELOG.md*)",
+      "Bash(head *CHANGELOG.md*)",
+      "Bash(tail *CHANGELOG.md*)",
+      "Bash(less *CHANGELOG.md*)",
+      "Bash(more *CHANGELOG.md*)",
+      "Bash(sed *CHANGELOG.md*)",
+      "Bash(awk *CHANGELOG.md*)",
+      "Bash(git show *CHANGELOG.md*)",
+      "Read(**/.env)",
+      "Read(**/.env.*)",
+      "Edit(**/.env)",
+      "Edit(**/.env.*)"
+    ]
+  },
+  "hooks": {
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash \"$CLAUDE_PROJECT_DIR/.claude/hooks/record_check.sh\""
+          }
+        ]
+      }
+    ]
+  }
+}

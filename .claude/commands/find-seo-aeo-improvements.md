@@ -1,0 +1,1 @@
+../../.agents/commands/find-seo-aeo-improvements.md

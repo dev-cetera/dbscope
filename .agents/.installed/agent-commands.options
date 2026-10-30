@@ -1,0 +1,2 @@
+tools=claude
+only=audit-devex,audit-product,audit-slop,check-production-readiness,find-bad-comments,find-bandaids,find-compliance-issues,find-confusing-things,find-dead-code,find-exploits,find-readability-improvements,find-seo-aeo-improvements,find-stale-references,find-unfinished,improve-markdowns,interview-code,interview-docs,interview-risky-spot,privacy-compliance,production-readiness,refine-findings,resume-session,search-helpers,setup-project-facts,ui-logic-separation,unify-patterns,update-docs

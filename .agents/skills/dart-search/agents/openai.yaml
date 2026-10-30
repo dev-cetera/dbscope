@@ -1,0 +1,4 @@
+interface:
+  display_name: "dart-search"
+  short_description: "Find Dart symbols and search Dart code with capped output"
+  default_prompt: "Use $dart-search to find where a Dart symbol is declared and used."

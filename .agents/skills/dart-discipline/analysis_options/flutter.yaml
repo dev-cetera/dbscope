@@ -1,0 +1,22 @@
+# Strict analyzer settings for a Flutter app or package: everything in
+# dart.yaml, plus the folders Flutter generates.
+#
+# From robertsolves/dart-agent-kit. Don't edit this copy: re-running the
+# installer replaces it. Point a package at it with
+#   bash .agents/skills/dart-discipline/scripts/use_strict_analysis.sh <package>
+
+include: dart.yaml
+
+analyzer:
+  exclude:
+    - "**/build/**"
+    - "**/*.g.dart"
+    - "**/*.freezed.dart"
+    - "**/*.mocks.dart"
+    - "**/generated_plugin_registrant.dart"
+    - android/**
+    - ios/**
+    - macos/**
+    - linux/**
+    - windows/**
+    - web/**

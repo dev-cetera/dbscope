@@ -1,0 +1,4 @@
+interface:
+  display_name: "dart-clean-packages"
+  short_description: "Run the dart-clean-packages command"
+  default_prompt: "Use $dart-clean-packages to run the dart-clean-packages command."

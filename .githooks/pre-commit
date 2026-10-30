@@ -1,0 +1,17 @@
+#!/usr/bin/env bash
+# Runs a fast check before each commit. Turned on by scripts/setup_dev_env.sh. Skip once with: git commit --no-verify
+#
+# Put a check that takes a few seconds in CHECK, for example a formatter in
+# check mode on staged files. Leave it empty to commit freely. Slow checks
+# (the full test suite) belong in CI, not here.
+set -euo pipefail
+
+CHECK=""   # e.g. "npx prettier --check ." or "dart format --output=none --set-exit-if-changed ."
+
+[ -n "$CHECK" ] || exit 0
+cd "$(git rev-parse --show-toplevel)"
+if ! sh -c "$CHECK"; then
+  echo >&2
+  echo "pre-commit: '$CHECK' failed. Fix it and commit again, or skip once with --no-verify." >&2
+  exit 1
+fi

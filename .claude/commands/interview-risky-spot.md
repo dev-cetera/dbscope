@@ -1,0 +1,1 @@
+../../.agents/commands/interview-risky-spot.md

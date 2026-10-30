@@ -1,0 +1,4 @@
+interface:
+  display_name: "dart-improve-code"
+  short_description: "Run the dart-improve-code command"
+  default_prompt: "Use $dart-improve-code to run the dart-improve-code command."

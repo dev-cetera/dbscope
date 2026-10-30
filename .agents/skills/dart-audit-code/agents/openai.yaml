@@ -1,0 +1,4 @@
+interface:
+  display_name: "dart-audit-code"
+  short_description: "Run the dart-audit-code command"
+  default_prompt: "Use $dart-audit-code to run the dart-audit-code command."

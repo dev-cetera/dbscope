@@ -1,0 +1,4 @@
+interface:
+  display_name: "record-keeping"
+  short_description: "Where bugs, TODOs and changelog lines go"
+  default_prompt: "Use $record-keeping to file or close a bug or TODO."

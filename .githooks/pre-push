@@ -1,0 +1,26 @@
+#!/usr/bin/env bash
+# Blocks direct pushes to protected branches. Turned on by scripts/setup_dev_env.sh. Skip once with: ALLOW_PROTECTED_PUSH=1 git push
+#
+# Work goes through a pull request instead. List the branches in PROTECTED,
+# separated by spaces. git push --no-verify also skips this hook.
+set -euo pipefail
+
+PROTECTED="main"
+
+[ "${ALLOW_PROTECTED_PUSH:-0}" = 1 ] && exit 0
+
+# git passes "<local ref> <local sha> <remote ref> <remote sha>" lines on stdin.
+blocked=""
+if [ ! -t 0 ]; then
+  while read -r _local_ref _local_sha remote_ref _remote_sha; do
+    branch="${remote_ref#refs/heads/}"
+    for p in $PROTECTED; do
+      [ "$branch" = "$p" ] && blocked="$branch"
+    done
+  done
+fi
+[ -z "$blocked" ] && exit 0
+
+echo "pre-push: '$blocked' is protected. Push a branch and open a pull request instead." >&2
+echo "          If you really mean it: ALLOW_PROTECTED_PUSH=1 git push" >&2
+exit 1

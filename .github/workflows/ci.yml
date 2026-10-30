@@ -34,3 +34,54 @@ jobs:
       - run: flutter pub get
       - run: flutter analyze
       - run: flutter test
+
+  # The shipped target. Catches a broken macOS build (native plugins, pods,
+  # entitlements) on the PR instead of at release time.
+  build-macos:
+    runs-on: macos-15
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Read Flutter version from .fvmrc
+        id: fvm
+        run: echo "version=$(jq -r .flutter .fvmrc)" >> "$GITHUB_OUTPUT"
+
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ steps.fvm.outputs.version }}
+          channel: stable
+          cache: true
+
+      - run: flutter pub get
+      - run: flutter build macos --release
+      - name: Check the app is universal and launches
+        run: |
+          APP=build/macos/Build/Products/Release/dbscope.app
+          ARCHS="$(lipo -archs "$APP/Contents/MacOS/dbscope")"
+          echo "archs: $ARCHS"
+          case "$ARCHS" in *arm64*x86_64*|*x86_64*arm64*) ;; *) echo "::error::not universal"; exit 1 ;; esac
+          "$APP/Contents/MacOS/dbscope" & PID=$!
+          sleep 15
+          if ! kill -0 "$PID" 2>/dev/null; then echo "::error::app exited within 15s of launch"; exit 1; fi
+          kill "$PID"
+          echo "launched and stayed up for 15s"
+
+  build-web:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Read Flutter version from .fvmrc
+        id: fvm
+        run: echo "version=$(jq -r .flutter .fvmrc)" >> "$GITHUB_OUTPUT"
+
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ steps.fvm.outputs.version }}
+          channel: stable
+          cache: true
+
+      - run: flutter pub get
+      - run: flutter build web --release

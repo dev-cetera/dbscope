@@ -1,0 +1,1 @@
+../../.agents/rules/dart-discipline.md
