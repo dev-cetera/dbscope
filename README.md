@@ -27,6 +27,8 @@ A Flutter desktop database viewer and editor. Browse schemas, run queries, edit 
 2. Open it and drag **dbscope** into **Applications**.
 3. If the release notes say the build is not notarized, macOS blocks the first launch: open *System Settings ▸ Privacy & Security* and click **Open Anyway**, or run `xattr -dr com.apple.quarantine /Applications/dbscope.app`.
 
+After that, dbscope keeps itself up to date: when a new release is out, an **Install update** prompt appears at the bottom right. One click downloads it, checks its checksum, and restarts dbscope on the new version. The web version shows a **Refresh** prompt instead.
+
 ## What it connects to
 
 - **Postgres** (14–17) directly over TCP.
