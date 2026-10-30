@@ -145,8 +145,11 @@ class UpdateService {
   }
 
   Future<AppVersion> _latestWebVersion() async {
-    // Cache-busted so neither the browser nor a CDN edge answers for the origin.
-    final url = Uri.base.resolve('version.json').replace(
+    // The root copy, not the one beside this build: deployed builds live in
+    // per-deploy folders (/b/<run>/, scripts/stage_web_build.sh), and a tab's
+    // own folder never sees a newer version. Cache-busted so neither the
+    // browser nor a CDN edge answers for the origin.
+    final url = Uri.base.resolve('/version.json').replace(
       queryParameters: {'_': '${DateTime.now().millisecondsSinceEpoch}'},
     );
     final json = await _getJson(url);

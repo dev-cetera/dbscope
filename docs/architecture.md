@@ -27,7 +27,7 @@ All under `.github/workflows/`; every job reads the Flutter version from `.fvmrc
 
 - `ci.yml` — `analyze` + `test` on PRs and pushes to main (ubuntu).
 - `release.yml` — on a `v*` tag (or manual dispatch → draft): universal macOS build, then sign + notarize **only if** the `MACOS_CERT_P12_BASE64` / `APPLE_*` secrets exist, else ships unsigned with Gatekeeper instructions in the notes. Asset names are versionless (`dbscope-macos.dmg`) because the README and landing page link to `releases/latest/download/…` — don't rename them.
-- `web.yml` — builds web and deploys to Firebase Hosting `dbscope-prod` when `FIREBASE_SERVICE_ACCOUNT` is set.
+- `web.yml` — builds web into a per-deploy folder and deploys to Firebase Hosting `dbscope-prod` (keyless, via the `GCP_WIF_PROVIDER` / `GCP_DEPLOY_SA` repo variables).
 - `pages.yml` — publishes the static landing page in `site/` to GitHub Pages. Plain HTML, no build step; `site/assets/og.png` is rendered from `og.svg` with `rsvg-convert`.
 
 ## Updates (web refresh prompt, macOS self-update)
@@ -35,9 +35,10 @@ All under `.github/workflows/`; every job reads the Flutter version from `.fvmrc
 `lib/update/` checks for a newer build from the host window only (`main.dart` calls `UpdateService.instance.start()`; `UpdatePrompt` is mounted in the root stack in `app.dart`).
 
 - **Version stamp.** CI bakes the version in with `--dart-define=APP_VERSION=...` (`kRunningVersionStamp`): `release.yml` stamps the tag's version, `web.yml` stamps `<pubspec version>+<run number>`, so every web deploy is strictly newer. A local `flutter run` has no stamp, so checks stay off.
-- **Web.** Polls `version.json` (Flutter writes it from `--build-name`/`--build-number`) every 15 min; a newer one shows "A new version of dbscope (…) is ready" + **Refresh** at the bottom, which reloads the page. That only works because `firebase.json` serves every file `Cache-Control: no-cache`: Flutter's file names aren't content-hashed, so a long `max-age` would pin users to an old `main.dart.js`. Don't reintroduce long caching.
+- **Web caching.** Flutter's file names aren't content-hashed, and the first deploys served every `.js`/`.json` `max-age=31536000, immutable`, so browsers that visited then never re-ask for `/main.dart.js` or `/flutter_bootstrap.js` (that is what kept the old crashing build alive after the fix). So each deploy builds with `--base-href /b/<run>/` and `scripts/stage_web_build.sh` moves everything there; only `index.html` (no-store), `version.json` and Flutter's self-unregistering `flutter_service_worker.js` stay at the root. `/b/**` is cached immutable, which is safe because the folder name changes every deploy. No service worker is registered (`web/flutter_bootstrap.js`).
+- **Web.** Polls the root `/version.json` (Flutter writes it from `--build-name`/`--build-number`) every 15 min; a newer one shows "A new version of dbscope (…) is ready" + **Refresh** at the bottom, which reloads the page into the new folder.
 - **macOS.** Polls GitHub's latest release every 6 h; a newer one shows **Install update** bottom-right. Installing (`update_installer_io.dart`) downloads `dbscope-macos.zip`, verifies it against `SHA256SUMS.txt`, checks the bundle id, then starts a detached `swap.sh` that waits for the app to quit, swaps the bundle (restoring the old one on failure) and relaunches. Log: `~/Library/Logs/dbscope-update.log`. It refuses (with a "Download manually" fallback) when the app is translocated or its folder isn't writable. Release asset names are a contract with `release.yml` (`ReleaseSource`).
-- **Boot check.** A Dart exception before the first frame is a blank page that still compiles, so CI and the deploy run `scripts/check_web_boots.sh` (headless Chrome, fails on any uncaught error).
+- **Boot screen and check.** `web/index.html` shows a loading screen until Flutter's `flutter-first-frame` event, and turns it into "dbscope failed to start" + the error + **Reload** if startup throws first, so a crash is never a blank page. CI and the deploy run `scripts/check_web_boots.sh` (headless Chrome), which fails on any uncaught error or if the boot screen is still up after 20 s.
 
 ## Architecture: two isolates, one Server
 

@@ -4,7 +4,7 @@
 # A blank page is how a startup exception looks on web (the build compiles
 # fine, then main() throws before the first frame), so `flutter build web`
 # passing proves nothing. This catches it: any "Uncaught" console error in
-# the first 20 s of virtual time fails, as does the app never starting.
+# the first 20 s of virtual time fails, as does no first frame by then.
 # Read-only. Uses $CHROME, else google-chrome / chromium / the macOS app.
 set -euo pipefail
 
@@ -33,8 +33,11 @@ if printf '%s\n' "$console" | grep -q 'Uncaught'; then
   printf '%s\n' "$console" | grep -A2 'Uncaught' | cut -c1-300 | head -n 10
   exit 1
 fi
-if ! grep -q '<flt-glass-pane' "$tmp/dom.html"; then
-  echo "FAIL: $url never started the Flutter engine (no <flt-glass-pane> in the DOM)."
+# web/index.html removes its #boot screen on Flutter's first frame, and
+# turns it into an error message if startup throws first.
+if grep -q '<div id="boot"' "$tmp/dom.html"; then
+  echo "FAIL: $url never painted a first frame within 20 s. Boot screen:"
+  grep -o '<div id="boot".*' "$tmp/dom.html" | sed 's/<[^>]*>/ /g' | tr -s ' ' | cut -c1-300 | head -n 5
   printf '%s\n' "$console" | cut -c1-300 | tail -n 10
   exit 1
 fi

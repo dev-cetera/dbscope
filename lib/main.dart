@@ -49,10 +49,15 @@ Future<void> main(List<String> args) async {
   // Firebase is wired for the web build only. firebase_options.dart is
   // configured for `web` (project dbscope-prod); desktop targets throw
   // UnsupportedError from DefaultFirebaseOptions, so the init is gated on
-  // kIsWeb and the desktop isolates are left completely untouched.
+  // kIsWeb and the desktop isolates are left completely untouched. Not
+  // awaited: it downloads the Firebase JS SDK, nothing at startup needs it,
+  // and on a cold cache it would hold the first frame back.
   if (kIsWeb) {
-    await Firebase.initializeApp(
-      options: DefaultFirebaseOptions.currentPlatform,
+    unawaited(
+      Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform).then<void>(
+        (_) {},
+        onError: (Object e, StackTrace s) => debugPrint('Firebase init failed: $e\n$s'),
+      ),
     );
   }
   _registerPlugins();

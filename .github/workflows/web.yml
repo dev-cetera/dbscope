@@ -57,14 +57,16 @@ jobs:
 
       # Each deploy keeps the pubspec version and bumps the build number, so
       # open tabs see a strictly newer version.json and offer "Refresh"
-      # (lib/update/update_service.dart).
+      # (lib/update/update_service.dart). The build lives under /b/<run>/ so
+      # no browser cache can pin an old main.dart.js (stage_web_build.sh).
       - name: Build (version-stamped)
         run: |
           NAME="$(sed -n 's/^version: *\([0-9.]*\).*/\1/p' pubspec.yaml)"
           BUILD="${{ github.run_number }}"
           echo "Building dbscope $NAME+$BUILD"
           flutter build web --release --build-name "$NAME" --build-number "$BUILD" \
-            --dart-define=APP_VERSION="$NAME+$BUILD"
+            --base-href "/b/$BUILD/" --dart-define=APP_VERSION="$NAME+$BUILD"
+          bash scripts/stage_web_build.sh build/web "$BUILD"
           cat build/web/version.json
 
       - name: Check the build boots

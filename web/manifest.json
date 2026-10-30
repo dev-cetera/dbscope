@@ -1,7 +1,7 @@
 {
-    "name": "DBScope",
-    "short_name": "DBScope",
-    "start_url": ".",
+    "name": "dbscope",
+    "short_name": "dbscope",
+    "start_url": "/",
     "display": "standalone",
     "background_color": "#0E0E10",
     "theme_color": "#0E0E10",
@@ -31,5 +31,6 @@
             "type": "image/png",
             "purpose": "maskable"
         }
-    ]
+    ],
+    "scope": "/"
 }

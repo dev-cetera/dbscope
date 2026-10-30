@@ -13,7 +13,8 @@ Rules for scripts. The rules in the root `AGENTS.md` apply too.
 ## Scripts
 
 - `add_changelog_line.sh "<line>"`: adds one dated line to `CHANGELOG.md` without reading the file.
-- `check_web_boots.sh <url>`: loads the web app in headless Chrome and fails on any uncaught startup error (a blank page). Used by CI and after each deploy.
+- `check_web_boots.sh <url>`: loads the web app in headless Chrome and fails on any uncaught startup error or no first frame within 20 s. Used by CI and after each deploy.
+- `stage_web_build.sh <build-dir> <id>`: moves a `--base-href /b/<id>/` web build into its per-deploy folder, leaving `index.html` and `version.json` at the root. Used by `web.yml`.
 - `check_deps.sh`: checks the tools the project needs are installed. Edit the lists at the top.
 - `setup_firebase_deploy.sh [--yes]`: one-time Google Cloud setup for keyless GitHub Actions → Firebase Hosting deploys (`.github/workflows/web.yml`). Prints the plan without `--yes`.
 - `setup_dev_env.sh`: one-time setup for a fresh clone. Turns on the hooks in `.githooks/` and runs `check_deps.sh`.
