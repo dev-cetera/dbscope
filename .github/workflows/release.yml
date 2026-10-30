@@ -173,6 +173,17 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           TAG="${{ steps.v.outputs.tag }}"
+          # A leftover *draft* for this tag (e.g. from a test dispatch) would
+          # block the create; drafts were never public, so replace them. A
+          # published release is never touched: that fails the job instead.
+          if IS_DRAFT="$(gh release view "$TAG" --json isDraft --jq .isDraft 2>/dev/null)"; then
+            if [ "$IS_DRAFT" = "true" ]; then
+              echo "Replacing unpublished draft $TAG"
+              gh release delete "$TAG" --yes
+            else
+              echo "::error::Release $TAG is already published"; exit 1
+            fi
+          fi
           FLAGS=(--title "dbscope $TAG" --notes-file NOTES.md --generate-notes --target "$GITHUB_SHA")
           if [ "${{ steps.v.outputs.draft }}" = "true" ]; then FLAGS+=(--draft); fi
           case "$TAG" in *-*) FLAGS+=(--prerelease) ;; esac
