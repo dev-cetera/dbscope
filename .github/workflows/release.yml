@@ -1,0 +1,183 @@
+# Builds the universal (arm64 + x86_64) macOS app and attaches it to a GitHub
+# Release.
+#
+#   git tag v0.1.0 && git push origin v0.1.0     → public release
+#   Actions ▸ Release ▸ Run workflow (version)    → DRAFT release, for testing
+#
+# Signing + notarization run only when the Apple secrets below are set. Without
+# them the release still ships, unsigned, with Gatekeeper instructions in the
+# notes. Secrets:
+#   MACOS_CERT_P12_BASE64   base64 of a "Developer ID Application" .p12
+#   MACOS_CERT_PASSWORD     password of that .p12
+#   APPLE_ID                Apple ID email used for notarization
+#   APPLE_APP_PASSWORD      app-specific password for that Apple ID
+#   APPLE_TEAM_ID           10-char team id
+#
+# Asset names carry no version so the landing page can link to
+# releases/latest/download/dbscope-macos.dmg forever.
+name: Release
+
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version without the leading v (e.g. 0.1.0). Creates a DRAFT release.'
+        required: true
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+
+jobs:
+  macos:
+    runs-on: macos-15
+    timeout-minutes: 60
+    env:
+      APP: build/macos/Build/Products/Release/dbscope.app
+      HAS_SIGNING: ${{ secrets.MACOS_CERT_P12_BASE64 != '' }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Resolve version
+        id: v
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            VERSION="${{ inputs.version }}"
+            DRAFT=true
+          else
+            VERSION="${GITHUB_REF_NAME#v}"
+            DRAFT=false
+          fi
+          if ! [[ "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+([-+].*)?$ ]]; then
+            echo "::error::'$VERSION' is not a semver version"; exit 1
+          fi
+          {
+            echo "version=$VERSION"
+            echo "tag=v$VERSION"
+            echo "draft=$DRAFT"
+            echo "flutter=$(jq -r .flutter .fvmrc)"
+          } >> "$GITHUB_OUTPUT"
+
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ steps.v.outputs.flutter }}
+          channel: stable
+          cache: true
+
+      - run: flutter pub get
+
+      - name: Build
+        run: |
+          flutter build macos --release \
+            --build-name "${{ steps.v.outputs.version }}" \
+            --build-number "${{ github.run_number }}"
+          lipo -archs "$APP/Contents/MacOS/dbscope"
+
+      - name: Import signing certificate
+        if: env.HAS_SIGNING == 'true'
+        env:
+          P12_BASE64: ${{ secrets.MACOS_CERT_P12_BASE64 }}
+          P12_PASSWORD: ${{ secrets.MACOS_CERT_PASSWORD }}
+        run: |
+          KEYCHAIN="$RUNNER_TEMP/signing.keychain-db"
+          KEYCHAIN_PW="$(uuidgen)"
+          echo "$P12_BASE64" | base64 --decode > "$RUNNER_TEMP/cert.p12"
+          security create-keychain -p "$KEYCHAIN_PW" "$KEYCHAIN"
+          security set-keychain-settings -lut 21600 "$KEYCHAIN"
+          security unlock-keychain -p "$KEYCHAIN_PW" "$KEYCHAIN"
+          security import "$RUNNER_TEMP/cert.p12" -P "$P12_PASSWORD" -A -t cert -f pkcs12 -k "$KEYCHAIN"
+          security set-key-partition-list -S apple-tool:,apple: -k "$KEYCHAIN_PW" "$KEYCHAIN" >/dev/null
+          # Prepend ours to the search list, keeping the existing keychains.
+          read -r -a EXISTING <<< "$(security list-keychains -d user | tr -d '"' | xargs)"
+          security list-keychains -d user -s "$KEYCHAIN" "${EXISTING[@]}"
+          rm "$RUNNER_TEMP/cert.p12"
+          IDENTITY="$(security find-identity -v -p codesigning "$KEYCHAIN" | grep 'Developer ID Application' | head -1 | awk -F'"' '{print $2}')"
+          if [ -z "$IDENTITY" ]; then echo "::error::No 'Developer ID Application' identity in the .p12"; exit 1; fi
+          echo "IDENTITY=$IDENTITY" >> "$GITHUB_ENV"
+
+      - name: Sign app (hardened runtime, inside-out)
+        if: env.HAS_SIGNING == 'true'
+        run: |
+          find "$APP/Contents/Frameworks" -depth \( -name '*.dylib' -o -name '*.framework' \) -print0 |
+            xargs -0 -I{} codesign --force --timestamp --options runtime --sign "$IDENTITY" {}
+          codesign --force --timestamp --options runtime \
+            --entitlements macos/Runner/Release.entitlements \
+            --sign "$IDENTITY" "$APP"
+          codesign --verify --deep --strict --verbose=2 "$APP"
+
+      - name: Package DMG
+        run: |
+          STAGE="$RUNNER_TEMP/dmg"
+          mkdir -p "$STAGE"
+          cp -R "$APP" "$STAGE/"
+          ln -s /Applications "$STAGE/Applications"
+          hdiutil create -volname "dbscope" -srcfolder "$STAGE" -ov -format UDZO dbscope-macos.dmg
+          if [ "$HAS_SIGNING" = "true" ]; then
+            codesign --force --timestamp --sign "$IDENTITY" dbscope-macos.dmg
+          fi
+
+      - name: Notarize + staple
+        if: env.HAS_SIGNING == 'true'
+        env:
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_APP_PASSWORD: ${{ secrets.APPLE_APP_PASSWORD }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+        run: |
+          OUT="$(xcrun notarytool submit dbscope-macos.dmg \
+            --apple-id "$APPLE_ID" --password "$APPLE_APP_PASSWORD" --team-id "$APPLE_TEAM_ID" \
+            --wait --output-format json)"
+          echo "$OUT"
+          STATUS="$(echo "$OUT" | jq -r .status)"
+          if [ "$STATUS" != "Accepted" ]; then
+            xcrun notarytool log "$(echo "$OUT" | jq -r .id)" \
+              --apple-id "$APPLE_ID" --password "$APPLE_APP_PASSWORD" --team-id "$APPLE_TEAM_ID"
+            exit 1
+          fi
+          # The DMG's ticket covers the nested app too, so the bare .app (zip
+          # download) can be stapled without a second submission.
+          xcrun stapler staple dbscope-macos.dmg
+          xcrun stapler staple "$APP"
+          spctl --assess --type open --context context:primary-signature -v dbscope-macos.dmg
+
+      - name: Package zip + checksums
+        run: |
+          ditto -c -k --sequesterRsrc --keepParent "$APP" dbscope-macos.zip
+          shasum -a 256 dbscope-macos.dmg dbscope-macos.zip > SHA256SUMS.txt
+          cat SHA256SUMS.txt
+
+      - name: Write release notes
+        run: |
+          {
+            if [ "$HAS_SIGNING" = "true" ]; then
+              echo "Signed and notarized universal build (Apple Silicon + Intel), macOS 12+."
+            else
+              echo "Universal build (Apple Silicon + Intel), macOS 12+."
+              echo
+              echo "> [!IMPORTANT]"
+              echo "> This build is **not notarized**, so macOS blocks the first launch. After dragging dbscope to Applications, either:"
+              echo "> - open *System Settings ▸ Privacy & Security* and click **Open Anyway**, or"
+              echo "> - run \`xattr -dr com.apple.quarantine /Applications/dbscope.app\`"
+            fi
+            echo
+            echo "dbscope is vibe coded and open source. Found a bug? [Open an issue](https://github.com/${{ github.repository }}/issues/new/choose)."
+          } > NOTES.md
+
+      - name: Publish release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          TAG="${{ steps.v.outputs.tag }}"
+          FLAGS=(--title "dbscope $TAG" --notes-file NOTES.md --generate-notes --target "$GITHUB_SHA")
+          if [ "${{ steps.v.outputs.draft }}" = "true" ]; then FLAGS+=(--draft); fi
+          case "$TAG" in *-*) FLAGS+=(--prerelease) ;; esac
+          gh release create "$TAG" "${FLAGS[@]}" \
+            dbscope-macos.dmg dbscope-macos.zip SHA256SUMS.txt
+
+      - name: Clean up keychain
+        if: always() && env.HAS_SIGNING == 'true'
+        run: security delete-keychain "$RUNNER_TEMP/signing.keychain-db" || true

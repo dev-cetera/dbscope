@@ -11,4 +11,4 @@ PRODUCT_NAME = dbscope
 PRODUCT_BUNDLE_IDENTIFIER = com.devcetera.dbscope
 
 // The copyright displayed in application information
-PRODUCT_COPYRIGHT = Copyright © 2026 com.devcetera. All rights reserved.
+PRODUCT_COPYRIGHT = Copyright © 2026 Robert Mollentze (dev-cetera). MIT License.

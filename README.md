@@ -1,8 +1,33 @@
-# dbscope
+<p align="center"><img src="assets/icon/dbscope_icon.png" width="96" alt="dbscope icon"></p>
 
-A Flutter desktop database viewer and editor for macOS, Windows, and Linux. Browse schemas, run queries, edit rows, and navigate foreign-key relationships across huge tables.
+<h1 align="center">dbscope</h1>
 
-It connects to:
+<p align="center">
+  <a href="https://github.com/dev-cetera/dbscope/releases/latest/download/dbscope-macos.dmg"><b>Download for macOS</b></a> ·
+  <a href="https://dbscope-prod.web.app">Try it in the browser</a> ·
+  <a href="https://dev-cetera.github.io/dbscope/">Website</a>
+</p>
+
+<p align="center">
+  <a href="https://github.com/dev-cetera/dbscope/actions/workflows/ci.yml"><img src="https://github.com/dev-cetera/dbscope/actions/workflows/ci.yml/badge.svg" alt="CI"></a>
+  <a href="https://github.com/dev-cetera/dbscope/releases/latest"><img src="https://img.shields.io/github/v/release/dev-cetera/dbscope?include_prereleases" alt="Latest release"></a>
+  <a href="LICENSE"><img src="https://img.shields.io/github/license/dev-cetera/dbscope" alt="MIT License"></a>
+</p>
+
+A Flutter desktop database viewer and editor. Browse schemas, run queries, edit rows, navigate foreign-key relationships across huge tables, and ask an AI assistant for SQL in plain English.
+
+> [!NOTE]
+> **dbscope is vibe coded and open source.** Most of it was written with an AI (Claude Code), with a human steering, reviewing and testing. It's used daily, but expect rough edges — and please don't point it at production with write access until you trust it. Found a bug? [Open an issue](https://github.com/dev-cetera/dbscope/issues/new/choose). Want to help? See [CONTRIBUTING.md](CONTRIBUTING.md) and the [`good first issue`](https://github.com/dev-cetera/dbscope/labels/good%20first%20issue) label.
+
+**Platforms:** macOS 12+ (universal: Apple Silicon + Intel) is the shipped target. The web build runs in any modern browser but reaches Postgres only through `dbscope_pg_proxy`. Windows and Linux should work — Flutter supports them — but the platform folders haven't been generated or tested yet; [help wanted](https://github.com/dev-cetera/dbscope/issues?q=is%3Aopen+label%3A%22help+wanted%22).
+
+## Install (macOS)
+
+1. Download [`dbscope-macos.dmg`](https://github.com/dev-cetera/dbscope/releases/latest/download/dbscope-macos.dmg) from the [latest release](https://github.com/dev-cetera/dbscope/releases/latest).
+2. Open it and drag **dbscope** into **Applications**.
+3. If the release notes say the build is not notarized, macOS blocks the first launch: open *System Settings ▸ Privacy & Security* and click **Open Anyway**, or run `xattr -dr com.apple.quarantine /Applications/dbscope.app`.
+
+## What it connects to
 
 - **Postgres** (14–17) directly over TCP.
 - **Cloud SQL for Postgres** through a Cloud SQL Auth Proxy that dbscope starts and stops for you (needs `gcloud auth login`).
@@ -12,13 +37,13 @@ It connects to:
 
 Connections can be shared as encrypted `.dbscopeconn` links (*File ▸ Import / Export connection link…*). API keys and passphrases are read from your shell profile (`~/.zshenv` by default, *File ▸ Environment…*), since apps launched from the Finder don't see your shell's exports.
 
-## Getting started
+## Building from source
 
 Flutter is pinned to 3.47.7 (Dart 3.13.5) via FVM (see `.fvmrc`). Prefix commands with `fvm` to pick up the right SDK. The macOS build needs macOS 12 or later.
 
 ```
 fvm flutter pub get
-fvm flutter run -d macos     # or -d windows / -d linux
+fvm flutter run -d macos     # or -d chrome
 ```
 
 That's it - the app launches, and you add a connection profile from the UI.
@@ -28,10 +53,14 @@ That's it - the app launches, and you add a connection profile from the UI.
 ```
 fvm flutter analyze          # lint
 fvm flutter test             # run tests
-fvm flutter build macos      # or windows / linux / web
+fvm flutter build macos      # or web
 ```
 
 The macOS build runs without the App Sandbox (it shells out to `adb`, `xcrun` and `cloud-sql-proxy`), so it can't ship to the Mac App Store as is.
+
+## Releasing
+
+Push a `v*` tag (`git tag v0.2.0 && git push origin v0.2.0`). [`release.yml`](.github/workflows/release.yml) builds the universal app, signs and notarizes it when the Apple secrets are configured, and attaches `dbscope-macos.dmg` / `.zip` to a GitHub Release. *Actions ▸ Release ▸ Run workflow* does the same as a draft, for testing. Pushes to `main` redeploy the web app ([`web.yml`](.github/workflows/web.yml)) and the landing page in `site/` ([`pages.yml`](.github/workflows/pages.yml)).
 
 ## Schema metadata (optional)
 
@@ -118,3 +147,7 @@ marks what changed. Queries, charts, checks and query actions also run
 inside a read-only transaction where the backend supports it (Postgres,
 local SQLite); default and `openTable` filters become part of the grid's own
 queries, so trust is their only guard.
+
+## License
+
+[MIT](LICENSE). Contributions welcome — see [CONTRIBUTING.md](CONTRIBUTING.md).

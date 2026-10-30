@@ -1,0 +1,250 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>dbscope — open-source database GUI</title>
+  <meta name="description" content="dbscope is a free, open-source desktop database viewer and editor for Postgres and SQLite, with an AI assistant that turns plain English into SQL. Vibe coded, MIT licensed, contributions welcome.">
+  <link rel="icon" type="image/svg+xml" href="assets/dbscope_icon.svg">
+  <link rel="apple-touch-icon" href="assets/dbscope_icon.png">
+
+  <meta property="og:type" content="website">
+  <meta property="og:title" content="dbscope — open-source database GUI">
+  <meta property="og:description" content="Postgres, Cloud SQL and SQLite (even on your phone) in one fast desktop app. Vibe coded and open source.">
+  <meta property="og:url" content="https://dev-cetera.github.io/dbscope/">
+  <meta property="og:image" content="https://dev-cetera.github.io/dbscope/assets/og.png">
+  <meta name="twitter:card" content="summary_large_image">
+
+  <style>
+    :root {
+      --accent: #e5452b;
+      --accent-ink: #ffffff;
+      --bg: #fbfaf8;
+      --surface: #ffffff;
+      --text: #1b1a19;
+      --muted: #5f5b57;
+      --border: #e6e2dd;
+      --code-bg: #f2efeb;
+      --shadow: 0 1px 2px rgb(0 0 0 / .04), 0 8px 24px rgb(0 0 0 / .06);
+    }
+    @media (prefers-color-scheme: dark) {
+      :root:not([data-theme="light"]) {
+        --accent: #ff6a4d;
+        --accent-ink: #1b0d09;
+        --bg: #141312;
+        --surface: #1d1b1a;
+        --text: #f1eeea;
+        --muted: #a9a39d;
+        --border: #2e2b29;
+        --code-bg: #24211f;
+        --shadow: 0 1px 2px rgb(0 0 0 / .3), 0 8px 24px rgb(0 0 0 / .35);
+      }
+    }
+    :root[data-theme="dark"] {
+      --accent: #ff6a4d;
+      --accent-ink: #1b0d09;
+      --bg: #141312;
+      --surface: #1d1b1a;
+      --text: #f1eeea;
+      --muted: #a9a39d;
+      --border: #2e2b29;
+      --code-bg: #24211f;
+      --shadow: 0 1px 2px rgb(0 0 0 / .3), 0 8px 24px rgb(0 0 0 / .35);
+    }
+
+    * { box-sizing: border-box; }
+    html { -webkit-text-size-adjust: 100%; }
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--text);
+      font: 16px/1.6 ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    }
+    a { color: var(--accent); }
+    code {
+      font: 0.9em ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      background: var(--code-bg);
+      padding: 0.1em 0.35em;
+      border-radius: 4px;
+    }
+    .wrap { max-width: 1040px; margin: 0 auto; padding: 0 16px; }
+
+    header.top {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 20px 0;
+    }
+    .brand { display: flex; align-items: center; gap: 10px; font-weight: 700; font-size: 18px; color: var(--text); text-decoration: none; }
+    .brand img { width: 28px; height: 28px; }
+    nav.links { display: flex; gap: 20px; font-size: 15px; }
+    nav.links a { color: var(--muted); text-decoration: none; }
+    nav.links a:hover { color: var(--text); }
+
+    .hero { text-align: center; padding: 56px 0 40px; }
+    .hero img.logo { width: 96px; height: 96px; }
+    .pill {
+      display: inline-block; margin: 20px 0 0;
+      font-size: 13px; font-weight: 600; letter-spacing: .02em;
+      color: var(--muted); border: 1px solid var(--border); border-radius: 999px;
+      padding: 4px 12px; background: var(--surface);
+    }
+    h1 { font-size: clamp(34px, 6vw, 56px); line-height: 1.08; letter-spacing: -0.02em; margin: 18px auto 16px; max-width: 14ch; }
+    .lede { font-size: clamp(17px, 2.2vw, 20px); color: var(--muted); max-width: 40em; margin: 0 auto; }
+    .cta { display: flex; flex-wrap: wrap; gap: 12px; justify-content: center; margin: 32px 0 12px; }
+    .btn {
+      display: inline-flex; align-items: center; gap: 8px;
+      padding: 12px 20px; border-radius: 10px; font-weight: 600; text-decoration: none;
+      border: 1px solid var(--border); color: var(--text); background: var(--surface);
+    }
+    .btn:hover { border-color: var(--muted); }
+    .btn.primary { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
+    .btn.primary:hover { filter: brightness(1.05); }
+    .btn svg { width: 18px; height: 18px; fill: currentColor; }
+    .fine { font-size: 13px; color: var(--muted); }
+
+    .shot {
+      margin: 40px auto 0; max-width: 960px;
+      border: 1px solid var(--border); border-radius: 12px; overflow: hidden;
+      background: var(--surface); box-shadow: var(--shadow);
+    }
+    .shot .bar { display: flex; gap: 6px; padding: 10px 12px; border-bottom: 1px solid var(--border); }
+    .shot .bar i { width: 11px; height: 11px; border-radius: 50%; background: var(--border); }
+    .shot img, .shot video { display: block; width: 100%; height: auto; }
+
+    section { padding: 64px 0; }
+    h2 { font-size: clamp(26px, 3.5vw, 34px); letter-spacing: -0.01em; margin: 0 0 8px; }
+    .sub { color: var(--muted); margin: 0 0 32px; max-width: 42em; }
+
+    .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 16px; }
+    .card {
+      background: var(--surface); border: 1px solid var(--border); border-radius: 12px;
+      padding: 20px;
+    }
+    .card h3 { margin: 0 0 6px; font-size: 17px; }
+    .card p { margin: 0; color: var(--muted); font-size: 15px; }
+
+    .backends { display: flex; flex-wrap: wrap; gap: 10px; }
+    .backends span {
+      border: 1px solid var(--border); background: var(--surface); border-radius: 8px;
+      padding: 8px 14px; font-size: 15px;
+    }
+
+    .vibe {
+      background: var(--surface); border: 1px solid var(--border); border-radius: 16px;
+      padding: clamp(24px, 4vw, 40px);
+    }
+    .vibe ol { padding-left: 1.2em; margin: 16px 0 24px; }
+    .vibe li { margin: 6px 0; }
+
+    footer { border-top: 1px solid var(--border); padding: 28px 0 40px; color: var(--muted); font-size: 14px; }
+    footer .wrap { display: flex; flex-wrap: wrap; gap: 12px 24px; justify-content: space-between; }
+    footer a { color: var(--muted); }
+
+    @media (max-width: 560px) {
+      nav.links a.hide-sm { display: none; }
+      .btn { width: 100%; justify-content: center; }
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <header class="top">
+      <a class="brand" href="./"><img src="assets/dbscope_icon.svg" alt="">dbscope</a>
+      <nav class="links">
+        <a href="#features" class="hide-sm">Features</a>
+        <a href="#contribute" class="hide-sm">Contribute</a>
+        <a href="https://github.com/dev-cetera/dbscope">GitHub</a>
+      </nav>
+    </header>
+
+    <div class="hero">
+      <img class="logo" src="assets/dbscope_icon.svg" alt="dbscope icon">
+      <div><span class="pill">Free · Open source · Vibe coded</span></div>
+      <h1>A database GUI that scales to huge tables</h1>
+      <p class="lede">
+        Browse, query and edit Postgres and SQLite, including the SQLite inside an app on your phone.
+        Follow foreign keys like folders, see your schema as a graph, and ask for SQL in plain English.
+      </p>
+      <div class="cta">
+        <a class="btn primary" href="https://github.com/dev-cetera/dbscope/releases/latest/download/dbscope-macos.dmg">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M16.37 12.77c-.02-2.3 1.88-3.4 1.96-3.46-1.07-1.56-2.73-1.78-3.32-1.8-1.41-.14-2.76.83-3.47.83-.72 0-1.82-.81-2.99-.79-1.54.02-2.96.9-3.75 2.27-1.6 2.78-.41 6.89 1.15 9.14.76 1.1 1.67 2.34 2.86 2.3 1.15-.05 1.58-.74 2.97-.74 1.38 0 1.78.74 2.99.72 1.24-.02 2.02-1.12 2.77-2.23.87-1.28 1.23-2.52 1.25-2.58-.03-.01-2.4-.92-2.42-3.66zM14.1 6.01c.63-.77 1.06-1.83.94-2.89-.91.04-2.01.61-2.66 1.37-.58.67-1.09 1.76-.96 2.8 1.02.08 2.05-.52 2.68-1.28z"/></svg>
+          Download for macOS
+        </a>
+        <a class="btn" href="https://dbscope-prod.web.app">Try in the browser</a>
+        <a class="btn" href="https://github.com/dev-cetera/dbscope">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 .5C5.65.5.5 5.65.5 12a11.5 11.5 0 0 0 7.86 10.92c.58.1.79-.25.79-.56v-2c-3.2.7-3.87-1.37-3.87-1.37-.52-1.33-1.28-1.69-1.28-1.69-1.05-.71.08-.7.08-.7 1.16.08 1.77 1.19 1.77 1.19 1.03 1.77 2.7 1.26 3.36.96.1-.75.4-1.26.73-1.55-2.55-.29-5.24-1.28-5.24-5.69 0-1.26.45-2.29 1.19-3.09-.12-.29-.52-1.46.11-3.05 0 0 .97-.31 3.17 1.18a11 11 0 0 1 5.77 0c2.2-1.49 3.17-1.18 3.17-1.18.63 1.59.23 2.76.11 3.05.74.8 1.19 1.83 1.19 3.09 0 4.42-2.69 5.39-5.26 5.68.41.36.78 1.06.78 2.14v3.17c0 .31.21.67.8.56A11.5 11.5 0 0 0 23.5 12C23.5 5.65 18.35.5 12 .5z"/></svg>
+          Star on GitHub
+        </a>
+      </div>
+      <p class="fine">macOS 12+ · Apple Silicon &amp; Intel · MIT licensed</p>
+
+      <!-- Drop a screenshot at site/assets/screenshot.png (or a demo.mp4) and it appears here. -->
+      <figure class="shot" id="shot" hidden>
+        <div class="bar"><i></i><i></i><i></i></div>
+        <img src="assets/screenshot.png" alt="dbscope showing a table, the foreign-key navigator and the AI assistant"
+             onload="document.getElementById('shot').hidden = false">
+      </figure>
+    </div>
+  </div>
+
+  <section id="features">
+    <div class="wrap">
+      <h2>What it does</h2>
+      <p class="sub">A desktop app first, built in Flutter. One canonical backend in the main window, with every other window talking to it, so long-running jobs don't care which windows are open.</p>
+      <div class="grid">
+        <div class="card"><h3>Billion-row tables</h3><p>Keyset pagination, never OFFSET, and a bounded in-memory window keep scrolling smooth however big the table gets.</p></div>
+        <div class="card"><h3>Foreign keys as folders</h3><p>A Finder-style column navigator: click a row, follow its foreign keys and inbound references, column by column.</p></div>
+        <div class="card"><h3>Linked graph view</h3><p>Pull rows onto a canvas and watch them connect. Expand any relation into a new node.</p></div>
+        <div class="card"><h3>Schema diagrams</h3><p>An auto-laid-out diagram of every table and relationship. Click a table to isolate its neighbourhood.</p></div>
+        <div class="card"><h3>Plain English → SQL</h3><p>Bring your own OpenAI, Anthropic or Gemini key. Generated SQL runs inside a read-only transaction by default.</p></div>
+        <div class="card"><h3>Safe edits</h3><p>Inline cell editing with optimistic concurrency: if someone changed the row underneath you, you get a conflict, not a silent overwrite.</p></div>
+        <div class="card"><h3>Schema metadata &amp; access control</h3><p>Describe what columns mean, mask sensitive ones, define named queries, charts and dashboards, all from the database or a YAML file.</p></div>
+        <div class="card"><h3>Shareable connections</h3><p>Export a connection as an AES-256 encrypted <code>.dbscopeconn</code> file and open it on any machine.</p></div>
+        <div class="card"><h3>Themes</h3><p>VS Code Dark, Portal, and a faithful Windows 95. Themes are plugins, so you can write your own.</p></div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <div class="wrap">
+      <h2>Connects to</h2>
+      <p class="sub">Every backend is a plugin behind one interface, so adding MySQL, DuckDB or anything else is a self-contained package.</p>
+      <div class="backends">
+        <span>Postgres 14–17</span>
+        <span>Cloud SQL for Postgres (Auth Proxy started for you)</span>
+        <span>Local SQLite files</span>
+        <span>SQLite inside an Android / iOS app over USB</span>
+        <span>Postgres from the browser via <code>dbscope_pg_proxy</code></span>
+      </div>
+    </div>
+  </section>
+
+  <section id="contribute">
+    <div class="wrap">
+      <div class="vibe">
+        <h2>Vibe coded, in the open</h2>
+        <p class="sub" style="margin-bottom:0">
+          Most of dbscope was written by an AI (Claude Code), with a human steering the architecture, reviewing and testing.
+          It's used every day, but it will have rough edges. That's the invitation:
+        </p>
+        <ol>
+          <li><strong>Found a bug?</strong> <a href="https://github.com/dev-cetera/dbscope/issues/new/choose">Open an issue</a>. Small ones count.</li>
+          <li><strong>Can fix it?</strong> Grab a <a href="https://github.com/dev-cetera/dbscope/labels/good%20first%20issue">good first issue</a> and read <a href="https://github.com/dev-cetera/dbscope/blob/main/CONTRIBUTING.md">CONTRIBUTING.md</a>.</li>
+          <li><strong>Want a platform?</strong> Windows and Linux builds are <a href="https://github.com/dev-cetera/dbscope/issues?q=is%3Aopen+label%3A%22help+wanted%22">waiting for someone</a>.</li>
+        </ol>
+        <a class="btn primary" href="https://github.com/dev-cetera/dbscope">View the source</a>
+      </div>
+    </div>
+  </section>
+
+  <footer>
+    <div class="wrap">
+      <span>dbscope · MIT License · by <a href="https://github.com/dev-cetera">dev-cetera</a></span>
+      <span>
+        <a href="https://github.com/dev-cetera/dbscope/releases">Releases</a> ·
+        <a href="https://github.com/dev-cetera/dbscope/issues">Issues</a> ·
+        <a href="https://github.com/dev-cetera/dbscope/blob/main/SECURITY.md">Security</a>
+      </span>
+    </div>
+  </footer>
+</body>
+</html>

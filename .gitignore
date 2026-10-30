@@ -48,3 +48,6 @@ app.*.map.json
 .fvm/
 # Portable connection links may embed encrypted DB credentials — never commit them.
 *.dbscopeconn
+
+# Personal Claude Code settings — never shared.
+.claude/settings.local.json

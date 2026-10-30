@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Questions & ideas
+    url: https://github.com/dev-cetera/dbscope/discussions
+    about: Ask a question or discuss an idea before filing an issue.
+  - name: Security vulnerability
+    url: https://github.com/dev-cetera/dbscope/security/advisories/new
+    about: Report security problems privately, not as a public issue.

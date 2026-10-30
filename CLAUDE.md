@@ -21,6 +21,15 @@ fvm flutter test test/server_test.dart --plain-name 'routes req'   # single test
 
 Tests are per-unit and live under `test/`: `sql_quote`, `envelope`, `cancel_token`, `dml`, `pager`, `server`, `bus_service`, `postgres_executor_decode`, `shell_env`, `sql_parse`, `pg_type`, `copy_table_job`, `grid_row_ownership`, `resizable`, and the `meta_*` suite. They share `test/support/fake_executor.dart` — a `DbExecutor` stub used wherever a test needs to exercise something that would otherwise want a live DB. Each test file opens with a comment block stating the contract it pins down; read that before editing the production code it covers. `test/widget_test.dart` is an intentional placeholder — do not add coverage there.
 
+## CI, releases, web and landing page
+
+All under `.github/workflows/`; every job reads the Flutter version from `.fvmrc`, so bumping FVM bumps CI.
+
+- `ci.yml` — `analyze` + `test` on PRs and pushes to main (ubuntu).
+- `release.yml` — on a `v*` tag (or manual dispatch → draft): universal macOS build, then sign + notarize **only if** the `MACOS_CERT_P12_BASE64` / `APPLE_*` secrets exist, else ships unsigned with Gatekeeper instructions in the notes. Asset names are versionless (`dbscope-macos.dmg`) because the README and landing page link to `releases/latest/download/…` — don't rename them.
+- `web.yml` — builds web and deploys to Firebase Hosting `dbscope-prod` when `FIREBASE_SERVICE_ACCOUNT` is set.
+- `pages.yml` — publishes the static landing page in `site/` to GitHub Pages. Plain HTML, no build step; `site/assets/og.png` is rendered from `og.svg` with `rsvg-convert`.
+
 ## Architecture: two isolates, one Server
 
 The single biggest concept that isn't obvious from the plan or from any one file:

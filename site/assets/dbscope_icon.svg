@@ -1,0 +1,19 @@
+<svg width="1024" height="1024" viewBox="0 0 1024 1024" xmlns="http://www.w3.org/2000/svg">
+  <!--
+    dbscope app icon: the letters "d" and "b" as a monogram.
+    Two rings share one stem, so the mark also reads as a pair of binoculars
+    (a scope). Flat by design: one background colour, one ink colour, no
+    gradients or shadows. Every raster icon in the repo is rendered from this
+    file (and from dbscope_icon_maskable.svg for the PWA maskable variant):
+
+      rsvg-convert -w <size> -h <size> dbscope_icon.svg -o <out>.png
+  -->
+  <rect width="1024" height="1024" rx="230" fill="#E5452B"/>
+  <!-- shared stem -->
+  <rect x="468" y="236" width="88" height="578" rx="14" fill="#FFF2DC"/>
+  <!-- the "d" bowl, with the lens dot -->
+  <circle cx="342" cy="600" r="170" fill="none" stroke="#FFF2DC" stroke-width="88"/>
+  <circle cx="342" cy="600" r="42" fill="#FFF2DC"/>
+  <!-- the "b" bowl -->
+  <circle cx="682" cy="600" r="170" fill="none" stroke="#FFF2DC" stroke-width="88"/>
+</svg>

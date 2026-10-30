@@ -1,0 +1,70 @@
+name: Bug report
+description: Something is broken or behaves unexpectedly.
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for reporting! Please **never paste passwords, API keys or `.dbscopeconn` files** here.
+        Security issues go to [private reporting](https://github.com/dev-cetera/dbscope/security/advisories/new) instead.
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened?
+      description: What did you expect, and what happened instead?
+    validations:
+      required: true
+  - type: textarea
+    id: repro
+    attributes:
+      label: Steps to reproduce
+      placeholder: |
+        1. Connect to …
+        2. Open table …
+        3. …
+    validations:
+      required: true
+  - type: dropdown
+    id: platform
+    attributes:
+      label: Platform
+      options:
+        - macOS (downloaded release)
+        - macOS (built from source)
+        - Web
+        - Windows (from source)
+        - Linux (from source)
+    validations:
+      required: true
+  - type: input
+    id: os
+    attributes:
+      label: OS version
+      placeholder: macOS 15.3, Chrome 130, …
+  - type: dropdown
+    id: backend
+    attributes:
+      label: Backend
+      multiple: true
+      options:
+        - Postgres (direct)
+        - Cloud SQL (Postgres)
+        - Postgres via pg-proxy (web)
+        - Local SQLite file
+        - SQLite on a device (Android / iOS)
+        - Not backend-specific
+  - type: input
+    id: dbversion
+    attributes:
+      label: Database version
+      placeholder: Postgres 16.4
+  - type: input
+    id: version
+    attributes:
+      label: dbscope version or commit
+      placeholder: v0.1.0 or a commit hash
+  - type: textarea
+    id: logs
+    attributes:
+      label: Logs / screenshots
+      description: Error toasts, console output, screenshots. Redact anything sensitive.
