@@ -201,11 +201,12 @@ void _registerPlugins() {
   // Schema metadata: named queries, dashboards, the Metadata menu.
   registry.register(MetaPlugin());
 
-  // Theme plugins.
+  // Theme plugins. The first one registered is the default (and the fallback
+  // when a saved theme no longer exists), so VS Code Dark goes first.
+  registry.register(VsCodeDarkThemePlugin());
   // Doom theme wired out — re-enable by restoring the import + pubspec dep.
   // registry.register(DoomPlugin());
   registry.register(Win95ThemePlugin());
-  registry.register(VsCodeDarkThemePlugin());
   // Warcraft theme wired out — re-enable by restoring the import + pubspec dep.
   // registry.register(WarcraftThemePlugin());
   registry.register(PortalThemePlugin());
