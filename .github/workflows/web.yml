@@ -54,7 +54,24 @@ jobs:
           cache: true
 
       - run: flutter pub get
-      - run: flutter build web --release
+
+      # Each deploy keeps the pubspec version and bumps the build number, so
+      # open tabs see a strictly newer version.json and offer "Refresh"
+      # (lib/update/update_service.dart).
+      - name: Build (version-stamped)
+        run: |
+          NAME="$(sed -n 's/^version: *\([0-9.]*\).*/\1/p' pubspec.yaml)"
+          BUILD="${{ github.run_number }}"
+          echo "Building dbscope $NAME+$BUILD"
+          flutter build web --release --build-name "$NAME" --build-number "$BUILD" \
+            --dart-define=APP_VERSION="$NAME+$BUILD"
+          cat build/web/version.json
+
+      - name: Check the build boots
+        run: |
+          python3 -m http.server 8787 --bind 127.0.0.1 --directory build/web >/dev/null 2>&1 &
+          sleep 1
+          bash scripts/check_web_boots.sh http://127.0.0.1:8787/
 
       - name: Authenticate to Google Cloud
         if: env.CAN_DEPLOY == 'true'
@@ -67,11 +84,9 @@ jobs:
         if: env.CAN_DEPLOY == 'true'
         run: npx --yes firebase-tools@14.22.0 deploy --only hosting --project dbscope-prod --non-interactive
 
-      - name: Smoke-test the live site
+      - name: Check the live site boots
         if: env.CAN_DEPLOY == 'true'
-        run: |
-          curl -fsS https://dbscope-prod.web.app/ | grep -q 'flutter_bootstrap.js'
-          echo "Live: https://dbscope-prod.web.app"
+        run: bash scripts/check_web_boots.sh https://dbscope-prod.web.app/
 
       - name: Deploy skipped
         if: env.CAN_DEPLOY != 'true'

@@ -16,6 +16,7 @@ import 'shell/sidebar.dart';
 import 'shell/tab_strip.dart';
 import 'shell/theme_registry.dart';
 import 'tabs/tab_kind.dart';
+import 'update/update_prompt.dart';
 
 class DBScopeApp extends StatefulWidget {
   const DBScopeApp({
@@ -116,6 +117,8 @@ class _DBScopeAppState extends State<DBScopeApp> {
               ?child,
               for (final builder in _themePlugin?.overlays ?? const <WidgetBuilder>[])
                 builder(context),
+              // Only the host window checks for updates (main.dart starts it).
+              if (widget.windowId == 0) const UpdatePrompt(),
             ],
           );
         },

@@ -50,14 +50,6 @@ rg -n '\[SIMPLE\]' TODO.md
 - **Blocker.** the Doom/Warcraft part needs a decision: restore the packages from history, or drop the references.
 - **Noticed.** 2026-10-30, while setting up the agent kits.
 
-### **[P3]** Decide on dart-agent-kit's strict analysis options
-
-- **Where.** `analysis_options.yaml`; script `bash .agents/skills/dart-discipline/scripts/use_strict_analysis.sh --all`.
-- **Why.** The kit's `flutter.yaml` turns on strict-casts/inference/raw-types and every lint; not applied because it would turn the currently clean `fvm flutter analyze` (which CI gates on) into many warnings.
-- **Effort.** `<1d`
-- **Blocker.** needs a decision on whether to adopt it package by package.
-- **Noticed.** 2026-10-30, while installing dart-agent-kit.
-
 ### **[P3] [SIMPLE]** Give the pre-commit hook a fast check
 
 - **Where.** `.githooks/pre-commit` (`CHECK=""`).

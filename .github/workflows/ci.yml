@@ -85,3 +85,10 @@ jobs:
 
       - run: flutter pub get
       - run: flutter build web --release
+      # Compiling isn't enough: a startup exception compiles fine and shows
+      # a blank page.
+      - name: Check the build boots
+        run: |
+          python3 -m http.server 8787 --bind 127.0.0.1 --directory build/web >/dev/null 2>&1 &
+          sleep 1
+          bash scripts/check_web_boots.sh http://127.0.0.1:8787/

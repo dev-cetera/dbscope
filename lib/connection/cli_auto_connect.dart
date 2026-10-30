@@ -1,8 +1,7 @@
-import 'dart:io';
-
 import 'package:uuid/uuid.dart';
 
 import '../db/cloudsql/cloudsql_config.dart';
+import '../util/portable_io.dart';
 import 'profile.dart';
 
 /// Builds the profile to auto-connect to on startup, from `DBSCOPE_AUTO_*`
@@ -33,7 +32,7 @@ import 'profile.dart';
 /// updates the same saved profile instead of piling up a fresh one in the
 /// picker every launch.
 ConnectionProfile? autoConnectProfileFromEnv() {
-  final env = Platform.environment;
+  final env = processEnvironment();
   final host = env['DBSCOPE_AUTO_HOST'];
   if (host == null || host.isEmpty) return null;
   final database = env['DBSCOPE_AUTO_DATABASE'] ?? 'postgres';

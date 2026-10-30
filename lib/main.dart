@@ -28,6 +28,7 @@ import 'rpc/isolate_transport.dart';
 import 'server/host.dart';
 import 'shell/app_state.dart';
 import 'shell/ui_prefs.dart';
+import 'update/update_service.dart';
 import 'util/shell_env.dart';
 
 // Entrypoint for both the host (first) window and any subwindows spawned
@@ -155,6 +156,9 @@ Future<void> main(List<String> args) async {
     }
   }
   WidgetsBinding.instance.addObserver(_HostQuitHook(host: host));
+  // Web: refresh prompt when a newer deploy is live. macOS: install-update
+  // prompt when a newer GitHub release exists. Off for unstamped local builds.
+  UpdateService.instance.start();
   runApp(
     DBScopeApp(
       backend: host.localClient,

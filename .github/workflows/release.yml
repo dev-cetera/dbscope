@@ -75,7 +75,8 @@ jobs:
         run: |
           flutter build macos --release \
             --build-name "${{ steps.v.outputs.version }}" \
-            --build-number "${{ github.run_number }}"
+            --build-number "${{ github.run_number }}" \
+            --dart-define=APP_VERSION="${{ steps.v.outputs.version }}"
           lipo -archs "$APP/Contents/MacOS/dbscope"
 
       - name: Import signing certificate

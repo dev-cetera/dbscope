@@ -6,6 +6,10 @@ Future<void> writeTextFile(String path, String content) async =>
 
 String? envValue(String key) => null;
 
+/// A browser has no process environment. Empty (not a throw) because
+/// "nothing set" is the true answer: there is no launcher to set anything.
+Map<String, String> processEnvironment() => const {};
+
 Future<String> readTextFile(String path) async =>
     throw UnsupportedError('Reading files is not supported on web.');
 

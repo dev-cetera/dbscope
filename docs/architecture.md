@@ -30,6 +30,15 @@ All under `.github/workflows/`; every job reads the Flutter version from `.fvmrc
 - `web.yml` — builds web and deploys to Firebase Hosting `dbscope-prod` when `FIREBASE_SERVICE_ACCOUNT` is set.
 - `pages.yml` — publishes the static landing page in `site/` to GitHub Pages. Plain HTML, no build step; `site/assets/og.png` is rendered from `og.svg` with `rsvg-convert`.
 
+## Updates (web refresh prompt, macOS self-update)
+
+`lib/update/` checks for a newer build from the host window only (`main.dart` calls `UpdateService.instance.start()`; `UpdatePrompt` is mounted in the root stack in `app.dart`).
+
+- **Version stamp.** CI bakes the version in with `--dart-define=APP_VERSION=...` (`kRunningVersionStamp`): `release.yml` stamps the tag's version, `web.yml` stamps `<pubspec version>+<run number>`, so every web deploy is strictly newer. A local `flutter run` has no stamp, so checks stay off.
+- **Web.** Polls `version.json` (Flutter writes it from `--build-name`/`--build-number`) every 15 min; a newer one shows "A new version of dbscope (…) is ready" + **Refresh** at the bottom, which reloads the page. That only works because `firebase.json` serves every file `Cache-Control: no-cache`: Flutter's file names aren't content-hashed, so a long `max-age` would pin users to an old `main.dart.js`. Don't reintroduce long caching.
+- **macOS.** Polls GitHub's latest release every 6 h; a newer one shows **Install update** bottom-right. Installing (`update_installer_io.dart`) downloads `dbscope-macos.zip`, verifies it against `SHA256SUMS.txt`, checks the bundle id, then starts a detached `swap.sh` that waits for the app to quit, swaps the bundle (restoring the old one on failure) and relaunches. Log: `~/Library/Logs/dbscope-update.log`. It refuses (with a "Download manually" fallback) when the app is translocated or its folder isn't writable. Release asset names are a contract with `release.yml` (`ReleaseSource`).
+- **Boot check.** A Dart exception before the first frame is a blank page that still compiles, so CI and the deploy run `scripts/check_web_boots.sh` (headless Chrome, fails on any uncaught error).
+
 ## Architecture: two isolates, one Server
 
 The single biggest concept that isn't obvious from the plan or from any one file:
