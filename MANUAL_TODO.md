@@ -47,13 +47,6 @@ Only clicks in a dashboard you're already signed in to, with you watching (Claud
 
 ### P0
 
-#### Turn on keyless Firebase deploys from GitHub Actions
-
-- **Why.** `.github/workflows/web.yml` builds the web app but skips the deploy until the GCP_WIF_PROVIDER / GCP_DEPLOY_SA repo variables exist, so dbscope-prod.web.app stays on the last manual deploy.
-- **Steps.** `gcloud auth login` (the stored session expired), then `bash scripts/setup_firebase_deploy.sh` to see the plan, then `bash scripts/setup_firebase_deploy.sh --yes`, then `gh workflow run web.yml -R dev-cetera/dbscope`.
-- **Related.** none
-- **Added.** 2026-10-30
-
 #### Sign and notarize the macOS release
 
 - **Why.** Unsigned builds are rejected by Gatekeeper until the user runs `xattr -dr com.apple.quarantine` or clicks Open Anyway; most LinkedIn visitors will give up there.
