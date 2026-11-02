@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- One page. GitHub Pages serves this site under /dbscope/, and crawlers only
+     read robots.txt from the host root, so there is no robots.txt to point here:
+     submit this file in Google Search Console instead. -->
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+  <url>
+    <loc>https://dev-cetera.github.io/dbscope/</loc>
+  </url>
+</urlset>

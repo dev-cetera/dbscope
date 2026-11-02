@@ -7,6 +7,7 @@ on:
     branches: [main]
     paths:
       - 'site/**'
+      - 'scripts/check_site_seo.sh'
       - '.github/workflows/pages.yml'
   workflow_dispatch:
 
@@ -27,6 +28,8 @@ jobs:
       url: ${{ steps.deployment.outputs.page_url }}
     steps:
       - uses: actions/checkout@v4
+      - name: Check SEO plumbing
+        run: bash scripts/check_site_seo.sh site
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
         with:

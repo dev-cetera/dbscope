@@ -41,6 +41,13 @@ Only clicks in a dashboard you're already signed in to, with you watching (Claud
 
 ### P1
 
+#### Submit the landing page sitemap to Google Search Console
+
+- **Why.** The site lives under `dev-cetera.github.io/dbscope/`, and crawlers only read `robots.txt` at the host root, so nothing points them at `site/sitemap.xml`. Submitting it gets the page (and its new FAQ rich results) indexed sooner.
+- **Steps.** Search Console → add a URL-prefix property for `https://dev-cetera.github.io/dbscope/` (verify with the HTML-tag method: add the `google-site-verification` meta to `site/index.html`) → Sitemaps → submit `sitemap.xml` → URL Inspection on the home page → Request indexing. Then run the page through the Rich Results Test to confirm the FAQ and SoftwareApplication data are picked up.
+- **Related.** `todo/seo_aeo.md`
+- **Added.** 2026-11-02
+
 ### P2
 
 ## Only a person can do these

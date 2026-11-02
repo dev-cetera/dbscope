@@ -1,0 +1,23 @@
+# dbscope
+
+> dbscope is a free, open-source (MIT) desktop database viewer and editor for Postgres, Cloud SQL and SQLite, including the SQLite file inside an app on a USB-connected Android or iOS phone. It stays fast on huge tables and has an AI assistant that writes SQL with your own OpenAI, Anthropic or Gemini key. It ships for macOS 12+ (Apple Silicon and Intel), plus a browser version that reaches Postgres through a small proxy. Most of it was written by an AI (Claude Code) with a human steering and reviewing.
+
+- Free, no account, no paid tier, no analytics or telemetry.
+- Databases: Postgres 14–17, Cloud SQL for Postgres (starts the Cloud SQL Auth Proxy for you), local SQLite files, SQLite inside debuggable Android apps (adb) and iOS apps (devicectl).
+- Large tables: keyset pagination (never OFFSET) and a bounded in-memory row window.
+- Views: spreadsheet-style table editor, Finder-style foreign-key navigator, linked row graph, auto-laid-out schema diagram.
+- Safety: cell edits use optimistic concurrency; AI-generated SQL runs in a read-only transaction by default where the backend supports transactions.
+- Not yet: Windows and Linux builds.
+
+## Docs
+
+- [Landing page](https://dev-cetera.github.io/dbscope/): features and FAQ
+- [README](https://github.com/dev-cetera/dbscope#readme): install, features, schema metadata
+- [Architecture](https://github.com/dev-cetera/dbscope/blob/main/docs/architecture.md): how the app fits together
+- [Contributing](https://github.com/dev-cetera/dbscope/blob/main/CONTRIBUTING.md): setup and checks
+
+## Get it
+
+- [Download for macOS](https://github.com/dev-cetera/dbscope/releases/latest/download/dbscope-macos.dmg)
+- [Try in the browser](https://dbscope-prod.web.app)
+- [Source on GitHub](https://github.com/dev-cetera/dbscope)

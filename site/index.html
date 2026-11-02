@@ -3,17 +3,106 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>dbscope — open-source database GUI</title>
-  <meta name="description" content="dbscope is a free, open-source desktop database viewer and editor for Postgres and SQLite, with an AI assistant that turns plain English into SQL. Vibe coded, MIT licensed, contributions welcome.">
+  <title>dbscope — open-source Postgres &amp; SQLite GUI for macOS</title>
+  <meta name="description" content="Free, open-source desktop database viewer and editor for Postgres, Cloud SQL and SQLite, built for huge tables, with an AI assistant that writes SQL.">
+  <link rel="canonical" href="https://dev-cetera.github.io/dbscope/">
+  <meta name="theme-color" content="#e5452b">
   <link rel="icon" type="image/svg+xml" href="assets/dbscope_icon.svg">
   <link rel="apple-touch-icon" href="assets/dbscope_icon.png">
 
   <meta property="og:type" content="website">
+  <meta property="og:site_name" content="dbscope">
+  <meta property="og:locale" content="en_US">
   <meta property="og:title" content="dbscope — open-source database GUI">
   <meta property="og:description" content="Postgres, Cloud SQL and SQLite (even on your phone) in one fast desktop app. Vibe coded and open source.">
   <meta property="og:url" content="https://dev-cetera.github.io/dbscope/">
   <meta property="og:image" content="https://dev-cetera.github.io/dbscope/assets/og.png">
+  <meta property="og:image:width" content="1200">
+  <meta property="og:image:height" content="630">
+  <meta property="og:image:alt" content="dbscope: open-source database GUI for Postgres and SQLite">
   <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="dbscope — open-source database GUI">
+  <meta name="twitter:description" content="Postgres, Cloud SQL and SQLite (even on your phone) in one fast desktop app. Vibe coded and open source.">
+  <meta name="twitter:image" content="https://dev-cetera.github.io/dbscope/assets/og.png">
+  <meta name="twitter:image:alt" content="dbscope: open-source database GUI for Postgres and SQLite">
+
+  <!-- Structured data. Keep it true to the page: free (MIT), no ratings. The
+       FAQPage answers must match the visible FAQ section word for word.
+       scripts/check_site_seo.sh validates both on every Pages deploy. -->
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "SoftwareApplication",
+    "name": "dbscope",
+    "url": "https://dev-cetera.github.io/dbscope/",
+    "description": "Free, open-source desktop database viewer and editor for Postgres, Cloud SQL and SQLite, built for huge tables, with an AI assistant that writes SQL.",
+    "applicationCategory": "DeveloperApplication",
+    "operatingSystem": "macOS 12 or later",
+    "image": "https://dev-cetera.github.io/dbscope/assets/og.png",
+    "downloadUrl": "https://github.com/dev-cetera/dbscope/releases/latest/download/dbscope-macos.dmg",
+    "license": "https://opensource.org/licenses/MIT",
+    "isAccessibleForFree": true,
+    "offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD" },
+    "author": { "@type": "Organization", "name": "dev-cetera", "url": "https://github.com/dev-cetera" },
+    "sameAs": ["https://github.com/dev-cetera/dbscope"]
+  }
+  </script>
+  <script type="application/ld+json" id="faq-ld">
+  {
+    "@context": "https://schema.org",
+    "@type": "FAQPage",
+    "mainEntity": [
+      {
+        "@type": "Question",
+        "name": "What is dbscope?",
+        "acceptedAnswer": {
+          "@type": "Answer",
+          "text": "dbscope is a free, open-source desktop app for browsing, querying and editing Postgres, Cloud SQL and SQLite databases, including the SQLite file inside an app on a USB-connected Android or iOS phone. It is built with Flutter and ships for macOS."
+        }
+      },
+      {
+        "@type": "Question",
+        "name": "Is dbscope free?",
+        "acceptedAnswer": {
+          "@type": "Answer",
+          "text": "Yes. dbscope is MIT licensed, with no account and no paid tier. The AI assistant uses your own OpenAI, Anthropic or Gemini API key, so that provider bills you for what you use."
+        }
+      },
+      {
+        "@type": "Question",
+        "name": "Which databases does dbscope support?",
+        "acceptedAnswer": {
+          "@type": "Answer",
+          "text": "Postgres 14 to 17, Cloud SQL for Postgres (dbscope starts the Cloud SQL Auth Proxy for you), local SQLite files, and SQLite inside debuggable Android apps or iOS apps over USB. The browser version reaches Postgres through the small dbscope_pg_proxy server."
+        }
+      },
+      {
+        "@type": "Question",
+        "name": "Does dbscope run on Windows or Linux?",
+        "acceptedAnswer": {
+          "@type": "Answer",
+          "text": "Not yet. macOS 12 or later (Apple Silicon and Intel) is the shipped desktop build, and a browser version is available. Flutter supports Windows and Linux, but those builds have not been made or tested; help is wanted."
+        }
+      },
+      {
+        "@type": "Question",
+        "name": "Can dbscope handle very large tables?",
+        "acceptedAnswer": {
+          "@type": "Answer",
+          "text": "Yes. Table views page with keyset pagination instead of OFFSET and keep a bounded window of rows in memory, so scrolling stays fast on tables with billions of rows."
+        }
+      },
+      {
+        "@type": "Question",
+        "name": "Does dbscope send my data anywhere?",
+        "acceptedAnswer": {
+          "@type": "Answer",
+          "text": "No. dbscope has no accounts, analytics or telemetry. Your data goes only to your own databases and, if you add an API key, to the AI provider you chose. Passwords stay in the macOS keychain."
+        }
+      }
+    ]
+  }
+  </script>
 
   <style>
     :root {
@@ -135,6 +224,11 @@
     .vibe ol { padding-left: 1.2em; margin: 16px 0 24px; }
     .vibe li { margin: 6px 0; }
 
+    .faq dl { margin: 0; display: grid; gap: 16px; }
+    .faq .item { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 20px; }
+    .faq dt { font-weight: 700; margin: 0 0 6px; }
+    .faq dd { margin: 0; color: var(--muted); }
+
     footer { border-top: 1px solid var(--border); padding: 28px 0 40px; color: var(--muted); font-size: 14px; }
     footer .wrap { display: flex; flex-wrap: wrap; gap: 12px 24px; justify-content: space-between; }
     footer a { color: var(--muted); }
@@ -186,6 +280,7 @@
     </div>
   </div>
 
+  <main>
   <section id="features">
     <div class="wrap">
       <h2>What it does</h2>
@@ -235,6 +330,22 @@
       </div>
     </div>
   </section>
+
+  <section id="faq" class="faq">
+    <div class="wrap">
+      <h2>Questions</h2>
+      <p class="sub">Short answers. The <a href="https://github.com/dev-cetera/dbscope#readme">README</a> has the details.</p>
+      <dl>
+        <div class="item"><dt>What is dbscope?</dt><dd>dbscope is a free, open-source desktop app for browsing, querying and editing Postgres, Cloud SQL and SQLite databases, including the SQLite file inside an app on a USB-connected Android or iOS phone. It is built with Flutter and ships for macOS.</dd></div>
+        <div class="item"><dt>Is dbscope free?</dt><dd>Yes. dbscope is MIT licensed, with no account and no paid tier. The AI assistant uses your own OpenAI, Anthropic or Gemini API key, so that provider bills you for what you use.</dd></div>
+        <div class="item"><dt>Which databases does dbscope support?</dt><dd>Postgres 14 to 17, Cloud SQL for Postgres (dbscope starts the Cloud SQL Auth Proxy for you), local SQLite files, and SQLite inside debuggable Android apps or iOS apps over USB. The browser version reaches Postgres through the small dbscope_pg_proxy server.</dd></div>
+        <div class="item"><dt>Does dbscope run on Windows or Linux?</dt><dd>Not yet. macOS 12 or later (Apple Silicon and Intel) is the shipped desktop build, and a browser version is available. Flutter supports Windows and Linux, but those builds have not been made or tested; help is wanted.</dd></div>
+        <div class="item"><dt>Can dbscope handle very large tables?</dt><dd>Yes. Table views page with keyset pagination instead of OFFSET and keep a bounded window of rows in memory, so scrolling stays fast on tables with billions of rows.</dd></div>
+        <div class="item"><dt>Does dbscope send my data anywhere?</dt><dd>No. dbscope has no accounts, analytics or telemetry. Your data goes only to your own databases and, if you add an API key, to the AI provider you chose. Passwords stay in the macOS keychain.</dd></div>
+      </dl>
+    </div>
+  </section>
+  </main>
 
   <footer>
     <div class="wrap">
