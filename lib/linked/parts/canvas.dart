@@ -50,6 +50,12 @@ class _CanvasState extends State<_Canvas> with SingleTickerProviderStateMixin {
   /// width alone so a manual resize is sticky.
   final _autoSizedOnce = <String>{};
 
+  /// Each row node's size as of the last build. A card that appears or
+  /// changes size (width auto-fit, columns loading, a manual resize)
+  /// pushes its neighbours away so cards never sit on top of each other.
+  /// Null until the first build, which takes the layout as given.
+  Map<String, Size>? _lastSizes;
+
   /// Drives the chevron animation on edges. 0..1, wraps every cycle.
   late final Ticker _ticker;
   double _tickerValue = 0;
@@ -153,6 +159,7 @@ class _CanvasState extends State<_Canvas> with SingleTickerProviderStateMixin {
     );
     if (node != null && _dragDelta != Offset.zero) {
       node.position += _dragDelta;
+      _separateFrom({node.id});
     }
     setState(() {
       _dragNodeId = null;
@@ -189,6 +196,51 @@ class _CanvasState extends State<_Canvas> with SingleTickerProviderStateMixin {
     AppState.instance.notifyChange();
   }
 
+  /// Push neighbours away from every card that is new or changed size
+  /// since the last build. The first build only records sizes, so a
+  /// restored canvas keeps the layout the user left it in.
+  void _separateResizedNodes(
+    List<LinkedRowNode> rows,
+    List<ForeignKey> foreignKeys,
+  ) {
+    final sizes = <String, Size>{
+      for (final node in rows) node.id: Size(node.width, _nodeHeightFor(node, foreignKeys)),
+    };
+    final previous = _lastSizes;
+    _lastSizes = sizes;
+    if (previous == null) return;
+    final grown = <String>{
+      for (final entry in sizes.entries)
+        if (previous[entry.key] != entry.value) entry.key,
+    };
+    if (grown.isNotEmpty) _separateFrom(grown, sizes: sizes);
+  }
+
+  /// Push every row node that overlaps one of [pinnedIds] (or a node
+  /// pushed in turn) out of the way. [pinnedIds] keep their positions.
+  void _separateFrom(Set<String> pinnedIds, {Map<String, Size>? sizes}) {
+    final foreignKeys = widget.tab.foreignKeys;
+    final rows = {
+      for (final node in widget.tab.nodes)
+        if (node is LinkedRowNode) node.id: node,
+    };
+    final positions = {for (final node in rows.values) node.id: node.position};
+    final moved = cascadeSeparate(
+      movedIds: pinnedIds,
+      positions: positions,
+      dimsFor: (id) {
+        final node = rows[id];
+        if (node == null) return null;
+        final size = sizes?[id] ?? Size(node.width, _nodeHeightFor(node, foreignKeys));
+        return (w: size.width, h: size.height);
+      },
+      allIds: positions.keys,
+    );
+    for (final id in moved) {
+      rows[id]!.position = positions[id]!;
+    }
+  }
+
   /// Build only the LinkedRowNode positions. `_topNodeId` (if any) is
   /// rendered last so it stacks on top.
   List<Widget> _buildRowNodes(Offset pan) {
@@ -202,17 +254,21 @@ class _CanvasState extends State<_Canvas> with SingleTickerProviderStateMixin {
       final top = rows.removeAt(topIndex);
       rows.add(top);
     }
+    // Auto-fit the width once FKs are loaded and the user hasn't
+    // resized the card themselves. We only widen, never shrink — so a
+    // manual resize sticks. Done for every card before any is placed,
+    // so the separation pass below sees final sizes.
+    for (final node in rows) {
+      if (widget.tab.fksLoaded && !_autoSizedOnce.contains(node.id)) {
+        final fit = _autoWidthFor(node, foreignKeys);
+        if (fit > node.width) node.width = fit;
+        _autoSizedOnce.add(node.id);
+      }
+    }
+    _separateResizedNodes(rows, foreignKeys);
     return [
       for (final node in rows)
         () {
-          // Auto-fit the width once FKs are loaded and the user hasn't
-          // resized the card themselves. We only widen, never shrink —
-          // so a manual resize sticks.
-          if (widget.tab.fksLoaded && !_autoSizedOnce.contains(node.id)) {
-            final fit = _autoWidthFor(node, foreignKeys);
-            if (fit > node.width) node.width = fit;
-            _autoSizedOnce.add(node.id);
-          }
           final height = _nodeHeightFor(node, foreignKeys);
           final width = node.width;
           return Positioned(
