@@ -4,7 +4,7 @@
 // dart run packages/dbscope_pg_proxy/bin/dbscope_pg_proxy.dart \
 // --port 8765 \
 // [--shared-secret SECRET] \
-// [--allow-origin https://your.web.host]
+// [--allow-origin https://your.web.host] (repeatable)
 //
 // Wire protocol is JSON envelopes over a single WebSocket. One WebSocket
 // owns one Postgres connection for its lifetime.
@@ -30,6 +30,12 @@
 // (reverse proxy → wss://), and (c) set --shared-secret so clients
 // must echo it on `open`. Pair this with a least-privileged Postgres
 // role.
+//
+// Browsers let any web page open a WebSocket to 127.0.0.1, so by default
+// the proxy only accepts upgrades whose Origin is the hosted dbscope web
+// app or a localhost page (see `_kDefaultOrigins`), or exactly the
+// `--allow-origin` list when one is given. Clients that send no
+// Origin (scripts, curl) are not browsers and are let through.
 
 import 'dart:async';
 import 'dart:convert';
@@ -47,43 +53,90 @@ Future<void> main(List<String> args) async {
   if (opts.sharedSecret != null) {
     stdout.writeln('shared-secret authentication required');
   }
-  if (opts.allowOrigin != null) {
-    stdout.writeln('restricting Origin to: ${opts.allowOrigin}');
+  if (opts.allowAnyOrigin) {
+    stdout.writeln('WARNING: accepting WebSocket upgrades from any Origin');
+  } else if (opts.allowOrigins.isNotEmpty) {
+    stdout.writeln('accepting Origin: ${opts.allowOrigins.join(', ')}');
+  } else {
+    stdout.writeln('accepting Origin: ${_kDefaultOrigins.join(', ')} and localhost pages');
   }
   await for (final req in server) {
-    if (req.uri.path == '/health') {
-      req.response
-        ..statusCode = 200
-        ..write('ok');
-      await req.response.close();
-      continue;
+    try {
+      await _route(req, opts);
+    } catch (e) {
+      // One bad request (a client that hung up mid-response, …) must not
+      // stop the accept loop for everyone else.
+      stderr.writeln('request failed: $e');
     }
-    if (!WebSocketTransformer.isUpgradeRequest(req)) {
-      req.response
-        ..statusCode = 426
-        ..headers.set('upgrade', 'websocket')
-        ..write('websocket required');
-      await req.response.close();
-      continue;
-    }
-    if (opts.allowOrigin != null) {
-      final origin = req.headers.value('origin');
-      if (origin != opts.allowOrigin) {
-        req.response
-          ..statusCode = 403
-          ..write('forbidden origin');
-        await req.response.close();
-        continue;
-      }
-    }
-    unawaited(_handleUpgrade(req, opts));
   }
 }
 
+Future<void> _route(HttpRequest req, _Opts opts) async {
+  if (req.uri.path == '/health') {
+    req.response
+      ..statusCode = 200
+      ..write('ok');
+    await req.response.close();
+    return;
+  }
+  if (!WebSocketTransformer.isUpgradeRequest(req)) {
+    req.response
+      ..statusCode = 426
+      ..headers.set('upgrade', 'websocket')
+      ..write('websocket required');
+    await req.response.close();
+    return;
+  }
+  final origin = req.headers.value('origin');
+  if (!_originAllowed(origin, opts)) {
+    stderr.writeln('rejected WebSocket upgrade from Origin $origin');
+    req.response
+      ..statusCode = 403
+      ..write('forbidden origin');
+    await req.response.close();
+    return;
+  }
+  unawaited(_handleUpgrade(req, opts));
+}
+
+/// Origins accepted when no `--allow-origin` is given: the hosted web app
+/// (plus any localhost page, see [_originAllowed]).
+const _kDefaultOrigins = {
+  'https://dbscope-prod.web.app',
+  'https://dbscope-prod.firebaseapp.com',
+};
+
+bool _originAllowed(String? origin, _Opts opts) {
+  if (opts.allowAnyOrigin || origin == null) return true;
+  // An explicit list replaces the defaults, so it can only narrow them.
+  if (opts.allowOrigins.isNotEmpty) return opts.allowOrigins.contains(origin);
+  if (_kDefaultOrigins.contains(origin)) return true;
+  final uri = Uri.tryParse(origin);
+  // A locally served web build (`flutter run -d chrome`, a static server).
+  return uri != null &&
+      (uri.scheme == 'http' || uri.scheme == 'https') &&
+      (uri.host == 'localhost' || uri.host == '127.0.0.1' || uri.host == '::1');
+}
+
+/// Drops sockets whose peer vanished without closing (laptop asleep, network
+/// gone), so their database connections don't pile up.
+const _kPingInterval = Duration(seconds: 30);
+
 Future<void> _handleUpgrade(HttpRequest req, _Opts opts) async {
-  final socket = await WebSocketTransformer.upgrade(req);
+  final WebSocket socket;
+  try {
+    socket = await WebSocketTransformer.upgrade(req);
+  } catch (e) {
+    stderr.writeln('WebSocket upgrade failed: $e');
+    return;
+  }
+  socket.pingInterval = _kPingInterval;
   try {
     await _Session(socket, opts).run();
+  } catch (e) {
+    // A session error ends that session only; unawaited, it would
+    // otherwise be an uncaught error that kills the whole proxy.
+    stderr.writeln('session ended with an error: $e');
   } finally {
     // After the session has closed its DB connection.
     try {
@@ -113,15 +166,27 @@ class _Session {
           continue;
         }
         final type = msg['type'];
-        switch (type) {
-          case 'open':
-            await _onOpen(msg);
-          case 'execute':
-            await _onExecute(msg);
-          case 'close':
-            return;
-          default:
-            await _send({'type': 'error', 'message': 'unknown type "$type"'});
+        try {
+          switch (type) {
+            case 'open':
+              await _onOpen(msg);
+            case 'execute':
+              await _onExecute(msg);
+            case 'close':
+              return;
+            default:
+              await _send({'type': 'error', 'message': 'unknown type "$type"'});
+          }
+          // The handlers read fields with `as` casts, so a field of the wrong
+          // type (`"port": "x"`) from this untrusted peer is a TypeError.
+          // Reject that message and keep the session.
+          // ignore: avoid_catching_errors
+        } on TypeError catch (e) {
+          await _send({
+            'type': 'error',
+            'id': msg['id']?.toString(),
+            'message': 'malformed message: $e',
+          });
         }
       }
     } finally {
@@ -134,7 +199,7 @@ class _Session {
   Future<void> _onOpen(Map<String, Object?> msg) async {
     if (opts.sharedSecret != null) {
       final got = msg['secret'];
-      if (got != opts.sharedSecret) {
+      if (got is! String || !_constantTimeEquals(got, opts.sharedSecret!)) {
         await _send({'type': 'error', 'message': 'bad shared-secret'});
         await socket.close();
         return;
@@ -303,24 +368,39 @@ class _Session {
   }
 }
 
+/// Compares secrets in time that depends only on their lengths, so a
+/// caller can't learn the secret one character at a time by timing replies.
+bool _constantTimeEquals(String a, String b) {
+  final x = utf8.encode(a);
+  final y = utf8.encode(b);
+  var diff = x.length ^ y.length;
+  for (var i = 0; i < x.length && i < y.length; i++) {
+    diff |= x[i] ^ y[i];
+  }
+  return diff == 0;
+}
+
 class _Opts {
   _Opts({
     required this.host,
     required this.port,
     required this.sharedSecret,
-    required this.allowOrigin,
+    required this.allowOrigins,
+    required this.allowAnyOrigin,
   });
   final String host;
   final int port;
   final String? sharedSecret;
-  final String? allowOrigin;
+  final Set<String> allowOrigins;
+  final bool allowAnyOrigin;
 }
 
 _Opts _parseArgs(List<String> args) {
   var host = '127.0.0.1';
   var port = 8765;
   String? secret;
-  String? allow;
+  final allow = <String>{};
+  var allowAny = false;
   for (var i = 0; i < args.length; i++) {
     final a = args[i];
     String next() {
@@ -334,11 +414,19 @@ _Opts _parseArgs(List<String> args) {
       case '--host':
         host = next();
       case '--port':
-        port = int.parse(next());
+        final raw = next();
+        final parsed = int.tryParse(raw);
+        if (parsed == null || parsed < 0 || parsed > 65535) {
+          stderr.writeln('--port needs a number from 0 to 65535, got "$raw"');
+          exit(2);
+        }
+        port = parsed;
       case '--shared-secret':
         secret = next();
       case '--allow-origin':
-        allow = next();
+        allow.add(next());
+      case '--allow-any-origin':
+        allowAny = true;
       case '--help' || '-h':
         _printHelp();
         exit(0);
@@ -352,7 +440,8 @@ _Opts _parseArgs(List<String> args) {
     host: host,
     port: port,
     sharedSecret: secret,
-    allowOrigin: allow,
+    allowOrigins: allow,
+    allowAnyOrigin: allowAny,
   );
 }
 
@@ -367,7 +456,11 @@ Options:
  --host HOST Interface to bind (default 127.0.0.1)
  --port PORT TCP port (default 8765)
  --shared-secret SECRET Require this in every `open` message
- --allow-origin ORIGIN Require this Origin header (CORS-style hardening)
+ --allow-origin ORIGIN Accept WebSocket upgrades only from this Origin
+                       (repeatable). Without it: the hosted web app and
+                       localhost pages.
+ --allow-any-origin    Accept any Origin. Any web page the user opens
+                       can then reach your databases through the proxy.
  -h, --help Show this message
 ''');
 }

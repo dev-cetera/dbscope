@@ -227,7 +227,17 @@ class _PassphraseDialogState extends State<_PassphraseDialog> {
                   ),
                 ),
               ),
-              validator: (text) => (text == null || text.isEmpty) ? 'required' : null,
+              validator: (text) {
+                if (text == null || text.isEmpty) return 'required';
+                // Only when setting one: the file carries the database
+                // password, and anyone holding it can guess offline as long
+                // as they like. Importing must still accept whatever an
+                // older build exported.
+                if (widget.confirm && text.length < _kMinPassphraseLength) {
+                  return 'use at least $_kMinPassphraseLength characters';
+                }
+                return null;
+              },
               onFieldSubmitted: (_) {
                 if (!widget.confirm) _submit();
               },
@@ -249,3 +259,6 @@ class _PassphraseDialogState extends State<_PassphraseDialog> {
     );
   }
 }
+
+/// Shortest passphrase an exported connection link accepts.
+const _kMinPassphraseLength = 10;

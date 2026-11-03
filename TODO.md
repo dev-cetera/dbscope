@@ -42,6 +42,46 @@ rg -n '\[SIMPLE\]' TODO.md
 
 <!-- New entries go here, newest first. -->
 
+### **[P1]** Let the pg proxy restrict which database hosts a client may open
+
+- **Where.** `packages/dbscope_pg_proxy/bin/dbscope_pg_proxy.dart` (`_onOpen`)
+- **Why.** The client names the host and port in its `open` message, so a proxy reachable from a network is a pivot to any Postgres that network can reach, guessing credentials as it goes. An `--allow-db-host host[:port]` list (default: any, as today) would let an exposed proxy be pinned to its one database. The proxy also bounds neither message size nor result rows; a `--max-rows` cap would stop one `SELECT *` from exhausting its memory.
+- **Effort.** `<4h`
+- **Blocker.** none
+- **Noticed.** 2026-11-03, while hardening the proxy for production.
+
+### **[P2]** Keep the pg proxy shared secret in the keychain, not the profile JSON
+
+- **Where.** `packages/dbscope_pg_proxy_plugin/lib/src/profile_dialog.dart`, `executor.dart` (`extra['sharedSecret']`)
+- **Why.** It is a credential, but it lives in `ConnectionProfile.extra`, which is saved in plain text in the project file and travels unencrypted in anything that copies profile JSON. Passwords already go through `SecureStore`; the secret should too.
+- **Effort.** `<1h`
+- **Blocker.** none
+- **Noticed.** 2026-11-03, while auditing for production readiness.
+
+### **[P2]** Add Help ▸ Show crash log
+
+- **Where.** `lib/util/error_reporting.dart` (`crashLogPath`), `lib/shell/menu_bar.dart`
+- **Why.** Uncaught errors now go to `~/Library/Logs/dbscope/dbscope.log`, but nothing in the app says so except the release-mode broken-widget placeholder. A menu item that reveals the file in Finder would make it easy to attach to a bug report, and the issue template could ask for it.
+- **Effort.** `<1h`
+- **Blocker.** none
+- **Noticed.** 2026-11-03, while adding the crash log.
+
+### **[P2]** Find out whether the release build still needs `disable-library-validation`
+
+- **Where.** `macos/Runner/Release.entitlements` (`com.apple.security.cs.disable-library-validation`)
+- **Why.** With hardened runtime it lets the app load libraries signed by anyone, which undoes much of what signing buys. The release workflow signs every bundled dylib with our own identity, so it may no longer be needed; removing it needs a signed build launched on a Mac (sqlite3 and the plugin frameworks are the libraries to watch).
+- **Effort.** `<1h`
+- **Blocker.** needs a signed build and a Mac (see "Sign and notarize the macOS release" in `MANUAL_TODO.md`).
+- **Noticed.** 2026-11-03, while auditing for production readiness.
+
+### **[P2]** Undo the Cloud SQL public IP after a crash
+
+- **Where.** `lib/db/cloudsql/cloudsql_proxy_manager.dart`
+- **Why.** When the manager assigned a public IP, it removes it on the last release. If dbscope crashes or is force-quit first, the instance keeps the public IP (and the orphaned `cloud-sql-proxy` keeps running) until someone notices. Recording "we assigned it" on disk and offering to undo it on the next launch would close that.
+- **Effort.** `<4h`
+- **Blocker.** none
+- **Noticed.** 2026-11-03, while auditing for production readiness.
+
 ### **[P2]** Make Tab move to the next cell, and let multi-line cells take a newline, in grid inline editing
 
 - **Where.** `packages/data_grid/lib/src/internal/grid_cell.dart` (`_editor` shortcut bindings)

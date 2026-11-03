@@ -29,6 +29,7 @@ import 'server/host.dart';
 import 'shell/app_state.dart';
 import 'shell/ui_prefs.dart';
 import 'update/update_service.dart';
+import 'util/error_reporting.dart';
 import 'util/shell_env.dart';
 
 // Entrypoint for both the host (first) window and any subwindows spawned
@@ -46,6 +47,11 @@ import 'util/shell_env.dart';
 // set (no Postgres-direct, no local SQLite).
 Future<void> main(List<String> args) async {
   WidgetsFlutterBinding.ensureInitialized();
+  installErrorHandlers(
+    isolateLabel: !kIsWeb && args.isNotEmpty && args.first == 'multi_window'
+        ? 'window ${args.length > 1 ? args[1] : '?'}'
+        : 'host',
+  );
   // Firebase is wired for the web build only. firebase_options.dart is
   // configured for `web` (project dbscope-prod); desktop targets throw
   // UnsupportedError from DefaultFirebaseOptions, so the init is gated on
@@ -181,10 +187,25 @@ class _HostQuitHook extends WidgetsBindingObserver {
 
   @override
   Future<ui.AppExitResponse> didRequestAppExit() async {
-    await AppState.instance.flushTabs();
-    await ConnectionRegistry.instance.disconnectAll();
-    await host.dispose();
+    await _quitStep('save open tabs', AppState.instance.flushTabs);
+    await _quitStep('close connections', ConnectionRegistry.instance.disconnectAll);
+    await _quitStep('stop the backend', host.dispose);
     return ui.AppExitResponse.exit;
+  }
+}
+
+/// Longest one quit step may take. Closing a connection to a database that
+/// went away can wait on a dead socket, and quitting must never hang on it.
+const _kQuitStepTimeout = Duration(seconds: 3);
+
+/// Runs one cleanup step on quit. A step that throws or hangs is logged and
+/// skipped, so the app always quits.
+Future<void> _quitStep(String name, Future<void> Function() step) async {
+  try {
+    await step().timeout(_kQuitStepTimeout);
+  } catch (e, st) {
+    debugPrint('Quit: could not $name: $e');
+    recordError(e, st, context: 'quit: $name');
   }
 }
 
@@ -227,7 +248,7 @@ void _registerPlugins() {
 class _SubwindowQuitHook extends WidgetsBindingObserver {
   @override
   Future<ui.AppExitResponse> didRequestAppExit() async {
-    await ConnectionRegistry.instance.disconnectAll();
+    await _quitStep('close connections', ConnectionRegistry.instance.disconnectAll);
     return ui.AppExitResponse.exit;
   }
 }

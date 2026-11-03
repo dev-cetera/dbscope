@@ -163,19 +163,27 @@ class AppState extends ChangeNotifier {
     final restored = <TabModel>[];
     for (final entry in list) {
       if (entry is! Map<String, Object?>) continue;
-      final kindId = entry['kind'] as String?;
-      if (kindId == null) continue;
-      final kind = registry.lookupById(kindId);
-      final tab = kind?.deserialize?.call(entry);
-      if (tab == null) continue;
-      tab.pinned = entry['pinned'] as bool? ?? false;
-      restored.add(tab);
+      // This runs before the first frame, so one entry a newer or older
+      // build wrote in a shape this one can't read must cost that tab, not
+      // the launch: a throw here would fail every start from now on.
+      try {
+        final kindId = entry['kind'];
+        if (kindId is! String) continue;
+        final kind = registry.lookupById(kindId);
+        final tab = kind?.deserialize?.call(entry);
+        if (tab == null) continue;
+        tab.pinned = entry['pinned'] == true;
+        restored.add(tab);
+      } catch (e) {
+        debugPrint('Skipped a saved tab that could not be restored: $e');
+        continue;
+      }
       if (restored.length >= maxTabs) break;
     }
     if (restored.isEmpty) return;
     tabs.addAll(restored);
-    final activeId = decoded['activeId'] as String?;
-    if (activeId != null) {
+    final activeId = decoded['activeId'];
+    if (activeId is String) {
       for (final tab in restored) {
         if (tab.id == activeId) {
           _active = tab;
