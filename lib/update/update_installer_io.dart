@@ -45,6 +45,7 @@ Future<void> installMacosUpdate(MacosRelease release, void Function(String stage
   if (runningId != newId) {
     throw UpdateInstallException('The download is a different app ($newId).');
   }
+  await _checkSignedBySameTeam(appBundle, newBundle);
 
   onStage('Installing… dbscope will restart.');
   final script = File('${work.path}/swap.sh');
@@ -82,8 +83,49 @@ void _checkCanReplace(Directory appBundle) {
   }
 }
 
+/// The checksum and the zip come from the same release, so they only catch a
+/// broken download, not a tampered release. A signed build therefore also
+/// insists the new bundle carries a valid signature from the same Developer
+/// ID team, which nobody holding only the GitHub repo can produce. An
+/// unsigned build (no Apple secrets in CI) has no team to compare against.
+Future<void> _checkSignedBySameTeam(Directory running, Directory downloaded) async {
+  final team = await _teamId(running);
+  if (team == null) return;
+  final verify = await Process.run('/usr/bin/codesign', [
+    '--verify',
+    '--deep',
+    '--strict',
+    downloaded.path,
+  ]);
+  if (verify.exitCode != 0) {
+    throw UpdateInstallException('The download is not validly signed: ${verify.stderr}'.trim());
+  }
+  final newTeam = await _teamId(downloaded);
+  if (newTeam != team) {
+    throw UpdateInstallException(
+      'The download is signed by ${newTeam ?? 'nobody'}, not by $team, the signer of this copy.',
+    );
+  }
+}
+
+/// The Developer ID team that signed [bundle], or null when it is unsigned
+/// or ad-hoc signed.
+Future<String?> _teamId(Directory bundle) async {
+  final result = await Process.run('/usr/bin/codesign', ['-dv', '--verbose=2', bundle.path]);
+  if (result.exitCode != 0) return null;
+  // codesign prints the details on stderr.
+  final match = RegExp(r'^TeamIdentifier=(\S+)$', multiLine: true).firstMatch('${result.stderr}');
+  final id = match?.group(1);
+  return id == null || id == 'not set' ? null : id;
+}
+
+/// Bounds for the two downloads, so a stalled connection fails the install
+/// with a message instead of leaving "Downloading…" up forever.
+const _kMetadataTimeout = Duration(seconds: 30);
+const _kZipTimeout = Duration(minutes: 10);
+
 Future<String> _get(Uri url) async {
-  final response = await http.get(url);
+  final response = await http.get(url).timeout(_kMetadataTimeout);
   if (response.statusCode != 200) {
     throw UpdateInstallException('Download failed (HTTP ${response.statusCode}).');
   }
@@ -93,11 +135,15 @@ Future<String> _get(Uri url) async {
 Future<void> _download(Uri url, File to) async {
   final client = http.Client();
   try {
-    final response = await client.send(http.Request('GET', url));
-    if (response.statusCode != 200) {
-      throw UpdateInstallException('Download failed (HTTP ${response.statusCode}).');
+    Future<void> fetch() async {
+      final response = await client.send(http.Request('GET', url));
+      if (response.statusCode != 200) {
+        throw UpdateInstallException('Download failed (HTTP ${response.statusCode}).');
+      }
+      await response.stream.pipe(to.openWrite());
     }
-    await response.stream.pipe(to.openWrite());
+
+    await fetch().timeout(_kZipTimeout);
   } finally {
     client.close();
   }

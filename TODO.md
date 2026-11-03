@@ -49,6 +49,21 @@ rg -n '\[SIMPLE\]' TODO.md
 - **Effort.** `<1h`.
 - **Blocker.** none.
 - **Noticed.** 2026-11-03, while fixing overlapping schema diagram cards.
+### **[P2]** Find out whether the release build still needs `disable-library-validation`
+
+- **Where.** `macos/Runner/Release.entitlements` (`com.apple.security.cs.disable-library-validation`)
+- **Why.** With hardened runtime it lets the app load libraries signed by anyone, which undoes much of what signing buys. The release workflow signs every bundled dylib with our own identity, so it may no longer be needed; removing it needs a signed build launched on a Mac (sqlite3 and the plugin frameworks are the libraries to watch).
+- **Effort.** `<1h`
+- **Blocker.** needs a signed build and a Mac (see "Sign and notarize the macOS release" in `MANUAL_TODO.md`).
+- **Noticed.** 2026-11-03, while auditing for production readiness.
+
+### **[P2]** Undo the Cloud SQL public IP after a crash
+
+- **Where.** `lib/db/cloudsql/cloudsql_proxy_manager.dart`
+- **Why.** When the manager assigned a public IP, it removes it on the last release. If dbscope crashes or is force-quit first, the instance keeps the public IP (and the orphaned `cloud-sql-proxy` keeps running) until someone notices. Recording "we assigned it" on disk and offering to undo it on the next launch would close that.
+- **Effort.** `<4h`
+- **Blocker.** none
+- **Noticed.** 2026-11-03, while auditing for production readiness.
 
 ### **[P2]** Make Tab move to the next cell, and let multi-line cells take a newline, in grid inline editing
 

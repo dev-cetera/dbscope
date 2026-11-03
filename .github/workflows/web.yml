@@ -55,6 +55,11 @@ jobs:
 
       - run: flutter pub get
 
+      # This deploy runs beside CI, not after it, so it gates itself: a push
+      # that breaks analyze or the tests never reaches production.
+      - run: flutter analyze
+      - run: flutter test
+
       # Each deploy keeps the pubspec version and bumps the build number, so
       # open tabs see a strictly newer version.json and offer "Refresh"
       # (lib/update/update_service.dart). The build lives under /b/<run>/ so
