@@ -1,7 +1,8 @@
 // Cell edits against a real Postgres, for the column types whose
 // optimistic-concurrency guard can't be checked by looking at the SQL:
-// `json` and `xml` have no `=` operator, so the guard must still parse and
-// match the value the driver handed back when the row was read. Skipped
+// `json`, `xml` and the geometric types have no usable `=` operator, so the
+// guard must still parse and match the value the driver handed back when
+// the row was read. Skipped
 // unless DBSCOPE_LIVE_PG is set:
 //
 //   DBSCOPE_LIVE_PG=1 PGHOST=localhost PGUSER=postgres PGPASSWORD=… \
@@ -52,10 +53,11 @@ void main() {
         ),
       );
       await executor.execute(
-        'CREATE TEMP TABLE dbscope_dml_live (id int PRIMARY KEY, doc json, x xml)',
+        'CREATE TEMP TABLE dbscope_dml_live (id int PRIMARY KEY, doc json, x xml, '
+        'p point, pa path, po polygon, l line, ls lseg, b box, c circle)',
       );
       await executor.execute(
-        '''INSERT INTO dbscope_dml_live VALUES (1, '{"a": 1}', '<a/>')''',
+        '''INSERT INTO dbscope_dml_live VALUES (1, '{"a": 1}', '<a/>', '(1.5,-2)', '[(0,0),(1,1)]', '((0,0),(1,1),(1,0))', '{1,-1,0.25}', '[(0,0),(1,1)]', '((0,0),(1,1))', '<(0,0),1>')''',
       );
     });
 
@@ -85,5 +87,36 @@ void main() {
       expect(result.affectedRows, 1);
       expect(await read('x'), '<b/>');
     });
+
+    for (final (column, type, newValue) in const [
+      ('p', 'point', '(3,4)'),
+      ('pa', 'path', '((0,0),(2,2))'),
+      ('po', 'polygon', '((0,0),(2,2),(2,0))'),
+      ('l', 'line', '{2,-1,0}'),
+      ('ls', 'lseg', '[(0,0),(2,2)]'),
+      ('b', 'box', '(2,2),(0,0)'),
+      ('c', 'circle', '<(1,1),2>'),
+    ]) {
+      test('a $type cell edit matches the value read back and saves', () async {
+        final editor = CellEditor(executor);
+        final policy = _policy(column, PgType.unknown, type);
+        final result = await editor.updateCell(
+          policy: policy,
+          pkValues: {'id': 1},
+          oldValue: await read(column),
+          newValueRaw: newValue,
+        );
+        expect(result.affectedRows, 1);
+        // An old value that no longer matches is a conflict, not a silent
+        // overwrite.
+        final stale = await editor.updateCell(
+          policy: policy,
+          pkValues: {'id': 1},
+          oldValue: null,
+          newValueRaw: newValue,
+        );
+        expect(stale.affectedRows, 0);
+      });
+    }
   });
 }

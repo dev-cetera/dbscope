@@ -4,8 +4,10 @@
 // `IS NOT DISTINCT FROM $oldValue` (docs/architecture.md, SQL safety invariants),
 // spelled `IS $oldValue` on SQLite, which before 3.39 (older phones) has no
 // IS NOT DISTINCT FROM.
-// * json and xml have no `=` on Postgres, so their guard compares as
-// jsonb and as text (a bare IS NOT DISTINCT FROM fails every edit).
+// * json, xml and geometric types have no usable `=` on Postgres, so their
+// guard compares as jsonb, as text, and as the server's text of the old
+// value sent in Postgres syntax (a bare IS NOT DISTINCT FROM fails every
+// edit). test/dml_live_pg_test.dart runs these against a real server.
 // * Soft delete stamps CURRENT_TIMESTAMP, which Postgres and SQLite share.
 // * Identifiers go through quoteIdent — no raw interpolation of user
 // column/table names.
@@ -18,6 +20,7 @@ import 'package:dbscope/db/dml.dart';
 import 'package:dbscope/db/edit_policy.dart';
 import 'package:dbscope/db/sqlite_kind.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:postgres/postgres.dart' as pg;
 
 import 'support/fake_executor.dart';
 
@@ -122,6 +125,20 @@ void main() {
         executor.calls.single.sql,
         contains(r'AND "x"::text IS NOT DISTINCT FROM $3::text'),
       );
+    });
+
+    test('compares a point column as server text of the old value', () async {
+      final executor = FakeDbExecutor();
+      executor.enqueueAffected(1);
+      await CellEditor(executor).updateCell(
+        policy: _policy(column: 'p', typeName: 'point', type: PgType.unknown),
+        pkValues: {'id': 1},
+        oldValue: const pg.Point(1, 2),
+        newValueRaw: '(3,4)',
+      );
+      final call = executor.calls.single;
+      expect(call.sql, contains(r'AND "p"::text IS NOT DISTINCT FROM ($3::point)::text'));
+      expect(call.positional!.last, '(1.0,2.0)');
     });
 
     test('escapes embedded double quotes in identifiers', () async {
