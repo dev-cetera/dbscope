@@ -26,6 +26,11 @@ class _ConnectionDialogState extends State<ConnectionDialog> {
   late final TextEditingController _tenantValue;
   SslMode _sslMode = SslMode.disable;
   var _readOnly = true;
+
+  /// Whether the read-only switch shows the user's own choice. Until they
+  /// touch it on a new profile, it follows [suggestReadOnly] as they type
+  /// the name and host, and says why.
+  var _readOnlyChosen = false;
   var _passwordVisible = false;
   var _forgetPassword = false;
 
@@ -44,7 +49,19 @@ class _ConnectionDialogState extends State<ConnectionDialog> {
       text: i?.tenantFilter?.value?.toString() ?? '',
     );
     _sslMode = i?.sslMode ?? SslMode.disable;
-    _readOnly = i?.readOnly ?? true;
+    _readOnlyChosen = i != null;
+    _readOnly = i?.readOnly ?? _suggestion.readOnly;
+    _name.addListener(_followSuggestion);
+    _host.addListener(_followSuggestion);
+  }
+
+  ({bool readOnly, String reason}) get _suggestion =>
+      suggestReadOnly(name: _name.text, host: _host.text);
+
+  void _followSuggestion() {
+    if (_readOnlyChosen) return;
+    final suggested = _suggestion.readOnly;
+    if (suggested != _readOnly) setState(() => _readOnly = suggested);
   }
 
   @override
@@ -203,10 +220,16 @@ class _ConnectionDialogState extends State<ConnectionDialog> {
             const SizedBox(height: 12.0),
             SwitchListTile(
               value: _readOnly,
-              onChanged: (readOnly) => setState(() => _readOnly = readOnly),
+              onChanged: (readOnly) => setState(() {
+                _readOnly = readOnly;
+                _readOnlyChosen = true;
+              }),
               title: const Text('Read-only'),
-              subtitle: const Text(
-                'Enforced via SET default_transaction_read_only',
+              subtitle: Text(
+                _readOnlyChosen
+                    ? 'Blocks every write on this connection.'
+                    : '${_readOnly ? 'On' : 'Off'} because ${_suggestion.reason}. '
+                          'Blocks every write on this connection.',
               ),
               contentPadding: EdgeInsets.zero,
             ),
