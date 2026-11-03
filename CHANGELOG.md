@@ -4,6 +4,11 @@
 
 ## 2026-11-03
 
+- SQLite reports 0 rows affected for DDL instead of the count from the previous write (2026-11-03)
+- DBSCOPE_AUTO_READ_ONLY (and DBSCOPE_AUTO_ASSIGN_IP) accept 1/0, yes/no, on/off in any case; =1 used to open the connection read-write (2026-11-03)
+- Cells in json and xml columns can be edited on Postgres; the save used to fail every time with "operator does not exist" (2026-11-03)
+- JSON export of a query result no longer fails on date and timestamp columns, and no longer drops a column whose name repeats (2026-11-03)
+- On a phone's app database, reads no longer push the whole file back to the device; only statements that change the file do, and writes inside BEGIN … COMMIT push once at the COMMIT (2026-11-03)
 - Fix Postgres query result headers showing Type(oid:N) instead of the type name (2026-11-03)
 - Fix job tabs showing a fast job as running forever when it finished before the tab subscribed (2026-11-03)
 - Fix one window closing a stream (job progress, profile or metadata updates) belonging to another window (2026-11-03)

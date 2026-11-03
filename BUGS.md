@@ -26,13 +26,13 @@ rg -n --max-count 5 '<file or symbol>' BUGS.md
 
 <!-- New entries go here, newest first. -->
 
-### Every SELECT that returns rows on a phone's database pushes the file back to the device
+### Editing a point, path or polygon cell on Postgres always fails
 
-- **Where.** `packages/dbscope_sqflite_plugin/lib/src/executor.dart:209-210` (`_writesToFile` returns true when `result.affectedRows > 0`), fed by `lib/db/sqlite_executor.dart` (`_resultFromSelect` reports `affectedRows: rows.length` for every result set, so a read of 3 rows says 3).
-- **Failure.** Open a table (or run any query that returns rows) on a USB-connected phone's app database: the read comes back with `affectedRows > 0`, so `DeviceSqliteExecutor.execute` calls `_pushBack()` and copies the whole `.db` back onto the device and deletes its `-wal`/`-shm` after every page of every grid. Each read costs an adb/devicectl round trip, and each push is the exact operation the dialog warns can corrupt the database or lose the app's own writes if the app is running, though the user only read data.
-- **Noticed.** 2026-11-03, while wiring the statement timeout through `DeviceSqliteExecutor`.
-- **Confidence.** likely (both lines are plain in the code; not run against a phone).
-- **Why not fixed on the spot.** Outside the task (the BUGS.md sweep). The fix is to decide "wrote" from the statement (`!PreparedStatement.isReadOnly`, or `_db.totalChanges` before and after) instead of the row count, which needs the inner executor to expose it.
+- **Where.** `lib/db/dml.dart` (`CellEditor._postgresGuard`).
+- **Failure.** Edit a `point` (also `path`, `polygon`) cell in a table grid: the optimistic guard `"p" IS NOT DISTINCT FROM $3` fails with `operator does not exist: point = unknown`, because these types have no `=` operator. Casting both sides to text doesn't help: the driver decodes the old value into a `Point` whose `toString()` (`Point(1.0,2.0)`) is not Postgres's text form (`(1,2)`), so the guard matches no row and every save reads as a conflict.
+- **Noticed.** 2026-11-03, while fixing the same failure for `json` and `xml` columns (checked against a local Postgres 16).
+- **Confidence.** confirmed (for `point`, by running the UPDATE; `path` and `polygon` by the Postgres docs).
+- **Why not fixed on the spot.** Needs a decision: compare with the type's `~=` "same as" operator, render the driver's geometric objects back to Postgres text, or make these columns read-only in the grid.
 
 ## Accepted limitations
 

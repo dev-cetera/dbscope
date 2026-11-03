@@ -33,23 +33,40 @@ class CellEditor {
     final oldPlaceholder = '\$${params.length}';
 
     final qualified = quoteQualified(policy.schema, policy.table);
-    // SQLite before 3.39 (Android 13 and older phones) has no
-    // `IS NOT DISTINCT FROM`; its `IS` is the same NULL-safe comparison and
-    // works on every version.
-    final nullSafeEq = conn.kind == kSqliteKind ? 'IS' : 'IS NOT DISTINCT FROM';
     // CURRENT_TIMESTAMP rather than now(): it works on Postgres and SQLite.
     final touches = [
       for (final touchColumn in policy.touchColumns)
         if (touchColumn != policy.column) ', ${quoteIdent(touchColumn)} = CURRENT_TIMESTAMP',
     ].join();
+    // SQLite before 3.39 (Android 13 and older phones) has no
+    // `IS NOT DISTINCT FROM`; its `IS` is the same NULL-safe comparison and
+    // works on every version.
+    final guard = conn.kind == kSqliteKind
+        ? '${quoteIdent(policy.column)} IS $oldPlaceholder'
+        : _postgresGuard(policy, oldPlaceholder);
     final sql =
         'UPDATE $qualified '
         'SET ${quoteIdent(policy.column)} = \$1$touches '
         'WHERE ${pkPlaceholders.join(' AND ')} '
-        'AND ${quoteIdent(policy.column)} $nullSafeEq $oldPlaceholder';
+        'AND $guard';
 
     final result = await conn.execute(sql, positional: params);
     return UpdateResult(affectedRows: result.affectedRows, newValue: parsed);
+  }
+
+  /// The optimistic-concurrency guard on Postgres: the column still holds
+  /// the value the user saw. `json` and `xml` have no `=` operator, so a
+  /// plain `IS NOT DISTINCT FROM` fails every edit of such a column
+  /// ("operator does not exist: json = unknown"); compare them as `jsonb`
+  /// (key order and whitespace don't count as a change) and as text.
+  static String _postgresGuard(EditPolicy policy, String oldPlaceholder) {
+    final column = quoteIdent(policy.column);
+    final cast = switch (policy.typeName.toLowerCase()) {
+      'json' => '::jsonb',
+      'xml' => '::text',
+      _ => '',
+    };
+    return '$column$cast IS NOT DISTINCT FROM $oldPlaceholder$cast';
   }
 
   Future<int> deleteRow({

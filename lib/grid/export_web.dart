@@ -4,11 +4,11 @@
 // disk. There is no sqlite export: [ResultExporter.supportsSqliteExport] is
 // false and the UI hides the `.db` button.
 
-import 'dart:convert';
 
 import 'package:flutter/services.dart';
 
 import '../grid/data_grid.dart';
+import 'export_json.dart';
 
 class ResultExporter {
   /// Whether [exportSqlite] can write a file on this platform.
@@ -35,18 +35,9 @@ class ResultExporter {
   }
 
   static Future<String?> exportJson(GridData data) async {
-    final colNames = data.columns.map((column) => column.name).toList();
-    final out = <Map<String, Object?>>[];
-    for (final row in data.rows) {
-      final entry = <String, Object?>{};
-      for (var i = 0; i < colNames.length; i++) {
-        entry[colNames[i]] = row[i];
-      }
-      out.add(entry);
-    }
     await Clipboard.setData(
       ClipboardData(
-        text: const JsonEncoder.withIndent(' ').convert(out),
+        text: encodeRowsAsJson([for (final c in data.columns) c.name], data.rows),
       ),
     );
     return 'clipboard';

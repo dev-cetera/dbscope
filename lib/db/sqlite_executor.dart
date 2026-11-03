@@ -117,6 +117,7 @@ class SqliteExecutor implements DbExecutor, StatementTimeoutCapable {
     // SELECT) through here when the SQL doesn't carry placeholders. For
     // DML we need `_db.updatedRows` to surface the real affected count;
     // for SELECT we fall back to the row count from the result set.
+    final changesBefore = _totalChanges();
     final result = _db.select(sql);
     if (cancelToken?.isCancelled ?? false) {
       return const DbResult(columns: [], rows: []);
@@ -126,7 +127,7 @@ class SqliteExecutor implements DbExecutor, StatementTimeoutCapable {
       return DbResult(
         columns: base.columns,
         rows: base.rows,
-        affectedRows: _db.updatedRows,
+        affectedRows: _changedRows(changesBefore),
       );
     }
     return base;
@@ -139,6 +140,7 @@ class SqliteExecutor implements DbExecutor, StatementTimeoutCapable {
     CancelToken? cancelToken,
   }) {
     final statement = _db.prepare(sql);
+    final changesBefore = _totalChanges();
     try {
       // Always step through `select`: it is safe for statements that return
       // no rows, and it never throws a result set away. Guessing from the
@@ -156,7 +158,7 @@ class SqliteExecutor implements DbExecutor, StatementTimeoutCapable {
         return DbResult(
           columns: const [],
           rows: const [],
-          affectedRows: _db.updatedRows,
+          affectedRows: _changedRows(changesBefore),
         );
       }
       return _resultFromSelect(resultSet);
@@ -164,6 +166,16 @@ class SqliteExecutor implements DbExecutor, StatementTimeoutCapable {
       statement.dispose();
     }
   }
+
+  int _totalChanges() =>
+      (_db.select('SELECT total_changes()').first.columnAt(0) as int?) ?? 0;
+
+  /// Rows the statement just run inserted, updated or deleted.
+  /// `sqlite3_changes()` alone keeps the count of the last INSERT / UPDATE /
+  /// DELETE, so a `CREATE TABLE` after an UPDATE of 5 rows reported 5; it
+  /// only counts when this statement changed something.
+  int _changedRows(int totalChangesBefore) =>
+      _totalChanges() == totalChangesBefore ? 0 : _db.updatedRows;
 
   DbResult _resultFromSelect(sq.ResultSet resultSet) {
     final columns = <DbColumn>[];

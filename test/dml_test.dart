@@ -4,6 +4,8 @@
 // `IS NOT DISTINCT FROM $oldValue` (docs/architecture.md, SQL safety invariants),
 // spelled `IS $oldValue` on SQLite, which before 3.39 (older phones) has no
 // IS NOT DISTINCT FROM.
+// * json and xml have no `=` on Postgres, so their guard compares as
+// jsonb and as text (a bare IS NOT DISTINCT FROM fails every edit).
 // * Soft delete stamps CURRENT_TIMESTAMP, which Postgres and SQLite share.
 // * Identifiers go through quoteIdent — no raw interpolation of user
 // column/table names.
@@ -90,6 +92,36 @@ void main() {
       expect(call.sql, contains(r'IS NOT DISTINCT FROM $4'));
       // Parsed value is still the raw string because the policy type is text.
       expect(call.positional, ['6', 't1', 'u9', 5]);
+    });
+
+    test('compares a json column as jsonb, which has an equality operator', () async {
+      final executor = FakeDbExecutor();
+      executor.enqueueAffected(1);
+      await CellEditor(executor).updateCell(
+        policy: _policy(column: 'doc', type: PgType.json, typeName: 'json'),
+        pkValues: {'id': 1},
+        oldValue: {'a': 1},
+        newValueRaw: '{"a": 2}',
+      );
+      expect(
+        executor.calls.single.sql,
+        contains(r'AND "doc"::jsonb IS NOT DISTINCT FROM $3::jsonb'),
+      );
+    });
+
+    test('compares an xml column as text', () async {
+      final executor = FakeDbExecutor();
+      executor.enqueueAffected(1);
+      await CellEditor(executor).updateCell(
+        policy: _policy(column: 'x', typeName: 'xml', type: PgType.unknown),
+        pkValues: {'id': 1},
+        oldValue: '<a/>',
+        newValueRaw: '<b/>',
+      );
+      expect(
+        executor.calls.single.sql,
+        contains(r'AND "x"::text IS NOT DISTINCT FROM $3::text'),
+      );
     });
 
     test('escapes embedded double quotes in identifiers', () async {
