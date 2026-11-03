@@ -59,11 +59,21 @@ class WelcomeDialog extends StatelessWidget {
     final theme = Theme.of(context);
     final muted = theme.textTheme.bodySmall?.color?.withValues(alpha: 0.75);
     return AlertDialog(
-      title: const Row(
+      title: Column(
         children: [
-          Icon(Icons.storage_outlined),
-          SizedBox(width: 10.0),
-          Expanded(child: Text('Welcome to dbscope')),
+          ClipRRect(
+            // Matches the rounded corners baked into the icon (rx 230/1024).
+            borderRadius: BorderRadius.circular(16.0),
+            child: Image.asset(
+              'assets/icon/dbscope_icon.png',
+              width: 72.0,
+              height: 72.0,
+              cacheWidth: 216,
+              semanticLabel: 'dbscope logo',
+            ),
+          ),
+          const SizedBox(height: 14.0),
+          const Text('Welcome to dbscope', textAlign: TextAlign.center),
         ],
       ),
       content: SizedBox(
