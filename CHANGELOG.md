@@ -4,6 +4,7 @@
 
 ## 2026-11-03
 
+- New users now get a welcome dialog on first launch (web and desktop) explaining how to connect and what to try; reopen it from Help ▸ Welcome… (2026-11-03)
 - File ▸ Show crash log opens the folder with dbscope.log for bug reports (desktop) (2026-11-03)
 - dbscope_pg_proxy can be pinned to one database with --allow-db-host, and caps each result at --max-rows rows (default 100000, flagged truncated) (2026-11-03)
 - Releases and web deploys run analyze and the tests on exactly the commit they ship (2026-11-03)

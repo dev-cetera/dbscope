@@ -67,3 +67,6 @@ dev_dependencies:
 
 flutter:
   uses-material-design: true
+  assets:
+    # The app icon, shown at the top of the welcome dialog.
+    - assets/icon/dbscope_icon.png

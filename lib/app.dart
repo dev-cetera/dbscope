@@ -24,10 +24,15 @@ class DBScopeApp extends StatefulWidget {
     required this.backend,
     this.windowId = 0,
     this.launchPayload = '',
+    this.showWelcome = false,
   });
   final BackendClient backend;
   final int windowId;
   final String launchPayload;
+
+  /// Open the welcome dialog once the first frame is up. `main.dart`
+  /// decides this for the host window with `shouldShowWelcome`.
+  final bool showWelcome;
 
   @override
   State<DBScopeApp> createState() => _DBScopeAppState();
@@ -110,7 +115,7 @@ class _DBScopeAppState extends State<DBScopeApp> {
         theme: _theme,
         darkTheme: _theme,
         themeMode: _theme.brightness == Brightness.dark ? ThemeMode.dark : ThemeMode.light,
-        home: const _Shell(),
+        home: widget.showWelcome ? const _WelcomeOnStartup(child: _Shell()) : const _Shell(),
         builder: (context, child) {
           return Stack(
             children: [
@@ -125,6 +130,29 @@ class _DBScopeAppState extends State<DBScopeApp> {
       ),
     );
   }
+}
+
+/// Opens the welcome dialog over [child] after the first frame, once.
+/// It sits under `MaterialApp.home` because the dialog needs a Navigator.
+class _WelcomeOnStartup extends StatefulWidget {
+  const _WelcomeOnStartup({required this.child});
+  final Widget child;
+
+  @override
+  State<_WelcomeOnStartup> createState() => _WelcomeOnStartupState();
+}
+
+class _WelcomeOnStartupState extends State<_WelcomeOnStartup> {
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) unawaited(showWelcome(context));
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) => widget.child;
 }
 
 class _Shell extends StatelessWidget {
