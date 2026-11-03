@@ -88,6 +88,9 @@ class PgProxyExecutor implements DbExecutor {
 
   @override
   DbCapabilities get capabilities => const DbCapabilities(
+    // The proxy holds one Postgres session per socket, so a session setting
+    // sticks for every later statement, exactly as on a direct connection.
+    sessionReadOnly: true,
     cancelByClose: true,
     dml: true,
   );
@@ -143,10 +146,10 @@ class PgProxyExecutor implements DbExecutor {
 
   @override
   Future<void> setReadOnly({required bool readOnly}) async {
-    // Proxy doesn't currently expose a session-toggle. Pretend it
-    // worked so the UI can reflect the requested state, but
-    // capabilities.sessionReadOnly is false so callers know not to
-    // depend on it.
+    // Same statement as PostgresExecutor.setReadOnly: the database itself
+    // refuses writes, so a read-only profile stays read-only whatever SQL
+    // the user (or the AI assistant) sends.
+    await execute('SET default_transaction_read_only = ${readOnly ? 'ON' : 'OFF'}');
     _readOnly = readOnly;
   }
 

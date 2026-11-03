@@ -31,6 +31,10 @@ class _ConnectionDialogState extends State<ConnectionDialog> {
   /// touch it on a new profile, it follows [suggestReadOnly] as they type
   /// the name and host, and says why.
   var _readOnlyChosen = false;
+
+  /// Same as [_readOnlyChosen], for the SSL mode: until the user picks one
+  /// on a new profile, it follows [suggestSslMode] as they type the host.
+  var _sslChosen = false;
   var _passwordVisible = false;
   var _forgetPassword = false;
 
@@ -48,7 +52,8 @@ class _ConnectionDialogState extends State<ConnectionDialog> {
     _tenantValue = TextEditingController(
       text: i?.tenantFilter?.value?.toString() ?? '',
     );
-    _sslMode = i?.sslMode ?? SslMode.disable;
+    _sslMode = i?.sslMode ?? suggestSslMode(_host.text);
+    _sslChosen = i != null;
     _readOnlyChosen = i != null;
     _readOnly = i?.readOnly ?? _suggestion.readOnly;
     _name.addListener(_followSuggestion);
@@ -59,9 +64,13 @@ class _ConnectionDialogState extends State<ConnectionDialog> {
       suggestReadOnly(name: _name.text, host: _host.text);
 
   void _followSuggestion() {
-    if (_readOnlyChosen) return;
-    final suggested = _suggestion.readOnly;
-    if (suggested != _readOnly) setState(() => _readOnly = suggested);
+    final readOnly = _readOnlyChosen ? _readOnly : _suggestion.readOnly;
+    final ssl = _sslChosen ? _sslMode : suggestSslMode(_host.text);
+    if (readOnly == _readOnly && ssl == _sslMode) return;
+    setState(() {
+      _readOnly = readOnly;
+      _sslMode = ssl;
+    });
   }
 
   @override
@@ -199,6 +208,9 @@ class _ConnectionDialogState extends State<ConnectionDialog> {
               ),
             const SizedBox(height: 12.0),
             DropdownButtonFormField<SslMode>(
+              // Keyed on the value so a suggestion change re-seeds the field
+              // (`initialValue` is read only once per field state).
+              key: ValueKey(_sslMode),
               initialValue: _sslMode,
               decoration: const InputDecoration(labelText: 'SSL mode'),
               items: const [
@@ -215,7 +227,10 @@ class _ConnectionDialogState extends State<ConnectionDialog> {
                   child: Text('verify-full'),
                 ),
               ],
-              onChanged: (mode) => setState(() => _sslMode = mode ?? SslMode.disable),
+              onChanged: (mode) => setState(() {
+                _sslMode = mode ?? _sslMode;
+                _sslChosen = true;
+              }),
             ),
             const SizedBox(height: 12.0),
             SwitchListTile(

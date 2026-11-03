@@ -82,6 +82,10 @@ class _PgProxyDialogState extends State<_PgProxyDialog> {
       readOnly: _readOnly,
       extra: {
         'proxyUrl': _proxyUrl.text.trim(),
+        // Kept in `extra`, not the keychain like the password: subwindows
+        // have no secure-storage plugin and get the password from the host
+        // over RPC, which carries only the password. On web, where this
+        // plugin is mostly used, secure storage is browser storage anyway.
         if (_sharedSecret.text.isNotEmpty) 'sharedSecret': _sharedSecret.text,
       },
     );
