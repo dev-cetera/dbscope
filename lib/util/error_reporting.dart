@@ -3,7 +3,7 @@ import 'package:flutter/widgets.dart';
 
 import 'crash_log.dart';
 
-export 'crash_log.dart' show crashLogPath;
+export 'crash_log.dart' show crashLogFolder, crashLogPath;
 
 /// Routes every error nothing else caught into one place: the console and,
 /// on desktop, the crash log ([crashLogPath]). Call once per isolate, first

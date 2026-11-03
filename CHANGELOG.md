@@ -4,6 +4,8 @@
 
 ## 2026-11-03
 
+- File ▸ Show crash log opens the folder with dbscope.log for bug reports (desktop) (2026-11-03)
+- dbscope_pg_proxy can be pinned to one database with --allow-db-host, and caps each result at --max-rows rows (default 100000, flagged truncated) (2026-11-03)
 - Releases and web deploys run analyze and the tests on exactly the commit they ship (2026-11-03)
 - The web app is served with clickjacking, MIME-sniffing and HSTS security headers (2026-11-03)
 - macOS self-update checks that the download is signed by the same Developer ID team as the running app, and gives up on a stalled download (2026-11-03)

@@ -31,3 +31,15 @@ void appendCrashLog(String entry) {
     file.writeAsStringSync(entry, mode: FileMode.append, flush: true);
   } catch (_) {}
 }
+
+/// The folder holding the log, created if missing so it can always be
+/// opened, or null when it can't be created.
+String? crashLogFolder() {
+  final path = crashLogPath();
+  if (path == null) return null;
+  try {
+    return (File(path).parent..createSync(recursive: true)).path;
+  } catch (_) {
+    return null;
+  }
+}

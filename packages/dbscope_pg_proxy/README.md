@@ -57,6 +57,13 @@ exactly like exposing Postgres itself.
   `--allow-origin https://your.host` (repeatable); the list then replaces
   the defaults. `--allow-any-origin` turns the check off: don't, unless
   nothing but trusted pages can reach the proxy.
+- **Pin the database.** A client names the host it wants in its `open`
+  message, so an exposed proxy can reach any Postgres its network can.
+  Pass `--allow-db-host db.internal:5432` (repeatable; a bare host allows
+  any port) to allow only that one.
+- **Results are capped.** One result sends at most `--max-rows` rows
+  (default 100000); a longer one is cut and its reply says
+  `"truncated": true`.
 - **Use a least-privileged Postgres role.** The proxy never inspects or
   restricts the SQL it forwards.
 

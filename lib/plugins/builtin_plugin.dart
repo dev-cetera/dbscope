@@ -1,4 +1,5 @@
 import 'package:ai_broker/ai_broker.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
 
 import '../jobs/job_tab_kind.dart';
 import '../json_viewer/json_tab_kind.dart' show jsonTabKind;
@@ -6,6 +7,7 @@ import '../linked/linked_tab_kind.dart';
 import '../navigator/navigator_tab_kind.dart';
 import '../query/query_tab_kind.dart';
 import '../schema/schema_tab_kind.dart';
+import '../shell/crash_log_menu.dart';
 import '../shell/sidebar_table_actions_default.dart';
 import '../table/table_tab_kind.dart';
 import 'dbscope_plugin.dart';
@@ -23,6 +25,7 @@ import 'dbscope_plugin.dart';
 /// another DB)
 /// - the three packaged AI brokers (OpenAI, Anthropic, Gemini) from
 /// `package:ai_broker`
+/// - File ▸ Show crash log, on desktop
 class BuiltinPlugin extends DbscopePlugin {
   @override
   String get id => 'builtin';
@@ -44,6 +47,9 @@ class BuiltinPlugin extends DbscopePlugin {
 
     // Sidebar table-row actions.
     registerDefaultSidebarTableActions();
+
+    // File ▸ Show crash log (desktop: the web build has no log file).
+    if (!kIsWeb) host.menus.register(crashLogMenuContribution);
 
     // AI brokers.
     host.aiBrokers

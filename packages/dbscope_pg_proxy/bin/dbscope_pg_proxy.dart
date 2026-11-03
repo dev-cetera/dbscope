@@ -20,7 +20,7 @@
 // server → client:
 // { "type": "ready" }
 // { "type": "result", "id": "...", "columns": [{name, typeName}],
-// "rows": [[...]], "affected": 0 }
+// "rows": [[...]], "affected": 0, "truncated"?: true }
 // { "type": "error", "id"?: "...", "code"?: "...", "message": "...",
 // "constraintName"?: "..." }
 //
@@ -211,6 +211,14 @@ class _Session {
     }
     final host = msg['host'] as String? ?? '';
     final port = (msg['port'] as num?)?.toInt() ?? 5432;
+    if (!_dbHostAllowed(host, port, opts)) {
+      await _send({
+        'type': 'error',
+        'message': 'this proxy does not open $host:$port (see its --allow-db-host)',
+      });
+      await socket.close();
+      return;
+    }
     final db = msg['database'] as String? ?? '';
     final user = msg['username'] as String? ?? '';
     final pass = msg['password'] as String? ?? '';
@@ -302,9 +310,10 @@ class _Session {
             },
         ],
         'rows': [
-          for (final row in result) [for (final v in row) _serialize(v)],
+          for (final row in result.take(opts.maxRows)) [for (final v in row) _serialize(v)],
         ],
         'affected': result.affectedRows,
+        if (result.length > opts.maxRows) 'truncated': true,
       });
     } catch (e) {
       String? code;
@@ -368,6 +377,15 @@ class _Session {
   }
 }
 
+/// Whether a client may open [host]:[port]. With no `--allow-db-host` any
+/// database is allowed; with one, only the listed entries are, each either
+/// `host` (any port) or `host:port`. Host names compare case-insensitively.
+bool _dbHostAllowed(String host, int port, _Opts opts) {
+  if (opts.allowDbHosts.isEmpty) return true;
+  final h = host.trim().toLowerCase();
+  return opts.allowDbHosts.contains(h) || opts.allowDbHosts.contains('$h:$port');
+}
+
 /// Compares secrets in time that depends only on their lengths, so a
 /// caller can't learn the secret one character at a time by timing replies.
 bool _constantTimeEquals(String a, String b) {
@@ -387,13 +405,24 @@ class _Opts {
     required this.sharedSecret,
     required this.allowOrigins,
     required this.allowAnyOrigin,
+    required this.allowDbHosts,
+    required this.maxRows,
   });
   final String host;
   final int port;
   final String? sharedSecret;
   final Set<String> allowOrigins;
   final bool allowAnyOrigin;
+  final Set<String> allowDbHosts;
+
+  /// Most rows one result sends back; the rest are dropped and the reply
+  /// carries `"truncated": true`. Bounds the proxy's and the browser's
+  /// memory for an unbounded `SELECT *`. dbscope's own grids page far below
+  /// it (query tabs stop at 10 000 rows).
+  final int maxRows;
 }
+
+const _kDefaultMaxRows = 100000;
 
 _Opts _parseArgs(List<String> args) {
   var host = '127.0.0.1';
@@ -401,6 +430,8 @@ _Opts _parseArgs(List<String> args) {
   String? secret;
   final allow = <String>{};
   var allowAny = false;
+  final dbHosts = <String>{};
+  var maxRows = _kDefaultMaxRows;
   for (var i = 0; i < args.length; i++) {
     final a = args[i];
     String next() {
@@ -427,6 +458,16 @@ _Opts _parseArgs(List<String> args) {
         allow.add(next());
       case '--allow-any-origin':
         allowAny = true;
+      case '--allow-db-host':
+        dbHosts.add(next().trim().toLowerCase());
+      case '--max-rows':
+        final raw = next();
+        final parsed = int.tryParse(raw);
+        if (parsed == null || parsed < 1) {
+          stderr.writeln('--max-rows needs a positive number, got "$raw"');
+          exit(2);
+        }
+        maxRows = parsed;
       case '--help' || '-h':
         _printHelp();
         exit(0);
@@ -442,6 +483,8 @@ _Opts _parseArgs(List<String> args) {
     sharedSecret: secret,
     allowOrigins: allow,
     allowAnyOrigin: allowAny,
+    allowDbHosts: dbHosts,
+    maxRows: maxRows,
   );
 }
 
@@ -461,6 +504,11 @@ Options:
                        localhost pages.
  --allow-any-origin    Accept any Origin. Any web page the user opens
                        can then reach your databases through the proxy.
+ --allow-db-host HOST[:PORT]
+                       Only open this database (repeatable). Without it,
+                       a client may open any host the proxy can reach.
+ --max-rows N          Most rows one result returns (default 100000);
+                       longer results are cut and flagged "truncated".
  -h, --help Show this message
 ''');
 }

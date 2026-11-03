@@ -5,3 +5,5 @@
 String? crashLogPath() => null;
 
 void appendCrashLog(String entry) {}
+
+String? crashLogFolder() => null;
