@@ -19,6 +19,8 @@ import 'env_dialog.dart';
 import 'menu_spec.dart';
 import 'shell_listenable.dart';
 import 'theme_registry.dart';
+import 'ui_prefs.dart';
+import 'welcome_dialog.dart';
 import 'window_actions.dart';
 
 // One AppMenuBar widget; two renderers. The data lives in
@@ -312,6 +314,16 @@ class _MenuActions {
           ..._contributionsFor('AI'),
         ],
       ),
+      MenuSpec(
+        label: 'Help',
+        items: [
+          MenuItemSpec(
+            label: 'Welcome…',
+            onSelected: () => showWelcome(context),
+          ),
+          ..._contributionsFor('Help'),
+        ],
+      ),
     ];
     // Plugin-defined top-level menus appear after the built-ins.
     for (final label in MenuContributionRegistry.instance.extraMenuLabels) {
@@ -488,6 +500,17 @@ class _MenuButton extends StatelessWidget {
       ),
     );
   }
+}
+
+/// Shows the welcome dialog, remembers that it was seen so it stops
+/// opening at startup, and starts the new-connection flow if the user
+/// asked for it. Used at first launch and by Help ▸ Welcome….
+Future<void> showWelcome(BuildContext context) async {
+  final choice = await showWelcomeDialog(context);
+  UiPrefs.instance.setWelcomeSeen();
+  if (choice != WelcomeChoice.addConnection) return;
+  if (!context.mounted) return;
+  await _addConnection(context);
 }
 
 Future<void> _addConnection(BuildContext context) async {

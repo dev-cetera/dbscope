@@ -5,8 +5,8 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 /// Persists per-machine preferences across launches: sidebar width and
 /// side, inspector width and collapsed state, theme, SQL editor height,
-/// row height, the last connection, the open tabs, and the shell env
-/// file path.
+/// row height, the last connection, the open tabs, the shell env file
+/// path, and whether the welcome dialog was seen.
 ///
 /// Each setter is fire-and-forget — callers don't await. SharedPreferences
 /// is process-global, so a subwindow's read still sees the host's write
@@ -27,6 +27,7 @@ class UiPrefs {
   static const _kLastConnectionId = 'ui.lastConnectionId';
   static const _kOpenTabs = 'ui.openTabs';
   static const _kEnvFilePath = 'env.filePath';
+  static const _kWelcomeSeen = 'ui.welcomeSeen';
   static const _kMetaTrustPrefix = 'meta.trust.';
 
   SharedPreferences? _prefs;
@@ -82,6 +83,12 @@ class UiPrefs {
   }
 
   void setEnvFilePath(String? v) => _setOrRemove(_kEnvFilePath, v);
+
+  /// Whether the welcome dialog was closed once. Null when preferences
+  /// can't be read, which `shouldShowWelcome` treats as "not seen".
+  bool? get welcomeSeen => _prefs?.getBool(_kWelcomeSeen);
+
+  void setWelcomeSeen() => unawaited(_prefs?.setBool(_kWelcomeSeen, true));
 
   /// Pinned action-set hashes for a profile's metadata actions (JSON
   /// `{"read": "<sha256>", "exec": "<sha256>"}`). Machine-local on purpose:

@@ -28,6 +28,7 @@ import 'rpc/isolate_transport.dart';
 import 'server/host.dart';
 import 'shell/app_state.dart';
 import 'shell/ui_prefs.dart';
+import 'shell/welcome_dialog.dart';
 import 'update/update_service.dart';
 import 'util/error_reporting.dart';
 import 'util/shell_env.dart';
@@ -177,6 +178,11 @@ Future<void> main(List<String> args) async {
   runApp(
     DBScopeApp(
       backend: host.localClient,
+      showWelcome: shouldShowWelcome(
+        seen: UiPrefs.instance.welcomeSeen,
+        hasSavedProfiles: ConnectionRegistry.instance.profiles.isNotEmpty,
+        autoConnecting: cliProfile != null,
+      ),
     ),
   );
 }
