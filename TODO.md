@@ -50,14 +50,6 @@ rg -n '\[SIMPLE\]' TODO.md
 - **Blocker.** none.
 - **Noticed.** 2026-11-03, while fixing overlapping schema diagram cards.
 
-### **[P3]** Show type names for enums, domains and extension types in query result headers
-
-- **Where.** `lib/db/postgres_executor.dart` (`pgTypeNameForOid`, the built-in oid table).
-- **Why.** Query headers now show built-in type names instead of `Type(oid:2950)`, but a column whose type is an enum, a domain or an extension type (`citext`, PostGIS) has a per-database oid that isn't in the table, so its header shows no type and the typed-cell colour falls back to plain. A per-executor cache filled by one `SELECT oid, typname FROM pg_type WHERE oid = ANY($1)` for unknown oids would cover them.
-- **Effort.** `<1h`
-- **Blocker.** none
-- **Noticed.** 2026-11-03, while fixing the `Type(oid:N)` header bug.
-
 ### **[P2]** Make Tab move to the next cell, and let multi-line cells take a newline, in grid inline editing
 
 - **Where.** `packages/data_grid/lib/src/internal/grid_cell.dart` (`_editor` shortcut bindings)
