@@ -4,11 +4,14 @@ import 'grid_data.dart';
 
 /// Context passed to a [CellEditor] when the grid enters edit mode on
 /// a cell. The editor is expected to render an inline input sized to
-/// the cell; [onCommit] runs on Enter/Tab/blur, [onCancel] on Esc.
+/// the cell and report every change through [onChanged]; the grid commits
+/// the latest value on Enter / Tab or when another cell is clicked, and
+/// discards it on Esc.
 class CellEditContext<TypeTag> {
   const CellEditContext({
     required this.value,
     required this.column,
+    required this.onChanged,
     required this.onCommit,
     required this.onCancel,
     required this.focusNode,
@@ -17,14 +20,20 @@ class CellEditContext<TypeTag> {
   final Object? value;
   final GridColumnSpec<TypeTag> column;
 
-  /// Call with the parsed new value to confirm the edit.
+  /// Call on every change with the parsed in-progress value. Does not end
+  /// the edit.
+  final ValueChanged<Object?> onChanged;
+
+  /// Call with the parsed new value to confirm the edit at once.
   final void Function(Object? newValue) onCommit;
 
   /// Call to discard the edit (revert the cell).
   final VoidCallback onCancel;
 
-  /// Focus node managed by the grid; editors that need focus should
-  /// attach to this one so the grid can auto-focus on edit-begin.
+  /// Focus node managed by the grid; editors that take keyboard input
+  /// must attach it to their input so the grid can focus it on
+  /// edit-begin. Otherwise typing goes nowhere until the user clicks the
+  /// input.
   final FocusNode focusNode;
 
   /// Whether the grid will render in a one-row-tall slot. Editors

@@ -6,11 +6,13 @@ class _DateInput extends StatefulWidget {
     required this.enabled,
     required this.mode,
     required this.onChanged,
+    this.focusNode,
   });
   final String? value;
   final bool enabled;
   final CupertinoDatePickerMode mode;
   final ValueChanged<Object?> onChanged;
+  final FocusNode? focusNode;
 
   @override
   State<_DateInput> createState() => _DateInputState();
@@ -128,6 +130,7 @@ class _DateInputState extends State<_DateInput> {
         CupertinoDatePickerMode.monthYear => 'YYYY-MM',
       },
       onChanged: widget.onChanged,
+      focusNode: widget.focusNode,
       suffix: MouseRegion(
         cursor: widget.enabled ? SystemMouseCursors.click : SystemMouseCursors.basic,
         child: GestureDetector(

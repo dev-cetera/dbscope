@@ -8,11 +8,13 @@ class _SmartTextInput extends StatefulWidget {
     required this.enabled,
     required this.multiLine,
     required this.onChanged,
+    this.focusNode,
   });
   final String? value;
   final bool enabled;
   final bool multiLine;
   final ValueChanged<Object?> onChanged;
+  final FocusNode? focusNode;
 
   @override
   State<_SmartTextInput> createState() => _SmartTextInputState();
@@ -97,6 +99,7 @@ class _SmartTextInputState extends State<_SmartTextInput> {
             )
           : null,
       onChanged: widget.onChanged,
+      focusNode: widget.focusNode,
     );
   }
 }

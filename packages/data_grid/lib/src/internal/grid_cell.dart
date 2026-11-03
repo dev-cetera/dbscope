@@ -25,14 +25,20 @@ class GridCell<TypeTag> extends StatefulWidget {
     required this.isEditing,
     required this.width,
     required this.height,
+    this.editValue,
     this.editor,
     this.overlay,
     this.onTap,
     this.onDoubleTap,
+    this.onEditChanged,
     this.onCommit,
     this.onCancel,
   });
   final Object? value;
+
+  /// The in-progress value shown in the editor while [isEditing]. The grid
+  /// owns it so a click on another cell can commit it.
+  final Object? editValue;
   final int rowIdx;
   final int originalIdx;
   final GridColumnSpec<TypeTag> column;
@@ -47,7 +53,8 @@ class GridCell<TypeTag> extends StatefulWidget {
   final double height;
   final VoidCallback? onTap;
   final VoidCallback? onDoubleTap;
-  final void Function(Object? newValue)? onCommit;
+  final ValueChanged<Object?>? onEditChanged;
+  final VoidCallback? onCommit;
   final VoidCallback? onCancel;
 
   bool get isEditable => editor?.canEdit(column) ?? false;
@@ -57,25 +64,21 @@ class GridCell<TypeTag> extends StatefulWidget {
 }
 
 class _GridCellState<TypeTag> extends State<GridCell<TypeTag>> {
-  Object? _pending;
+  /// Wraps the editor, so Enter / Tab / Esc still work for an editor that
+  /// doesn't attach [_inputFocus].
   final _editFocus = FocusNode();
 
-  @override
-  void initState() {
-    super.initState();
-    _pending = widget.value;
-  }
+  /// Handed to the editor as `CellEditContext.focusNode`.
+  final _inputFocus = FocusNode();
 
   @override
   void didUpdateWidget(covariant GridCell<TypeTag> oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (!widget.isEditing && oldWidget.value != widget.value) {
-      _pending = widget.value;
-    }
     if (widget.isEditing && !oldWidget.isEditing) {
-      _pending = widget.value;
       WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (mounted && widget.isEditing) _editFocus.requestFocus();
+        if (!mounted || !widget.isEditing) return;
+        final inputAttached = _inputFocus.context != null;
+        (inputAttached ? _inputFocus : _editFocus).requestFocus();
       });
     }
   }
@@ -83,13 +86,11 @@ class _GridCellState<TypeTag> extends State<GridCell<TypeTag>> {
   @override
   void dispose() {
     _editFocus.dispose();
+    _inputFocus.dispose();
     super.dispose();
   }
 
-  void _commit() {
-    final canon = widget.editor?.canonicalize(_pending, widget.column) ?? _pending;
-    widget.onCommit?.call(canon);
-  }
+  void _commit() => widget.onCommit?.call();
 
   void _cancel() => widget.onCancel?.call();
 
@@ -167,14 +168,15 @@ class _GridCellState<TypeTag> extends State<GridCell<TypeTag>> {
         child: editor.build(
           context,
           CellEditContext<TypeTag>(
-            value: _pending,
+            value: widget.editValue,
             column: widget.column,
+            onChanged: (value) => widget.onEditChanged?.call(value),
             onCommit: (value) {
-              _pending = value;
+              widget.onEditChanged?.call(value);
               _commit();
             },
             onCancel: _cancel,
-            focusNode: _editFocus,
+            focusNode: _inputFocus,
             compact: true,
           ),
         ),

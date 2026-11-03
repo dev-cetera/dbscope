@@ -6,11 +6,13 @@ class _EnumInput extends StatelessWidget {
     required this.value,
     required this.enabled,
     required this.onChanged,
+    this.focusNode,
   });
   final List<String> values;
   final String? value;
   final bool enabled;
   final ValueChanged<Object?> onChanged;
+  final FocusNode? focusNode;
 
   @override
   Widget build(BuildContext context) {
@@ -27,6 +29,7 @@ class _EnumInput extends StatelessWidget {
       child: DropdownButtonHideUnderline(
         child: DropdownButton<String>(
           value: present ? value : null,
+          focusNode: focusNode,
           isDense: true,
           isExpanded: true,
           icon: const Icon(Icons.arrow_drop_down, size: 16.0),

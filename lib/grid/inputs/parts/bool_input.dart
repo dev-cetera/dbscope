@@ -5,10 +5,12 @@ class _BoolInput extends StatelessWidget {
     required this.value,
     required this.enabled,
     required this.onChanged,
+    this.focusNode,
   });
   final bool? value;
   final bool enabled;
   final ValueChanged<Object?> onChanged;
+  final FocusNode? focusNode;
 
   @override
   Widget build(BuildContext context) {
@@ -24,6 +26,7 @@ class _BoolInput extends StatelessWidget {
       child: DropdownButtonHideUnderline(
         child: DropdownButton<bool>(
           value: value,
+          focusNode: focusNode,
           isDense: true,
           isExpanded: true,
           icon: const Icon(Icons.arrow_drop_down, size: 16.0),

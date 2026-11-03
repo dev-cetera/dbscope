@@ -42,6 +42,14 @@ rg -n '\[SIMPLE\]' TODO.md
 
 <!-- New entries go here, newest first. -->
 
+### **[P2]** Make Tab move to the next cell, and let multi-line cells take a newline, in grid inline editing
+
+- **Where.** `packages/data_grid/lib/src/internal/grid_cell.dart` (`_editor` shortcut bindings)
+- **Why.** Tab commits but leaves the selection where it was, so you can't tab across a row as in a spreadsheet. Enter always commits, so a `multiLine` text column can't get a line break inline (the row dialog works).
+- **Effort.** `<1h`
+- **Blocker.** none
+- **Noticed.** 2026-11-03, while fixing inline cell editing.
+
 ### **[P2]** Fix the paths in `docs/architecture.md` that point at nothing
 
 - **Where.** `docs/architecture.md`: `packages/dbscope_doom_plugin`, `packages/dbscope_warcraft_plugin` ("Theme plugins"; `pubspec.yaml` comments also say they are "kept under packages/"), `lib/shell/jobs`, `lib/grid/internal/` and `lib/grid/internal/grid_cell.dart` (grid probably moved to `packages/data_grid`). Found by `bash scripts/agent/info_doc_drift.sh paths`.

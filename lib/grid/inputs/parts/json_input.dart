@@ -5,10 +5,12 @@ class _JsonInput extends StatefulWidget {
     required this.value,
     required this.enabled,
     required this.onChanged,
+    this.focusNode,
   });
   final String? value;
   final bool enabled;
   final ValueChanged<Object?> onChanged;
+  final FocusNode? focusNode;
 
   @override
   State<_JsonInput> createState() => _JsonInputState();
@@ -82,6 +84,7 @@ class _JsonInputState extends State<_JsonInput> {
           multiLine: true,
           monospace: true,
           hint: '{"key": "value"}',
+          focusNode: widget.focusNode,
           onChanged: (value) {
             final text = value as String? ?? '';
             _text = text;

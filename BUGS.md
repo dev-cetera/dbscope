@@ -197,7 +197,7 @@ rg -n --max-count 5 '<file or symbol>' BUGS.md
 ### `scripts/add_changelog_line.sh` can't add any line: `CHANGELOG.md` has no `---` line
 
 - **Where.** `CHANGELOG.md` header; the check is in `scripts/add_changelog_line.sh` (the awk `END` block)
-- **Failure.** `bash scripts/add_changelog_line.sh "<line>"` exits 1 with `CHANGELOG.md needs a --- line under its header`, so no change since then has a changelog line. The SEO landing-page change of 2026-11-02 is missing one: "Landing page: canonical URL, fuller social tags, SoftwareApplication and FAQPage structured data, a visible FAQ, sitemap.xml and llms.txt, checked on every Pages deploy by scripts/check_site_seo.sh".
+- **Failure.** `bash scripts/add_changelog_line.sh "<line>"` exits 1 with `CHANGELOG.md needs a --- line under its header`, so no change since then has a changelog line. The SEO landing-page change of 2026-11-02 is missing one: "Landing page: canonical URL, fuller social tags, SoftwareApplication and FAQPage structured data, a visible FAQ, sitemap.xml and llms.txt, checked on every Pages deploy by scripts/check_site_seo.sh". Also missing (2026-11-03): "Fix inline cell editing in table grids: the editor now takes keyboard focus on double-click / Enter, stays open while you type (it used to save and close after one character), lets arrow keys and Cmd-A work inside the field, and saves on Enter, Tab or clicking another cell (Esc discards)".
 - **Noticed.** 2026-11-02, finishing `/find-seo-aeo-improvements`.
 - **Confidence.** confirmed (script output)
 - **Why not fixed on the spot.** Agents are blocked from reading `CHANGELOG.md`; a person needs to add the `---` line under its header, then re-run the script with the line above.

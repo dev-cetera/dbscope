@@ -6,11 +6,13 @@ class _NumberInput extends StatelessWidget {
     required this.enabled,
     required this.allowDecimal,
     required this.onChanged,
+    this.focusNode,
   });
   final String? value;
   final bool enabled;
   final bool allowDecimal;
   final ValueChanged<Object?> onChanged;
+  final FocusNode? focusNode;
 
   @override
   Widget build(BuildContext context) {
@@ -36,6 +38,7 @@ class _NumberInput extends StatelessWidget {
         }),
       ],
       onChanged: onChanged,
+      focusNode: focusNode,
     );
   }
 }

@@ -101,12 +101,11 @@ class EditPolicyCellEditor extends g.CellEditor<PgType> {
     return ColumnInput.forPolicy(
       policy: policy,
       value: editContext.value,
-      onChanged: (newValue) {
-        // Track the pending value via the close-over; the grid will
-        // canonicalize and commit it via the shortcut handlers.
-        editContext.onCommit(newValue);
-      },
+      // The grid keeps the pending value and commits it on Enter / Tab or
+      // when another cell is clicked.
+      onChanged: editContext.onChanged,
       compact: editContext.compact,
+      focusNode: editContext.focusNode,
     );
   }
 }

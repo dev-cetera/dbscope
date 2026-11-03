@@ -23,6 +23,8 @@ class GridBodyRow<TypeTag> extends StatelessWidget {
     required this.rowHeight,
     required this.onCellTap,
     required this.onCellDoubleTap,
+    required this.pendingEdit,
+    required this.onEditChanged,
     required this.onCommit,
     required this.onCancelEdit,
   });
@@ -38,7 +40,11 @@ class GridBodyRow<TypeTag> extends StatelessWidget {
 
   final void Function(int row, int column, {required bool extend}) onCellTap;
   final void Function(int row, int column) onCellDoubleTap;
-  final void Function(int row, int column, Object? newValue) onCommit;
+
+  /// The in-progress value of the cell being edited, if it is in this row.
+  final Object? pendingEdit;
+  final ValueChanged<Object?> onEditChanged;
+  final VoidCallback onCommit;
   final void Function() onCancelEdit;
 
   @override
@@ -71,10 +77,12 @@ class GridBodyRow<TypeTag> extends StatelessWidget {
           isEditing: isEditing,
           width: model.widthAt(viewIndex),
           height: rowHeight,
+          editValue: isEditing ? pendingEdit : null,
           onTap: () => onCellTap(rowIdx, viewIndex, extend: _isShiftPressed()),
           onDoubleTap:
               (editor?.canEdit(column) ?? false) ? () => onCellDoubleTap(rowIdx, viewIndex) : null,
-          onCommit: (newValue) => onCommit(rowIdx, viewIndex, newValue),
+          onEditChanged: onEditChanged,
+          onCommit: onCommit,
           onCancel: onCancelEdit,
         ),
       );

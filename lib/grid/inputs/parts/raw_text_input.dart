@@ -12,6 +12,7 @@ class _RawTextInput extends StatefulWidget {
     this.keyboardType,
     this.prefix,
     this.suffix,
+    this.focusNode,
   });
   final String? value;
   final bool enabled;
@@ -23,6 +24,7 @@ class _RawTextInput extends StatefulWidget {
   final TextInputType? keyboardType;
   final Widget? prefix;
   final Widget? suffix;
+  final FocusNode? focusNode;
 
   @override
   State<_RawTextInput> createState() => _RawTextInputState();
@@ -73,6 +75,7 @@ class _RawTextInputState extends State<_RawTextInput> {
     );
     final field = TextField(
       controller: _textController,
+      focusNode: widget.focusNode,
       enabled: widget.enabled,
       maxLines: widget.multiLine ? 5 : 1,
       minLines: widget.multiLine ? 3 : 1,

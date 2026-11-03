@@ -206,6 +206,11 @@ class _DataGridState<TypeTag> extends State<DataGrid<TypeTag>> {
   var _syncingScroll = false;
   var _isDragging = false;
 
+  /// The in-progress value of the cell being edited (`_model.isEditing`).
+  /// Kept here rather than in the cell so a click on another cell can
+  /// commit it.
+  Object? _pendingEdit;
+
   ValueListenable<double> get _rowHeightListenable => widget.rowHeight ?? _fallbackRowHeight;
   double get _rowHeight => _rowHeightListenable.value;
 
@@ -485,6 +490,10 @@ class _DataGridState<TypeTag> extends State<DataGrid<TypeTag>> {
   // --- Cell interaction --------------------------------------------------
 
   void _onCellTap(int row, int column, {required bool extend}) {
+    if (_model.isEditing) {
+      if (_model.editingRow == row && _model.editingCol == column) return;
+      _commitEdit();
+    }
     if (extend) {
       _model.extendSelection(row, column);
     } else {
@@ -504,6 +513,7 @@ class _DataGridState<TypeTag> extends State<DataGrid<TypeTag>> {
       unawaited(_editViaDialog(row, originalIndex, spec));
       return;
     }
+    _pendingEdit = _currentData.rows[row][originalIndex];
     _model.beginEdit(row, column);
   }
 
@@ -593,17 +603,27 @@ class _DataGridState<TypeTag> extends State<DataGrid<TypeTag>> {
     _isDragging = false;
   }
 
-  void _onCommit(int row, int column, Object? newValue) {
+  /// Ends the current edit and reports [_pendingEdit] if it changed. Does
+  /// nothing when no cell is being edited.
+  void _commitEdit() {
+    final row = _model.editingRow;
+    final column = _model.editingCol;
+    if (row == null || column == null) return;
     final originalIndex = _model.viewToOriginal(column);
     final spec = _currentData.columns[originalIndex];
     final oldValue = _currentData.rows[row][originalIndex];
+    final newValue = widget.cellEditor!.canonicalize(_pendingEdit, spec);
     _model.endEdit();
+    _gridFocus.requestFocus();
     if (widget.onCellEdit == null) return;
     if (newValue == oldValue) return;
     widget.onCellEdit!(GridEditEvent(row, spec.name, oldValue, newValue));
   }
 
-  void _onCancelEdit() => _model.endEdit();
+  void _onCancelEdit() {
+    _model.endEdit();
+    _gridFocus.requestFocus();
+  }
 
   void _onKeyMove(int deltaRow, int deltaColumn) {
     final selection = _model.selection;
@@ -680,30 +700,32 @@ class _DataGridState<TypeTag> extends State<DataGrid<TypeTag>> {
       const SingleActivator(LogicalKeyboardKey.f2): const _EditIntent(),
     };
     final actions = <Type, Action<Intent>>{
-      _MoveIntent: CallbackAction<_MoveIntent>(
+      _MoveIntent: _NotWhileEditingAction<_MoveIntent>(
+        _model,
         onInvoke: (intent) {
-          if (!_model.isEditing) {
-            _onKeyMove(intent.deltaRow, intent.deltaColumn);
-          }
+          _onKeyMove(intent.deltaRow, intent.deltaColumn);
           return null;
         },
       ),
-      _CopyIntent: CallbackAction<_CopyIntent>(
+      _CopyIntent: _NotWhileEditingAction<_CopyIntent>(
+        _model,
         onInvoke: (_) {
-          if (!_model.isEditing) unawaited(_onCopyRequest());
+          unawaited(_onCopyRequest());
           return null;
         },
       ),
-      _SelectAllIntent: CallbackAction<_SelectAllIntent>(
+      _SelectAllIntent: _NotWhileEditingAction<_SelectAllIntent>(
+        _model,
         onInvoke: (_) {
-          if (!_model.isEditing) _onSelectAll();
+          _onSelectAll();
           return null;
         },
       ),
-      _EditIntent: CallbackAction<_EditIntent>(
+      _EditIntent: _NotWhileEditingAction<_EditIntent>(
+        _model,
         onInvoke: (_) {
           final selection = _model.selection;
-          if (selection != null && !_model.isEditing) {
+          if (selection != null) {
             _onCellDoubleTap(selection.focusRow, selection.focusCol);
           }
           return null;
@@ -784,7 +806,9 @@ class _DataGridState<TypeTag> extends State<DataGrid<TypeTag>> {
                                 rowHeight: _heightFor(i),
                                 onCellTap: _onCellTap,
                                 onCellDoubleTap: _onCellDoubleTap,
-                                onCommit: _onCommit,
+                                pendingEdit: _pendingEdit,
+                                onEditChanged: (value) => _pendingEdit = value,
+                                onCommit: _commitEdit,
                                 onCancelEdit: _onCancelEdit,
                               );
                             },
@@ -814,6 +838,7 @@ class _DataGridState<TypeTag> extends State<DataGrid<TypeTag>> {
           scrollController: _gutterScroll,
           selection: _model.selection,
           onSelectRow: (row, {required extend}) {
+            _commitEdit();
             if (extend) {
               _model.extendSelection(row, _model.order.length - 1);
             } else {
@@ -935,6 +960,17 @@ class _SelectAllIntent extends Intent {
 
 class _EditIntent extends Intent {
   const _EditIntent();
+}
+
+/// A grid keyboard action that stands down while a cell is being edited,
+/// so the key reaches the editor instead: arrows move the caret, Cmd-A
+/// selects its text, Cmd-C copies from it.
+class _NotWhileEditingAction<T extends Intent> extends CallbackAction<T> {
+  _NotWhileEditingAction(this.model, {required super.onInvoke});
+  final GridModel model;
+
+  @override
+  bool isEnabled(T intent) => !model.isEditing;
 }
 
 class _LoadingOverlay extends StatelessWidget {

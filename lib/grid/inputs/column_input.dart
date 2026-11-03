@@ -33,6 +33,7 @@ class ColumnInput extends StatefulWidget {
     required this.onChanged,
     this.enabled = true,
     this.compact = false,
+    this.focusNode,
   });
 
   factory ColumnInput.forPolicy({
@@ -42,6 +43,7 @@ class ColumnInput extends StatefulWidget {
     required ValueChanged<Object?> onChanged,
     bool enabled = true,
     bool compact = false,
+    FocusNode? focusNode,
   }) {
     return ColumnInput(
       key: key,
@@ -50,6 +52,7 @@ class ColumnInput extends StatefulWidget {
       onChanged: onChanged,
       enabled: enabled,
       compact: compact,
+      focusNode: focusNode,
     );
   }
   final EditPolicy policy;
@@ -62,6 +65,9 @@ class ColumnInput extends StatefulWidget {
   /// already shows the column name in the header and the row height
   /// is fixed.
   final bool compact;
+
+  /// Attached to the input itself, so an owner like the grid can focus it.
+  final FocusNode? focusNode;
 
   @override
   State<ColumnInput> createState() => _ColumnInputState();
@@ -100,6 +106,7 @@ class _ColumnInputState extends State<ColumnInput> {
       value: widget.value,
       enabled: !disabled,
       onChanged: widget.onChanged,
+      focusNode: widget.focusNode,
     );
 
     if (widget.compact) {
@@ -170,11 +177,13 @@ class _ColumnInputField extends StatelessWidget {
     required this.value,
     required this.enabled,
     required this.onChanged,
+    required this.focusNode,
   });
   final EditPolicy policy;
   final Object? value;
   final bool enabled;
   final ValueChanged<Object?> onChanged;
+  final FocusNode? focusNode;
 
   @override
   Widget build(BuildContext context) {
@@ -186,6 +195,7 @@ class _ColumnInputField extends StatelessWidget {
         value: asString,
         enabled: enabled,
         onChanged: onChanged,
+        focusNode: focusNode,
       );
     }
     switch (policy.type) {
@@ -194,6 +204,7 @@ class _ColumnInputField extends StatelessWidget {
           value: raw is bool ? raw : _parseBool(asString),
           enabled: enabled,
           onChanged: onChanged,
+          focusNode: focusNode,
         );
       case PgType.int2:
       case PgType.int4:
@@ -203,6 +214,7 @@ class _ColumnInputField extends StatelessWidget {
           enabled: enabled,
           allowDecimal: false,
           onChanged: onChanged,
+          focusNode: focusNode,
         );
       case PgType.numeric:
       case PgType.real:
@@ -212,6 +224,7 @@ class _ColumnInputField extends StatelessWidget {
           enabled: enabled,
           allowDecimal: true,
           onChanged: onChanged,
+          focusNode: focusNode,
         );
       case PgType.json:
       case PgType.jsonb:
@@ -219,6 +232,7 @@ class _ColumnInputField extends StatelessWidget {
           value: asString,
           enabled: enabled,
           onChanged: onChanged,
+          focusNode: focusNode,
         );
       case PgType.date:
         return _DateInput(
@@ -226,6 +240,7 @@ class _ColumnInputField extends StatelessWidget {
           enabled: enabled,
           mode: CupertinoDatePickerMode.date,
           onChanged: onChanged,
+          focusNode: focusNode,
         );
       case PgType.time:
         return _DateInput(
@@ -233,6 +248,7 @@ class _ColumnInputField extends StatelessWidget {
           enabled: enabled,
           mode: CupertinoDatePickerMode.time,
           onChanged: onChanged,
+          focusNode: focusNode,
         );
       case PgType.timestamp:
       case PgType.timestamptz:
@@ -241,6 +257,7 @@ class _ColumnInputField extends StatelessWidget {
           enabled: enabled,
           mode: CupertinoDatePickerMode.dateAndTime,
           onChanged: onChanged,
+          focusNode: focusNode,
         );
       case PgType.text:
       case PgType.varchar:
@@ -250,6 +267,7 @@ class _ColumnInputField extends StatelessWidget {
           enabled: enabled,
           multiLine: policy.multiLine,
           onChanged: onChanged,
+          focusNode: focusNode,
         );
       case PgType.uuid:
         return _RawTextInput(
@@ -258,6 +276,7 @@ class _ColumnInputField extends StatelessWidget {
           hint: '00000000-0000-0000-0000-000000000000',
           monospace: true,
           onChanged: onChanged,
+          focusNode: focusNode,
         );
       case PgType.interval:
       case PgType.bytea:
@@ -268,6 +287,7 @@ class _ColumnInputField extends StatelessWidget {
           enabled: enabled,
           multiLine: policy.multiLine,
           onChanged: onChanged,
+          focusNode: focusNode,
         );
     }
   }
