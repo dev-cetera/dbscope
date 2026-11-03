@@ -13,6 +13,26 @@ final readOnlyHeuristic = RegExp(
   caseSensitive: false,
 );
 
+/// The read-only default the connection dialog proposes for a new profile,
+/// with the reason it shows next to the switch: on for a name that says
+/// prod/live/main, off for a database on this machine, on for any other
+/// server. The user can always flip it; the dialog stops following this
+/// as soon as they do.
+({bool readOnly, String reason}) suggestReadOnly({
+  required String name,
+  required String host,
+}) {
+  final match = readOnlyHeuristic.firstMatch(name);
+  if (match != null) {
+    return (readOnly: true, reason: 'the name says "${match.group(2)!.toLowerCase()}"');
+  }
+  final h = host.trim().toLowerCase();
+  if (h.isEmpty || h == 'localhost' || h == '::1' || h.startsWith('127.')) {
+    return (readOnly: false, reason: 'the database is on this machine');
+  }
+  return (readOnly: true, reason: 'the database is on another server');
+}
+
 /// Built-in kind id for the direct-Postgres backend. External plugins
 /// pick their own.
 const kPostgresKind = 'postgres';

@@ -12,7 +12,9 @@
 //   renderer, wherever the viewer is.
 // * Built-in Postgres type oids map to type names; arrays classify as
 //   arrays.
-// * readOnlyHeuristic matches prod/live/main only as words of their own.
+// * readOnlyHeuristic matches prod/live/main only as words of their own;
+//   suggestReadOnly (the dialog's default) also writes local hosts and
+//   guards remote ones.
 // * A connection link with an absurd iteration count or a malformed nonce
 //   is refused as a FormatException without running the KDF.
 // * uniqueColumnNames suffixes duplicates.
@@ -204,6 +206,20 @@ void main() {
       for (final name in ['Liverpool', 'Olive', 'Domain admin', 'Maintenance', 'Deliveries', 'product']) {
         expect(readOnlyHeuristic.hasMatch(name), isFalse, reason: name);
       }
+    });
+  });
+
+  group('suggestReadOnly', () {
+    test('a prod/live/main name wins, even on localhost', () {
+      final s = suggestReadOnly(name: 'Prod replica', host: 'localhost');
+      expect(s.readOnly, isTrue);
+      expect(s.reason, contains('prod'));
+    });
+
+    test('local databases default to writable, remote ones to read-only', () {
+      expect(suggestReadOnly(name: 'local', host: 'localhost').readOnly, isFalse);
+      expect(suggestReadOnly(name: 'dev', host: '127.0.0.1').readOnly, isFalse);
+      expect(suggestReadOnly(name: 'Liverpool', host: 'db.example.com').readOnly, isTrue);
     });
   });
 
