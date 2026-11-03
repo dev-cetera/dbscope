@@ -14,9 +14,9 @@ void main() {
     expect(pgGeometryText(pg.Line(1, -1, 0.25)), '{1.0,-1.0,0.25}');
     expect(pgGeometryText(pg.LineSegment(a, b)), '[(1.5,-2.0),(0.0,0.0)]');
     expect(pgGeometryText(pg.Box(a, b)), '(1.5,0.0),(0.0,-2.0)');
-    expect(pgGeometryText(pg.Path([a, b], open: true)), '[(1.5,-2.0),(0.0,0.0)]');
-    expect(pgGeometryText(pg.Path([a, b], open: false)), '((1.5,-2.0),(0.0,0.0))');
-    expect(pgGeometryText(pg.Polygon([a, b])), '((1.5,-2.0),(0.0,0.0))');
+    expect(pgGeometryText(pg.Path(const [a, b], open: true)), '[(1.5,-2.0),(0.0,0.0)]');
+    expect(pgGeometryText(pg.Path(const [a, b], open: false)), '((1.5,-2.0),(0.0,0.0))');
+    expect(pgGeometryText(pg.Polygon(const [a, b])), '((1.5,-2.0),(0.0,0.0))');
     expect(pgGeometryText(pg.Circle(b, 2)), '<(0.0,0.0),2.0>');
   });
 
