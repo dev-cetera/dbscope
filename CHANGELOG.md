@@ -10,6 +10,7 @@
 - Cells in json and xml columns can be edited on Postgres; the save used to fail every time with "operator does not exist" (2026-11-03)
 - JSON export of a query result no longer fails on date and timestamp columns, and no longer drops a column whose name repeats (2026-11-03)
 - On a phone's app database, reads no longer push the whole file back to the device; only statements that change the file do, and writes inside BEGIN … COMMIT push once at the COMMIT (2026-11-03)
+- Query result headers now also show the names of enums, domains and extension types (looked up once per connection) (2026-11-03)
 - The connection dialog's Read-only switch now proposes a default and says why: on when the name says prod/live/main or the server is remote, off for a database on this machine; it stops following once you flip it (2026-11-03)
 - Re-importing a connection link (or auto-connecting) for an open profile now reconnects when the host, user, password or other connection settings changed, instead of keeping the old connection (2026-11-03)
 - Fix Postgres query result headers showing Type(oid:N) instead of the type name (2026-11-03)
