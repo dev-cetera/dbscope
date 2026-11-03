@@ -100,7 +100,15 @@ class _RowListColumnState extends State<RowListColumn> {
         );
     if (column != null && pattern.isNotEmpty && readable) {
       params.add(pattern);
-      wheres.add('(${quoteIdent(column)})::text ~* \$${params.length}');
+      final placeholder = '\$${params.length}';
+      final executor = _executor();
+      // SQLite has neither `::text` nor `~*`; SqliteExecutor registers a
+      // regex function for it.
+      wheres.add(
+        executor != null && sqlDialectOf(executor) == SqlDialect.sqlite
+            ? '$kSqliteIRegexpFunction($placeholder, CAST(${quoteIdent(column)} AS TEXT))'
+            : '(${quoteIdent(column)})::text ~* $placeholder',
+      );
     }
 
     return (

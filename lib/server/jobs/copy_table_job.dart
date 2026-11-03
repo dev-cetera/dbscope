@@ -20,7 +20,8 @@
 // no rows skipped or duplicated across batches, which LIMIT/OFFSET without
 // ORDER BY could not promise — streams instead of materialising, works for
 // tables with no primary key, and costs O(n) instead of OFFSET's O(n²). The
-// dedicated connection is what makes a long transaction safe: on the shared
+// target transaction gets a dedicated connection too. A dedicated connection
+// is what makes a long transaction safe: on the shared
 // one it would make every other server-side query throw (the driver refuses
 // queries while a transaction is open) and could deadlock two jobs.
 
@@ -86,14 +87,19 @@ class CopyTableJob implements JobHandler {
       );
     }
 
+    // Both ends get a connection of their own: each holds a transaction for
+    // the whole copy, which on the shared connection would make every other
+    // query on that profile fail until the job ends.
     final sourceExecutor = await jobContext.connections.openDedicated(
       sourceId,
     );
+    DbExecutor? targetExecutor;
     try {
+      targetExecutor = await jobContext.connections.openDedicated(targetId);
       return await _copy(
         jobContext,
         source: _requirePostgres(sourceExecutor),
-        target: _requirePostgres(await jobContext.connections.obtain(targetId)),
+        target: _requirePostgres(targetExecutor),
         sourceId: sourceId,
         targetId: targetId,
         sourceSchema: sourceSchema,
@@ -104,6 +110,7 @@ class CopyTableJob implements JobHandler {
       );
     } finally {
       await sourceExecutor.close();
+      await targetExecutor?.close();
     }
   }
 

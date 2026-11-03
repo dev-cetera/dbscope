@@ -4,6 +4,7 @@ import '../catalog/pg_type.dart';
 import '../db/executor.dart';
 import '../util/sql_quote.dart';
 import 'edit_policy.dart';
+import 'sqlite_kind.dart';
 
 class UpdateResult {
   const UpdateResult({required this.affectedRows, required this.newValue});
@@ -32,6 +33,10 @@ class CellEditor {
     final oldPlaceholder = '\$${params.length}';
 
     final qualified = quoteQualified(policy.schema, policy.table);
+    // SQLite before 3.39 (Android 13 and older phones) has no
+    // `IS NOT DISTINCT FROM`; its `IS` is the same NULL-safe comparison and
+    // works on every version.
+    final nullSafeEq = conn.kind == kSqliteKind ? 'IS' : 'IS NOT DISTINCT FROM';
     // CURRENT_TIMESTAMP rather than now(): it works on Postgres and SQLite.
     final touches = [
       for (final touchColumn in policy.touchColumns)
@@ -41,7 +46,7 @@ class CellEditor {
         'UPDATE $qualified '
         'SET ${quoteIdent(policy.column)} = \$1$touches '
         'WHERE ${pkPlaceholders.join(' AND ')} '
-        'AND ${quoteIdent(policy.column)} IS NOT DISTINCT FROM $oldPlaceholder';
+        'AND ${quoteIdent(policy.column)} $nullSafeEq $oldPlaceholder';
 
     final result = await conn.execute(sql, positional: params);
     return UpdateResult(affectedRows: result.affectedRows, newValue: parsed);
@@ -65,7 +70,8 @@ class CellEditor {
     return result.affectedRows;
   }
 
-  /// Soft-delete by stamping [deletedColumn] with `now()`. Returns the
+  /// Soft-delete by stamping [deletedColumn] with `CURRENT_TIMESTAMP` (not
+  /// `now()`, which SQLite lacks). Returns the
   /// number of rows affected — 0 means the row was already soft-deleted
   /// (the `IS NULL` guard skipped it), which we surface to the user as
   /// a "row already gone" toast just like a hard delete.
@@ -85,7 +91,7 @@ class CellEditor {
     }
     final column = quoteIdent(deletedColumn);
     final sql =
-        'UPDATE $qualified SET $column = now() '
+        'UPDATE $qualified SET $column = CURRENT_TIMESTAMP '
         'WHERE ${wherePlaceholders.join(' AND ')} AND $column IS NULL';
     final result = await conn.execute(sql, positional: params);
     return result.affectedRows;

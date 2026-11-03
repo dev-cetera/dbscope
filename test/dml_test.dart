@@ -1,7 +1,10 @@
 // CellEditor produces the SQL that mutates user data. The contract worth
 // guarding here:
 // * UPDATE always carries the optimistic-concurrency clause
-// `IS NOT DISTINCT FROM $oldValue` (docs/architecture.md, SQL safety invariants).
+// `IS NOT DISTINCT FROM $oldValue` (docs/architecture.md, SQL safety invariants),
+// spelled `IS $oldValue` on SQLite, which before 3.39 (older phones) has no
+// IS NOT DISTINCT FROM.
+// * Soft delete stamps CURRENT_TIMESTAMP, which Postgres and SQLite share.
 // * Identifiers go through quoteIdent — no raw interpolation of user
 // column/table names.
 // * parseValue coerces strings to typed values per PgType, and honours
@@ -11,6 +14,7 @@
 import 'package:dbscope/catalog/pg_type.dart';
 import 'package:dbscope/db/dml.dart';
 import 'package:dbscope/db/edit_policy.dart';
+import 'package:dbscope/db/sqlite_kind.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'support/fake_executor.dart';
@@ -319,5 +323,35 @@ void main() {
         expect(CellEditor.parseValue(policy, 42), 42);
       },
     );
+  });
+
+  group('SQLite and soft delete', () {
+    test('SQLite uses the IS spelling of the optimistic guard', () async {
+      final executor = FakeDbExecutor(kind: kSqliteKind);
+      executor.enqueueAffected(1);
+      await CellEditor(executor).updateCell(
+        policy: _policy(),
+        pkValues: {'id': 1},
+        oldValue: 'a',
+        newValueRaw: 'b',
+      );
+      expect(executor.calls.single.sql, contains(r'AND "name" IS $3'));
+      expect(executor.calls.single.sql, isNot(contains('DISTINCT')));
+    });
+
+    test('soft delete writes CURRENT_TIMESTAMP, not now()', () async {
+      final executor = FakeDbExecutor(kind: kSqliteKind);
+      executor.enqueueAffected(1);
+      await CellEditor(executor).softDeleteRow(
+        schema: 'main',
+        table: 't',
+        pkColumns: const ['id'],
+        pkValues: {'id': 1},
+        deletedColumn: 'deleted_at',
+      );
+      final sql = executor.calls.single.sql;
+      expect(sql, contains('SET "deleted_at" = CURRENT_TIMESTAMP'));
+      expect(sql, isNot(contains('now()')));
+    });
   });
 }

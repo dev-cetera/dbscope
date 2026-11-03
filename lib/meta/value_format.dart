@@ -69,14 +69,23 @@ num? _number(Object value) {
 
 /// Parses a timestamp. A string with no zone ("2024-01-01 10:00:00", the
 /// usual SQLite shape) is taken as UTC — the convention for stored
-/// timestamps — rather than the viewer's local time.
+/// timestamps — rather than the viewer's local time. A date-only string
+/// ("2024-01-01") is UTC midnight of that day. A zone only counts after a
+/// time: the `-01` that ends a plain date is the day, not an offset.
 DateTime? _dateTime(Object value) {
   if (value is DateTime) return value;
   final text = value.toString().trim();
-  final hasZone = RegExp(r'(Z|[+-]\d{2}(:?\d{2})?)$').hasMatch(text);
+  if (_dateOnly.hasMatch(text)) return DateTime.tryParse('${text}T00:00:00Z');
+  final hasZone = _zonedTime.hasMatch(text);
   final looksTimed = RegExp(r'\d{2}:\d{2}').hasMatch(text);
   return DateTime.tryParse(hasZone || !looksTimed ? text : '${text}Z');
 }
+
+final _dateOnly = RegExp(r'^\d{4}-\d{2}-\d{2}$');
+final _zonedTime = RegExp(
+  r'\d{2}:\d{2}(:\d{2}(\.\d+)?)?\s*(Z|[+-]\d{2}(:?\d{2})?)$',
+  caseSensitive: false,
+);
 
 String? _money(Map<String, Object?> args, Object value) {
   final number = _number(value);

@@ -4,7 +4,8 @@
 # The line goes first under today's `## YYYY-MM-DD` heading, with the date
 # repeated at the end so it still makes sense when quoted on its own. If today
 # has no heading yet, one is added at the top of the dated list, just below the
-# header's `---` line. The file is written to a temp copy and moved into place,
+# header's `---` line (added above the first dated heading if it is missing).
+# The file is written to a temp copy and moved into place,
 # so two sessions adding lines at once don't corrupt it.
 #
 # Never check for an existing line first. A duplicate costs nothing, and
@@ -25,14 +26,30 @@ TMP="$(mktemp "$ROOT/.changelog.XXXXXX")"
 trap 'rm -f "$TMP"' EXIT
 
 awk -v heading="## $TODAY" -v entry="$ENTRY" '
-  { lines[NR] = $0; if ($0 == heading) have_today = 1 }
+  { lines[NR] = $0; if ($0 == heading) have_today = 1; if ($0 == "---") have_rule = 1 }
   END {
-    for (i = 1; i <= NR; i++) {
+    total = NR
+    # A header without its `---` line gets one, just above the first dated
+    # `## ` heading (or at the end when there is none), so the file repairs
+    # itself instead of blocking every later line.
+    if (!have_rule) {
+      n = 0
+      for (i = 1; i <= total; i++) {
+        if (!have_rule && lines[i] ~ /^## /) {
+          out[++n] = "---"; out[++n] = ""; have_rule = 1
+        }
+        out[++n] = lines[i]
+      }
+      if (!have_rule) { out[++n] = ""; out[++n] = "---" }
+      total = n
+      for (i = 1; i <= total; i++) lines[i] = out[i]
+    }
+    for (i = 1; i <= total; i++) {
       print lines[i]
       if (done) continue
       if (have_today && lines[i] == heading) {
         # The heading is followed by one blank line, then the entries.
-        if (i + 1 <= NR && lines[i + 1] == "") { print ""; i++ }
+        if (i + 1 <= total && lines[i + 1] == "") { print ""; i++ }
         print entry
         done = 1
       } else if (!have_today && lines[i] == "---") {

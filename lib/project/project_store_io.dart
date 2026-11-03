@@ -5,6 +5,7 @@ import 'package:path_provider/path_provider.dart';
 
 import '../ai/provider.dart';
 import '../query/history_models.dart';
+import '../util/file_lock_io.dart';
 import 'project_models.dart';
 
 export 'project_models.dart';
@@ -13,10 +14,14 @@ export 'project_models.dart';
 /// document in memory and persists it on every mutation.
 ///
 /// Cross-isolate writes (subwindow + host both touching saved queries
-/// or AI settings) are handled by re-reading the file inside each
-/// mutation, so a sibling isolate's update to a different slice
-/// survives. Within an isolate, writes are serialized via [_writeQueue]
-/// to avoid interleaving reads-before-writes.
+/// or AI settings): each mutation re-reads the file, applies its change and
+/// writes it back while holding a lock file ([withFileLock]), so a sibling
+/// isolate's update to a different slice survives. Within an isolate,
+/// writes are also serialized via [_writeQueue].
+///
+/// Writes are atomic (temp file + rename), and a file that fails to parse
+/// is moved aside to `default.dbscopeproj.corrupt-<time>` before anything
+/// is written over it.
 class ProjectStore {
   ProjectStore._();
   static final instance = ProjectStore._();
@@ -50,27 +55,37 @@ class ProjectStore {
       _document = ProjectDocument();
       await _writeNow();
     } else {
-      try {
-        final raw = await file.readAsString();
-        _document = raw.trim().isEmpty
-            ? ProjectDocument()
-            : ProjectDocument.fromJson(jsonDecode(raw) as Map<String, Object?>);
-      } catch (_) {
-        // Corrupt file: keep an empty doc rather than crashing. The
-        // user can rebuild by re-adding connections; the old broken
-        // file stays on disk for forensics.
-        _document = ProjectDocument();
-      }
+      _document = await _readOrPreserve(file) ?? ProjectDocument();
     }
     _loaded = true;
     return _document;
   }
 
+  /// Parses [file]. An empty file reads as an empty document. A file that
+  /// fails to parse (a write cut short by a crash or a full disk) is moved
+  /// aside, so the empty document that replaces it in memory can't be
+  /// written over the only copy, and null is returned.
+  Future<ProjectDocument?> _readOrPreserve(File file) async {
+    final String raw;
+    try {
+      raw = await file.readAsString();
+    } on FileSystemException {
+      return null;
+    }
+    if (raw.trim().isEmpty) return ProjectDocument();
+    try {
+      return ProjectDocument.fromJson(jsonDecode(raw) as Map<String, Object?>);
+    } catch (_) {
+      preserveCorruptFile(file);
+      return null;
+    }
+  }
+
   Future<void> _writeNow() async {
     final file = await _resolveFile();
-    await file.writeAsString(
+    await writeFileAtomically(
+      file,
       const JsonEncoder.withIndent(' ').convert(_document.toJson()),
-      flush: true,
     );
   }
 
@@ -82,23 +97,18 @@ class ProjectStore {
       try {
         await previousWrite;
       } catch (_) {}
-      // Re-read disk so another isolate's update to a different slice
-      // is preserved.
-      await _resolveFile();
-      try {
-        if (_file!.existsSync()) {
-          final raw = await _file!.readAsString();
-          if (raw.trim().isNotEmpty) {
-            _document = ProjectDocument.fromJson(
-              jsonDecode(raw) as Map<String, Object?>,
-            );
-          }
+      final file = await _resolveFile();
+      // Read, change and write under the cross-isolate lock, so another
+      // window's update to a different slice is neither lost nor lost to.
+      await withFileLock(file.path, () async {
+        if (file.existsSync()) {
+          // Unreadable: it has been moved aside; keep the in-memory doc.
+          final fresh = await _readOrPreserve(file);
+          if (fresh != null) _document = fresh;
         }
-      } catch (_) {
-        /* keep prior in-memory doc */
-      }
-      fn(_document);
-      await _writeNow();
+        fn(_document);
+        await _writeNow();
+      });
     }();
     _writeQueue = task;
     return task;

@@ -4,10 +4,34 @@ import '../meta/meta_settings.dart';
 
 enum SslMode { disable, require, verifyFull }
 
+/// Default read-only guess for a profile created without an explicit flag:
+/// the name contains `prod`, `production`, `live` or `main` as a word of
+/// its own (`prod-db`, `My Live DB`, `main_replica`, `prod2`), not inside
+/// another word (`Liverpool`, `Olive`, `Domain admin`, `Maintenance`).
 final readOnlyHeuristic = RegExp(
-  'prod|live|main',
+  r'(^|[^a-z])(prod|production|live|main)([^a-z]|$)',
   caseSensitive: false,
 );
+
+/// The read-only default the connection dialog proposes for a new profile,
+/// with the reason it shows next to the switch: on for a name that says
+/// prod/live/main, off for a database on this machine, on for any other
+/// server. The user can always flip it; the dialog stops following this
+/// as soon as they do.
+({bool readOnly, String reason}) suggestReadOnly({
+  required String name,
+  required String host,
+}) {
+  final match = readOnlyHeuristic.firstMatch(name);
+  if (match != null) {
+    return (readOnly: true, reason: 'the name says "${match.group(2)!.toLowerCase()}"');
+  }
+  final h = host.trim().toLowerCase();
+  if (h.isEmpty || h == 'localhost' || h == '::1' || h.startsWith('127.')) {
+    return (readOnly: false, reason: 'the database is on this machine');
+  }
+  return (readOnly: true, reason: 'the database is on another server');
+}
 
 /// Built-in kind id for the direct-Postgres backend. External plugins
 /// pick their own.
@@ -42,7 +66,7 @@ class TenantFilter {
 class TableOverrides {
   const TableOverrides({this.softDeleteColumn});
 
-  /// Column the app should write `now()` into instead of issuing a
+  /// Column the app should write `CURRENT_TIMESTAMP` into instead of issuing a
   /// hard DELETE. The "Show deleted" toggle in the table view also keys
   /// off this — rows are filtered to `<col> IS NULL` by default when set.
   final String? softDeleteColumn;
@@ -87,6 +111,7 @@ class ConnectionProfile {
     this.tenantFilter,
     Map<String, TableOverrides>? tableOverrides,
     this.metadata = MetadataSettings.defaults,
+    this.forgetPassword = false,
   }) : id = id ?? const Uuid().v4(),
        readOnly = readOnly ?? readOnlyHeuristic.hasMatch(name),
        extra = Map<String, Object?>.unmodifiable(extra ?? const {}),
@@ -166,6 +191,11 @@ class ConnectionProfile {
   /// Where dbscope looks for schema metadata (tables and sidecar file).
   final MetadataSettings metadata;
 
+  /// A save intent, never persisted: the user asked to delete the stored
+  /// password. An empty [password] alone means "keep the stored one",
+  /// because profiles reach windows without their passwords.
+  final bool forgetPassword;
+
   /// Lookup overrides for a specific table. Returns an empty
   /// [TableOverrides] (all fields null) when none are set so callers
   /// can do `profile.overridesFor(...).softDeleteColumn` without a null
@@ -187,6 +217,7 @@ class ConnectionProfile {
     Object? tenantFilter = _sentinel,
     Map<String, TableOverrides>? tableOverrides,
     MetadataSettings? metadata,
+    bool forgetPassword = false,
   }) => ConnectionProfile(
     id: id,
     kind: kind ?? this.kind,
@@ -204,6 +235,7 @@ class ConnectionProfile {
         : tenantFilter as TenantFilter?,
     tableOverrides: tableOverrides ?? this.tableOverrides,
     metadata: metadata ?? this.metadata,
+    forgetPassword: forgetPassword,
   );
 
   /// Replace the overrides for one table key. Passing null removes the

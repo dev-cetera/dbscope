@@ -4,6 +4,8 @@ import '../query/cancel_token.dart';
 import 'executor.dart';
 import 'sqlite_kind.dart';
 import 'sqlite_param_translator.dart';
+import 'sqlite_progress.dart';
+import 'statement_timeout.dart';
 
 export 'sqlite_kind.dart';
 
@@ -19,9 +21,48 @@ export 'sqlite_kind.dart';
 ///
 /// `$N` and `@name` are rewritten to SQLite's `?N` and `:name` so the
 /// existing Postgres-flavoured call sites work unchanged.
-class SqliteExecutor implements DbExecutor {
-  SqliteExecutor(this._db);
+class SqliteExecutor implements DbExecutor, StatementTimeoutCapable {
+  SqliteExecutor(this._db) {
+    _registerFunctions(_db);
+  }
   final sq.Database _db;
+
+  /// Case-insensitive regex match, `dbscope_iregexp(pattern, value)`: the
+  /// SQLite spelling of Postgres `value ~* pattern` (SQLite ships no regex
+  /// function). NULL in, NULL out, like the operator.
+  static const String iregexpFunction = kSqliteIRegexpFunction;
+
+  static void _registerFunctions(sq.Database db) {
+    final cache = <String, RegExp>{};
+    db.createFunction(
+      functionName: iregexpFunction,
+      argumentCount: const sq.AllowedArgumentCount(2),
+      deterministic: true,
+      function: (args) {
+        final pattern = args[0];
+        final value = args[1];
+        if (pattern == null || value == null) return null;
+        final re = cache.putIfAbsent(
+          '$pattern',
+          () => RegExp('$pattern', caseSensitive: false),
+        );
+        return re.hasMatch('$value') ? 1 : 0;
+      },
+    );
+  }
+
+  @override
+  Future<T> withStatementTimeout<T>(
+    Duration timeout,
+    Future<T> Function() body,
+  ) async {
+    try {
+      return await runWithSqliteDeadline(_db.handle, timeout, body);
+    } on sq.SqliteException catch (e) {
+      if (e.resultCode == kSqliteInterrupt) throw StatementTimedOut(timeout);
+      rethrow;
+    }
+  }
   var _closed = false;
 
   @override
@@ -99,51 +140,29 @@ class SqliteExecutor implements DbExecutor {
   }) {
     final statement = _db.prepare(sql);
     try {
-      final isQuery = _statementProducesRows(statement);
-      if (isQuery) {
-        final resultSet = positionalParams != null
-            ? statement.select(positionalParams)
-            : statement.selectWith(
-                sq.StatementParameters.named(namedParams ?? const {}),
-              );
-        if (cancelToken?.isCancelled ?? false) {
-          return const DbResult(columns: [], rows: []);
-        }
-        return _resultFromSelect(resultSet);
-      } else {
-        if (positionalParams != null) {
-          statement.execute(positionalParams);
-        } else {
-          statement.executeWith(
-            sq.StatementParameters.named(namedParams ?? const {}),
-          );
-        }
+      // Always step through `select`: it is safe for statements that return
+      // no rows, and it never throws a result set away. Guessing from the
+      // leading keyword missed SQL that starts with a comment or a
+      // parenthesis, and a `RETURNING` after a newline.
+      final resultSet = positionalParams != null
+          ? statement.select(positionalParams)
+          : statement.selectWith(
+              sq.StatementParameters.named(namedParams ?? const {}),
+            );
+      if (cancelToken?.isCancelled ?? false) {
+        return const DbResult(columns: [], rows: []);
+      }
+      if (resultSet.columnNames.isEmpty) {
         return DbResult(
           columns: const [],
           rows: const [],
           affectedRows: _db.updatedRows,
         );
       }
+      return _resultFromSelect(resultSet);
     } finally {
       statement.dispose();
     }
-  }
-
-  bool _statementProducesRows(sq.PreparedStatement statement) {
-    // The sqlite3 Dart binding doesn't expose a "is read-only" flag for a
-    // prepared stmt across all versions, so peek at the leading keyword.
-    // Catalog SQL and the pager generate stable shapes so this is
-    // adequate.
-    final source = statement.sql.trimLeft();
-    final upper = source.toUpperCase();
-    if (upper.startsWith('SELECT')) return true;
-    if (upper.startsWith('WITH')) return true;
-    if (upper.startsWith('PRAGMA')) return true;
-    if (upper.startsWith('VALUES')) return true;
-    if (upper.startsWith('EXPLAIN')) return true;
-    // INSERT/UPDATE/DELETE with RETURNING also produce rows.
-    if (upper.contains(' RETURNING ')) return true;
-    return false;
   }
 
   DbResult _resultFromSelect(sq.ResultSet resultSet) {

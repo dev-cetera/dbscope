@@ -25,6 +25,10 @@ class _ConnEntry {
   DbExecutor? executor;
   String? lastError;
   bool readOnly;
+
+  /// Bumped by every close, so an open that was in flight when the
+  /// connection was closed knows its result is no longer wanted.
+  var generation = 0;
 }
 
 class ConnectionService {
@@ -32,6 +36,11 @@ class ConnectionService {
   final ProfileService _profiles;
   final BusService _bus;
   final Map<String, _ConnEntry> _entries = {};
+
+  /// Opens in flight, per profile. A second caller waits on the first open
+  /// instead of dialing its own connection (which would overwrite and leak
+  /// the first).
+  final Map<String, Future<void>> _opening = {};
 
   void register(Server server) {
     server.onRequest('connection.open', (rawParams) async {
@@ -79,18 +88,45 @@ class ConnectionService {
   /// snapshot — which on the shared [obtain] connection would make every
   /// other server-side query on it throw (the driver refuses queries while
   /// a transaction is open) and could deadlock two jobs.
+  ///
+  /// It carries the same read-only setting as the shared connection, so a
+  /// job can't write through it to a profile the user made read-only.
   Future<DbExecutor> openDedicated(String profileId) async {
     final profile = await _profiles.resolve(profileId);
     if (profile == null) {
       throw RpcError('unknown_profile', profileId);
     }
-    return _openWithPlugin(profile);
+    final executor = await _openWithPlugin(profile);
+    final readOnly = _entries[profileId]?.readOnly ?? profile.readOnly;
+    if (readOnly && executor.capabilities.sessionReadOnly) {
+      try {
+        await executor.setReadOnly(readOnly: true);
+      } catch (_) {
+        await executor.close().catchError((Object _) {});
+        rethrow;
+      }
+    }
+    return executor;
   }
 
   bool isOpen(String profileId) => _entries[profileId]?.executor?.isOpen ?? false;
   bool isReadOnly(String profileId) => _entries[profileId]?.readOnly ?? false;
 
   Future<void> _open(String profileId) async {
+    final pending = _opening[profileId];
+    if (pending != null) return pending;
+    final future = _openNow(profileId);
+    _opening[profileId] = future;
+    try {
+      await future;
+    } finally {
+      if (identical(_opening[profileId], future)) {
+        unawaited(_opening.remove(profileId));
+      }
+    }
+  }
+
+  Future<void> _openNow(String profileId) async {
     final profile = await _profiles.resolve(profileId);
     if (profile == null) {
       throw RpcError('unknown_profile', profileId);
@@ -102,14 +138,24 @@ class ConnectionService {
     entry.state = ConnectionState.connecting;
     entry.lastError = null;
     _publishState(profileId);
+    final generation = entry.generation;
     try {
       final executor = await _openWithPlugin(profile);
+      if (generation != entry.generation) {
+        // Closed while we were connecting: don't resurrect it.
+        await executor.close().catchError((Object _) {});
+        throw StateError('closed while connecting');
+      }
       if (entry.readOnly && executor.capabilities.sessionReadOnly) {
         await executor.setReadOnly(readOnly: true);
       }
       entry.executor = executor;
       entry.state = ConnectionState.connected;
     } catch (e) {
+      if (generation != entry.generation) {
+        // Closed meanwhile: `_close` already set the state.
+        throw const RpcError('not_connected', 'connection closed while connecting');
+      }
       entry.executor = null;
       entry.state = ConnectionState.error;
       entry.lastError = e.toString();
@@ -140,6 +186,7 @@ class ConnectionService {
     if (entry == null) return;
     final executor = entry.executor;
     entry.executor = null;
+    entry.generation++;
     entry.state = ConnectionState.disconnected;
     if (executor != null) {
       try {

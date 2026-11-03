@@ -2,6 +2,7 @@
 library;
 
 import 'dart:async';
+import 'dart:convert';
 
 import 'package:flutter/widgets.dart';
 
@@ -153,9 +154,20 @@ class ConnectionRegistry extends ChangeNotifier {
     _profiles
       ..clear()
       ..addAll(fresh);
-    // Drop states whose profile vanished.
+    // Drop states whose profile vanished (deleted in another window), and
+    // close their executors: the state is the only holder, so a dropped
+    // state would otherwise leave its socket or Cloud SQL proxy running.
     final keep = _profiles.map((profile) => profile.id).toSet();
+    final dropped = [
+      for (final entry in _states.entries)
+        if (!keep.contains(entry.key)) entry.value,
+    ];
     _states.removeWhere((id, _) => !keep.contains(id));
+    for (final state in dropped) {
+      unawaited(_closeState(state));
+      DbmlCache.instance.invalidate(state.profile.id);
+      MetadataCache.instance.invalidate(state.profile.id);
+    }
     // Update existing states; create new ones so switching to a saved
     // profile actually has somewhere to open a connection from.
     for (final freshProfile in fresh) {
@@ -285,7 +297,18 @@ class ConnectionRegistry extends ChangeNotifier {
     ConnectionProfile profile, {
     BuildContext? context,
   }) async {
+    // Re-importing a link (or re-running auto-connect) for a profile that is
+    // already open: an open connection is reused, so when the new profile
+    // points somewhere else or carries other credentials, close the old
+    // connection first and connect again with the new settings.
+    final existing = _states[profile.id];
+    final reconnect =
+        existing != null && existing.isConnected && _connectionSettingsDiffer(existing.profile, profile);
     await addProfile(profile);
+    if (reconnect) {
+      await disconnect(profile.id);
+      _states[profile.id]?.profile = profile;
+    }
     if (context != null && !context.mounted) {
       await setActive(profile.id);
       await connectActive();
@@ -299,8 +322,28 @@ class ConnectionRegistry extends ChangeNotifier {
     await connectActive(context: context);
   }
 
+  /// Whether [next] would open a different connection than [current]: a
+  /// different target, user, SSL mode or plugin config, or a new password
+  /// (an empty one means "keep the stored password", so it never differs).
+  static bool _connectionSettingsDiffer(
+    ConnectionProfile current,
+    ConnectionProfile next,
+  ) =>
+      current.kind != next.kind ||
+      current.host != next.host ||
+      current.port != next.port ||
+      current.database != next.database ||
+      current.username != next.username ||
+      current.sslMode != next.sslMode ||
+      jsonEncode(current.extra) != jsonEncode(next.extra) ||
+      (next.password.isNotEmpty && next.password != current.password);
+
   Future<void> _connect(_ConnState state, {BuildContext? context}) async {
-    if (state.isConnecting) return;
+    // Already open: reuse it. Dialing again would overwrite
+    // `state.executor` and abandon a live connection that running queries
+    // (and the metadata Expando) still point at. Reconnecting is
+    // disconnect + connect.
+    if (state.isConnecting || state.isConnected) return;
     state.isConnecting = true;
     state.lastError = null;
     notifyListeners();
@@ -353,7 +396,13 @@ class ConnectionRegistry extends ChangeNotifier {
         await opened.executor.close();
         rethrow;
       }
+      final previous = state.executor;
       state.executor = opened.executor;
+      // A dead executor left from a dropped connection: release whatever
+      // it still holds (a Cloud SQL proxy ref).
+      if (previous != null && !identical(previous, opened.executor)) {
+        unawaited(previous.close().catchError((Object _) {}));
+      }
       // Warm the DBML cache in the background so DBML export and the AI
       // SQL assistant have a ready schema without paying for a fresh
       // round-trip walk every time.

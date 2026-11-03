@@ -1,4 +1,5 @@
 import '../db/executor.dart';
+import '../db/sqlite_kind.dart';
 import '../meta/meta_cache.dart';
 import '../meta/meta_index.dart';
 import 'schema_catalog.dart';
@@ -45,15 +46,16 @@ class DbmlExporter {
       allTables.addAll(tables.where((table) => table.kind == 'BASE TABLE'));
     }
 
-    final enums = await _loadEnums(
-      schemas.map((schema) => schema.name).toList(),
-    );
+    // SQLite has no enum types (and no pg_type to ask).
+    final enums = _isSqlite
+        ? const <DbmlEnum>[]
+        : await _loadEnums(schemas.map((schema) => schema.name).toList());
 
     final foreignKeys = await catalog.listForeignKeys();
 
     final buffer = StringBuffer();
     buffer.writeln('Project $databaseName {');
-    buffer.writeln(" database_type: 'PostgreSQL'");
+    buffer.writeln(" database_type: '${_isSqlite ? 'SQLite' : 'PostgreSQL'}'");
     buffer.writeln('}');
     buffer.writeln();
 
@@ -188,13 +190,25 @@ class DbmlExporter {
     }
   }
 
+  bool get _isSqlite => conn.kind == kSqliteKind;
+
   String _dbmlType(ColumnInfo column) {
-    final name = column.typeName;
+    final name = column.typeName.trim();
+    if (_isSqlite) {
+      // A SQLite declared type is free text (`VARCHAR(20)`, `UNSIGNED BIG
+      // INT`) and may be empty; DBML needs one token, quoted if it isn't.
+      if (name.isEmpty) return 'any';
+      return _simpleType.hasMatch(name) ? name : '"${name.replaceAll('"', "'")}"';
+    }
     if (name.startsWith('_')) {
       return '${name.substring(1)}[]';
     }
     return name;
   }
+
+  static final _simpleType = RegExp(
+    r'^[A-Za-z_][A-Za-z0-9_]*(\(\d+(,\s*\d+)?\))?$',
+  );
 
   String _qualifiedRef(String schema, String name) => '"$schema"."$name"';
 

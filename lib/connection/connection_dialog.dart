@@ -26,7 +26,13 @@ class _ConnectionDialogState extends State<ConnectionDialog> {
   late final TextEditingController _tenantValue;
   SslMode _sslMode = SslMode.disable;
   var _readOnly = true;
+
+  /// Whether the read-only switch shows the user's own choice. Until they
+  /// touch it on a new profile, it follows [suggestReadOnly] as they type
+  /// the name and host, and says why.
+  var _readOnlyChosen = false;
   var _passwordVisible = false;
+  var _forgetPassword = false;
 
   @override
   void initState() {
@@ -43,7 +49,19 @@ class _ConnectionDialogState extends State<ConnectionDialog> {
       text: i?.tenantFilter?.value?.toString() ?? '',
     );
     _sslMode = i?.sslMode ?? SslMode.disable;
-    _readOnly = i?.readOnly ?? true;
+    _readOnlyChosen = i != null;
+    _readOnly = i?.readOnly ?? _suggestion.readOnly;
+    _name.addListener(_followSuggestion);
+    _host.addListener(_followSuggestion);
+  }
+
+  ({bool readOnly, String reason}) get _suggestion =>
+      suggestReadOnly(name: _name.text, host: _host.text);
+
+  void _followSuggestion() {
+    if (_readOnlyChosen) return;
+    final suggested = _suggestion.readOnly;
+    if (suggested != _readOnly) setState(() => _readOnly = suggested);
   }
 
   @override
@@ -79,7 +97,8 @@ class _ConnectionDialogState extends State<ConnectionDialog> {
       port: int.parse(_port.text.trim()),
       database: _database.text.trim(),
       username: _username.text.trim(),
-      password: _password.text,
+      password: _forgetPassword ? '' : _password.text,
+      forgetPassword: _forgetPassword,
       sslMode: _sslMode,
       readOnly: _readOnly,
       tenantFilter: _buildTenantFilter(),
@@ -149,9 +168,13 @@ class _ConnectionDialogState extends State<ConnectionDialog> {
             const SizedBox(height: 12.0),
             TextFormField(
               controller: _password,
+              enabled: !_forgetPassword,
               obscureText: !_passwordVisible,
               decoration: InputDecoration(
                 labelText: 'Password',
+                helperText: widget.initial == null || _forgetPassword
+                    ? null
+                    : 'Leave empty to keep the saved password.',
                 suffixIcon: IconButton(
                   onPressed: () => setState(
                     () => _passwordVisible = !_passwordVisible,
@@ -162,6 +185,18 @@ class _ConnectionDialogState extends State<ConnectionDialog> {
                 ),
               ),
             ),
+            if (widget.initial != null)
+              CheckboxListTile(
+                value: _forgetPassword,
+                onChanged: (value) => setState(() {
+                  _forgetPassword = value ?? false;
+                  if (_forgetPassword) _password.clear();
+                }),
+                title: const Text('Forget the saved password'),
+                controlAffinity: ListTileControlAffinity.leading,
+                contentPadding: EdgeInsets.zero,
+                dense: true,
+              ),
             const SizedBox(height: 12.0),
             DropdownButtonFormField<SslMode>(
               initialValue: _sslMode,
@@ -185,10 +220,16 @@ class _ConnectionDialogState extends State<ConnectionDialog> {
             const SizedBox(height: 12.0),
             SwitchListTile(
               value: _readOnly,
-              onChanged: (readOnly) => setState(() => _readOnly = readOnly),
+              onChanged: (readOnly) => setState(() {
+                _readOnly = readOnly;
+                _readOnlyChosen = true;
+              }),
               title: const Text('Read-only'),
-              subtitle: const Text(
-                'Enforced via SET default_transaction_read_only',
+              subtitle: Text(
+                _readOnlyChosen
+                    ? 'Blocks every write on this connection.'
+                    : '${_readOnly ? 'On' : 'Off'} because ${_suggestion.reason}. '
+                          'Blocks every write on this connection.',
               ),
               contentPadding: EdgeInsets.zero,
             ),

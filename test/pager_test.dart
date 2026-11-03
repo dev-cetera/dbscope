@@ -9,21 +9,25 @@
 // tuple-compare operator (`<` vs `>`).
 // * A cancelled fetchNext yields no rows and leaves the cursor (and
 // isDone) untouched, so the next fetch resumes where it was.
+// * A nullable sort column never compares a cursor against NULL: the
+// cursor splits into the NULL and non-NULL runs, in the order the backend
+// sorts NULLs (last in Postgres ASC, first in SQLite ASC).
 
 import 'package:dbscope/catalog/pg_type.dart';
 import 'package:dbscope/catalog/schema_catalog.dart';
 import 'package:dbscope/db/executor.dart';
+import 'package:dbscope/db/sqlite_kind.dart';
 import 'package:dbscope/query/cancel_token.dart';
 import 'package:dbscope/query/pager.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'support/fake_executor.dart';
 
-ColumnInfo _col(String name) => ColumnInfo(
+ColumnInfo _col(String name, {bool nullable = true}) => ColumnInfo(
   name: name,
   type: PgType.text,
   typeName: 'text',
-  nullable: true,
+  nullable: nullable,
   defaultExpr: null,
   isGenerated: false,
   isIdentity: false,
@@ -151,7 +155,7 @@ void main() {
         conn: executor,
         schema: 'public',
         table: 'users',
-        columns: [_col('name'), _col('id')],
+        columns: [_col('name', nullable: false), _col('id')],
         pkColumns: const ['id'],
         sortColumn: 'name',
         pageSize: 2,
@@ -168,6 +172,56 @@ void main() {
         ),
       );
       expect(second.positional, ['Bob', 2]);
+    });
+
+    test('a nullable sort column keeps the NULL run reachable (Postgres, ASC)', () async {
+      final executor = FakeDbExecutor();
+      executor.enqueue(_rows([['Alice', 1], ['Bob', 2]]));
+      executor.enqueue(_rows([[null, 3], [null, 4]]));
+      executor.enqueue(_rows([[null, 5]]));
+      final pager = KeysetPager(
+        conn: executor,
+        schema: 'public',
+        table: 'users',
+        columns: [_col('name'), _col('id')],
+        pkColumns: const ['id'],
+        sortColumn: 'name',
+        pageSize: 2,
+      );
+      await pager.fetchNext();
+      await pager.fetchNext();
+      await pager.fetchNext();
+      // NULLs sort last on Postgres ASC: after a non-NULL boundary they are
+      // still to come…
+      expect(
+        executor.calls[1].sql,
+        contains(r'WHERE (("name", "id") > ($1, $2) OR "name" IS NULL)'),
+      );
+      // …and after a NULL boundary paging continues inside the NULL run by
+      // key instead of comparing against NULL (which matches nothing).
+      expect(executor.calls[2].sql, contains(r'WHERE ("name" IS NULL AND ("id") > ($1))'));
+      expect(executor.calls[2].positional, [4]);
+    });
+
+    test('a NULL boundary on SQLite (NULLs first in ASC) moves on to non-NULLs', () async {
+      final executor = FakeDbExecutor(kind: kSqliteKind);
+      executor.enqueue(_rows([[null, 1], [null, 2]]));
+      executor.enqueue(_rows([['a', 3]]));
+      final pager = KeysetPager(
+        conn: executor,
+        schema: 'main',
+        table: 't',
+        columns: [_col('name'), _col('id')],
+        pkColumns: const ['id'],
+        sortColumn: 'name',
+        pageSize: 2,
+      );
+      await pager.fetchNext();
+      await pager.fetchNext();
+      expect(
+        executor.calls[1].sql,
+        contains(r'WHERE (("name" IS NULL AND ("id") > ($1)) OR "name" IS NOT NULL)'),
+      );
     });
 
     test('a short page marks the pager done', () async {

@@ -4,3 +4,8 @@
 // dart:io- or FFI-bound dependencies.
 
 const kSqliteKind = 'sqlite';
+
+/// Name of the case-insensitive regex function `SqliteExecutor` registers
+/// on every connection: `dbscope_iregexp(pattern, value)` is SQLite's
+/// spelling of Postgres `value ~* pattern`.
+const kSqliteIRegexpFunction = 'dbscope_iregexp';

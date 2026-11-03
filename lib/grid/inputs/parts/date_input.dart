@@ -41,13 +41,57 @@ class _DateInputState extends State<_DateInput> {
     }
   }
 
-  DateTime _seed() {
-    final raw = widget.value;
-    if (raw != null && raw.isNotEmpty) {
-      final parsed = DateTime.tryParse(raw.replaceFirst(' ', 'T'));
-      if (parsed != null) return parsed;
+  /// The picker's starting point: the wall-clock fields exactly as the
+  /// cell text spells them (no zone conversion, so a `timestamptz` shows the
+  /// hour the cell shows), or now when the cell is empty or unparseable.
+  DateTime _seed() => _parseWallClock(widget.value) ?? DateTime.now();
+
+  static final _dateTimeRe = RegExp(
+    r'^(\d{4})-(\d{2})-(\d{2})(?:[ T](\d{1,2}):(\d{2})(.*))?$',
+  );
+  static final _timeRe = RegExp(r'^(\d{1,2}):(\d{2})(.*)$');
+
+  DateTime? _parseWallClock(String? raw) {
+    if (raw == null) return null;
+    final text = raw.trim();
+    if (widget.mode == CupertinoDatePickerMode.time) {
+      final m = _timeRe.firstMatch(text);
+      if (m == null) return null;
+      return DateTime(0, 1, 1, int.parse(m[1]!), int.parse(m[2]!));
     }
-    return DateTime.now();
+    final m = _dateTimeRe.firstMatch(text);
+    if (m == null) return null;
+    return DateTime(
+      int.parse(m[1]!),
+      int.parse(m[2]!),
+      int.parse(m[3]!),
+      int.parse(m[4] ?? '0'),
+      int.parse(m[5] ?? '0'),
+    );
+  }
+
+  /// What follows `HH:MM` in the cell text (`:45.123+02` …), kept verbatim
+  /// when the user leaves the hour and minute as they were, so confirming
+  /// the picker never drops seconds, fractions or a zone.
+  String? _timeTail() {
+    final text = widget.value?.trim();
+    if (text == null || text.isEmpty) return null;
+    final m = widget.mode == CupertinoDatePickerMode.time
+        ? _timeRe.firstMatch(text)
+        : _dateTimeRe.firstMatch(text);
+    if (m == null) return null;
+    return widget.mode == CupertinoDatePickerMode.time ? m[3] : m[6];
+  }
+
+  /// `HH:MM` plus [_timeTail] when the picked time is the seed's, otherwise
+  /// `HH:MM:00`.
+  String _timeText(TimeOfDay picked, DateTime seed) {
+    final hour = picked.hour.toString().padLeft(2, '0');
+    final minute = picked.minute.toString().padLeft(2, '0');
+    final tail = _timeTail();
+    final untouched = picked.hour == seed.hour && picked.minute == seed.minute;
+    if (untouched && tail != null) return '$hour:$minute$tail';
+    return '$hour:$minute:00';
   }
 
   DateTime _clampToRange(DateTime dt) {
@@ -92,28 +136,17 @@ class _DateInputState extends State<_DateInput> {
         }
       case CupertinoDatePickerMode.time:
         final picked = await _pickTime(seed);
-        if (picked != null) {
-          widget.onChanged(
-            _format(DateTime(0, 1, 1, picked.hour, picked.minute)),
-          );
-        }
+        if (picked != null) widget.onChanged(_timeText(picked, seed));
       case CupertinoDatePickerMode.dateAndTime:
         final pickedDate = await _pickDate(seed);
         if (pickedDate == null) return;
         if (!mounted) return;
         final pickedTime = await _pickTime(seed);
         if (pickedTime == null) return;
-        widget.onChanged(
-          _format(
-            DateTime(
-              pickedDate.year,
-              pickedDate.month,
-              pickedDate.day,
-              pickedTime.hour,
-              pickedTime.minute,
-            ),
-          ),
-        );
+        final date = _format(
+          DateTime(pickedDate.year, pickedDate.month, pickedDate.day),
+        ).substring(0, 10);
+        widget.onChanged('$date ${_timeText(pickedTime, seed)}');
     }
   }
 

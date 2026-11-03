@@ -91,6 +91,8 @@ class _TableTabViewState extends State<TableTabView> {
   void initState() {
     super.initState();
     MetadataCache.instance.addListener(_onMetadataChanged);
+    _lastReadOnly = _readOnly();
+    ConnectionRegistry.instance.addListener(_onRegistryChanged);
     _loadedUnder = widget.tab.loadedUnder;
     final current = MetadataCache.instance.snapshotFor(widget.tab.connectionId);
     if (widget.tab.data != null &&
@@ -124,6 +126,7 @@ class _TableTabViewState extends State<TableTabView> {
   @override
   void dispose() {
     MetadataCache.instance.removeListener(_onMetadataChanged);
+    ConnectionRegistry.instance.removeListener(_onRegistryChanged);
     _autoRefreshTimer?.cancel();
     super.dispose();
   }
@@ -148,7 +151,22 @@ class _TableTabViewState extends State<TableTabView> {
 
   DbExecutor? _executor() => ConnectionRegistry.instance.connectionFor(widget.tab.connectionId);
 
-  bool _readOnly() => false;
+  bool _readOnly() => ConnectionRegistry.instance.isReadOnlyFor(widget.tab.connectionId);
+
+  /// Read-only state the current edit policies were built under.
+  late bool _lastReadOnly;
+
+  /// The connection's read-only flag can flip mid-session (the footer
+  /// toggle, another window). The edit policies bake it in at load time, so
+  /// reload when it changes; the grid's own `readOnly` follows on rebuild.
+  void _onRegistryChanged() {
+    final readOnly = _readOnly();
+    if (readOnly == _lastReadOnly) return;
+    _lastReadOnly = readOnly;
+    if (!mounted) return;
+    setState(() {});
+    if (widget.tab.data != null) unawaited(_load());
+  }
 
   Future<void> _load() async {
     final executor = _executor();
@@ -175,7 +193,8 @@ class _TableTabViewState extends State<TableTabView> {
     // below, so the old future's result would be discarded anyway.
     _dropPrefetch();
     try {
-      final loader = TableLoader(executor, connectionReadOnly: _readOnly());
+      _lastReadOnly = _readOnly();
+      final loader = TableLoader(executor, connectionReadOnly: _lastReadOnly);
       final profile = ConnectionRegistry.instance.profileById(
         widget.tab.connectionId,
       );
@@ -558,7 +577,7 @@ class _TableTabViewState extends State<TableTabView> {
       title: softDeleteColumn == null ? 'Delete row?' : 'Soft-delete row?',
       message: softDeleteColumn == null
           ? 'WHERE ${pkSummary.join(' AND ')}'
-          : 'UPDATE ${tab.schema}.${tab.table} SET $softDeleteColumn = now()\n'
+          : 'UPDATE ${tab.schema}.${tab.table} SET $softDeleteColumn = CURRENT_TIMESTAMP\n'
                 'WHERE ${pkSummary.join(' AND ')}',
       confirmLabel: softDeleteColumn == null ? 'Delete' : 'Soft-delete',
       destructive: true,

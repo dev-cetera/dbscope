@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'dart:io';
 
 import '../project/project_store.dart';
+import '../util/file_lock_io.dart';
 import 'history_models.dart';
 
 export 'history_models.dart';
@@ -29,18 +30,20 @@ class HistoryStore {
   }
 
   Future<void> appendHistory(String connectionId, String sql) async {
-    final existing = await loadHistory(connectionId);
-    existing.insert(0, HistoryEntry(sql, DateTime.now()));
-    final trimmed = existing.take(_kMaxHistoryEntries).toList();
     final file = await _historyFile(connectionId);
-    // Write-then-rename: a crash or quit mid-write leaves the previous
-    // file intact rather than a truncated one.
-    final temp = File('${file.path}.tmp');
-    await temp.writeAsString(
-      jsonEncode([for (final e in trimmed) e.toJson()]),
-      flush: true,
-    );
-    await temp.rename(file.path);
+    final entry = HistoryEntry(sql, DateTime.now());
+    // Every window appends to the same file. Read-modify-write under a
+    // cross-isolate lock, through a uniquely named temp file, so two
+    // windows finishing queries together both keep their entry.
+    await withFileLock(file.path, () async {
+      final existing = await loadHistory(connectionId);
+      existing.insert(0, entry);
+      final trimmed = existing.take(_kMaxHistoryEntries).toList();
+      await writeFileAtomically(
+        file,
+        jsonEncode([for (final e in trimmed) e.toJson()]),
+      );
+    });
   }
 
   Future<List<SavedQuery>> loadSaved(String connectionId) async {

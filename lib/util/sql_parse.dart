@@ -71,6 +71,35 @@ bool containsMultipleStatements(String sql, {required SqlDialect dialect}) {
   return false;
 }
 
+/// Every bare (unquoted) word in [sql], uppercased, in order. String
+/// literals, quoted identifiers, dollar-quoted bodies and comments are
+/// skipped, so a keyword inside one is never reported.
+List<String> bareWords(String sql, {required SqlDialect dialect}) {
+  final postgres = dialect == SqlDialect.postgres;
+  final words = <String>[];
+  var i = 0;
+  while (i < sql.length) {
+    final next = _skipToken(sql, i, postgres: postgres);
+    if (next > i) {
+      if (_isIdentStart(sql.codeUnitAt(i)) &&
+          !(postgres && _startsEscapeString(sql, i))) {
+        words.add(sql.substring(i, next).toUpperCase());
+      }
+      i = next;
+      continue;
+    }
+    i++;
+  }
+  return words;
+}
+
+bool _startsEscapeString(String sql, int i) {
+  final ch = sql.codeUnitAt(i);
+  return (ch == _upperE || ch == _lowerE) &&
+      i + 1 < sql.length &&
+      sql.codeUnitAt(i + 1) == _singleQuote;
+}
+
 /// Index just past the comment, string literal, quoted identifier,
 /// dollar-quoted body or bare identifier starting at [i], or [i] when
 /// none starts there. Bare identifiers are consumed whole so a `$` or an

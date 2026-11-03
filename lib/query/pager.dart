@@ -1,5 +1,6 @@
 import '../catalog/schema_catalog.dart';
 import '../db/executor.dart';
+import '../db/sqlite_kind.dart';
 import '../meta/masked_value.dart';
 import '../util/sql_quote.dart';
 import 'cancel_token.dart';
@@ -150,19 +151,7 @@ class KeysetPager {
     // single LIMIT page instead (the no-PK branch in pages() does the
     // same thing for the streaming API).
     if (pkColumns.isNotEmpty && _lastPrimaryKeyValues != null && _started) {
-      // Build keyset WHERE clause: tuple-compare for stable seek.
-      final tupleColumns = orderColumns.join(', ');
-      final placeholders = <String>[];
-      if (sortColumn != null) {
-        params.add(_lastSortVals?.first);
-        placeholders.add('\$${params.length}');
-      }
-      for (final value in _lastPrimaryKeyValues!) {
-        params.add(value);
-        placeholders.add('\$${params.length}');
-      }
-      final op = descending ? '<' : '>';
-      whereParts.add('($tupleColumns) $op (${placeholders.join(', ')})');
+      whereParts.add(_cursorPredicate(params));
     }
 
     final whereClause = whereParts.isEmpty ? '' : ' WHERE ${whereParts.join(' AND ')}';
@@ -203,5 +192,52 @@ class KeysetPager {
       lastSortVals: sortValues,
       lastPkVals: primaryKeyValues,
     );
+  }
+
+  /// Where NULLs of the sort column fall in this backend's default order
+  /// (the ORDER BY carries no NULLS FIRST/LAST, so an index still serves
+  /// it): Postgres sorts NULL as the largest value, SQLite as the smallest.
+  bool get _nullsFirst =>
+      conn.kind == kSqliteKind ? !descending : descending;
+
+  /// The keyset cursor: rows strictly after the last one fetched. Appends
+  /// its values to [params].
+  ///
+  /// A plain `(sort, pk) > (last…)` tuple compare is NULL as soon as either
+  /// side holds a NULL sort value, which matched no row and ended paging at
+  /// the first NULL. So a nullable sort column splits the cursor into the
+  /// NULL and non-NULL runs, in the order the backend sorts them.
+  String _cursorPredicate(List<Object?> params) {
+    final op = descending ? '<' : '>';
+    final pkTuple = pkColumns.map(quoteIdent).join(', ');
+    String pkPlaceholders() {
+      final placeholders = <String>[];
+      for (final value in _lastPrimaryKeyValues!) {
+        params.add(value);
+        placeholders.add('\$${params.length}');
+      }
+      return placeholders.join(', ');
+    }
+
+    final sort = sortColumn;
+    if (sort == null) return '($pkTuple) $op (${pkPlaceholders()})';
+
+    final sortIdent = quoteIdent(sort);
+    final lastSort = _lastSortVals?.first;
+    final nullable = columns.any((column) => column.name == sort && column.nullable);
+
+    if (lastSort != null) {
+      params.add(lastSort);
+      final sortPlaceholder = '\$${params.length}';
+      final tuple = '($sortIdent, $pkTuple) $op ($sortPlaceholder, ${pkPlaceholders()})';
+      if (!nullable) return tuple;
+      // Non-NULL run: the tuple compare. NULLs still to come when they sort
+      // last; already passed when they sort first.
+      return _nullsFirst ? tuple : '($tuple OR $sortIdent IS NULL)';
+    }
+    // The last row's sort value is NULL: continue inside the NULL run by
+    // primary key, then (when NULLs sort first) on to every non-NULL row.
+    final inNullRun = '($sortIdent IS NULL AND ($pkTuple) $op (${pkPlaceholders()}))';
+    return _nullsFirst ? '($inNullRun OR $sortIdent IS NOT NULL)' : inNullRun;
   }
 }

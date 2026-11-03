@@ -19,9 +19,11 @@ typedef SubscriptionHandler = Stream<Object?> Function(Object? params);
 class Server {
   final Map<String, RequestHandler> _requests = {};
   final Map<String, SubscriptionHandler> _subscriptions = {};
-  // active subscriptions, keyed by envelope id, scoped to the replier
-  // that opened them. Multiple transports can drive one Server.
-  final Map<String, StreamSubscription<Object?>> _subs = {};
+  // Active subscriptions, keyed by caller + envelope id. Every window's
+  // BackendClient numbers its envelopes from `c1`, so the id alone collides
+  // across windows: one window's `unsub c4` would cancel another window's
+  // stream.
+  final Map<(Object?, String), StreamSubscription<Object?>> _subs = {};
 
   // Register a request/response method.
   void onRequest(String method, RequestHandler handler) {
@@ -34,16 +36,17 @@ class Server {
   }
 
   // Drive an envelope from a transport. `out` is how the server replies
-  // for this caller. Caller is responsible for tying envelope ids to the
-  // right Transport when multiple transports share one Server.
-  void dispatch(Envelope env, Replier out) {
+  // for this caller. [caller] identifies the client that sent it (the
+  // sending window's id); subscriptions are scoped to it, because envelope
+  // ids are only unique per client. Leave it null for a single client.
+  void dispatch(Envelope env, Replier out, {Object? caller}) {
     switch (env.kind) {
       case EnvelopeKind.req:
         unawaited(_handleRequest(env, out));
       case EnvelopeKind.sub:
-        _handleSub(env, out);
+        _handleSub(env, out, caller);
       case EnvelopeKind.unsub:
-        final subscription = _subs.remove(env.id);
+        final subscription = _subs.remove((caller, env.id));
         unawaited(subscription?.cancel());
       case EnvelopeKind.res:
       case EnvelopeKind.evt:
@@ -81,7 +84,8 @@ class Server {
     }
   }
 
-  void _handleSub(Envelope env, Replier out) {
+  void _handleSub(Envelope env, Replier out, Object? caller) {
+    final key = (caller, env.id);
     final method = env.method;
     final handler = method == null ? null : _subscriptions[method];
     if (handler == null) {
@@ -114,14 +118,16 @@ class Server {
             e is RpcError ? e : RpcError('handler_error', e.toString(), data: st.toString()),
           ),
         );
-        _subs.remove(env.id);
+        _subs.remove(key);
       },
       onDone: () {
         out(Envelope.end(env.id));
-        _subs.remove(env.id);
+        _subs.remove(key);
       },
     );
-    _subs[env.id] = subscription;
+    // A re-used id from the same caller replaces (and cancels) the old one.
+    unawaited(_subs[key]?.cancel());
+    _subs[key] = subscription;
   }
 
   Future<void> dispose() async {

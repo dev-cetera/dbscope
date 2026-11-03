@@ -25,6 +25,7 @@
 import 'dart:async';
 
 import '../db/executor.dart';
+import '../db/statement_timeout.dart';
 import '../query/cancel_token.dart';
 import 'meta_sources.dart';
 
@@ -93,8 +94,9 @@ Future<void> ensureNoOpenTransaction(DbExecutor executor) async {
 }
 
 /// [timeout], when set, becomes a server-side `SET LOCAL statement_timeout`
-/// on Postgres, so a slow metadata query is actually cancelled rather than
-/// left running on the shared connection.
+/// on Postgres, and a progress-handler deadline on SQLite (local and
+/// on-device, see [StatementTimeoutCapable]), so a slow metadata query is
+/// actually stopped rather than left running on the shared connection.
 Future<DbResult> executeReadOnly(
   DbExecutor executor,
   String sql, {
@@ -102,9 +104,12 @@ Future<DbResult> executeReadOnly(
   Duration? timeout,
   CancelToken? cancelToken,
 }) {
-  Future<DbResult> run() => named == null || named.isEmpty
+  Future<DbResult> runUnbounded() => named == null || named.isEmpty
       ? executor.execute(sql, cancelToken: cancelToken)
       : executor.execute(sql, named: named, cancelToken: cancelToken);
+  Future<DbResult> run() => timeout != null && executor is StatementTimeoutCapable
+      ? (executor as StatementTimeoutCapable).withStatementTimeout(timeout, runUnbounded)
+      : runUnbounded();
 
   if (!canFenceReadOnly(executor)) return run();
 
@@ -130,7 +135,7 @@ Future<DbResult> executeReadOnly(
           'SET LOCAL statement_timeout = ${timeout.inMilliseconds}',
         );
       }
-      final result = await run();
+      final result = await runUnbounded();
       await executor.execute('COMMIT');
       return result;
     } catch (_) {

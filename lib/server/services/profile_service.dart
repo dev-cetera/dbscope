@@ -83,11 +83,15 @@ class ProfileService {
       // blank. Keep the stored password — ProfileStore.save already skips
       // empty passwords, so this just keeps memory in step with the
       // keychain instead of handing jobs an empty password until restart.
-      _profiles[index] = profile.password.isEmpty
+      // Clearing it takes an explicit `forgetPassword`.
+      _profiles[index] = profile.password.isEmpty && !profile.forgetPassword
           ? profile.copyWith(password: _profiles[index].password)
-          : profile;
+          : profile.copyWith();
     } else {
-      _profiles = [..._profiles, profile];
+      _profiles = [..._profiles, profile.copyWith()];
+    }
+    if (profile.forgetPassword && profile.password.isEmpty) {
+      await _store.forgetPassword(profile.id);
     }
     await _store.save(_profiles);
     _bus.publish('profile.changed', {
@@ -133,7 +137,10 @@ class ProfileService {
 
   ConnectionProfile _fromParams(Map<String, Object?> params) {
     final password = params['password'] as String? ?? '';
-    return ConnectionProfile.fromJson(params, password);
+    return ConnectionProfile.fromJson(
+      params,
+      password,
+    ).copyWith(forgetPassword: params['forgetPassword'] == true);
   }
 
   void _ensureMap(Object? rawParams) {

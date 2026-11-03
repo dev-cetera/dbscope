@@ -100,9 +100,10 @@ Future<ChartData> runChart(
   final dialect = sqlDialectOf(executor);
   final timeout = Duration(milliseconds: chart.timeoutMs.clamp(500, 120000));
 
-  // The server cancels at [timeout] (statement_timeout inside the read-only
-  // fence); the client-side timeout is only a backstop for backends that
-  // can't be fenced.
+  // The executor stops the statement at [timeout] (statement_timeout inside
+  // the read-only fence on Postgres, a progress-handler deadline on SQLite);
+  // the client-side timeout is only a backstop for backends with neither
+  // (the pg proxy).
   Future<DbResult> run(String sql, [Map<String, Object?>? named]) =>
       executeReadOnly(executor, sql, named: named, timeout: timeout).timeout(
         timeout + _kClientTimeoutGrace,

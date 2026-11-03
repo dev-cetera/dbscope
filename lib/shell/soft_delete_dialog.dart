@@ -78,7 +78,7 @@ class _SoftDeleteDialogState extends State<_SoftDeleteDialog> {
           children: [
             const Text(
               'When set, the Delete button issues '
-              'UPDATE … SET <column> = now() instead of DELETE, '
+              'UPDATE … SET <column> = CURRENT_TIMESTAMP instead of DELETE, '
               'and the grid hides rows where the column IS NULL is false.\n\n'
               'Leave blank and Save to clear the setting.',
             ),

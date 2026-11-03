@@ -266,7 +266,40 @@ void enforceReadOnly(String sql, {required SqlDialect dialect}) {
       'AI returned non-read-only SQL ($firstWord); refusing.',
     );
   }
+  // An allowed first word is not enough: `WITH d AS (DELETE … RETURNING *)
+  // SELECT …` and `EXPLAIN ANALYZE DELETE …` both write, and on backends
+  // that can't fence a read-only transaction (pg proxy, on-device SQLite)
+  // nothing else stops them. Refuse any write keyword anywhere outside
+  // literals and comments. This also refuses a column that happens to be
+  // named `delete`; the user can still run such SQL by hand.
+  final words = bareWords(stripped, dialect: dialect);
+  for (var i = 0; i < words.length; i++) {
+    final word = words[i];
+    final writes =
+        _writeKeywords.contains(word) ||
+        // SQLite's `REPLACE INTO` (bare REPLACE is also a string function).
+        (word == 'REPLACE' && i + 1 < words.length && words[i + 1] == 'INTO') ||
+        // `SELECT … INTO new_table` creates a table on Postgres.
+        (word == 'INTO' && _selectInto(words, i));
+    if (writes) {
+      throw AssistantException(
+        'AI returned SQL that can write ($word); refusing.',
+      );
+    }
+  }
 }
+
+// The statements Postgres accepts inside a CTE or under EXPLAIN that
+// change data (`EXECUTE` runs a prepared statement that may). Statements
+// that can only come first (DROP, TRUNCATE, …) are already refused by the
+// first-word check, and listing them here would refuse ordinary columns
+// named `comment` or `lock`.
+const _writeKeywords = {'INSERT', 'UPDATE', 'DELETE', 'MERGE', 'CREATE', 'EXECUTE'};
+
+/// `INTO` at [i] belongs to a `SELECT … INTO` (not an `INSERT INTO`, which
+/// is refused anyway).
+bool _selectInto(List<String> words, int i) =>
+    i > 0 && !{'INSERT', 'REPLACE', 'MERGE'}.contains(words[i - 1]);
 
 String _firstWord(String sql) {
   final match = RegExp('^[A-Za-z_]+').firstMatch(sql);
