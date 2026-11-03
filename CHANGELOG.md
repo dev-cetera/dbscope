@@ -4,6 +4,7 @@
 
 ## 2026-11-03
 
+- Schema and Linked view cards no longer end up on top of each other after expanding, resizing, dragging or loading a card (2026-11-03)
 - Cells in point, line, lseg, box, path, polygon and circle columns can be edited on Postgres; the save used to fail every time, and the editor now starts from Postgres syntax like (1,2) (2026-11-03)
 - SQLite reports 0 rows affected for DDL instead of the count from the previous write (2026-11-03)
 - DBSCOPE_AUTO_READ_ONLY (and DBSCOPE_AUTO_ASSIGN_IP) accept 1/0, yes/no, on/off in any case; =1 used to open the connection read-write (2026-11-03)

@@ -42,6 +42,14 @@ rg -n '\[SIMPLE\]' TODO.md
 
 <!-- New entries go here, newest first. -->
 
+### **[P3]** Place new Linked view cards using their real size, not a guessed one
+
+- **Where.** `lib/linked/linked_view.dart:464` (`_placeNextTo`).
+- **Why.** It looks for a free slot as if the new card were `source.width` wide and four rows tall. The canvas now pushes neighbours away once the card's real size is known, so nothing overlaps, but a tall or wide card can make its neighbours jump a moment after it appears. Placing it with its real size (or the compact-column count, which is known from the FKs) would avoid the jump.
+- **Effort.** `<1h`.
+- **Blocker.** none.
+- **Noticed.** 2026-11-03, while fixing overlapping schema diagram cards.
+
 ### **[P3]** Show type names for enums, domains and extension types in query result headers
 
 - **Where.** `lib/db/postgres_executor.dart` (`pgTypeNameForOid`, the built-in oid table).

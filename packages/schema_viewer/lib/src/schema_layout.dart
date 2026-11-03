@@ -57,7 +57,7 @@ Size layoutSchemaNodes(
   List<SchemaEdgeData> edges, {
   SchemaLayoutMode mode = SchemaLayoutMode.lr,
   double colGap = 80,
-  double rowGap = 24,
+  double rowGap = kSchemaNodeMargin,
 }) {
   if (nodes.isEmpty) return Size.zero;
   if (edges.isEmpty) {
@@ -251,55 +251,101 @@ Size _layoutRanked(
 
 /// Cascading AABB separation used by the canvas when a node moves
 /// (drag) or grows (expand). [movedIds] are immovable; their positions
-/// are authoritative. Mutates [positions] in place and returns the set
-/// of node ids whose position changed. Mirrors admin_site/dbmlLayout.ts
-/// cascadeSeparate.
+/// are authoritative. Every other node that ends up within
+/// [kSchemaNodeMargin] of a node it touches is pushed away along the
+/// axis of least overlap, and each pushed node is then checked against
+/// every other node (pinned ones included), so a push can never land a
+/// card on top of another. Mutates [positions] in place and returns the
+/// set of node ids whose position changed.
+///
+/// Each pass moves the push one step further down a chain of touching
+/// cards, so [maxPasses] defaults to enough passes for a chain through
+/// every node. Two pinned nodes that overlap each other are left alone.
 Set<String> cascadeSeparate({
   required Set<String> movedIds,
   required Map<String, Offset> positions,
   required ({double w, double h})? Function(String id) dimsFor,
   required Iterable<String> allIds,
-  int maxPasses = 8,
+  int? maxPasses,
 }) {
+  final ids = allIds.toList();
+  final passLimit = maxPasses ?? ids.length * 2 + 8;
   final changed = <String>{};
   var work = Set<String>.of(movedIds);
-  for (var pass = 0; pass < maxPasses; pass++) {
+  for (var pass = 0; pass < passLimit && work.isNotEmpty; pass++) {
     final next = <String>{};
     for (final id in work) {
-      final aPosition = positions[id];
       final da = dimsFor(id);
-      if (aPosition == null || da == null) continue;
-      for (final otherId in allIds) {
+      if (da == null) continue;
+      for (final otherId in ids) {
         if (otherId == id) continue;
-        if (movedIds.contains(otherId)) continue;
+        final idPinned = movedIds.contains(id);
+        final otherPinned = movedIds.contains(otherId);
+        if (idPinned && otherPinned) continue;
+        final aPosition = positions[id];
         final bPosition = positions[otherId];
         final db = dimsFor(otherId);
-        if (bPosition == null || db == null) continue;
+        if (aPosition == null || bPosition == null || db == null) continue;
         final minDx = (da.w + db.w) / 2 + kSchemaNodeMargin;
         final minDy = (da.h + db.h) / 2 + kSchemaNodeMargin;
+        // Centre-to-centre distance, from `id` to `otherId`.
         final dx = (bPosition.dx + db.w / 2) - (aPosition.dx + da.w / 2);
         final dy = (bPosition.dy + db.h / 2) - (aPosition.dy + da.h / 2);
         final ox = minDx - dx.abs();
         final oy = minDy - dy.abs();
         if (ox <= 0 || oy <= 0) continue;
-        if (ox < oy) {
-          final push = ox + 0.5;
-          positions[otherId] = Offset(
-            bPosition.dx + (dx >= 0 ? push : -push),
-            bPosition.dy,
-          );
-        } else {
-          final push = oy + 0.5;
-          positions[otherId] = Offset(
-            bPosition.dx,
-            bPosition.dy + (dy >= 0 ? push : -push),
-          );
+        // The pinned side never moves. Otherwise `otherId` gets pushed,
+        // which keeps a cascade flowing outward from where it started.
+        final moverId = otherPinned ? id : otherId;
+        final sign = moverId == otherId ? 1.0 : -1.0;
+        final moverPosition = positions[moverId]!;
+        final moverDims = moverId == id ? da : db;
+        // The four ways out, shortest first: the two "away" pushes are
+        // the overlap on each axis, the two "back through" pushes clear
+        // the far side instead. Take the shortest one that lands clear
+        // of every card, else the shortest that at least avoids pinned
+        // cards. Without that, a card squeezed against a pinned card
+        // bounces between its neighbours until the passes run out.
+        final awayX = (dx >= 0 ? 1.0 : -1.0) * sign;
+        final awayY = (dy >= 0 ? 1.0 : -1.0) * sign;
+        final candidates = <Offset>[
+          Offset(awayX * (ox + 0.5), 0),
+          Offset(0, awayY * (oy + 0.5)),
+          Offset(-awayX * (2 * minDx - ox + 0.5), 0),
+          Offset(0, -awayY * (2 * minDy - oy + 0.5)),
+        ]..sort((a, b) => a.distance.compareTo(b.distance));
+        bool crowds(Offset at, {required bool pinnedOnly}) {
+          for (final nearId in ids) {
+            if (nearId == moverId) continue;
+            if (pinnedOnly && !movedIds.contains(nearId)) continue;
+            final nearPosition = positions[nearId];
+            final nearDims = dimsFor(nearId);
+            if (nearPosition == null || nearDims == null) continue;
+            final gapX = ((nearPosition.dx + nearDims.w / 2) - (at.dx + moverDims.w / 2)).abs();
+            final gapY = ((nearPosition.dy + nearDims.h / 2) - (at.dy + moverDims.h / 2)).abs();
+            if (gapX < (nearDims.w + moverDims.w) / 2 + kSchemaNodeMargin &&
+                gapY < (nearDims.h + moverDims.h) / 2 + kSchemaNodeMargin) {
+              return true;
+            }
+          }
+          return false;
         }
-        changed.add(otherId);
-        next.add(otherId);
+
+        Offset? firstWhere(bool Function(Offset candidate) test) {
+          for (final candidate in candidates) {
+            if (test(candidate)) return candidate;
+          }
+          return null;
+        }
+
+        final push = firstWhere((c) => !crowds(moverPosition + c, pinnedOnly: false)) ??
+            firstWhere((c) => !crowds(moverPosition + c, pinnedOnly: true)) ??
+            candidates.first;
+        positions[moverId] = moverPosition + push;
+        changed.add(moverId);
+        next.add(moverId);
       }
     }
-    if (next.isEmpty) break;
     work = next;
   }
   return changed;
