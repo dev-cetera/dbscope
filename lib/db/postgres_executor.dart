@@ -45,13 +45,16 @@ class PostgresExecutor implements DbExecutor {
       // Caller will translate to a cancel exception; we still return what
       // we have because the query already ran.
     }
+    final schemaColumns = result.schema.columns;
+    await _learnTypeNames([for (final c in schemaColumns) c.type.oid]);
     final columns = <DbColumn>[];
-    for (var i = 0; i < result.schema.columns.length; i++) {
-      final column = result.schema.columns[i];
+    for (var i = 0; i < schemaColumns.length; i++) {
+      final column = schemaColumns[i];
+      final oid = column.type.oid;
       columns.add(
         DbColumn(
           name: column.columnName ?? 'col_$i',
-          typeName: pgTypeNameForOid(column.type.oid),
+          typeName: pgTypeNameForOid(oid) ?? _customTypeNames[oid],
         ),
       );
     }
@@ -63,6 +66,41 @@ class PostgresExecutor implements DbExecutor {
       rows: rows,
       affectedRows: result.affectedRows,
     );
+  }
+
+  /// Names of this database's own types (enums, domains, extension types)
+  /// by oid, learned on first sight: their oids differ per database, so
+  /// they can't be in the built-in table. A null value means the lookup
+  /// found nothing, so it isn't asked again.
+  final Map<int, String?> _customTypeNames = {};
+
+  Future<void> _learnTypeNames(List<int?> oids) async {
+    final unknown = {
+      for (final oid in oids)
+        if (oid != null &&
+            pgTypeNameForOid(oid) == null &&
+            !_customTypeNames.containsKey(oid))
+          oid,
+    };
+    if (unknown.isEmpty) return;
+    for (final oid in unknown) {
+      _customTypeNames[oid] = null;
+    }
+    try {
+      final rows = await _conn.execute(
+        pg.Sql.named(
+          'SELECT oid::int8, typname::text FROM pg_type WHERE oid::int8 = ANY(@oids)',
+        ),
+        parameters: {
+          'oids': pg.TypedValue(pg.Type.bigIntegerArray, unknown.toList()),
+        },
+      );
+      for (final row in rows) {
+        _customTypeNames[(row[0]! as num).toInt()] = row[1] as String?;
+      }
+    } catch (_) {
+      // A header without a type name is all this costs.
+    }
   }
 
   /// `package:postgres` returns [pg.UndecodedBytes] for any OID it doesn't
@@ -158,7 +196,8 @@ class _EnumCodec extends pg.Codec {
 
 /// The Postgres type name (`udt_name` spelling, arrays as `int4[]`) for a
 /// built-in type [oid], or null for one this table doesn't know (enums,
-/// domains, extension types: their oids differ per database).
+/// domains, extension types: their oids differ per database, so
+/// [PostgresExecutor] looks those up in `pg_type` once per connection).
 /// `pg.Type.toString()` only prints `Type(oid:N)`, which is what query
 /// result headers used to show.
 String? pgTypeNameForOid(int? oid) => oid == null ? null : _builtinTypeNames[oid];
