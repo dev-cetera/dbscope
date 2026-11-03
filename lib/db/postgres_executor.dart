@@ -51,7 +51,7 @@ class PostgresExecutor implements DbExecutor {
       columns.add(
         DbColumn(
           name: column.columnName ?? 'col_$i',
-          typeName: column.type.toString().split('.').last,
+          typeName: pgTypeNameForOid(column.type.oid),
         ),
       );
     }
@@ -155,3 +155,81 @@ class _EnumCodec extends pg.Codec {
     return context.encoding.decode(bytes);
   }
 }
+
+/// The Postgres type name (`udt_name` spelling, arrays as `int4[]`) for a
+/// built-in type [oid], or null for one this table doesn't know (enums,
+/// domains, extension types: their oids differ per database).
+/// `pg.Type.toString()` only prints `Type(oid:N)`, which is what query
+/// result headers used to show.
+String? pgTypeNameForOid(int? oid) => oid == null ? null : _builtinTypeNames[oid];
+
+const _builtinTypeNames = <int, String>{
+  16: 'bool',
+  17: 'bytea',
+  18: 'char',
+  19: 'name',
+  20: 'int8',
+  21: 'int2',
+  23: 'int4',
+  24: 'regproc',
+  25: 'text',
+  26: 'oid',
+  114: 'json',
+  142: 'xml',
+  600: 'point',
+  650: 'cidr',
+  700: 'float4',
+  701: 'float8',
+  705: 'unknown',
+  790: 'money',
+  829: 'macaddr',
+  869: 'inet',
+  1042: 'bpchar',
+  1043: 'varchar',
+  1082: 'date',
+  1083: 'time',
+  1114: 'timestamp',
+  1184: 'timestamptz',
+  1186: 'interval',
+  1266: 'timetz',
+  1560: 'bit',
+  1562: 'varbit',
+  1700: 'numeric',
+  2205: 'regclass',
+  2206: 'regtype',
+  2249: 'record',
+  2278: 'void',
+  2950: 'uuid',
+  3614: 'tsvector',
+  3802: 'jsonb',
+  3904: 'int4range',
+  3906: 'numrange',
+  3908: 'tsrange',
+  3910: 'tstzrange',
+  3912: 'daterange',
+  3926: 'int8range',
+  4089: 'regnamespace',
+  // Arrays.
+  199: 'json[]',
+  651: 'cidr[]',
+  1000: 'bool[]',
+  1001: 'bytea[]',
+  1003: 'name[]',
+  1005: 'int2[]',
+  1007: 'int4[]',
+  1009: 'text[]',
+  1014: 'bpchar[]',
+  1015: 'varchar[]',
+  1016: 'int8[]',
+  1021: 'float4[]',
+  1022: 'float8[]',
+  1041: 'inet[]',
+  1115: 'timestamp[]',
+  1182: 'date[]',
+  1183: 'time[]',
+  1185: 'timestamptz[]',
+  1187: 'interval[]',
+  1231: 'numeric[]',
+  2951: 'uuid[]',
+  3807: 'jsonb[]',
+};

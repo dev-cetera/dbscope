@@ -132,7 +132,11 @@ Future<void> main(List<String> args) async {
     // subwindows and HostWindowRouter would try to install a
     // desktop_multi_window method-channel handler that doesn't exist.
     HostWindowRouter(
-      dispatch: (env, fromWindowId, reply) => host.server.dispatch(env, reply),
+      dispatch: (env, fromWindowId, reply) => host.server.dispatch(
+        env,
+        reply,
+        caller: fromWindowId,
+      ),
     );
   }
   ConnectionRegistry.instance.bind(client: host.localClient);

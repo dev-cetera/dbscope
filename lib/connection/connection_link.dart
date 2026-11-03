@@ -53,6 +53,10 @@ class ConnectionLink {
 
   static const _defaultIterations = 210000;
   static const _saltBytes = 16;
+  static const _minIterations = 10000;
+  static const _maxIterations = 2000000;
+  static const _nonceBytes = 12;
+  static const _macBytes = 16;
 
   static final _rng = Random.secure();
 
@@ -125,12 +129,27 @@ class ConnectionLink {
     if (profileJson is! Map<String, Object?> || secret is! Map<String, Object?>) {
       throw const FormatException('Connection file is missing fields.');
     }
-    final iterations = (secret['iterations'] as num?)?.toInt() ?? _defaultIterations;
+    final rawIterations = secret['iterations'];
+    if (rawIterations != null && rawIterations is! int) {
+      throw const FormatException('Connection file secret is malformed.');
+    }
+    // The file chooses its own work factor, so bound it: a huge value would
+    // block the import in PBKDF2 for hours, and 0 makes the KDF throw.
+    final iterations = (rawIterations as int?) ?? _defaultIterations;
+    if (iterations < _minIterations || iterations > _maxIterations) {
+      throw const FormatException('Connection file secret is malformed.');
+    }
     final salt = _decodeB64(secret['salt']);
     final nonce = _decodeB64(secret['nonce']);
     final cipher = _decodeB64(secret['ciphertext']);
     final mac = _decodeB64(secret['mac']);
-    if (salt == null || nonce == null || cipher == null || mac == null) {
+    if (salt == null ||
+        nonce == null ||
+        cipher == null ||
+        mac == null ||
+        salt.length < 8 ||
+        nonce.length != _nonceBytes ||
+        mac.length != _macBytes) {
       throw const FormatException('Connection file secret is malformed.');
     }
     final key = await _deriveKey(passphrase, salt, iterations);
@@ -144,8 +163,16 @@ class ConnectionLink {
     } on SecretBoxAuthenticationError {
       throw const BadPassphraseException();
     }
-    final password = utf8.decode(clear);
-    return ConnectionProfile.fromJson(profileJson, password);
+    try {
+      final password = utf8.decode(clear);
+      return ConnectionProfile.fromJson(profileJson, password);
+    } on FormatException {
+      rethrow;
+    } catch (_) {
+      // A hand-edited profile with the wrong field types: report it as a bad
+      // file, not as a raw TypeError.
+      throw const FormatException('Connection file profile is malformed.');
+    }
   }
 
   static Future<SecretKey> _deriveKey(

@@ -42,6 +42,22 @@ rg -n '\[SIMPLE\]' TODO.md
 
 <!-- New entries go here, newest first. -->
 
+### **[P3]** Show type names for enums, domains and extension types in query result headers
+
+- **Where.** `lib/db/postgres_executor.dart` (`pgTypeNameForOid`, the built-in oid table).
+- **Why.** Query headers now show built-in type names instead of `Type(oid:2950)`, but a column whose type is an enum, a domain or an extension type (`citext`, PostGIS) has a per-database oid that isn't in the table, so its header shows no type and the typed-cell colour falls back to plain. A per-executor cache filled by one `SELECT oid, typname FROM pg_type WHERE oid = ANY($1)` for unknown oids would cover them.
+- **Effort.** `<1h`
+- **Blocker.** none
+- **Noticed.** 2026-11-03, while fixing the `Type(oid:N)` header bug.
+
+### **[P3]** Offer a reconnect when a connection link is re-imported for a profile that is already connected
+
+- **Where.** `lib/connection/registry.dart` (`_connect` now returns early when the profile is connected), `lib/connection/connection_link_flow.dart`.
+- **Why.** Connecting an already-open profile used to dial a second socket and leak the first. It now keeps the live connection, so credentials refreshed by re-importing a link only apply after the user disconnects and connects again. The import flow could say so, or offer "Reconnect now".
+- **Effort.** `<1h`
+- **Blocker.** none
+- **Noticed.** 2026-11-03, while fixing the duplicate-connection bug.
+
 ### **[P2]** Make Tab move to the next cell, and let multi-line cells take a newline, in grid inline editing
 
 - **Where.** `packages/data_grid/lib/src/internal/grid_cell.dart` (`_editor` shortcut bindings)

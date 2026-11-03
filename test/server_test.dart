@@ -6,6 +6,9 @@
 // verbatim) without crashing the server.
 // * sub registers a stream; subsequent events arrive on evt; unsub
 // cancels the underlying StreamSubscription.
+// * Subscriptions are scoped to the caller (window) that opened them:
+// every window numbers envelopes from c1, so the same id from another
+// window must not cancel this window's stream.
 
 import 'dart:async';
 
@@ -168,6 +171,28 @@ void main() {
       controller.add('after-unsub');
       await Future<void>.delayed(Duration.zero);
       expect(replies.length, countBefore);
+
+      await controller.close();
+    });
+
+    test('the same sub id from two callers are two subscriptions', () async {
+      final server = Server();
+      final controller = StreamController<Object?>.broadcast();
+      server.onSubscription('events', (_) => controller.stream);
+
+      final host = <Envelope>[];
+      final window = <Envelope>[];
+      server.dispatch(Envelope.sub('c1', 'events', null), host.add);
+      server.dispatch(Envelope.sub('c1', 'events', null), window.add, caller: 2);
+      // The subwindow unsubscribes its own c1…
+      server.dispatch(Envelope.unsub('c1'), window.add, caller: 2);
+      await Future<void>.delayed(Duration.zero);
+
+      controller.add('x');
+      await Future<void>.delayed(Duration.zero);
+      // …and the host's c1 keeps receiving.
+      expect(host.where((e) => e.kind == EnvelopeKind.evt), hasLength(1));
+      expect(window.where((e) => e.kind == EnvelopeKind.evt), isEmpty);
 
       await controller.close();
     });

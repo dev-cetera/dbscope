@@ -23,6 +23,7 @@ class ProfileServiceClient {
   Future<ConnectionProfile> upsert(ConnectionProfile profile) async {
     final payload = profile.toJson();
     payload['password'] = profile.password;
+    if (profile.forgetPassword) payload['forgetPassword'] = true;
     final result = await _client.request('profile.update', payload);
     final map = result! as Map<String, Object?>;
     return ConnectionProfile.fromJson(map, profile.password);

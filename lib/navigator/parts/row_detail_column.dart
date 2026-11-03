@@ -162,7 +162,7 @@ class _RowDetailColumnState extends State<RowDetailColumn> {
       title: softColumn == null ? 'Delete row?' : 'Soft-delete row?',
       message: softColumn == null
           ? 'WHERE $pkSummary'
-          : 'UPDATE ${step.schema}.${step.table} SET $softColumn = now()\n'
+          : 'UPDATE ${step.schema}.${step.table} SET $softColumn = CURRENT_TIMESTAMP\n'
                 'WHERE $pkSummary',
       confirmLabel: softColumn == null ? 'Delete' : 'Soft-delete',
       destructive: true,

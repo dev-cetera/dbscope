@@ -116,6 +116,10 @@ PgType pgTypeFromSqlite(String declared) {
 PgType pgTypeFromTypeName(String? typeName) {
   if (typeName == null) return PgType.unknown;
   final lowerName = typeName.toLowerCase();
+  // Arrays first: `int4[]` / `_int4` would otherwise match their element.
+  if (lowerName.endsWith('[]') || lowerName.startsWith('_')) {
+    return PgType.array;
+  }
   if (lowerName.contains('bigint') || lowerName.contains('int8')) {
     return PgType.int8;
   }

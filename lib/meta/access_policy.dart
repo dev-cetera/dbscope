@@ -91,7 +91,11 @@ class PrivilegeCeilings {
 
 /// Identity inputs gathered at connect time.
 class AccessIdentity {
-  const AccessIdentity({this.postgresRoles = const {}, this.claimedUser});
+  const AccessIdentity({
+    this.postgresRoles = const {},
+    this.claimedUser,
+    this.postgresLogin,
+  });
 
   /// The connected Postgres user and every role it is a member of (no
   /// `pg:` prefix). Empty for backends without logins (SQLite).
@@ -99,6 +103,10 @@ class AccessIdentity {
 
   /// The email typed into dbscope preferences, if any.
   final String? claimedUser;
+
+  /// The Postgres login the connection authenticated as (no `pg:` prefix),
+  /// or null for backends without logins (SQLite).
+  final String? postgresLogin;
 
   static const anonymous = AccessIdentity();
 }

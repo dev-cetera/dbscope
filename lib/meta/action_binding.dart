@@ -99,6 +99,9 @@ BoundSql bindSql(String sql, BindingContext context) {
       return null;
     }
     if (name == 'me_principal') {
+      // Unknown identity is missing, not NULL: a NULL would match nothing
+      // (or write NULL) instead of saying the action can't run.
+      if (context.mePrincipal == null) return name;
       put(context.mePrincipal);
       return null;
     }

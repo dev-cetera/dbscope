@@ -273,7 +273,7 @@ class _ComposedWhere {
 /// 2. The profile's tenant filter, when the table has the configured
 /// column.
 /// 3. The table's soft-delete `<col> IS NULL` filter, when configured
-/// AND `showDeleted` is false. (Soft-delete with `now()` is a fixed
+/// AND `showDeleted` is false. (Soft-delete with `CURRENT_TIMESTAMP` is a fixed
 /// literal `IS NULL` check — no params.)
 _ComposedWhere _composeBaseWhere({
   required ConnectionProfile? profile,

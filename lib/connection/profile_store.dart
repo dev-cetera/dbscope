@@ -35,4 +35,9 @@ class ProfileStore {
   Future<void> delete(ConnectionProfile profile) async {
     await SecureStore.instance.deletePassword(profile.id);
   }
+
+  /// Remove [profileId]'s stored password, keeping the profile.
+  Future<void> forgetPassword(String profileId) async {
+    await SecureStore.instance.deletePassword(profileId);
+  }
 }

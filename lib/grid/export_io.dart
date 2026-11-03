@@ -7,8 +7,12 @@ import 'package:sqlite3/sqlite3.dart' as sq;
 import '../catalog/pg_type.dart';
 import '../grid/data_grid.dart';
 import '../util/sql_quote.dart';
+import 'export_names.dart';
 
 class ResultExporter {
+  /// Whether [exportSqlite] can write a file on this platform.
+  static const supportsSqliteExport = true;
+
   static Future<String?> exportSqlText(
     String sql, {
     String suggestedName = 'query.sql',
@@ -67,8 +71,8 @@ class ResultExporter {
   }
 
   /// Export to a SQLite file. Writes a single table named [tableName]
-  /// (defaults to `export`) containing the grid's columns. Existing files
-  /// are overwritten so the result is always a clean single-table DB.
+  /// (defaults to `export`) containing the grid's columns. An existing file
+  /// is replaced only after the new one is fully written.
   static Future<String?> exportSqlite(
     GridData data, {
     String tableName = 'export',
@@ -80,46 +84,58 @@ class ResultExporter {
       ],
     );
     if (location == null) return null;
-    final outFile = File(location.path);
-    if (outFile.existsSync()) {
-      // Overwrite — leaving the previous file behind would silently mix
-      // schemas in append mode and surprise users.
-      await outFile.delete();
-    }
-    final db = sq.sqlite3.open(location.path);
+    // Build the database in a temp file beside the target and rename it over
+    // the target only once it is complete, so a failed export (a full disk,
+    // a bad value) never destroys a database the user chose to overwrite.
+    final tmpPath =
+        '${location.path}.tmp-$pid-${DateTime.now().microsecondsSinceEpoch}';
+    final tmpFile = File(tmpPath);
     try {
-      // Type affinities come from the column's PgType. Anything non-
-      // numeric becomes TEXT to avoid lossy coercions; numerics get
-      // INTEGER/REAL so casts in downstream tools work.
-      final colDefs = <String>[];
-      for (final column in data.columns) {
-        colDefs.add('${quoteIdent(column.name)} ${_sqliteAffinityFor(column)}');
+      final db = sq.sqlite3.open(tmpPath);
+      try {
+        _writeSqlite(db, data, tableName);
+      } finally {
+        db.dispose();
       }
-      final table = quoteIdent(tableName);
-      db.execute('CREATE TABLE $table (${colDefs.join(', ')})');
-      if (data.rows.isNotEmpty) {
-        final columns = data.columns.map((column) => quoteIdent(column.name)).join(', ');
-        final placeholders = List.generate(
-          data.columns.length,
-          (i) => '?',
-        ).join(', ');
-        final statement = db.prepare(
-          'INSERT INTO $table ($columns) VALUES ($placeholders)',
-        );
-        try {
-          db.execute('BEGIN');
-          for (final row in data.rows) {
-            statement.execute([for (final value in row) _toSqliteValue(value)]);
-          }
-          db.execute('COMMIT');
-        } finally {
-          statement.dispose();
-        }
-      }
-    } finally {
-      db.dispose();
+      await tmpFile.rename(location.path);
+    } catch (_) {
+      try {
+        if (tmpFile.existsSync()) await tmpFile.delete();
+      } catch (_) {}
+      rethrow;
     }
     return location.path;
+  }
+
+  /// `CREATE TABLE` + bulk insert into a fresh [db]. Column names are made
+  /// unique (`id`, `id_2`, …) because a result set may legally repeat one
+  /// (`SELECT a.id, b.id …`) while a SQLite table may not.
+  static void _writeSqlite(sq.Database db, GridData data, String tableName) {
+    // Type affinities come from the column's PgType. Anything non-
+    // numeric becomes TEXT to avoid lossy coercions; numerics get
+    // INTEGER/REAL so casts in downstream tools work.
+    final names = uniqueColumnNames([for (final c in data.columns) c.name]);
+    final colDefs = <String>[
+      for (var i = 0; i < data.columns.length; i++)
+        '${quoteIdent(names[i])} ${_sqliteAffinityFor(data.columns[i])}',
+    ];
+    final table = quoteIdent(tableName);
+    db.execute('CREATE TABLE $table (${colDefs.join(', ')})');
+    if (data.rows.isEmpty) return;
+    final columns = names.map(quoteIdent).join(', ');
+    final placeholders = List.filled(names.length, '?').join(', ');
+    final statement = db.prepare(
+      'INSERT INTO $table ($columns) VALUES ($placeholders)',
+    );
+    try {
+      db.execute('BEGIN');
+      for (final row in data.rows) {
+        statement.execute([for (final value in row) _toSqliteValue(value)]);
+      }
+      db.execute('COMMIT');
+    } finally {
+      statement.dispose();
+    }
   }
 
   static String _sqliteAffinityFor(GridColumnSpec column) {
@@ -172,7 +188,11 @@ class ResultExporter {
   }
 
   static String _csvEscape(String text) {
-    if (text.contains(',') || text.contains('"') || text.contains('\n')) {
+    // A bare `\r` ends a record for RFC 4180 readers just like `\n` does.
+    if (text.contains(',') ||
+        text.contains('"') ||
+        text.contains('\n') ||
+        text.contains('\r')) {
       return '"${text.replaceAll('"', '""')}"';
     }
     return text;

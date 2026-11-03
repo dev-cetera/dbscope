@@ -78,10 +78,21 @@ class MetaSnapshot {
     sqlite: isSqlite,
   );
 
-  /// The principal shown for "me" (`@me_principal`).
+  /// The principal shown for "me" (`@me_principal`), spelled the way
+  /// `AccessPolicy.resolve` matches principals: the claimed email
+  /// (lowercased) when the identity mode accepts claims, else the Postgres
+  /// login when it accepts verified identities. Null when neither is known,
+  /// and then an action that uses `@me_principal` refuses to run.
   String? get mePrincipal {
-    final claimed = identity.claimedUser;
-    if (claimed != null) return '${PrincipalPrefix.user}$claimed';
+    final mode = index.rbac.identity;
+    final claimed = identity.claimedUser?.trim();
+    if (mode != IdentityMode.verified && claimed != null && claimed.isNotEmpty) {
+      return '${PrincipalPrefix.user}${claimed.toLowerCase()}';
+    }
+    final login = identity.postgresLogin;
+    if (mode != IdentityMode.claimed && login != null && login.isNotEmpty) {
+      return '${PrincipalPrefix.pg}$login';
+    }
     return null;
   }
 }
@@ -278,7 +289,11 @@ class MetadataCache extends ChangeNotifier {
     ]);
     final index = MetaIndex.build(document);
 
-    var identity = AccessIdentity(claimedUser: settings.claimedIdentity);
+    final login = sqlite || profile.username.isEmpty ? null : profile.username;
+    var identity = AccessIdentity(
+      claimedUser: settings.claimedIdentity,
+      postgresLogin: login,
+    );
     PrivilegeCeilings? ceilings;
     final accessControlPossible =
         document.hasAccessControl || tables.outcome == MetaTablesOutcome.unreadable;
@@ -286,6 +301,7 @@ class MetadataCache extends ChangeNotifier {
       identity = AccessIdentity(
         postgresRoles: await _postgresRoles(executor),
         claimedUser: settings.claimedIdentity,
+        postgresLogin: login,
       );
       ceilings = await _privilegeCeilings(executor);
     }

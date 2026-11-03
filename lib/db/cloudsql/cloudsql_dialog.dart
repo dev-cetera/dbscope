@@ -27,6 +27,7 @@ class _CloudSqlDialogState extends State<CloudSqlDialog> {
   var _assignPublicIp = true;
   var _readOnly = true;
   var _passwordVisible = false;
+  var _forgetPassword = false;
   var _showAdvanced = false;
 
   @override
@@ -101,7 +102,8 @@ class _CloudSqlDialogState extends State<CloudSqlDialog> {
       port: port,
       database: _database.text.trim(),
       username: _username.text.trim(),
-      password: _password.text,
+      password: _forgetPassword ? '' : _password.text,
+      forgetPassword: _forgetPassword,
       readOnly: _readOnly,
       extra: config.toExtra(),
       tenantFilter: widget.initial?.tenantFilter,
@@ -186,9 +188,13 @@ class _CloudSqlDialogState extends State<CloudSqlDialog> {
             const SizedBox(height: 12.0),
             TextFormField(
               controller: _password,
+              enabled: !_forgetPassword,
               obscureText: !_passwordVisible,
               decoration: InputDecoration(
                 labelText: 'Password',
+                helperText: widget.initial == null || _forgetPassword
+                    ? null
+                    : 'Leave empty to keep the saved password.',
                 suffixIcon: IconButton(
                   onPressed: () => setState(() => _passwordVisible = !_passwordVisible),
                   icon: Icon(
@@ -197,6 +203,18 @@ class _CloudSqlDialogState extends State<CloudSqlDialog> {
                 ),
               ),
             ),
+            if (widget.initial != null)
+              CheckboxListTile(
+                value: _forgetPassword,
+                onChanged: (value) => setState(() {
+                  _forgetPassword = value ?? false;
+                  if (_forgetPassword) _password.clear();
+                }),
+                title: const Text('Forget the saved password'),
+                controlAffinity: ListTileControlAffinity.leading,
+                contentPadding: EdgeInsets.zero,
+                dense: true,
+              ),
             const SizedBox(height: 12.0),
             SwitchListTile(
               value: _assignPublicIp,

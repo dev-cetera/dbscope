@@ -1,8 +1,8 @@
 // Web stub of ResultExporter. The web build can't write to a local
 // filesystem and doesn't ship the native sqlite3 binary, so this
 // implementation copies CSV/JSON to the clipboard instead of saving to
-// disk; sqlite export returns null (the UI should hide that menu item
-// when running on web, and the export flow already tolerates null).
+// disk. There is no sqlite export: [ResultExporter.supportsSqliteExport] is
+// false and the UI hides the `.db` button.
 
 import 'dart:convert';
 
@@ -11,6 +11,9 @@ import 'package:flutter/services.dart';
 import '../grid/data_grid.dart';
 
 class ResultExporter {
+  /// Whether [exportSqlite] can write a file on this platform.
+  static const supportsSqliteExport = false;
+
   static Future<String?> exportSqlText(
     String sql, {
     String suggestedName = 'query.sql',
@@ -53,7 +56,7 @@ class ResultExporter {
     GridData data, {
     String tableName = 'export',
   }) async {
-    return null;
+    throw UnsupportedError('.db export is not available in the web build');
   }
 
   static String _csvCell(Object? value) {
@@ -63,7 +66,11 @@ class ResultExporter {
   }
 
   static String _csvEscape(String text) {
-    if (text.contains(',') || text.contains('"') || text.contains('\n')) {
+    // A bare `\r` ends a record for RFC 4180 readers just like `\n` does.
+    if (text.contains(',') ||
+        text.contains('"') ||
+        text.contains('\n') ||
+        text.contains('\r')) {
       return '"${text.replaceAll('"', '""')}"';
     }
     return text;

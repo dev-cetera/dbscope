@@ -14,13 +14,16 @@ class ExecuteCall {
 }
 
 class FakeDbExecutor implements DbExecutor {
+  FakeDbExecutor({this.kind = 'fake'});
+
   final List<ExecuteCall> calls = [];
   final List<DbResult> _scripted = [];
   var _open = true;
   var readOnly = false;
 
+  /// Reported backend kind; pass `kSqliteKind` to exercise SQLite branches.
   @override
-  String get kind => 'fake';
+  final String kind;
 
   @override
   bool get isOpen => _open;

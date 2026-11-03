@@ -4,6 +4,7 @@ library;
 
 import 'dart:async';
 
+import 'package:flutter/foundation.dart' show listEquals;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:widgets/widgets.dart';
@@ -250,10 +251,31 @@ class _PropertyFieldRowState extends State<PropertyFieldRow> {
   @override
   void didUpdateWidget(covariant PropertyFieldRow oldWidget) {
     super.didUpdateWidget(oldWidget);
+    // A different row now owns this field. An editor left open would save
+    // the old row's text through the new selection, so drop it.
+    if (_editing && !_sameRow(oldWidget, widget)) {
+      _editing = false;
+      _initial = widget.value;
+      _pending = widget.value;
+      return;
+    }
     if (!_editing && oldWidget.value != widget.value) {
       _initial = widget.value;
       _pending = widget.value;
     }
+  }
+
+  /// Whether [a] and [b] show the same row: equal primary-key values, or the
+  /// same row map when the table has no primary key.
+  static bool _sameRow(PropertyFieldRow a, PropertyFieldRow b) {
+    if (a.schema != b.schema || a.table != b.table) return false;
+    if (b.pkColumns.isEmpty || !listEquals(a.pkColumns, b.pkColumns)) {
+      return identical(a.row, b.row);
+    }
+    for (final pk in b.pkColumns) {
+      if (a.row[pk] != b.row[pk]) return false;
+    }
+    return true;
   }
 
   /// The metadata snapshot for this row's connection, when it came from a

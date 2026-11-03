@@ -77,7 +77,8 @@ class RowListStep extends NavStep {
   /// Sort applied via the grid header.
   TableSortState? sort;
 
-  /// Regex filter state — applied as `(filterColumn)::text ~* '%pattern%'`.
+  /// Regex filter state — applied as `(filterColumn)::text ~* pattern` on
+  /// Postgres and `dbscope_iregexp(pattern, CAST(filterColumn AS TEXT))` on SQLite.
   /// Empty pattern disables the filter. Null = `[AI Infer]` mode in the
   /// dropdown; the actual column to filter on then comes from
   /// [inferredColumn], set by RegexInferrer per-load.

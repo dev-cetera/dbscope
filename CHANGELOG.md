@@ -1,5 +1,41 @@
 # Changelog
 
+---
+
+## 2026-11-03
+
+- Fix Postgres query result headers showing Type(oid:N) instead of the type name (2026-11-03)
+- Fix job tabs showing a fast job as running forever when it finished before the tab subscribed (2026-11-03)
+- Fix one window closing a stream (job progress, profile or metadata updates) belonging to another window (2026-11-03)
+- Fix soft delete on SQLite, which wrote now(): it now writes CURRENT_TIMESTAMP (2026-11-03)
+- Fix keyset paging stopping at the first NULL when sorting by a nullable column (2026-11-03)
+- Fix table tabs ignoring a connection's read-only setting: the grid is no longer editable on read-only connections (2026-11-03)
+- Fix CSV export leaving a bare carriage return unquoted, which split the row in two (2026-11-03)
+- Hide the .db export button on the web build, where it did nothing (2026-11-03)
+- Fix copy jobs blocking every other query on the target profile while they run: the target now gets its own connection (2026-11-03)
+- Fix .db export destroying an existing file when the export fails, and failing on duplicate column names (they become id_2, …) (2026-11-03)
+- Fix cell edits on phones with SQLite older than 3.39 (Android 13 and earlier) failing on IS NOT DISTINCT FROM (2026-11-03)
+- Fix two windows saving to the project file or query history at once losing one of the changes (2026-11-03)
+- Fix an interrupted project-file save wiping saved connections and queries: writes are atomic and an unreadable file is kept aside as .corrupt-<time> (2026-11-03)
+- Fix the Navigator's row filter on SQLite, which used Postgres-only ::text ~* syntax (2026-11-03)
+- Fix Export schema as DBML on SQLite: it no longer queries pg_type and labels the file as SQLite (2026-11-03)
+- Fix the date/time picker dropping the seconds (and zone) of a timestamp or time cell (2026-11-03)
+- Fix metadata SQL with typed placeholders (@id:int8, $1::int8) failing on SQLite (2026-11-03)
+- Fix @me_principal binding NULL when no identity is known: actions now say they need it, and on Postgres it falls back to the login (claimed emails are lowercased) (2026-11-03)
+- Fix pressing Cmd/Ctrl+Enter twice in a Query tab running two queries at once and losing the Stop button (2026-11-03)
+- Fix the row inspector saving an open edit into a different row after you select another row: switching rows now closes the editor (2026-11-03)
+- Fix SQLite metadata queries that start with a comment, or a RETURNING after a newline, silently returning no rows (2026-11-03)
+- Fix importing a hostile .dbscopeconn file hanging in the key derivation or failing with a raw error: iteration count, nonce and tag sizes are now checked (2026-11-03)
+- Fix the timestamp renderer showing a date-only value one day early for viewers east of UTC (2026-11-03)
+- Fix metadata charts and queries on SQLite ignoring their timeout: a runaway statement is now stopped at the deadline (2026-11-03)
+- Fix the AI assistant's read-only check letting through data-modifying CTEs, EXPLAIN ANALYZE DELETE and SELECT INTO, which could write on the pg proxy and on phones (2026-11-03)
+- Fix profiles named like Liverpool, Olive or Maintenance defaulting to read-only: the prod/live/main guess now needs a whole word (2026-11-03)
+- Fix connections leaking: a profile deleted in another window now closes this window's connection, connecting an already-open profile reuses it, and two server-side opens of one profile share one connection (2026-11-03)
+- Fix the connection dialog's password: you can now tick 'Forget the saved password' to delete it from the keychain (leaving the field empty still keeps it) (2026-11-03)
+- Fix scripts/add_changelog_line.sh refusing every line when CHANGELOG.md has no --- header rule: it now adds the rule itself (2026-11-03)
+- Fix inline cell editing in table grids: the editor now takes keyboard focus on double-click / Enter, stays open while you type (it used to save and close after one character), lets arrow keys and Cmd-A work inside the field, and saves on Enter, Tab or clicking another cell (Esc discards) (2026-11-03)
+- Landing page: canonical URL, fuller social tags, SoftwareApplication and FAQPage structured data, a visible FAQ, sitemap.xml and llms.txt, checked on every Pages deploy by scripts/check_site_seo.sh (2026-11-03)
+
 ## 2026-10-19
 
 - Launching with `DBSCOPE_AUTO_HOST` (plus `DBSCOPE_AUTO_DATABASE`/`DBSCOPE_AUTO_USERNAME`/etc., or `DBSCOPE_AUTO_CLOUDSQL_INSTANCE` for Cloud SQL) set auto-connects to that database on startup instead of restoring the last GUI connection — a fully command-line launch, no "Import connection link" step. See `lib/connection/cli_auto_connect.dart`; the compledo repo's `backend/scripts/dbscope/start_dbscope.sh local|dev|prod` drives it. (2026-10-19)

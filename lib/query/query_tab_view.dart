@@ -86,12 +86,14 @@ class _QueryTabViewState extends State<QueryTabView> {
   /// [aiGenerated]: the SQL came from the assistant and runs without the
   /// user reading it first, so it runs through `executeReadOnly`: a
   /// read-only transaction on Postgres, `query_only` on local SQLite.
-  /// `enforceReadOnly` only checks the first keyword, which lets through
-  /// `WITH d AS (DELETE … RETURNING *) SELECT …` and
-  /// `EXPLAIN ANALYZE DELETE …` — both of which write. Backends without
-  /// transactions (pg-proxy, on-device sqflite) can't be fenced, so there
-  /// that keyword check is still the only guard.
+  /// Backends without transactions (pg-proxy, on-device sqflite) can't be
+  /// fenced, so there `enforceReadOnly` (a lexical scan that refuses write
+  /// keywords anywhere in the statement) is the only guard.
   Future<void> _run({bool aiGenerated = false}) async {
+    // One run at a time: the Run button is disabled while loading, but
+    // Cmd/Ctrl+Enter reaches here too, and two overlapping runs would share
+    // `isLoading`/`cancelToken` and race their results onto the grid.
+    if (widget.tab.isLoading) return;
     final executor = _executor();
     if (executor == null) {
       setState(() => widget.tab.error = 'No connection.');
@@ -129,6 +131,7 @@ class _QueryTabViewState extends State<QueryTabView> {
       if (!mounted) return;
       setState(() {
         widget.tab.data = result.data;
+        widget.tab.selectedRowIndex = null;
         widget.tab.elapsed = result.elapsed;
         widget.tab.truncated = result.truncated;
         widget.tab.isLoading = false;
@@ -343,14 +346,15 @@ class _QueryTabViewState extends State<QueryTabView> {
                   ),
                   onPressed: () => _export(_ExportFormat.json),
                 ),
-                TextButton.icon(
-                  icon: const Icon(Icons.storage, size: 14.0),
-                  label: const Text('.db'),
-                  style: TextButton.styleFrom(
-                    visualDensity: VisualDensity.compact,
+                if (ResultExporter.supportsSqliteExport)
+                  TextButton.icon(
+                    icon: const Icon(Icons.storage, size: 14.0),
+                    label: const Text('.db'),
+                    style: TextButton.styleFrom(
+                      visualDensity: VisualDensity.compact,
+                    ),
+                    onPressed: () => _export(_ExportFormat.sqlite),
                   ),
-                  onPressed: () => _export(_ExportFormat.sqlite),
-                ),
               ],
               FilledButton.icon(
                 onPressed: tab.isLoading ? null : _run,

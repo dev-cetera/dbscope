@@ -20,10 +20,11 @@ import 'dart:io';
 import 'package:app_data_explorer/app_data_explorer.dart';
 import 'package:dbscope/db/executor.dart';
 import 'package:dbscope/db/sqlite_executor.dart';
+import 'package:dbscope/db/statement_timeout.dart';
 import 'package:dbscope/query/cancel_token.dart';
 import 'package:sqlite3/sqlite3.dart' as sq;
 
-class DeviceSqliteExecutor implements DbExecutor {
+class DeviceSqliteExecutor implements DbExecutor, StatementTimeoutCapable {
   DeviceSqliteExecutor._({
     required this.backend,
     required this.remoteDbPath,
@@ -156,6 +157,12 @@ class DeviceSqliteExecutor implements DbExecutor {
     }
     return result;
   }
+
+  @override
+  Future<T> withStatementTimeout<T>(
+    Duration timeout,
+    Future<T> Function() body,
+  ) => _inner.withStatementTimeout(timeout, body);
 
   @override
   Future<void> setReadOnly({required bool readOnly}) => _inner.setReadOnly(readOnly: readOnly);

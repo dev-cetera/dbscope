@@ -27,6 +27,21 @@ class _JobTabViewState extends State<JobTabView> {
     final bus = BusClient(client);
     _progressSub = bus.subscribe('job.progress:${widget.tab.jobId}').listen(_onProgress);
     _finishedSub = bus.subscribe('job.finished:${widget.tab.jobId}').listen(_onFinished);
+    unawaited(_catchUp(JobServiceClient(client)));
+  }
+
+  /// A fast job can finish before the subscriptions above reach the server,
+  /// and the bus doesn't replay: ask for the job's current state once, so a
+  /// job that already ended doesn't show as running forever.
+  Future<void> _catchUp(JobServiceClient jobs) async {
+    final Map<String, Object?> record;
+    try {
+      record = await jobs.get(widget.tab.jobId);
+    } catch (_) {
+      return;
+    }
+    if (!mounted || widget.tab.finished) return;
+    if (record['finishedAt'] != null) _applyFinished(record);
   }
 
   @override
@@ -52,6 +67,11 @@ class _JobTabViewState extends State<JobTabView> {
   void _onFinished(BusEvent e) {
     final map = e.dataAsMap;
     if (map == null) return;
+    _applyFinished(map);
+  }
+
+  void _applyFinished(Map<String, Object?> map) {
+    if (!mounted) return;
     setState(() {
       widget.tab.finished = true;
       widget.tab.phase = (map['state'] as String?) ?? 'completed';
