@@ -50,14 +50,6 @@ rg -n '\[SIMPLE\]' TODO.md
 - **Blocker.** none
 - **Noticed.** 2026-11-03, while fixing the `Type(oid:N)` header bug.
 
-### **[P3]** Offer a reconnect when a connection link is re-imported for a profile that is already connected
-
-- **Where.** `lib/connection/registry.dart` (`_connect` now returns early when the profile is connected), `lib/connection/connection_link_flow.dart`.
-- **Why.** Connecting an already-open profile used to dial a second socket and leak the first. It now keeps the live connection, so credentials refreshed by re-importing a link only apply after the user disconnects and connects again. The import flow could say so, or offer "Reconnect now".
-- **Effort.** `<1h`
-- **Blocker.** none
-- **Noticed.** 2026-11-03, while fixing the duplicate-connection bug.
-
 ### **[P2]** Make Tab move to the next cell, and let multi-line cells take a newline, in grid inline editing
 
 - **Where.** `packages/data_grid/lib/src/internal/grid_cell.dart` (`_editor` shortcut bindings)

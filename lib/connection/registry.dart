@@ -2,6 +2,7 @@
 library;
 
 import 'dart:async';
+import 'dart:convert';
 
 import 'package:flutter/widgets.dart';
 
@@ -296,7 +297,18 @@ class ConnectionRegistry extends ChangeNotifier {
     ConnectionProfile profile, {
     BuildContext? context,
   }) async {
+    // Re-importing a link (or re-running auto-connect) for a profile that is
+    // already open: an open connection is reused, so when the new profile
+    // points somewhere else or carries other credentials, close the old
+    // connection first and connect again with the new settings.
+    final existing = _states[profile.id];
+    final reconnect =
+        existing != null && existing.isConnected && _connectionSettingsDiffer(existing.profile, profile);
     await addProfile(profile);
+    if (reconnect) {
+      await disconnect(profile.id);
+      _states[profile.id]?.profile = profile;
+    }
     if (context != null && !context.mounted) {
       await setActive(profile.id);
       await connectActive();
@@ -309,6 +321,22 @@ class ConnectionRegistry extends ChangeNotifier {
     }
     await connectActive(context: context);
   }
+
+  /// Whether [next] would open a different connection than [current]: a
+  /// different target, user, SSL mode or plugin config, or a new password
+  /// (an empty one means "keep the stored password", so it never differs).
+  static bool _connectionSettingsDiffer(
+    ConnectionProfile current,
+    ConnectionProfile next,
+  ) =>
+      current.kind != next.kind ||
+      current.host != next.host ||
+      current.port != next.port ||
+      current.database != next.database ||
+      current.username != next.username ||
+      current.sslMode != next.sslMode ||
+      jsonEncode(current.extra) != jsonEncode(next.extra) ||
+      (next.password.isNotEmpty && next.password != current.password);
 
   Future<void> _connect(_ConnState state, {BuildContext? context}) async {
     // Already open: reuse it. Dialing again would overwrite
