@@ -45,9 +45,13 @@ jobs:
 
       - name: Resolve version
         id: v
+        # The input reaches the script as an env var, never spliced into it,
+        # so a crafted version string can't run as shell.
+        env:
+          INPUT_VERSION: ${{ inputs.version }}
         run: |
           if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
-            VERSION="${{ inputs.version }}"
+            VERSION="$INPUT_VERSION"
             DRAFT=true
           else
             VERSION="${GITHUB_REF_NAME#v}"
@@ -70,6 +74,11 @@ jobs:
           cache: true
 
       - run: flutter pub get
+
+      # A tag can point at any commit, including one CI never saw green.
+      # Nothing ships unless the same checks pass on exactly what is built.
+      - run: flutter analyze
+      - run: flutter test
 
       - name: Build
         run: |

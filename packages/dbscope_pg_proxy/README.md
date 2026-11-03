@@ -50,8 +50,20 @@ exactly like exposing Postgres itself.
 - **Require a shared secret.** Pass `--shared-secret SECRET`; the web
   client echoes it on every `open` message. Without one, any browser
   that can reach the proxy can connect to your DB.
-- **Constrain the origin.** Pass `--allow-origin https://your.host` so
-  the proxy rejects WebSocket upgrades from other origins.
+- **Constrain the origin.** Any web page you open can try a WebSocket to
+  `127.0.0.1`, so by default the proxy accepts upgrades only from the
+  hosted web app (`https://dbscope-prod.web.app`) and localhost pages.
+  If you serve dbscope from your own host, pass
+  `--allow-origin https://your.host` (repeatable); the list then replaces
+  the defaults. `--allow-any-origin` turns the check off: don't, unless
+  nothing but trusted pages can reach the proxy.
+- **Pin the database.** A client names the host it wants in its `open`
+  message, so an exposed proxy can reach any Postgres its network can.
+  Pass `--allow-db-host db.internal:5432` (repeatable; a bare host allows
+  any port) to allow only that one.
+- **Results are capped.** One result sends at most `--max-rows` rows
+  (default 100000); a longer one is cut and its reply says
+  `"truncated": true`.
 - **Use a least-privileged Postgres role.** The proxy never inspects or
   restricts the SQL it forwards.
 

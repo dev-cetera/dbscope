@@ -26,12 +26,24 @@ final readOnlyHeuristic = RegExp(
   if (match != null) {
     return (readOnly: true, reason: 'the name says "${match.group(2)!.toLowerCase()}"');
   }
-  final h = host.trim().toLowerCase();
-  if (h.isEmpty || h == 'localhost' || h == '::1' || h.startsWith('127.')) {
+  if (isLocalHost(host)) {
     return (readOnly: false, reason: 'the database is on this machine');
   }
   return (readOnly: true, reason: 'the database is on another server');
 }
+
+/// Whether [host] is this machine (blank counts: the driver's default is
+/// localhost).
+bool isLocalHost(String host) {
+  final h = host.trim().toLowerCase();
+  return h.isEmpty || h == 'localhost' || h == '::1' || h.startsWith('127.');
+}
+
+/// The SSL default the connection dialog proposes for a new profile:
+/// `disable` for a database on this machine (a local Postgres usually has no
+/// certificate), `require` for any other server, so the password and every
+/// row never cross a network in the clear unless the user asks for that.
+SslMode suggestSslMode(String host) => isLocalHost(host) ? SslMode.disable : SslMode.require;
 
 /// Built-in kind id for the direct-Postgres backend. External plugins
 /// pick their own.
