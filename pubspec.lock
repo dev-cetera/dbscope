@@ -10,7 +10,7 @@ packages:
     source: hosted
     version: "0.2.2"
   app_data_explorer:
-    dependency: transitive
+    dependency: "direct dev"
     description:
       path: "packages/app_data_explorer"
       relative: true

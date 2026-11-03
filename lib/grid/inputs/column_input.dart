@@ -9,6 +9,7 @@ import 'package:widgets/widgets.dart';
 
 import '../../catalog/pg_type.dart';
 import '../../db/edit_policy.dart';
+import '../../db/pg_geometry.dart';
 
 part 'parts/bool_input.dart';
 part 'parts/date_input.dart';
@@ -188,7 +189,10 @@ class _ColumnInputField extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final raw = value;
-    final asString = raw == null ? null : (raw is String ? raw : raw.toString());
+    // Geometric values start out in Postgres's own syntax, so saving an
+    // untouched `(1,2)` works (the driver's `Point(1.0,2.0)` is not input
+    // Postgres accepts).
+    final asString = raw == null ? null : (raw is String ? raw : '${pgGeometryText(raw)}');
     if (policy.enumValues != null && policy.enumValues!.isNotEmpty) {
       return _EnumInput(
         values: policy.enumValues!,

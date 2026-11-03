@@ -1,4 +1,3 @@
-import 'dart:convert';
 import 'dart:io';
 
 import 'package:file_selector/file_selector.dart';
@@ -7,6 +6,7 @@ import 'package:sqlite3/sqlite3.dart' as sq;
 import '../catalog/pg_type.dart';
 import '../grid/data_grid.dart';
 import '../util/sql_quote.dart';
+import 'export_json.dart';
 import 'export_names.dart';
 
 class ResultExporter {
@@ -56,17 +56,10 @@ class ResultExporter {
       ],
     );
     if (location == null) return null;
-    final colNames = data.columns.map((column) => column.name).toList();
-    final out = <Map<String, Object?>>[];
-    for (final row in data.rows) {
-      final entry = <String, Object?>{};
-      for (var i = 0; i < colNames.length; i++) {
-        entry[colNames[i]] = row[i];
-      }
-      out.add(entry);
-    }
     final file = File(location.path);
-    await file.writeAsString(const JsonEncoder.withIndent(' ').convert(out));
+    await file.writeAsString(
+      encodeRowsAsJson([for (final c in data.columns) c.name], data.rows),
+    );
     return location.path;
   }
 

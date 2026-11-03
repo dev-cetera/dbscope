@@ -4,6 +4,7 @@ import '../catalog/pg_type.dart';
 import '../db/executor.dart';
 import '../util/sql_quote.dart';
 import 'edit_policy.dart';
+import 'pg_geometry.dart';
 import 'sqlite_kind.dart';
 
 class UpdateResult {
@@ -29,27 +30,56 @@ class CellEditor {
       params.add(pkValues[primaryKey]);
       pkPlaceholders.add('${quoteIdent(primaryKey)} = \$${params.length}');
     }
-    params.add(oldValue);
+    params.add(
+      conn.kind == kSqliteKind || !pgGeometricTypes.contains(policy.typeName.toLowerCase())
+          ? oldValue
+          : pgGeometryText(oldValue),
+    );
     final oldPlaceholder = '\$${params.length}';
 
     final qualified = quoteQualified(policy.schema, policy.table);
-    // SQLite before 3.39 (Android 13 and older phones) has no
-    // `IS NOT DISTINCT FROM`; its `IS` is the same NULL-safe comparison and
-    // works on every version.
-    final nullSafeEq = conn.kind == kSqliteKind ? 'IS' : 'IS NOT DISTINCT FROM';
     // CURRENT_TIMESTAMP rather than now(): it works on Postgres and SQLite.
     final touches = [
       for (final touchColumn in policy.touchColumns)
         if (touchColumn != policy.column) ', ${quoteIdent(touchColumn)} = CURRENT_TIMESTAMP',
     ].join();
+    // SQLite before 3.39 (Android 13 and older phones) has no
+    // `IS NOT DISTINCT FROM`; its `IS` is the same NULL-safe comparison and
+    // works on every version.
+    final guard = conn.kind == kSqliteKind
+        ? '${quoteIdent(policy.column)} IS $oldPlaceholder'
+        : _postgresGuard(policy, oldPlaceholder);
     final sql =
         'UPDATE $qualified '
         'SET ${quoteIdent(policy.column)} = \$1$touches '
         'WHERE ${pkPlaceholders.join(' AND ')} '
-        'AND ${quoteIdent(policy.column)} $nullSafeEq $oldPlaceholder';
+        'AND $guard';
 
     final result = await conn.execute(sql, positional: params);
     return UpdateResult(affectedRows: result.affectedRows, newValue: parsed);
+  }
+
+  /// The optimistic-concurrency guard on Postgres: the column still holds
+  /// the value the user saw. `json`, `xml` and the geometric types have no
+  /// usable `=` operator, so a plain `IS NOT DISTINCT FROM` fails every edit
+  /// of such a column ("operator does not exist: json = unknown").
+  /// - json: compared as `jsonb` (key order and whitespace don't count).
+  /// - xml: compared as text.
+  /// - geometric: the old value is sent as Postgres text ([pgGeometryText]),
+  ///   parsed by the server into the column's type and printed back, so
+  ///   both sides are the server's own text form of the value.
+  static String _postgresGuard(EditPolicy policy, String oldPlaceholder) {
+    final column = quoteIdent(policy.column);
+    final typeName = policy.typeName.toLowerCase();
+    if (pgGeometricTypes.contains(typeName)) {
+      return '$column::text IS NOT DISTINCT FROM ($oldPlaceholder::$typeName)::text';
+    }
+    final cast = switch (typeName) {
+      'json' => '::jsonb',
+      'xml' => '::text',
+      _ => '',
+    };
+    return '$column$cast IS NOT DISTINCT FROM $oldPlaceholder$cast';
   }
 
   Future<int> deleteRow({

@@ -5,9 +5,10 @@
 // into the main file, set journal_mode=DELETE so subsequent local
 // writes don't recreate WAL sidecars, then wrap a `package:sqlite3`
 // Database in a regular SqliteExecutor.
-// - Execute: delegate to the inner executor. If the statement was a
-// write (affectedRows > 0, or any non-SELECT), push the file back to
-// the device and delete any stale -wal/-shm sidecars there.
+// - Execute: delegate to the inner executor. If the statement changed
+// the file (rows or schema changed, or a non-read keyword such as
+// VACUUM), push the file back to the device once no transaction is
+// open, and delete any stale -wal/-shm sidecars there.
 // - Close: dispose the inner executor and remove the temp dir.
 //
 // Concurrency caveat (documented in the profile dialog too): the file is
@@ -22,6 +23,7 @@ import 'package:dbscope/db/executor.dart';
 import 'package:dbscope/db/sqlite_executor.dart';
 import 'package:dbscope/db/statement_timeout.dart';
 import 'package:dbscope/query/cancel_token.dart';
+import 'package:dbscope/util/sql_parse.dart';
 import 'package:sqlite3/sqlite3.dart' as sq;
 
 class DeviceSqliteExecutor implements DbExecutor, StatementTimeoutCapable {
@@ -45,6 +47,9 @@ class DeviceSqliteExecutor implements DbExecutor, StatementTimeoutCapable {
   final sq.Database _db;
   final String _localDbPath;
   var _closed = false;
+
+  /// The local file has changes the device hasn't received yet.
+  var _unpushed = false;
 
   /// Pulls [remoteDbPath] (and best-effort its `-wal` sidecar — never the
   /// `-shm`, sqlite always rebuilds it) into a fresh temp directory, then
@@ -146,14 +151,21 @@ class DeviceSqliteExecutor implements DbExecutor, StatementTimeoutCapable {
     if (_closed) {
       throw StateError('DeviceSqliteExecutor is closed.');
     }
+    final changesBefore = _totalChanges();
+    final schemaBefore = _schemaVersion();
     final result = await _inner.execute(
       sql,
       positional: positional,
       named: named,
       cancelToken: cancelToken,
     );
-    if (_writesToFile(sql, result)) {
+    if (_changedFile(sql, changesBefore, schemaBefore)) _unpushed = true;
+    // Inside an open transaction (a `BEGIN` from a Query tab) the change
+    // isn't committed yet: pushing now would send the device a file the
+    // ROLLBACK may still undo. Push once the transaction has ended.
+    if (_unpushed && _db.autocommit) {
       await _pushBack();
+      _unpushed = false;
     }
     return result;
   }
@@ -202,36 +214,55 @@ class DeviceSqliteExecutor implements DbExecutor, StatementTimeoutCapable {
     }
   }
 
-  /// Best-effort detection of "this statement mutated the file". SELECT,
-  /// EXPLAIN, PRAGMA-as-query, etc. don't need a push. DDL (CREATE/DROP)
-  /// reports affectedRows = 0 but does mutate, so we also peek at the
-  /// statement keyword.
-  static bool _writesToFile(String sql, DbResult result) {
-    if (result.affectedRows > 0) return true;
-    final trimmed = _strip(sql).toUpperCase();
-    if (trimmed.startsWith('SELECT')) return false;
-    if (trimmed.startsWith('WITH')) return false;
-    if (trimmed.startsWith('EXPLAIN')) return false;
-    if (trimmed.startsWith('VALUES')) return false;
-    if (trimmed.startsWith('PRAGMA')) {
-      // Some PRAGMAs mutate (e.g. user_version = N, journal_mode = X).
-      // Detect by presence of '='.
-      return trimmed.contains('=');
-    }
-    // Anything else (CREATE/ALTER/DROP/INSERT/UPDATE/DELETE/REPLACE/
-    // VACUUM/REINDEX/...) is a mutation.
-    return true;
+  /// `total_changes()` counts every row INSERT / UPDATE / DELETE on this
+  /// connection, including ones inside a `WITH … AS (DELETE …)`.
+  int _totalChanges() =>
+      (_db.select('SELECT total_changes()').first.columnAt(0) as int?) ?? 0;
+
+  /// Bumped by every schema change (CREATE / ALTER / DROP).
+  int _schemaVersion() =>
+      (_db.select('PRAGMA schema_version').first.columnAt(0) as int?) ?? 0;
+
+  /// Whether [sql] changed the local file, so the device needs it back.
+  ///
+  /// Decided from what the statement did, not from the result's row
+  /// count: the inner executor reports a SELECT's row count as
+  /// `affectedRows`, so reading three rows looked like three writes and
+  /// pushed the whole file to the phone after every grid page. Row and
+  /// schema changes are counted by SQLite itself; the leading keyword only
+  /// covers writes neither counter sees (VACUUM, `PRAGMA user_version = 2`).
+  bool _changedFile(String sql, int changesBefore, int schemaBefore) {
+    if (_totalChanges() != changesBefore) return true;
+    if (_schemaVersion() != schemaBefore) return true;
+    return keywordMayWrite(sql);
   }
 
-  static String _strip(String sql) {
-    var remaining = sql.trimLeft();
-    // Strip single-line comments.
-    while (remaining.startsWith('--')) {
-      final nl = remaining.indexOf('\n');
-      if (nl < 0) return '';
-      remaining = remaining.substring(nl + 1).trimLeft();
+  /// Statements that may write without counting a changed row or a schema
+  /// change. Reads, and transaction control (whose writes were counted by
+  /// the statements inside the transaction), are false.
+  static bool keywordMayWrite(String sql) {
+    final words = bareWords(sql, dialect: SqlDialect.sqlite);
+    if (words.isEmpty) return false;
+    switch (words.first) {
+      case 'SELECT':
+      case 'WITH':
+      case 'EXPLAIN':
+      case 'VALUES':
+      case 'BEGIN':
+      case 'COMMIT':
+      case 'END':
+      case 'ROLLBACK':
+      case 'SAVEPOINT':
+      case 'RELEASE':
+        return false;
+      case 'PRAGMA':
+        // Some PRAGMAs write (`user_version = N`); a read has no `=`.
+        return stripCommentsAndLeading(sql, dialect: SqlDialect.sqlite).contains('=');
+      default:
+        // INSERT/UPDATE/DELETE/REPLACE/CREATE/DROP/ALTER/VACUUM/REINDEX/
+        // ANALYZE (writes sqlite_stat1 without counting a change)/…
+        return true;
     }
-    return remaining;
   }
 
   static String _basename(String path) {
