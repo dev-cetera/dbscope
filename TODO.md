@@ -42,6 +42,30 @@ rg -n '\[SIMPLE\]' TODO.md
 
 <!-- New entries go here, newest first. -->
 
+### **[P3]** Abort the AI request when Stop is pressed, instead of ignoring its answer
+
+- **Where.** `untilCancelled` in `lib/query/cancel_token.dart`, `_askAi` in `lib/query/query_tab_view.dart`, `SqlAssistant.askSql`.
+- **Why.** Stop stops waiting, but the HTTP request runs on and still spends the user's API tokens.
+- **Effort.** `<4h`
+- **Blocker.** needs cancellation in `package:ai_broker`.
+- **Noticed.** 2026-11-07, while fixing Stop during an AI question.
+
+### **[P3]** Add widget tests for the Stop button's wiring and the next-page failure toast
+
+- **Where.** `lib/shell/footer.dart`, `_loadMore` in `lib/table/table_tab_view.dart`, `_load` in `lib/navigator/parts/row_list_column.dart`.
+- **Why.** The logic behind them is tested (`AppState.cancelAll`, `LatestRequest`), but nothing proves the widgets call it, so a wiring mistake would pass the suite.
+- **Effort.** `<4h`
+- **Blocker.** none
+- **Noticed.** 2026-11-07, while listing what the bug fixes left untested.
+
+### **[P3]** Share the enum-codec discovery between the desktop executor and the proxy
+
+- **Where.** `PostgresExecutor.loadEnumCodecs` in `lib/db/postgres_executor.dart`, `_loadEnumCodecs` and `_EnumCodec` in `packages/dbscope_pg_proxy/bin/dbscope_pg_proxy.dart`.
+- **Why.** Two copies of the same code. `packages/dbscope_pg_core` now exists, so one can live there, as the value decoder does.
+- **Effort.** `<1h`
+- **Blocker.** none
+- **Noticed.** 2026-11-07, while moving the value decoder.
+
 ### **[P2]** Compute table histograms server-side instead of sampling the first 10 000 rows
 
 - **Where.** `lib/meta/chart_sql.dart` (`kHistogramSampleRows`), `lib/meta/charts/chart_data.dart`, `lib/meta/charts/chart_view.dart`.

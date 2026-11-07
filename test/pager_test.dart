@@ -6,6 +6,9 @@
 // * Tables without a PK (information_schema views, ad-hoc relations)
 // have no cursor to seek by, so they page by OFFSET: every row is
 // reachable, and the first page carries no OFFSET.
+// * A sorted table without a PK also sorts by its other sortable, unmasked
+// columns, so tied rows keep their order across OFFSET pages. An unsorted one
+// stays unordered, so opening a huge table is not a full scan per page.
 // * Descending sort flips both the ORDER BY direction and the
 // tuple-compare operator (`<` vs `>`).
 // * A cancelled fetchNext yields no rows and leaves the cursor (and
@@ -18,6 +21,7 @@ import 'package:dbscope/catalog/pg_type.dart';
 import 'package:dbscope/catalog/schema_catalog.dart';
 import 'package:dbscope/db/executor.dart';
 import 'package:dbscope/db/sqlite_kind.dart';
+import 'package:dbscope/meta/meta_models.dart';
 import 'package:dbscope/query/cancel_token.dart';
 import 'package:dbscope/query/pager.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -449,6 +453,67 @@ void main() {
       expect(page.rows, hasLength(2));
       // Still the first page: no keyset cursor from the cancelled fetch.
       expect(executor.calls.last.positional, isNull);
+    });
+  });
+
+  group('no-PK tiebreak', () {
+    ColumnInfo column(String name, String typeName, {AccessLevel level = AccessLevel.full}) => ColumnInfo(
+      name: name,
+      type: PgType.text,
+      typeName: typeName,
+      nullable: true,
+      defaultExpr: null,
+      isGenerated: false,
+      isIdentity: false,
+      accessLevel: level,
+    );
+
+    test('a sorted no-PK table also sorts by its other sortable columns', () async {
+      final executor = FakeDbExecutor();
+      final pager = KeysetPager(
+        conn: executor,
+        schema: 'public',
+        table: 'log',
+        columns: [
+          column('at', 'timestamptz'),
+          column('who', 'text'),
+          column('doc', 'json'),
+          column('secret', 'text', level: AccessLevel.masked),
+        ],
+        pkColumns: const [],
+        sortColumn: 'at',
+        descending: true,
+      );
+      await pager.fetchNext();
+      final sql = executor.calls.single.sql;
+      expect(sql, contains('ORDER BY "at" DESC, "who" DESC LIMIT'));
+    });
+
+    test('on SQLite every column can break a tie', () async {
+      final executor = FakeDbExecutor(kind: kSqliteKind);
+      final pager = KeysetPager(
+        conn: executor,
+        schema: 'main',
+        table: 'log',
+        columns: [column('at', ''), column('doc', 'json')],
+        pkColumns: const [],
+        sortColumn: 'at',
+      );
+      await pager.fetchNext();
+      expect(executor.calls.single.sql, contains('ORDER BY "at" ASC, "doc" ASC LIMIT'));
+    });
+
+    test('an unsorted no-PK table stays unordered', () async {
+      final executor = FakeDbExecutor();
+      final pager = KeysetPager(
+        conn: executor,
+        schema: 'public',
+        table: 'log',
+        columns: [column('at', 'timestamptz')],
+        pkColumns: const [],
+      );
+      await pager.fetchNext();
+      expect(executor.calls.single.sql, isNot(contains('ORDER BY')));
     });
   });
 }

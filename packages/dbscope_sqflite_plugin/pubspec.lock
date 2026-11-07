@@ -151,6 +151,13 @@ packages:
       relative: true
     source: path
     version: "0.1.0+1"
+  dbscope_pg_core:
+    dependency: transitive
+    description:
+      path: "../dbscope_pg_core"
+      relative: true
+    source: path
+    version: "0.1.0"
   dbscope_pg_proxy_plugin:
     dependency: transitive
     description:

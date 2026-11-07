@@ -14,13 +14,15 @@
 // "username": "...", "password": "...", "sslMode": "require",
 // "secret": "..." }
 // { "type": "execute", "id": "<uuid>", "sql": "...",
-// "positional": [...] | "named": {...} }
+// "positional": [...] | "named": {...}, "maxRows"?: 10000,
+// "rowCapMode"?: "readAndDrop" }
+// { "type": "cancel", "id": "<uuid of a running execute>" }
 // { "type": "close" }
 //
 // server → client:
 // { "type": "ready" }
-// { "type": "result", "id": "...", "columns": [{name, typeName}],
-// "rows": [[...]], "affected": 0, "truncated"?: true }
+// { "type": "result", "id": "...", "columns": [{name, typeOid}],
+// "rows": [[...]], "affected": 0, "truncated"?: true, "cancelled"?: true }
 // { "type": "error", "id"?: "...", "code"?: "...", "message": "...",
 // "constraintName"?: "..." }
 //
@@ -42,7 +44,12 @@ import 'dart:convert';
 import 'dart:io';
 import 'dart:typed_data';
 
+import 'package:dbscope_pg_core/dbscope_pg_core.dart';
 import 'package:postgres/postgres.dart' as pg;
+
+/// Statements one client may have running or queued. They used to be bounded
+/// by reading one message at a time; now each holds memory until it ends.
+const _kMaxInFlightStatements = 64;
 
 Future<void> main(List<String> args) async {
   final opts = _parseArgs(args);
@@ -96,7 +103,13 @@ Future<void> _route(HttpRequest req, _Opts opts) async {
     await req.response.close();
     return;
   }
-  unawaited(_handleUpgrade(req, opts));
+  // A vanished client's socket reports its reset on futures nobody is awaiting
+  // while statements run concurrently. Uncaught, that would kill the whole
+  // proxy and every other client's session with it.
+  runZonedGuarded(
+    () => unawaited(_handleUpgrade(req, opts)),
+    (error, _) => stderr.writeln('session error: $error'),
+  );
 }
 
 /// Origins accepted when no `--allow-origin` is given: the hosted web app
@@ -150,6 +163,17 @@ class _Session {
   final WebSocket socket;
   final _Opts opts;
   pg.Connection? _conn;
+  PgSession? _pgSession;
+
+  /// Running `execute` messages by id, each with the completer its `cancel`
+  /// message fires. They run concurrently (the driver queues them) because
+  /// this loop has to stay free to read that `cancel`.
+  final Map<Object?, Completer<void>> _running = {};
+  final Set<Future<void>> _inFlight = {};
+
+  /// A client on a dropped socket can't be waited for, but one that said
+  /// `close` gets its running statements finished first.
+  var _closeGracefully = false;
 
   Future<void> run() async {
     try {
@@ -171,8 +195,13 @@ class _Session {
             case 'open':
               await _onOpen(msg);
             case 'execute':
-              await _onExecute(msg);
+              await _startExecute(msg);
+            case 'cancel':
+              final cancel = _running[msg['id']];
+              if (cancel != null && !cancel.isCompleted) cancel.complete();
             case 'close':
+              _closeGracefully = true;
+              await Future.wait(_inFlight);
               return;
             default:
               await _send({'type': 'error', 'message': 'unknown type "$type"'});
@@ -191,8 +220,43 @@ class _Session {
       }
     } finally {
       try {
-        await _conn?.close();
+        await _conn?.close(force: !_closeGracefully);
       } catch (_) {}
+    }
+  }
+
+  Future<void> _startExecute(Map<String, Object?> msg) async {
+    if (_inFlight.length >= _kMaxInFlightStatements) {
+      await _send({
+        'type': 'error',
+        'id': msg['id']?.toString(),
+        'message': 'too many statements running on this connection',
+      });
+      return;
+    }
+    final done = Completer<void>();
+    _inFlight.add(done.future);
+    unawaited(
+      _executeGuarded(msg).whenComplete(() {
+        _inFlight.remove(done.future);
+        done.complete();
+      }),
+    );
+  }
+
+  /// [_onExecute] no longer runs under the message loop's handler, so a
+  /// malformed field is reported here.
+  Future<void> _executeGuarded(Map<String, Object?> msg) async {
+    try {
+      await _onExecute(msg);
+      // The handler reads fields with `as` casts from an untrusted peer.
+      // ignore: avoid_catching_errors
+    } on TypeError catch (e) {
+      await _send({
+        'type': 'error',
+        'id': msg['id']?.toString(),
+        'message': 'malformed message: $e',
+      });
     }
   }
 
@@ -266,6 +330,7 @@ class _Session {
           typeRegistry: enumCodecs.isEmpty ? null : pg.TypeRegistry(codecs: enumCodecs),
         ),
       );
+      _pgSession = PgSession(_conn!);
       await _send({'type': 'ready'});
     } catch (e) {
       await _send({'type': 'error', 'message': 'open failed: $e'});
@@ -274,9 +339,9 @@ class _Session {
   }
 
   Future<void> _onExecute(Map<String, Object?> msg) async {
-    final conn = _conn;
+    final session = _pgSession;
     final id = msg['id'] as String?;
-    if (conn == null) {
+    if (session == null) {
       await _send({
         'type': 'error',
         'id': id,
@@ -287,34 +352,56 @@ class _Session {
     final sql = msg['sql'] as String? ?? '';
     final positional = msg['positional'];
     final named = msg['named'];
+    // The proxy's own limit always applies, so a client can't make this
+    // process hold a whole table.
+    final requested = (msg['maxRows'] as num?)?.toInt() ?? opts.maxRows;
+    final rawMode = msg['rowCapMode'] as String?;
+    final mode = rawMode == null
+        ? RowCapMode.readAndDrop
+        : RowCapMode.values.where((value) => value.name == rawMode).firstOrNull;
+    if (mode == null) {
+      await _send({'type': 'error', 'id': id, 'message': 'unknown rowCapMode "$rawMode"'});
+      return;
+    }
+    final cancel = Completer<void>();
+    _running[id] = cancel;
     try {
-      final pg.Result result;
-      if (named is Map) {
-        result = await conn.execute(
-          pg.Sql.named(sql),
-          parameters: named.map((k, v) => MapEntry(k.toString(), v)),
-        );
-      } else if (positional is List) {
-        result = await conn.execute(pg.Sql(sql), parameters: positional);
-      } else {
-        result = await conn.execute(sql);
-      }
+      final run = await session.run(
+        sql,
+        positional: named is Map || positional is! List ? null : positional,
+        named: named is Map ? named.map((k, v) => MapEntry(k.toString(), v)) : null,
+        rowCap: RowCap(requested.clamp(0, opts.maxRows), mode: mode),
+        cancelRequested: cancel.future,
+      );
+      final columns = run.schema?.columns ?? const <pg.ResultSchemaColumn>[];
+      final isArray = [
+        for (final column in columns) PgValueText.isArrayTypeName(pgTypeNameForOid(column.type.oid)),
+      ];
       await _send({
         'type': 'result',
         'id': id,
         'columns': [
-          for (final c in result.schema.columns)
+          for (final c in columns)
             {
               'name': c.columnName ?? '',
               'typeOid': c.type.oid,
             },
         ],
         'rows': [
-          for (final row in result.take(opts.maxRows)) [for (final v in row) _serialize(v)],
+          for (final row in run.rows)
+            [
+              for (var i = 0; i < row.length; i++)
+                _serialize(PgValueText.decode(row[i], isArray: isArray[i])),
+            ],
         ],
-        'affected': result.affectedRows,
-        if (result.length > opts.maxRows) 'truncated': true,
+        'affected': run.affectedRows,
+        if (run.truncated) 'truncated': true,
+        if (run.cancelled) 'cancelled': true,
       });
+      // A TypeError is the malformed-message case, reported by the caller.
+      // ignore: avoid_catching_errors
+    } on TypeError {
+      rethrow;
     } catch (e) {
       String? code;
       String? constraint;
@@ -329,6 +416,8 @@ class _Session {
         'constraintName': ?constraint,
         'message': e.toString(),
       });
+    } finally {
+      _running.remove(id);
     }
   }
 
@@ -336,7 +425,6 @@ class _Session {
     if (v == null) return null;
     if (v is String || v is num || v is bool) return v;
     if (v is DateTime) return v.toUtc().toIso8601String();
-    if (v is pg.UndecodedBytes) return _decodeUndecodedBytes(v);
     if (v is List<int>) {
       // Bytes — base64-encode with a discriminator.
       return {'_b64': base64Encode(v)};
@@ -352,27 +440,9 @@ class _Session {
     return v.toString();
   }
 
-  // Mirror of PostgresExecutor._decodeValue. `package:postgres` returns
-  // UndecodedBytes for any OID it doesn't have a codec for (custom domains,
-  // citext, …); the binary protocol bytes are still UTF-8 for text-like
-  // types. Only actual bytea (OID 17) gets the `\xDEADBEEF` hex preview.
-  static const _byteaOid = 17;
-  Object? _decodeUndecodedBytes(pg.UndecodedBytes v) {
-    if (v.typeOid != _byteaOid) {
-      try {
-        return v.asString;
-      } catch (_) {
-        // fall through to hex
-      }
-    }
-    final sb = StringBuffer(r'\x');
-    for (final byte in v.bytes) {
-      sb.write(byte.toRadixString(16).padLeft(2, '0'));
-    }
-    return sb.toString();
-  }
-
   Future<void> _send(Map<String, Object?> msg) async {
+    // A statement can outlive the socket now that they run concurrently.
+    if (socket.readyState != WebSocket.open) return;
     socket.add(jsonEncode(msg));
   }
 }

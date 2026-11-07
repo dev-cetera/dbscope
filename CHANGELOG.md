@@ -4,6 +4,15 @@
 
 ## 2026-11-07
 
+- A table that fails to load its next page now says so instead of looking finished (2026-11-07)
+- When the AI asks a clarifying question the tab shows it instead of an empty SQL error (2026-11-07)
+- A malformed include in a metadata file is reported as a problem instead of stopping the connection from opening (2026-11-07)
+- Stop on an AI question stops waiting for it without closing the connection, and Stop now closes the connection of the running tab rather than whichever is active (2026-11-07)
+- The web build shows interval, bytea, money, inet, array and similar values as Postgres text, matching the desktop app (2026-11-07)
+- Sorted tables with no primary key no longer repeat or skip tied rows between pages (2026-11-07)
+- The web proxy holds at most --max-rows rows per result instead of reading them all first (2026-11-07)
+- Query tabs no longer load a whole huge result to show 10,000 rows: a plain read stops at the limit on the server, including inside an open transaction (2026-11-07)
+- Stop now cancels a running Postgres query on the server, directly and through the web proxy, and keeps the connection and any open transaction instead of reconnecting (2026-11-07)
 - Fixed: a URL at the end of a sentence in a cell opens without the trailing full stop, comma or bracket (2026-11-07)
 - Fixed: Copy table now works on tables with generated or GENERATED ALWAYS identity columns (2026-11-07)
 - Fixed: interval, time, bytea, array, money, inet, cidr, macaddr, timetz and bit cells show Postgres text and can be edited (desktop Postgres) (2026-11-07)

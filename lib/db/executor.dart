@@ -18,12 +18,16 @@
 // real feature can't be supported by some backend, then guard the
 // feature with the flag at the UI level.
 //
-// 4. Cancellation goes through `CancelToken`. Backends that can't actually
-// abort an in-flight request still honour the token by checking it
-// before returning rows (best effort). Postgres cancels by closing the
-// socket; HTTP backends pass the token to their request.
+// 4. Cancellation goes through `CancelToken`. Backends that can stop a
+// running statement report `cancelsRunningStatement` (Postgres sends the
+// protocol's CancelRequest; the proxy forwards it). The others still honour
+// the token by checking it before returning rows (best effort).
+
+import 'package:dbscope_pg_core/dbscope_pg_core.dart' show RowCap;
 
 import '../query/cancel_token.dart';
+
+export 'package:dbscope_pg_core/dbscope_pg_core.dart' show RowCap, RowCapMode;
 
 /// Backend-agnostic result of executing one statement.
 class DbResult {
@@ -31,10 +35,14 @@ class DbResult {
     required this.columns,
     required this.rows,
     this.affectedRows = 0,
+    this.truncated = false,
   });
   final List<DbColumn> columns;
   final List<List<Object?>> rows;
   final int affectedRows;
+
+  /// A [RowCap] left rows out.
+  final bool truncated;
 
   bool get isEmpty => rows.isEmpty;
   List<Object?> get first => rows.first;
@@ -55,7 +63,7 @@ class DbColumn {
 class DbCapabilities {
   const DbCapabilities({
     this.sessionReadOnly = false,
-    this.cancelByClose = false,
+    this.cancelsRunningStatement = false,
     this.dml = false,
     this.transactions = false,
   });
@@ -64,8 +72,9 @@ class DbCapabilities {
   /// HTTP-mediated backends can't toggle session state.
   final bool sessionReadOnly;
 
-  /// Whether cancelling a query by closing the underlying socket works.
-  final bool cancelByClose;
+  /// Whether cancelling a [CancelToken] stops a statement that is already
+  /// running, leaving the connection open.
+  final bool cancelsRunningStatement;
 
   /// Whether the backend supports DML at all (INSERT/UPDATE/DELETE).
   final bool dml;
@@ -75,7 +84,7 @@ class DbCapabilities {
 
   static const postgres = DbCapabilities(
     sessionReadOnly: true,
-    cancelByClose: true,
+    cancelsRunningStatement: true,
     dml: true,
     transactions: true,
   );
@@ -101,6 +110,7 @@ abstract class DbExecutor {
     List<Object?>? positional,
     Map<String, Object?>? named,
     CancelToken? cancelToken,
+    RowCap? rowCap,
   });
 
   /// Toggle session read-only behaviour. Real Postgres backends issue
@@ -109,8 +119,7 @@ abstract class DbExecutor {
   /// `capabilities.sessionReadOnly == false`).
   Future<void> setReadOnly({required bool readOnly});
 
-  /// Close the executor. `force = true` is the "abort whatever is in
-  /// flight" path used by the user-facing Stop button — Postgres-backed
-  /// executors close the socket to cancel a long-running query.
+  /// Close the executor. `force = true` aborts whatever is in flight: the
+  /// Stop button's last resort when asking a statement to stop isn't enough.
   Future<void> close({bool force = false});
 }

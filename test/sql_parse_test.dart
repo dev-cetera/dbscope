@@ -278,4 +278,27 @@ void main() {
       );
     });
   });
+
+  group('isPlainRead', () {
+    const dialect = SqlDialect.postgres;
+
+    test('plain reads', () {
+      expect(isPlainRead('SELECT 1', dialect: dialect), isTrue);
+      expect(isPlainRead('with a as (select 1) select * from a', dialect: dialect), isTrue);
+      expect(isPlainRead('VALUES (1)', dialect: dialect), isTrue);
+      expect(isPlainRead('TABLE users', dialect: dialect), isTrue);
+    });
+
+    test('anything that may write is not', () {
+      expect(isPlainRead('DELETE FROM t RETURNING *', dialect: dialect), isFalse);
+      expect(isPlainRead('WITH d AS (DELETE FROM t RETURNING *) SELECT * FROM d', dialect: dialect), isFalse);
+      expect(isPlainRead('SELECT * INTO copy FROM t', dialect: dialect), isFalse);
+      expect(isPlainRead('EXPLAIN ANALYZE DELETE FROM t', dialect: dialect), isFalse);
+      expect(isPlainRead('SET x = 1', dialect: dialect), isFalse);
+    });
+
+    test('a keyword inside a literal is not a write', () {
+      expect(isPlainRead("SELECT 'delete me'", dialect: dialect), isTrue);
+    });
+  });
 }

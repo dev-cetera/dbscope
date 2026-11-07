@@ -7,7 +7,8 @@ import 'package:dbscope/db/executor.dart';
 import 'package:dbscope/query/cancel_token.dart';
 
 class ExecuteCall {
-  const ExecuteCall(this.sql, {this.positional, this.named});
+  const ExecuteCall(this.sql, {this.positional, this.named, this.rowCap});
+  final RowCap? rowCap;
   final String sql;
   final List<Object?>? positional;
   final Map<String, Object?>? named;
@@ -64,8 +65,9 @@ class FakeDbExecutor implements DbExecutor {
     List<Object?>? positional,
     Map<String, Object?>? named,
     CancelToken? cancelToken,
+    RowCap? rowCap,
   }) async {
-    calls.add(ExecuteCall(sql, positional: positional, named: named));
+    calls.add(ExecuteCall(sql, positional: positional, named: named, rowCap: rowCap));
     if (_scripted.isNotEmpty) return _scripted.removeAt(0);
     return const DbResult(columns: [], rows: []);
   }

@@ -168,10 +168,13 @@ class _QueryTabViewState extends State<QueryTabView> {
       showToast(context, 'Connect first.');
       return;
     }
+    final tab = widget.tab;
+    final token = CancelToken();
     setState(() {
       widget.tab.prompt = prompt;
       widget.tab.isAsking = true;
       widget.tab.error = null;
+      widget.tab.cancelToken = token;
     });
     AppState.instance.notifyChange();
     try {
@@ -179,14 +182,28 @@ class _QueryTabViewState extends State<QueryTabView> {
         executor,
         profileId: widget.tab.connectionId,
       );
-      final sql = await assistant.askSql(
-        prompt,
-        focusSchema: widget.tab.focusSchema,
-        focusTable: widget.tab.focusTable,
+      final sql = await untilCancelled(
+        assistant.askSql(
+          prompt,
+          focusSchema: widget.tab.focusSchema,
+          focusTable: widget.tab.focusTable,
+        ),
+        token,
       );
+      if (sql == null) {
+        // Stopped. The view may be gone by now, but the tab must still stop
+        // counting as running.
+        tab
+          ..isAsking = false
+          ..cancelToken = null;
+        if (mounted) setState(() {});
+        AppState.instance.notifyChange();
+        return;
+      }
       if (!mounted) return;
       setState(() {
         widget.tab.isAsking = false;
+        widget.tab.cancelToken = null;
         widget.tab.sql = sql;
       });
       AppState.instance.notifyChange();
@@ -195,6 +212,7 @@ class _QueryTabViewState extends State<QueryTabView> {
       if (!mounted) return;
       setState(() {
         widget.tab.isAsking = false;
+        widget.tab.cancelToken = null;
         widget.tab.error = 'AI: $e';
       });
       AppState.instance.notifyChange();

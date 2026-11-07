@@ -506,11 +506,22 @@ class AppState extends ChangeNotifier {
     });
   }
 
-  void cancelAll() {
+  /// Asks every running tab to stop, and returns the connections that have to
+  /// be closed to stop what asking can't: a backend that can't stop a running
+  /// statement ([canStopStatements] is false for it), a tab with no token, or
+  /// one that was asked before and is still running. Tabs can be on different
+  /// connections, so this goes by each tab's own, not the active one.
+  Set<String> cancelAll({required bool Function(String connectionId) canStopStatements}) {
+    final toClose = <String>{};
     for (final tab in runningTabs()) {
-      tab.cancelToken?.cancel();
+      final token = tab.cancelToken;
+      if (token == null || token.isCancelled || !canStopStatements(tab.connectionId)) {
+        toClose.add(tab.connectionId);
+      }
+      token?.cancel();
     }
     notifyListeners();
+    return toClose;
   }
 
   void notifyChange() => notifyListeners();

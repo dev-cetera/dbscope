@@ -63,6 +63,13 @@ Only clicks in a dashboard you're already signed in to, with you watching (Claud
 
 ### P1
 
+#### Try Stop and a 10,000+ row query on Cloud SQL and through PgBouncer
+
+- **Why.** Stop and the row limit passed against a local Postgres 17, directly and through the web proxy, but not on these two routes or other Postgres versions.
+- **Steps.** With real credentials: `DBSCOPE_LIVE_PG=1 PGHOST=… PGPORT=… PGUSER=… PGPASSWORD=… PGDATABASE=… fvm flutter test test/pg_cap_and_cancel_live_test.dart`. It creates and drops `dbscope_*` tables, so use a scratch database. Then press Stop on a slow query in the app.
+- **Related.** `test/pg_cap_and_cancel_live_test.dart`
+- **Added.** 2026-11-07
+
 #### Add a screenshot or demo video to the landing page and README
 
 - **Why.** The landing page hero shows nothing until `site/assets/screenshot.png` exists; a product page without a picture converts poorly.

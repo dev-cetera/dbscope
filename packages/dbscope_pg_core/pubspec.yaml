@@ -1,0 +1,13 @@
+name: dbscope_pg_core
+description: Postgres plumbing shared by dbscope's desktop executor and its web proxy. Value decoding, row caps and statement cancellation. Pure Dart, so the proxy can run without Flutter.
+publish_to: none
+version: 0.1.0
+
+environment:
+  sdk: ^3.13.5
+
+dependencies:
+  # Capped below 3.6.0: lib/src/pg_session.dart imports the driver's on-demand
+  # cancel from a private path, and 3.6.0 moved it. Update the import when
+  # raising this.
+  postgres: '>=3.5.11 <3.6.0'

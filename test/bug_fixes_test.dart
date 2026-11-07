@@ -1,5 +1,6 @@
 // Regression tests for the bugs fixed together from BUGS.md (2026-11-03).
 // Each group names the contract it pins:
+// * A reply that is only `-- CLARIFY: <question>` yields the question.
 // * enforceReadOnly refuses write keywords anywhere outside literals and
 //   comments (data-modifying CTEs, EXPLAIN ANALYZE DELETE, SELECT INTO),
 //   but not inside a string or a quoted identifier.
@@ -259,5 +260,18 @@ void main() {
 
   test('uniqueColumnNames suffixes duplicates without colliding', () {
     expect(uniqueColumnNames(['id', 'id', 'name', 'ID', 'id_2']), ['id', 'id_3', 'name', 'ID_4', 'id_2']);
+  });
+
+  group('clarifyingQuestion', () {
+    test('finds the question in a clarifying reply', () {
+      expect(clarifyingQuestion('-- CLARIFY: Which table do you mean?'), 'Which table do you mean?');
+      expect(clarifyingQuestion('  -- clarify:   Which one?  '), 'Which one?');
+    });
+
+    test('a query is not a question', () {
+      expect(clarifyingQuestion('SELECT 1'), isNull);
+      expect(clarifyingQuestion('-- CLARIFY: Which?\nSELECT 1'), isNull);
+      expect(clarifyingQuestion('-- an ordinary comment'), isNull);
+    });
   });
 }

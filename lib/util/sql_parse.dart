@@ -95,6 +95,43 @@ List<String> bareWords(String sql, {required SqlDialect dialect}) {
   return words;
 }
 
+// The statements Postgres accepts inside a CTE or under EXPLAIN that
+// change data (`EXECUTE` runs a prepared statement that may). Statements
+// that can only come first (DROP, TRUNCATE, …) are found by checking the
+// first word, and listing them here would catch ordinary columns named
+// `comment` or `lock`.
+const _writeKeywords = {'INSERT', 'UPDATE', 'DELETE', 'MERGE', 'CREATE', 'EXECUTE'};
+
+/// The first word in [sql] that makes it write, outside literals and comments,
+/// or null. It also finds a column that happens to be named `delete`, so
+/// treat a hit as "may write". A function called by the SQL can still write.
+String? firstWriteKeyword(String sql, {required SqlDialect dialect}) {
+  final words = bareWords(sql, dialect: dialect);
+  for (var i = 0; i < words.length; i++) {
+    final word = words[i];
+    final writes =
+        _writeKeywords.contains(word) ||
+        // SQLite's `REPLACE INTO` (bare REPLACE is also a string function).
+        (word == 'REPLACE' && i + 1 < words.length && words[i + 1] == 'INTO') ||
+        // `SELECT … INTO new_table` creates a table on Postgres. (`INSERT
+        // INTO` and friends are caught by their own word first.)
+        (word == 'INTO' && i > 0 && !const {'INSERT', 'REPLACE', 'MERGE'}.contains(words[i - 1]));
+    if (writes) return word;
+  }
+  return null;
+}
+
+const _plainReadFirstWords = {'SELECT', 'WITH', 'VALUES', 'TABLE'};
+
+/// Whether [sql] only reads, going by its words. A function it calls can
+/// still write, which this can't see.
+bool isPlainRead(String sql, {required SqlDialect dialect}) {
+  final words = bareWords(sql, dialect: dialect);
+  return words.isNotEmpty &&
+      _plainReadFirstWords.contains(words.first) &&
+      firstWriteKeyword(sql, dialect: dialect) == null;
+}
+
 bool _startsEscapeString(String sql, int i) {
   final ch = sql.codeUnitAt(i);
   return (ch == _upperE || ch == _lowerE) &&

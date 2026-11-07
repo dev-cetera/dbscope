@@ -61,9 +61,9 @@ exactly like exposing Postgres itself.
   message, so an exposed proxy can reach any Postgres its network can.
   Pass `--allow-db-host db.internal:5432` (repeatable; a bare host allows
   any port) to allow only that one.
-- **Results are capped.** One result sends at most `--max-rows` rows
-  (default 100000); a longer one is cut and its reply says
-  `"truncated": true`.
+- **Results are capped.** One result holds and sends at most `--max-rows`
+  rows (default 100000), however large the client's own `maxRows`; a longer
+  one is cut and its reply says `"truncated": true`.
 - **Use a least-privileged Postgres role.** The proxy never inspects or
   restricts the SQL it forwards.
 
@@ -74,11 +74,23 @@ One WebSocket owns one Postgres connection for its lifetime.
 | Direction        | Frame                                                      |
 |------------------|------------------------------------------------------------|
 | client → server  | `{type: open, host, port, database, username, password, sslMode, secret?}` |
-| client → server  | `{type: execute, id, sql, positional?, named?}`            |
+| client → server  | `{type: execute, id, sql, positional?, named?, maxRows?, rowCapMode?}` |
+| client → server  | `{type: cancel, id}` (stops that running `execute`)        |
 | client → server  | `{type: close}`                                            |
 | server → client  | `{type: ready}` (after a successful open)                  |
-| server → client  | `{type: result, id, columns: [{name, typeOid}], rows, affected}` |
+| server → client  | `{type: result, id, columns: [{name, typeOid}], rows, affected, truncated?, cancelled?}` |
 | server → client  | `{type: error, id?, code?, message, constraintName?}`      |
 
-The wire encoder serializes `DateTime` as ISO-8601 UTC, byte arrays as
-`{_b64: "..."}`, and falls back to `toString()` for unknown types.
+`rowCapMode` says how `maxRows` is enforced. `readAndDrop` (the default) runs
+the statement to the end and drops the extra rows. `stopAtLimit` wraps it in
+`SELECT * FROM (...) LIMIT`, so the server never produces more than the limit.
+Only send that for a plain `SELECT`, `WITH`, `VALUES` or `TABLE`: anything else
+fails as a subquery. See `RowCapMode` in `package:dbscope_pg_core`.
+
+Statements on one socket run concurrently from the proxy's side, so `cancel`
+can be read while one runs; Postgres still runs them one at a time, in order.
+
+Values use the same text as the desktop app (`package:dbscope_pg_core`):
+`interval`, `bytea`, `money`, `inet`, arrays and so on arrive as the text
+Postgres prints. `DateTime` is ISO-8601 UTC, and anything left falls back to
+`toString()`.

@@ -103,10 +103,11 @@ Future<DbResult> executeReadOnly(
   Map<String, Object?>? named,
   Duration? timeout,
   CancelToken? cancelToken,
+  RowCap? rowCap,
 }) {
   Future<DbResult> runUnbounded() => named == null || named.isEmpty
-      ? executor.execute(sql, cancelToken: cancelToken)
-      : executor.execute(sql, named: named, cancelToken: cancelToken);
+      ? executor.execute(sql, cancelToken: cancelToken, rowCap: rowCap)
+      : executor.execute(sql, named: named, cancelToken: cancelToken, rowCap: rowCap);
   Future<DbResult> run() => timeout != null && executor is StatementTimeoutCapable
       ? (executor as StatementTimeoutCapable).withStatementTimeout(timeout, runUnbounded)
       : runUnbounded();

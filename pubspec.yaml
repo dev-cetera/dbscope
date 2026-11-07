@@ -20,6 +20,8 @@ dependencies:
   # Doom theme wired out — package kept under packages/dbscope_doom_plugin.
   # dbscope_doom_plugin:
   #   path: packages/dbscope_doom_plugin
+  dbscope_pg_core:
+    path: packages/dbscope_pg_core
   dbscope_pg_proxy_plugin:
     path: packages/dbscope_pg_proxy_plugin
   dbscope_portal_plugin:

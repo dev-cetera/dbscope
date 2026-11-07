@@ -5,6 +5,16 @@ import '../meta/masked_value.dart';
 import '../util/sql_quote.dart';
 import 'cancel_token.dart';
 
+/// Types Postgres can sort out of the box. A column of any other type (json,
+/// xml, point, a custom type) would make ORDER BY fail, so it can't be a
+/// tiebreaker.
+const _kSortableTypeNames = {
+  'bool', 'int2', 'int4', 'int8', 'float4', 'float8', 'numeric', 'money', 'oid',
+  'text', 'varchar', 'bpchar', 'char', 'name', 'uuid', 'bytea',
+  'date', 'time', 'timetz', 'timestamp', 'timestamptz', 'interval',
+  'inet', 'cidr', 'macaddr',
+};
+
 class Page {
   Page({required this.rows, this.lastSortVals, this.lastPkVals});
   final List<List<Object?>> rows;
@@ -113,6 +123,7 @@ class KeysetPager {
     final orderColumns = <String>[
       if (sortColumn != null) quoteIdent(sortColumn!),
       for (final primaryKey in pkColumns) quoteIdent(primaryKey),
+      ..._offsetTiebreakers.map(quoteIdent),
     ];
     final direction = descending ? 'DESC' : 'ASC';
     // Views in information_schema and arbitrary unkeyed relations can have
@@ -175,6 +186,24 @@ class KeysetPager {
       lastSortVals: sortValues,
       lastPkVals: primaryKeyValues,
     );
+  }
+
+  /// OFFSET paging is only right if every query returns the rows in the same
+  /// order, and rows that tie on the sort column have no order of their own.
+  /// So a sorted table without a primary key also sorts by its other columns.
+  /// Rows equal in all of them are interchangeable, so it can't matter which
+  /// page gets which. Masked columns stay out, as sorting by one would reveal
+  /// its values. An unsorted table stays unordered: sorting it would turn
+  /// opening a huge table into a full scan per page.
+  Iterable<String> get _offsetTiebreakers {
+    if (pkColumns.isNotEmpty || sortColumn == null) return const [];
+    final sortable = conn.kind == kSqliteKind
+        ? columns
+        : columns.where((column) => _kSortableTypeNames.contains(column.typeName));
+    return [
+      for (final column in sortable)
+        if (column.name != sortColumn && !column.isMasked) column.name,
+    ];
   }
 
   /// Where NULLs of the sort column fall in this backend's default order

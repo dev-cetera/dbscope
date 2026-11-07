@@ -144,6 +144,13 @@ packages:
       relative: true
     source: path
     version: "0.1.0"
+  dbscope_pg_core:
+    dependency: "direct main"
+    description:
+      path: "packages/dbscope_pg_core"
+      relative: true
+    source: path
+    version: "0.1.0"
   dbscope_pg_proxy_plugin:
     dependency: "direct main"
     description:

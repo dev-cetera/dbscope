@@ -5,11 +5,9 @@
 // this file is the only place that knows about JSON envelopes — callers
 // see the standard DbExecutor surface.
 //
-// Cancellation: the WebSocket has no per-message cancel, so we honour
-// the CancelToken before returning rows (best effort). Closing the
-// executor with force: true drops the socket, which causes the proxy
-// to close its upstream Postgres connection — same shape as
-// PostgresExecutor's close-to-cancel pattern.
+// Cancellation: a fired CancelToken sends a `cancel` envelope, and the proxy
+// stops the statement on the server. Closing the executor with force: true
+// drops the socket, which aborts the upstream Postgres connection.
 
 import 'dart:async';
 import 'dart:convert';
@@ -92,7 +90,7 @@ class PgProxyExecutor implements DbExecutor {
     // The proxy holds one Postgres session per socket, so a session setting
     // sticks for every later statement, exactly as on a direct connection.
     sessionReadOnly: true,
-    cancelByClose: true,
+    cancelsRunningStatement: true,
     dml: true,
   );
 
@@ -102,10 +100,12 @@ class PgProxyExecutor implements DbExecutor {
     List<Object?>? positional,
     Map<String, Object?>? named,
     CancelToken? cancelToken,
+    RowCap? rowCap,
   }) async {
     if (_closed) {
       throw StateError('PgProxy executor is closed');
     }
+    if (cancelToken?.isCancelled ?? false) return const DbResult(columns: [], rows: []);
     final id = _ids.next();
     final completer = Completer<Map<String, Object?>>();
     _pending[id] = completer;
@@ -116,8 +116,16 @@ class PgProxyExecutor implements DbExecutor {
       if (named != null) 'named': named.map((key, value) => MapEntry(key, _wire(value))),
       if (named == null && positional != null)
         'positional': [for (final value in positional) _wire(value)],
+      if (rowCap != null) ...{'maxRows': rowCap.maxRows, 'rowCapMode': rowCap.mode.name},
     };
     _channel.sink.add(jsonEncode(message));
+    unawaited(
+      cancelToken?.whenCancelled.then((_) {
+        if (!_closed && _pending.containsKey(id)) {
+          _channel.sink.add(jsonEncode({'type': 'cancel', 'id': id}));
+        }
+      }),
+    );
     final reply = await completer.future;
     if (cancelToken?.isCancelled ?? false) {
       return const DbResult(columns: [], rows: []);
@@ -142,7 +150,12 @@ class PgProxyExecutor implements DbExecutor {
         if (row is List) [for (final value in row) _decode(value)],
     ];
     final affected = (reply['affected'] as num?)?.toInt() ?? 0;
-    return DbResult(columns: columns, rows: rows, affectedRows: affected);
+    return DbResult(
+      columns: columns,
+      rows: rows,
+      affectedRows: affected,
+      truncated: reply['truncated'] == true,
+    );
   }
 
   @override

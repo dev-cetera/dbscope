@@ -376,11 +376,13 @@ class _TableTabViewState extends State<TableTabView> {
       // Start fetching the page after the one we just appended so the
       // next scroll-to-bottom is instant.
       _kickPrefetch();
-    } catch (_) {
+    } catch (e) {
       if (!mounted || generation != _loadGeneration) return;
       // The slot was emptied before the await, so the next attempt
-      // issues a fresh request.
+      // issues a fresh request. Without the toast the table would look as if
+      // it simply ended here.
       setState(() => widget.tab.isLoadingMore = false);
+      showToast(context, 'Could not load more rows: ${classify(e).message}');
     }
     AppState.instance.notifyChange();
   }

@@ -412,6 +412,7 @@ class _ThrowingExecutor extends FakeDbExecutor {
     List<Object?>? positional,
     Map<String, Object?>? named,
     CancelToken? cancelToken,
+    RowCap? rowCap,
   }) async {
     await super.execute(sql, positional: positional, named: named);
     if (sql.contains('boom')) throw StateError('boom');

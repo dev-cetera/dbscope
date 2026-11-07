@@ -407,7 +407,16 @@ class FileSource {
     if (document == null) return;
     visiting.add(path);
     final directory = parentDirectory(path);
-    for (final include in decodeStringListCell(document['include'])) {
+    var includes = const <String>[];
+    try {
+      includes = decodeStringListCell(document['include']);
+    } on FormatException catch (e) {
+      // Same as an include that can't be read: report it and keep the rest.
+      builder.problems.add(
+        MetaProblem(MetaSourceKind.file, path, '`include` is not a valid list: ${e.message}'),
+      );
+    }
+    for (final include in includes) {
       await _loadInto(
         builder,
         resolveRelativePath(directory, include),

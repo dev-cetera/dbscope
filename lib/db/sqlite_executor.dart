@@ -13,10 +13,10 @@ export 'sqlite_kind.dart';
 ///
 /// Capabilities:
 /// - sessionReadOnly: true (PRAGMA query_only = 1)
-/// - cancelByClose: false (sqlite3 Dart is sync FFI; the Stop button
-/// can't preempt an in-flight query. Honour
-/// the token before returning the row set as
-/// a best effort.)
+/// - cancelsRunningStatement: false (sqlite3 Dart is sync FFI, so a running
+/// statement blocks the isolate and nothing can
+/// fire the token. Honour it before returning
+/// the row set as a best effort.)
 /// - dml/transactions: true
 ///
 /// `$N` and `@name` are rewritten to SQLite's `?N` and `:name` so the
@@ -84,9 +84,18 @@ class SqliteExecutor implements DbExecutor, StatementTimeoutCapable {
     List<Object?>? positional,
     Map<String, Object?>? named,
     CancelToken? cancelToken,
+    RowCap? rowCap,
   }) async {
     if (_closed) {
       throw StateError('SqliteExecutor is closed.');
+    }
+    if (rowCap != null) {
+      return _runCapped(
+        named != null ? translateNamedToSqlite(sql) : positional != null ? translatePositionalToSqlite(sql) : sql,
+        rowCap,
+        positional == null ? null : [for (final value in positional) _toSqlValue(value)],
+        named?.map((key, value) => MapEntry(':$key', _toSqlValue(value))),
+      );
     }
     if (named != null) {
       final rewritten = translateNamedToSqlite(sql);
@@ -162,6 +171,46 @@ class SqliteExecutor implements DbExecutor, StatementTimeoutCapable {
         );
       }
       return _resultFromSelect(resultSet);
+    } finally {
+      statement.dispose();
+    }
+  }
+
+  /// Steps the statement by hand so rows past [cap] are never held. A plain
+  /// read stops there. [RowCapMode.readAndDrop] steps on to the end, like the
+  /// other backends, though SQLite has already made a write's changes by its
+  /// first step.
+  DbResult _runCapped(
+    String sql,
+    RowCap cap,
+    List<Object?>? positionalParams,
+    Map<String, Object?>? namedParams,
+  ) {
+    final statement = _db.prepare(sql);
+    final changesBefore = _totalChanges();
+    try {
+      final cursor = namedParams != null
+          ? statement.iterateWith(sq.StatementParameters.named(namedParams))
+          : statement.selectCursor(positionalParams ?? const []);
+      final rows = <List<Object?>>[];
+      var truncated = false;
+      while (cursor.moveNext()) {
+        if (rows.length < cap.maxRows) {
+          rows.add(List<Object?>.of(cursor.current.values));
+          continue;
+        }
+        truncated = true;
+        if (cap.mode != RowCapMode.readAndDrop) break;
+      }
+      if (cursor.columnNames.isEmpty) {
+        return DbResult(columns: const [], rows: const [], affectedRows: _changedRows(changesBefore));
+      }
+      return DbResult(
+        columns: [for (final name in cursor.columnNames) DbColumn(name: name)],
+        rows: rows,
+        affectedRows: rows.length,
+        truncated: truncated,
+      );
     } finally {
       statement.dispose();
     }

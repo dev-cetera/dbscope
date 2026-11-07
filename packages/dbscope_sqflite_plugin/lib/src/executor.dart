@@ -147,6 +147,7 @@ class DeviceSqliteExecutor implements DbExecutor, StatementTimeoutCapable {
     List<Object?>? positional,
     Map<String, Object?>? named,
     CancelToken? cancelToken,
+    RowCap? rowCap,
   }) async {
     if (_closed) {
       throw StateError('DeviceSqliteExecutor is closed.');
@@ -158,6 +159,7 @@ class DeviceSqliteExecutor implements DbExecutor, StatementTimeoutCapable {
       positional: positional,
       named: named,
       cancelToken: cancelToken,
+      rowCap: rowCap,
     );
     if (_changedFile(sql, changesBefore, schemaBefore)) _unpushed = true;
     // Inside an open transaction (a `BEGIN` from a Query tab) the change

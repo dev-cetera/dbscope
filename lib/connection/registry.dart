@@ -455,6 +455,16 @@ class ConnectionRegistry extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// Closes [profileId]'s connection, aborting whatever is running on it, and
+  /// opens a new one.
+  Future<void> reconnect(String profileId, {BuildContext? context}) async {
+    await killConnection(profileId);
+    final state = _states[profileId];
+    if (state == null) return;
+    // Only used to show a prompt, so a page that has gone just means no prompt.
+    await _connect(state, context: (context?.mounted ?? false) ? context : null);
+  }
+
   /// Replace the per-table overrides for one (schema, table) on a
   /// profile and broadcast the change to other windows. Passing null
   /// removes the entry, keeping the persisted JSON tight. Does not

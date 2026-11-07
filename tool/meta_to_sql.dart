@@ -51,6 +51,7 @@ class _SqlRecorder implements DbExecutor {
     List<Object?>? positional,
     Map<String, Object?>? named,
     CancelToken? cancelToken,
+    RowCap? rowCap,
   }) async {
     var text = sql;
     if (named != null && named.isNotEmpty) {

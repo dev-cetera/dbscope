@@ -7,6 +7,8 @@ environment:
   sdk: ^3.13.5
 
 dependencies:
+  dbscope_pg_core:
+    path: ../dbscope_pg_core
   postgres: ^3.5.11
 
 dev_dependencies:

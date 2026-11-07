@@ -77,12 +77,13 @@ class Footer extends StatelessWidget {
                     textStyle: palette.smallText,
                   ),
                   onPressed: () async {
-                    state.cancelAll();
-                    final activeId = registry.activeId;
-                    if (activeId != null) {
-                      await registry.killConnection(activeId);
+                    final toClose = state.cancelAll(
+                      canStopStatements: (connectionId) =>
+                          registry.connectionFor(connectionId)?.capabilities.cancelsRunningStatement ?? false,
+                    );
+                    for (final connectionId in toClose) {
                       if (!context.mounted) return;
-                      await registry.connectActive(context: context);
+                      await registry.reconnect(connectionId, context: context);
                     }
                   },
                 ),

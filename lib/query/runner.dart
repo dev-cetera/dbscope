@@ -371,6 +371,11 @@ class QueryRunner {
     }
 
     final stopwatch = Stopwatch()..start();
+    // Only a plain read can stop at the limit: anything else has to finish.
+    final rowCap = RowCap(
+      maxRows,
+      mode: isPlainRead(trimmed, dialect: sqlDialectOf(conn)) ? RowCapMode.stopAtLimit : RowCapMode.readAndDrop,
+    );
     // Metadata-defined SQL runs fenced into a read-only transaction.
     final result = readOnly
         ? await executeReadOnly(
@@ -378,10 +383,11 @@ class QueryRunner {
             trimmed,
             named: named,
             cancelToken: cancelToken,
+            rowCap: rowCap,
           )
         : named == null || named.isEmpty
-        ? await conn.execute(trimmed, cancelToken: cancelToken)
-        : await conn.execute(trimmed, named: named, cancelToken: cancelToken);
+        ? await conn.execute(trimmed, cancelToken: cancelToken, rowCap: rowCap)
+        : await conn.execute(trimmed, named: named, cancelToken: cancelToken, rowCap: rowCap);
     stopwatch.stop();
     if (cancelToken?.isCancelled ?? false) {
       throw const _CancelledException();
@@ -396,22 +402,13 @@ class QueryRunner {
         ),
     ];
 
-    final rows = <List<Object?>>[];
-    var truncated = false;
-    for (final row in result.rows) {
-      if (rows.length >= maxRows) {
-        truncated = true;
-        break;
-      }
-      rows.add(row);
-    }
-
     return QueryRunResult(
-      data: GridData(columns: specs, rows: rows),
+      data: GridData(columns: specs, rows: List.of(result.rows)),
       elapsed: stopwatch.elapsed,
-      truncated: truncated,
+      truncated: result.truncated,
     );
   }
+
 }
 
 class _CancelledException implements Exception {

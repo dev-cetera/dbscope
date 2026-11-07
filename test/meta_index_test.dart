@@ -130,6 +130,22 @@ meta:
     expect(index.policyTable('public', 'notes').softDelete, 'deleted_at');
   });
 
+  test('a malformed include is reported and the rest of the file still loads', () async {
+    final directory = await Directory.systemTemp.createTemp('dbscope_meta_');
+    addTearDown(() => directory.delete(recursive: true));
+    final top = File('${directory.path}/top.yaml');
+    await top.writeAsString('''
+include: "[base.yaml, extra.yaml]"
+meta:
+  - { id: q.keep, kind: query, label: Keep, sql: SELECT 1 }
+''');
+    final loaded = await FileSource.load(top.path);
+    expect(loaded.problems.single.message, contains('include'));
+    expect(loaded.problems.single.where, top.path);
+    final index = MetaIndex.build(mergeMetaSources([loaded]));
+    expect([for (final query in index.queries) query.id], ['q.keep']);
+  });
+
   test('an including file can disable a row its include defines', () async {
     final directory = await Directory.systemTemp.createTemp('dbscope_meta_');
     addTearDown(() => directory.delete(recursive: true));
