@@ -6,7 +6,10 @@
 // Postgres limits it respects:
 // - no native masking: `masked` becomes "no SELECT on that column";
 // - a column REVOKE does nothing while the role holds table-level SELECT,
-//   so a table with any hidden column gets per-column SELECT instead;
+//   so a table with any hidden column gets per-column SELECT instead; the
+//   table-level REVOKE ALL that starts each table also clears that role's
+//   column privileges on it (PostgreSQL's GRANT/REVOKE docs: revoking on a
+//   table revokes the corresponding column privileges too);
 //   columns added by later migrations are then invisible to the role until
 //   this is regenerated (the drift check flags exactly that);
 // - a table's owner bypasses privileges — enforcement only binds logins

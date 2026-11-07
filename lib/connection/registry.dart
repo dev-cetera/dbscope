@@ -99,6 +99,12 @@ class ConnectionRegistry extends ChangeNotifier {
     // BusService wildcards only match a `.*` suffix, so subscribe to
     // `meta.*` and filter for `meta.changed:<profileId>` here.
     _metaSub = _busClient!.subscribe('meta.*').listen(_onMetaEvent);
+    MetadataCache.instance.onViewAsChanged = (profileId) {
+      // The DBML (AI prompt, export) was built under the previous policy.
+      final executor = _states[profileId]?.executor;
+      DbmlCache.instance.invalidate(profileId);
+      if (executor != null) DbmlCache.instance.warm(profileId, executor);
+    };
     MetadataCache.instance.onReloadedBroadcast = (profileId) async {
       try {
         await _busClient?.publish('meta.changed:$profileId', {

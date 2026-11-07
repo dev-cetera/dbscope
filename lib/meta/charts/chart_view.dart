@@ -179,7 +179,21 @@ class _MetaChartCardState extends State<MetaChartCard> {
     } else {
       body = Padding(
         padding: const EdgeInsets.fromLTRB(8.0, 4.0, 12.0, 8.0),
-        child: MetaChartPlot(type: widget.chart.type, data: _data!),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Expanded(child: MetaChartPlot(type: widget.chart.type, data: _data!)),
+            if (_data!.sampledRows != null)
+              Padding(
+                padding: const EdgeInsets.only(top: 4.0),
+                child: Text(
+                  'Sample: the first ${_data!.sampledRows} rows only, not the '
+                  'whole table.',
+                  style: theme.textTheme.bodySmall?.copyWith(color: palette.mutedText),
+                ),
+              ),
+          ],
+        ),
       );
     }
     return Container(

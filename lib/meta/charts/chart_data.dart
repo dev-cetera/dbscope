@@ -39,6 +39,7 @@ class ChartData {
     this.xNumbers,
     this.series = const [],
     this.stat,
+    this.sampledRows,
   });
 
   /// Category / bucket labels along x (empty for `stat`).
@@ -50,6 +51,19 @@ class ChartData {
 
   /// For `stat`: the single value.
   final double? stat;
+
+  /// Set when the data is only the first this-many rows of a larger table
+  /// (a histogram reads at most [kHistogramSampleRows]), so the view can
+  /// say it is not the whole distribution.
+  final int? sampledRows;
+
+  ChartData withSampledRows(int rows) => ChartData(
+    xLabels: xLabels,
+    xNumbers: xNumbers,
+    series: series,
+    stat: stat,
+    sampledRows: rows,
+  );
 
   bool get isEmpty => series.every((entry) => entry.values.isEmpty) && stat == null;
 }
@@ -142,13 +156,18 @@ Future<ChartData> runChart(
         throw ChartRunError(e.message);
       }
       final result = await run(built.sql);
-      return _shape(
+      final shaped = _shape(
         chart,
         result,
         xName: 'x',
         seriesName: built.hasSeries ? 'series' : null,
         measureNames: [for (var i = 0; i < built.measureCount; i++) 'y$i'],
       );
+      // The histogram SQL stops at kHistogramSampleRows, so a full page means
+      // the table may hold more rows than were binned.
+      return chart.type == ChartType.histogram && result.rows.length >= kHistogramSampleRows
+          ? shaped.withSampledRows(result.rows.length)
+          : shaped;
     case ChartQuerySource(:final queryId):
       final query = snapshot?.index.queryById(queryId);
       if (query == null) {
@@ -189,6 +208,14 @@ Future<ChartData> runChart(
       if (!bound.isComplete) {
         throw ChartRunError(
           'Chart "${chart.label}" needs ${bound.missing.join(', ')}.',
+        );
+      }
+      // A masked value is a sentinel, not data: binding it would fail in the
+      // driver or silently match nothing.
+      if (bound.named.values.any((value) => value is MaskedValue)) {
+        throw ChartRunError(
+          'Chart "${chart.label}" uses a value that is masked for you, so it '
+          'cannot run.',
         );
       }
       final result = await run(bound.sql, bound.named);

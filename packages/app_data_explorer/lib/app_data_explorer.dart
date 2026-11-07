@@ -121,7 +121,7 @@ class AndroidBackend extends Backend {
   @override
   Future<List<Entry>> ls(String relPath) async {
     final target = relPath.isEmpty ? '.' : relPath;
-    final result = await _adbShell(_runAs('ls -lAp ${_q(target)}'));
+    final result = await _adbShell(_runAs('ls -lAp ${quoteForDeviceShell(target)}'));
     if (result.exitCode != 0) {
       throw AppDataExplorerException(_adbError('ls', result));
     }
@@ -138,7 +138,7 @@ class AndroidBackend extends Backend {
     // contains spaces.
     final result = await _adbShell(
       _runAs(
-        "find ${_q(base)} -mindepth 1 -exec stat -c '%F|%s|%n' {} +",
+        "find ${quoteForDeviceShell(base)} -mindepth 1 -exec stat -c '%F|%s|%n' {} +",
       ),
     );
     if (result.exitCode != 0) {
@@ -174,7 +174,7 @@ class AndroidBackend extends Backend {
     if (relPath.isEmpty) {
       throw const AppDataExplorerException('refuse to rm empty path');
     }
-    final result = await _adbShell(_runAs('rm -f ${_q(relPath)}'));
+    final result = await _adbShell(_runAs('rm -f ${quoteForDeviceShell(relPath)}'));
     if (result.exitCode != 0) {
       throw AppDataExplorerException(_adbError('rm', result));
     }
@@ -185,7 +185,7 @@ class AndroidBackend extends Backend {
     if (relDir.isEmpty) {
       throw const AppDataExplorerException('refuse to clear container root');
     }
-    final result = await _adbShell(_runAs('find ${_q(relDir)} -mindepth 1 -delete'));
+    final result = await _adbShell(_runAs('find ${quoteForDeviceShell(relDir)} -mindepth 1 -delete'));
     if (result.exitCode != 0) {
       throw AppDataExplorerException(_adbError('clear', result));
     }
@@ -196,7 +196,7 @@ class AndroidBackend extends Backend {
     final adb = resolveAdbPath() ?? 'adb';
     final proc = await Process.start(
       adb,
-      ['-s', serial, 'exec-out', 'run-as', pkg, 'cat', remoteRelPath],
+      ['-s', serial, 'exec-out', _runAs('cat ${quoteForDeviceShell(remoteRelPath)}')],
     );
     final sink = File(localPath).openWrite();
     final stderrBuffer = StringBuffer();
@@ -229,12 +229,12 @@ class AndroidBackend extends Backend {
       );
     }
     try {
-      final r2 = await _adbShell(_runAs('cp ${_q(tmpRemote)} ${_q(remoteRelPath)}'));
+      final r2 = await _adbShell(_runAs('cp ${quoteForDeviceShell(tmpRemote)} ${quoteForDeviceShell(remoteRelPath)}'));
       if (r2.exitCode != 0) {
         throw AppDataExplorerException(_adbError('push-cp', r2));
       }
     } finally {
-      await Process.run(adb, ['-s', serial, 'shell', 'rm', '-f', tmpRemote]);
+      await _adbShell('rm -f ${quoteForDeviceShell(tmpRemote)}');
     }
   }
 
@@ -270,10 +270,14 @@ class AndroidBackend extends Backend {
     return entries;
   }
 
-  static String _q(String text) {
-    if (RegExp(r'^[A-Za-z0-9_./-]+$').hasMatch(text)) return text;
-    return "'${text.replaceAll("'", r"'\''")}'";
-  }
+}
+
+/// Quotes [text] as one argument of a device shell command line. `adb shell`
+/// and `adb exec-out` join their arguments into a single line the device
+/// shell re-splits, so every path must go through this.
+String quoteForDeviceShell(String text) {
+  if (RegExp(r'^[A-Za-z0-9_./-]+$').hasMatch(text)) return text;
+  return "'${text.replaceAll("'", r"'\''")}'";
 }
 
 class AndroidDeviceInfo {

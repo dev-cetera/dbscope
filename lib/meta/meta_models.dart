@@ -821,7 +821,8 @@ class ActionSpec {
 
   /// `{"row.kind": ["A", "B"]}` — shown only when every listed column's
   /// value is one of the listed values.
-  final Map<String, List<String>> when;
+  /// Row-column conditions; a null entry matches a SQL NULL cell.
+  final Map<String, List<String?>> when;
   final String? confirm;
   final int? expectRows;
   final List<String> roles;
@@ -842,14 +843,12 @@ class ActionSpec {
       );
       return null;
     }
-    final when = <String, List<String>>{};
+    final when = <String, List<String?>>{};
     for (final e in specMap(spec, 'when').entries) {
       final value = e.value;
-      if (value is List) {
-        when[e.key] = [for (final element in value) element.toString()];
-      } else if (value != null) {
-        when[e.key] = [value.toString()];
-      }
+      when[e.key] = value is List
+          ? [for (final element in value) element?.toString()]
+          : [value?.toString()];
     }
     final tableRaw = specString(spec, 'table');
     return ActionSpec(

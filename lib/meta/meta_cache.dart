@@ -116,6 +116,10 @@ class MetadataCache extends ChangeNotifier {
   /// connection registry to `bus.publish('meta.changed:<id>')`.
   Future<void> Function(String profileId)? onReloadedBroadcast;
 
+  /// Called after "View as" changes the policy for a profile, so things
+  /// built under the old policy (the DBML cache) can rebuild.
+  void Function(String profileId)? onViewAsChanged;
+
   MetaSnapshot? snapshotFor(String? profileId) => profileId == null ? null : _snapshots[profileId];
 
   /// Snapshot for whichever profile [executor] belongs to.
@@ -194,6 +198,7 @@ class MetadataCache extends ChangeNotifier {
     final snapshot = _snapshots[profileId];
     if (snapshot == null) return;
     _snapshots[profileId] = _withPolicy(snapshot, roleIds);
+    onViewAsChanged?.call(profileId);
     notifyListeners();
   }
 

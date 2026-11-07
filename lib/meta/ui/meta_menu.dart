@@ -234,7 +234,7 @@ String? actionUnavailableReason(ActionSpec action, MetaClickContext click) {
   final snapshot = MetadataCache.instance.snapshotFor(click.connectionId);
   if (snapshot == null) return 'Metadata is still loading.';
   final policy = snapshot.policy;
-  if (action.roles.isNotEmpty && policy.active && !action.roles.any(policy.roleIds.contains)) {
+  if (!actionRolesAllow(action, policy)) {
     return 'Only for roles: ${action.roles.join(', ')}.';
   }
   final target = action.target;

@@ -521,7 +521,11 @@ class _TableTabViewState extends State<TableTabView> {
       try {
         final checkDefinition = await SchemaCatalog(
           executor,
-        ).lookupCheckDefinition(classified.constraintName!);
+        ).lookupCheckDefinition(
+          schema: widget.tab.schema,
+          table: widget.tab.table,
+          constraintName: classified.constraintName!,
+        );
         if (checkDefinition != null && checkDefinition.isNotEmpty) {
           message = '$message\n→ $checkDefinition';
         }

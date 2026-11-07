@@ -146,7 +146,36 @@ class TypedValueText extends StatelessWidget {
   }
 }
 
-final _urlPattern = RegExp(r'https?://[^\s<>"\)]+');
+final _urlPattern = RegExp(r'https?://[^\s<>"]+');
+
+/// Punctuation that ends a sentence rather than a URL.
+const _urlTrailingPunctuation = ".,;:!?'";
+
+/// Closing bracket -> its opener, for brackets a URL may contain.
+const _urlBrackets = {')': '(', ']': '[', '}': '{'};
+
+/// Cuts what follows a URL in prose off the end of a matched [url]:
+/// sentence punctuation (`.` `,` `;` `:` `!` `?` `'`) and a closing bracket
+/// that has no opener inside the URL. `(see https://a.com/x)` loses the `)`,
+/// `https://en.wikipedia.org/wiki/Dart_(language)` keeps it.
+@visibleForTesting
+String trimUrlEnd(String url) {
+  var end = url.length;
+  while (end > 0) {
+    final last = url[end - 1];
+    final opener = _urlBrackets[last];
+    if (opener != null) {
+      final inside = url.substring(0, end);
+      if (_count(inside, opener) >= _count(inside, last)) break;
+    } else if (!_urlTrailingPunctuation.contains(last)) {
+      break;
+    }
+    end--;
+  }
+  return url.substring(0, end);
+}
+
+int _count(String text, String character) => character.allMatches(text).length;
 final _emailPattern = RegExp(
   r'[A-Za-z0-9._%+\-]+@[A-Za-z0-9.\-]+\.[A-Za-z]{2,}',
 );
@@ -227,9 +256,8 @@ List<InlineSpan>? _buildSpansWithUrls(
 ) {
   final matches = <_Match>[];
   for (final match in _urlPattern.allMatches(text)) {
-    matches.add(
-      _Match(match.start, match.end, match.group(0)!, match.group(0)!),
-    );
+    final url = trimUrlEnd(match.group(0)!);
+    matches.add(_Match(match.start, match.start + url.length, url, url));
   }
   if (allowEmailPhone) {
     for (final match in _emailPattern.allMatches(text)) {

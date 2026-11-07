@@ -4,7 +4,8 @@
 // * Placeholder numbering for the optional baseWhere starts at $1; the
 // keyset cursor uses placeholders strictly above baseWhereParams.
 // * Tables without a PK (information_schema views, ad-hoc relations)
-// get a single LIMIT page with no ORDER BY tuple-compare.
+// have no cursor to seek by, so they page by OFFSET: every row is
+// reachable, and the first page carries no OFFSET.
 // * Descending sort flips both the ORDER BY direction and the
 // tuple-compare operator (`<` vs `>`).
 // * A cancelled fetchNext yields no rows and leaves the cursor (and
@@ -302,7 +303,7 @@ void main() {
   });
 
   group('KeysetPager — no PK', () {
-    test('streaming via pages() emits a single LIMIT page', () async {
+    test('streaming via pages() emits a short first page as the only page', () async {
       final executor = FakeDbExecutor();
       executor.enqueue(
         _rows([
@@ -360,6 +361,42 @@ void main() {
         r'SELECT * FROM "public"."view_x" WHERE "flag" = $1 LIMIT 100',
       );
       expect(call.positional, [true]);
+    });
+
+    test('a full no-PK page is followed by an OFFSET page until a short one', () async {
+      final executor = FakeDbExecutor();
+      executor.enqueue(
+        _rows([
+          [1],
+          [2],
+        ]),
+      );
+      executor.enqueue(
+        _rows([
+          [3],
+        ]),
+      );
+
+      final pager = KeysetPager(
+        conn: executor,
+        schema: 'public',
+        table: 'log',
+        columns: [_col('a')],
+        pkColumns: const [],
+        pageSize: 2,
+      );
+
+      final first = await pager.fetchNext();
+      expect(first.rows, hasLength(2));
+      expect(pager.isDone, isFalse);
+      final second = await pager.fetchNext();
+      expect(second.rows, [
+        [3],
+      ]);
+      expect(pager.isDone, isTrue);
+
+      expect(executor.calls[0].sql, 'SELECT * FROM "public"."log" LIMIT 2');
+      expect(executor.calls[1].sql, 'SELECT * FROM "public"."log" LIMIT 2 OFFSET 2');
     });
 
     test('isDone after a single no-PK page', () async {

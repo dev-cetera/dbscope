@@ -3,7 +3,7 @@
 // to refuse multi-statement input. Not a full parser: it follows the
 // Postgres lexer only far enough to tell a real `;` from one hidden in
 // a '' string, an E'' escape string, a $$ / $tag$ dollar-quoted body, a
-// "" quoted identifier, a -- line comment or a (nested) /* */ comment.
+// "" quoted identifier (SQLite also `x` and [x]), a -- line comment or a (nested) /* */ comment.
 //
 // [SqlDialect.sqlite] turns off what SQLite doesn't have: E'' backslash
 // escapes, dollar quoting (`$x` is a bind parameter there) and nested
@@ -26,6 +26,8 @@ const _semicolon = 0x3B;
 const _upperE = 0x45;
 const _backslash = 0x5C;
 const _underscore = 0x5F;
+const _backtick = 0x60;
+const _openBracket = 0x5B;
 const _lowerE = 0x65;
 
 /// Strip leading whitespace, line comments (`--`) and block comments
@@ -111,6 +113,12 @@ int _skipToken(String sql, int i, {required bool postgres}) {
   final ch = sql.codeUnitAt(i);
   if (ch == _singleQuote) return _skipQuoted(sql, i + 1, _singleQuote);
   if (ch == _doubleQuote) return _skipQuoted(sql, i + 1, _doubleQuote);
+  if (!postgres && ch == _backtick) return _skipQuoted(sql, i + 1, _backtick);
+  if (!postgres && ch == _openBracket) {
+    // SQLite `[name]` identifier: no escape, the first `]` closes it.
+    final close = sql.indexOf(']', i + 1);
+    return close < 0 ? sql.length : close + 1;
+  }
   if (postgres && ch == _dollar) return _skipDollarQuoted(sql, i);
   if (postgres &&
       (ch == _upperE || ch == _lowerE) &&

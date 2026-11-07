@@ -135,7 +135,10 @@ class ShellEnv {
   /// meaningless, so the shell's own `$PWD` rule would be worse than
   /// useless here.
   static Future<String?> _readInclude(String path, Directory parent) async {
-    final absolute = path.startsWith('/') ? path : '${parent.path}${Platform.pathSeparator}$path';
+    final expanded = expandTilde(path, Platform.environment['HOME']);
+    final absolute = expanded.startsWith('/')
+        ? expanded
+        : '${parent.path}${Platform.pathSeparator}$expanded';
     final file = File(absolute);
     if (!file.existsSync()) return null;
     try {
@@ -144,6 +147,15 @@ class ShellEnv {
       return null;
     }
   }
+}
+
+/// Expands a leading `~` or `~/` in [path] to [home], as a shell does for
+/// `source ~/.secrets`. Other paths, and any path when [home] is unknown,
+/// come back unchanged (`~user` is not supported).
+String expandTilde(String path, String? home) {
+  if (home == null || home.isEmpty) return path;
+  if (path == '~' || path.startsWith('~/')) return '$home${path.substring(1)}';
+  return path;
 }
 
 /// Parses shell-profile [text] into a variable map layered onto [base].
@@ -221,17 +233,28 @@ String _parseValue(String raw, Map<String, String> vars) {
     return end == -1 ? value.substring(1) : value.substring(1, end);
   }
   if (value.startsWith('"')) {
+    // Like a shell: a backslash escapes only `$`, `` ` ``, `"` and `\`
+    // (anything else keeps the backslash), and an escaped `$` is not
+    // expanded, so escapes and expansion are handled in the same pass.
     final body = StringBuffer();
     for (var i = 1; i < value.length; i++) {
       final char = value[i];
-      if (char == r'\' && i + 1 < value.length) {
+      if (char == r'\' && i + 1 < value.length && r'$`"\'.contains(value[i + 1])) {
         body.write(value[++i]);
         continue;
       }
       if (char == '"') break;
+      if (char == r'$') {
+        final reference = _reference.matchAsPrefix(value, i);
+        if (reference != null) {
+          body.write(_lookup(reference.group(1) ?? reference.group(2)!, vars));
+          i = reference.end - 1;
+          continue;
+        }
+      }
       body.write(char);
     }
-    return _expand(body.toString(), vars);
+    return body.toString();
   }
   // Unquoted: a `#` preceded by whitespace starts a trailing comment.
   final comment = RegExp(r'[ \t]#').firstMatch(value);
@@ -245,9 +268,12 @@ String _expand(String value, Map<String, String> vars) {
   if (!value.contains(r'$')) return value;
   return value.replaceAllMapped(_reference, (match) {
     final name = match.group(1) ?? match.group(2)!;
-    return vars[name] ?? Platform.environment[name] ?? '';
+    return _lookup(name, vars);
   });
 }
+
+String _lookup(String name, Map<String, String> vars) =>
+    vars[name] ?? Platform.environment[name] ?? '';
 
 /// Strips one layer of matching surrounding quotes.
 String _unquote(String value) {

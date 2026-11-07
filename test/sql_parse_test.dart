@@ -260,5 +260,22 @@ void main() {
       expect(multi('SELECT 1;'), isFalse);
       expect(multi('SELECT 1; SELECT 2'), isTrue);
     });
+
+    test('[bracket] and `backtick` identifiers hide ;', () {
+      expect(multi('SELECT [a;b] FROM t'), isFalse);
+      expect(multi('SELECT `a;b` FROM t'), isFalse);
+      expect(multi('SELECT `a``;b` FROM t'), isFalse);
+    });
+
+    test('a quote inside [brackets] does not hide a real second statement', () {
+      expect(multi("SELECT [it's] FROM t; DELETE FROM t"), isTrue);
+    });
+
+    test('bracket and backtick quoting is not Postgres syntax', () {
+      expect(
+        containsMultipleStatements('SELECT [a; b]', dialect: SqlDialect.postgres),
+        isTrue,
+      );
+    });
   });
 }

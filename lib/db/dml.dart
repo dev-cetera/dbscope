@@ -155,6 +155,13 @@ class CellEditor {
     return result.first;
   }
 
+  /// What Postgres accepts for a `numeric`: a decimal with an optional
+  /// exponent, or one of its special values.
+  static final _numericText = RegExp(
+    r'^(?:[+-]?(?:\d+\.?\d*|\.\d+)(?:[eE][+-]?\d+)?|NaN|[+-]?Infinity)$',
+    caseSensitive: false,
+  );
+
   static Object? parseValue(EditPolicy policy, Object? raw) {
     if (raw == null) return null;
     if (raw is String && raw.isEmpty) {
@@ -167,6 +174,13 @@ class CellEditor {
       case PgType.int8:
         return int.parse(text);
       case PgType.numeric:
+        // Exact decimal: keep the text. num.parse would round it through a
+        // double (about 15 significant digits). The server parses it.
+        final trimmed = text.trim();
+        if (!_numericText.hasMatch(trimmed)) {
+          throw FormatException('Invalid number: $text');
+        }
+        return trimmed;
       case PgType.real:
       case PgType.doublePrecision:
         return num.parse(text);

@@ -1,3 +1,5 @@
+import 'package:flutter/foundation.dart';
+
 import '../catalog/pg_type.dart';
 import '../catalog/schema_catalog.dart';
 import '../connection/profile.dart';
@@ -148,10 +150,17 @@ class TableLoader {
       catalog.listColumns(schema, table),
       catalog.primaryKey(schema, table),
       catalog.indexedColumns(schema, table),
+      // The table's real column names. The tenant and soft-delete filters
+      // must apply whether or not the viewer may see their column, so they
+      // are decided from this list, never from the access-filtered one.
+      SchemaCatalog.unfiltered(conn).listColumns(schema, table),
     ]);
     final columns = catalogResults[0] as List<ColumnInfo>;
     final primaryKeyColumns = catalogResults[1] as List<String>;
     final indexed = catalogResults[2] as Set<String>;
+    final realColumnNames = {
+      for (final column in catalogResults[3] as List<ColumnInfo>) column.name,
+    };
     final columnNames = {for (final column in columns) column.name};
     final maskedNames = {
       for (final column in columns)
@@ -175,12 +184,12 @@ class TableLoader {
     // once the user trusted the connection's metadata SQL.
     final defaultFilter = defaultFilterTrusted ? display?.defaultFilter : null;
     final defaultFilterPending = !defaultFilterTrusted && display?.defaultFilter != null;
-    final composed = _composeBaseWhere(
+    final composed = composeBaseWhere(
       profile: profile,
       metaSoftDelete: tablePolicy?.softDelete,
       schema: schema,
       table: table,
-      columns: columns,
+      tableColumnNames: realColumnNames,
       showDeleted: showDeleted,
       callerWhere: baseWhere,
       callerParams: baseWhereParams,
@@ -250,8 +259,8 @@ class TableLoader {
 List<Object?> maskInsertedRow(List<Object?> row, Set<int> maskedIndexes) =>
     maskRows([row], maskedIndexes).first;
 
-class _ComposedWhere {
-  const _ComposedWhere({
+class ComposedWhere {
+  const ComposedWhere({
     required this.where,
     required this.params,
     required this.effectiveSoftDeleteColumn,
@@ -271,22 +280,25 @@ class _ComposedWhere {
 /// our own clauses AFTER the caller's params and using continuation
 /// placeholder numbers ($N+1, $N+2, …).
 /// 2. The profile's tenant filter, when the table has the configured
-/// column.
+/// column. [tableColumnNames] must be the table's real columns, not the
+/// access-filtered list: a viewer who may not see the column must still
+/// be filtered by it.
 /// 3. The table's soft-delete `<col> IS NULL` filter, when configured
 /// AND `showDeleted` is false. (Soft-delete with `CURRENT_TIMESTAMP` is a fixed
 /// literal `IS NULL` check — no params.)
-_ComposedWhere _composeBaseWhere({
+@visibleForTesting
+ComposedWhere composeBaseWhere({
   required ConnectionProfile? profile,
   required String? metaSoftDelete,
   required String? defaultFilter,
   required String schema,
   required String table,
-  required List<ColumnInfo> columns,
+  required Set<String> tableColumnNames,
   required bool showDeleted,
   required String? callerWhere,
   required List<Object?> callerParams,
 }) {
-  final columnNames = {for (final column in columns) column.name};
+  final columnNames = tableColumnNames;
   final params = <Object?>[...callerParams];
   final parts = <String>[];
   if (callerWhere != null && callerWhere.isNotEmpty) {
@@ -324,7 +336,7 @@ _ComposedWhere _composeBaseWhere({
     defaultFilterApplied = defaultFilter.trim();
   }
 
-  return _ComposedWhere(
+  return ComposedWhere(
     where: parts.isEmpty ? null : parts.join(' AND '),
     params: params,
     effectiveSoftDeleteColumn: effectiveSoftDelete,

@@ -3,6 +3,8 @@
 // the in-flight bookkeeping (`whenComplete(() => map.remove(id))`) made
 // the load future wait on itself — the connection registry awaits this
 // load on every connect, so it froze connecting entirely.
+// Also: switching "View as" tells the registry (onViewAsChanged) so the DBML
+// built under the previous policy is rebuilt.
 
 import 'package:dbscope/connection/profile.dart';
 import 'package:dbscope/meta/meta_cache.dart';
@@ -35,5 +37,19 @@ void main() {
     ]).timeout(const Duration(seconds: 5));
     // A second load after completion starts fresh (not stuck in-flight).
     await MetadataCache.instance.load(profile, executor).timeout(const Duration(seconds: 5));
+  });
+
+  test('viewAs notifies onViewAsChanged for that profile', () async {
+    final executor = FakeDbExecutor();
+    final profile = ConnectionProfile(id: 'cache-test-3', name: 'cache test');
+    await MetadataCache.instance.load(profile, executor);
+    final changed = <String>[];
+    MetadataCache.instance.onViewAsChanged = changed.add;
+    addTearDown(() => MetadataCache.instance.onViewAsChanged = null);
+    MetadataCache.instance.viewAs('cache-test-3', {'owner'});
+    MetadataCache.instance.viewAs('cache-test-3', null);
+    expect(changed, ['cache-test-3', 'cache-test-3']);
+    MetadataCache.instance.viewAs('no-such-profile', {'owner'});
+    expect(changed, hasLength(2));
   });
 }

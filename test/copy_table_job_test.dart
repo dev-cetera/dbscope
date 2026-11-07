@@ -12,6 +12,10 @@
 // RpcError('cancelled') without a CLOSE (the enclosing transaction's
 // rollback closes the cursor).
 //
+// * planColumns leaves generated columns out (Postgres refuses an explicit
+// value for them) and asks for OVERRIDING SYSTEM VALUE only when a copied
+// column is GENERATED ALWAYS AS IDENTITY in the target.
+//
 // No live Postgres here: _FakeSession stands in for both the source
 // transaction and the target transaction.
 
@@ -211,5 +215,71 @@ void main() {
       expect(source.calls.any((c) => c.sql.startsWith('CLOSE')), isFalse);
       expect(target.calls, hasLength(1));
     });
+  });
+
+  group('planColumns', () {
+    CopyColumnInfo column(String name, {bool generated = false, bool identityAlways = false}) =>
+        CopyColumnInfo(name: name, isGenerated: generated, isIdentityAlways: identityAlways);
+
+    CopyColumnPlan plan(List<CopyColumnInfo> source, List<CopyColumnInfo> target) =>
+        CopyTableJob.planColumns(source: source, target: target, qSource: '"s"."t"', qTarget: '"d"."t"');
+
+    test('skips generated columns on the source', () {
+      final result = plan(
+        [column('id'), column('g', generated: true)],
+        [column('id'), column('g', generated: true)],
+      );
+      expect(result.columns, ['id']);
+      expect(result.overridingSystemValue, isFalse);
+    });
+
+    test('skips a column that is generated only in the target', () {
+      final result = plan([column('id'), column('g')], [column('id'), column('g', generated: true)]);
+      expect(result.columns, ['id']);
+    });
+
+    test('a generated source column need not exist in the target', () {
+      expect(plan([column('id'), column('g', generated: true)], [column('id')]).columns, ['id']);
+    });
+
+    test('identity ALWAYS in the target needs OVERRIDING SYSTEM VALUE', () {
+      final result = plan([column('id'), column('n')], [column('id', identityAlways: true), column('n')]);
+      expect(result.columns, ['id', 'n']);
+      expect(result.overridingSystemValue, isTrue);
+    });
+
+    test('still reports a missing target column', () {
+      expect(
+        () => plan([column('id'), column('x')], [column('id')]),
+        throwsA(isA<RpcError>().having((e) => e.code, 'code', 'schema_mismatch')),
+      );
+    });
+
+    test('empty source or target are reported', () {
+      expect(
+        () => plan([], [column('id')]),
+        throwsA(isA<RpcError>().having((e) => e.code, 'code', 'empty_schema')),
+      );
+      expect(
+        () => plan([column('id')], []),
+        throwsA(isA<RpcError>().having((e) => e.code, 'code', 'missing_target')),
+      );
+    });
+  });
+
+  test('copyRows adds OVERRIDING SYSTEM VALUE when asked', () async {
+    final source = _FakeSession(rows: _rowsOf(1, 1));
+    final target = _FakeSession();
+    await CopyTableJob.copyRows(
+      source: source,
+      target: target,
+      qSource: '"src"."t"',
+      qTarget: '"dst"."t"',
+      columns: ['id'],
+      overridingSystemValue: true,
+      isCancelled: () => false,
+      onProgress: (_) {},
+    );
+    expect(target.calls.single.sql, startsWith('INSERT INTO "dst"."t" ("id") OVERRIDING SYSTEM VALUE VALUES'));
   });
 }

@@ -126,5 +126,43 @@ export LAST=3
       expect(vars.containsKey('LEAKED'), isFalse);
       expect(vars['KEPT'], 'yes');
     });
+
+    test('keeps a backslash that escapes nothing inside double quotes', () async {
+      final vars = await parseShellEnv(r'export B="x\y"');
+      expect(vars['B'], r'x\y');
+    });
+
+    test('an escaped dollar inside double quotes is literal, not expanded', () async {
+      final vars = await parseShellEnv(
+        'export NAME=zed\n'
+        r'export A="ab\$cd"'
+        '\n'
+        r'export C="\\$NAME \"q\""',
+      );
+      expect(vars['A'], r'ab$cd');
+      expect(vars['C'], r'\zed "q"');
+    });
+
+    test('hands a tilde include path to readInclude for expansion by the reader', () async {
+      final seen = <String>[];
+      await parseShellEnv(
+        'source ~/.secrets\n',
+        readInclude: (path) async {
+          seen.add(path);
+          return null;
+        },
+      );
+      expect(seen, ['~/.secrets']);
+    });
+  });
+
+  group('expandTilde', () {
+    test('expands ~ and ~/ against home and leaves other paths alone', () {
+      expect(expandTilde('~/.secrets', '/Users/me'), '/Users/me/.secrets');
+      expect(expandTilde('~', '/Users/me'), '/Users/me');
+      expect(expandTilde('/etc/x', '/Users/me'), '/etc/x');
+      expect(expandTilde('rel/~/x', '/Users/me'), 'rel/~/x');
+      expect(expandTilde('~/.secrets', null), '~/.secrets');
+    });
   });
 }

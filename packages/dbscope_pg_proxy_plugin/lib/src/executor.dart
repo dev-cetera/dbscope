@@ -17,6 +17,7 @@ import 'dart:typed_data';
 
 import 'package:dbscope/connection/profile.dart';
 import 'package:dbscope/db/executor.dart';
+import 'package:dbscope/db/postgres_executor.dart' show pgTypeNameForOid;
 import 'package:dbscope/query/cancel_token.dart';
 import 'package:uuid/uuid.dart';
 import 'package:web_socket_channel/web_socket_channel.dart';
@@ -133,7 +134,7 @@ class PgProxyExecutor implements DbExecutor {
         if (columnJson is Map)
           DbColumn(
             name: (columnJson['name'] as String?) ?? '',
-            typeName: columnJson['typeName'] as String?,
+            typeName: pgTypeNameForOid(columnJson['typeOid'] as int?),
           ),
     ];
     final rows = <List<Object?>>[
@@ -222,6 +223,12 @@ class PgProxyExecutor implements DbExecutor {
 
   void _onDone() {
     _closed = true;
+    final readyCompleter = _readyCompleter;
+    if (readyCompleter != null && !readyCompleter.isCompleted) {
+      readyCompleter.completeError(
+        PgProxyException('proxy connection closed before it was ready'),
+      );
+    }
     for (final pending in _pending.values) {
       if (!pending.isCompleted) {
         pending.completeError(StateError('proxy WebSocket closed'));

@@ -28,6 +28,7 @@ import '../shell/app_state.dart';
 import '../util/pg_errors.dart';
 import '../util/sql_parse.dart';
 import '../util/sql_quote.dart';
+import 'latest_request.dart';
 import 'navigator_tab.dart';
 
 part 'parts/row_detail_column.dart';

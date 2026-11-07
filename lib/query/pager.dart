@@ -52,6 +52,10 @@ class KeysetPager {
   var _done = false;
   var _started = false;
 
+  /// Rows fetched so far. Only the no-PK path pages by it (OFFSET); a keyed
+  /// table seeks by cursor instead.
+  var _fetchedRows = 0;
+
   bool get isDone => _done;
 
   /// The SELECT list: every column the catalog returned (columns at access
@@ -73,26 +77,6 @@ class KeysetPager {
   };
 
   Stream<Page> pages({CancelToken? cancelToken}) async* {
-    if (pkColumns.isEmpty) {
-      // No PK: single page LIMIT only, no further iteration.
-      final qualified = quoteQualified(schema, table);
-      final sortClause = sortColumn == null
-          ? ''
-          : ' ORDER BY ${quoteIdent(sortColumn!)} ${descending ? "DESC" : "ASC"}';
-      final whereSql = (baseWhere == null || baseWhere!.isEmpty) ? '' : ' WHERE $baseWhere';
-      final selectList = explicitColumns && columns.isNotEmpty ? _selectList : '*';
-      final sql = 'SELECT $selectList FROM $qualified$whereSql$sortClause LIMIT $pageSize';
-      final result = baseWhereParams.isEmpty
-          ? await conn.execute(sql, cancelToken: cancelToken)
-          : await conn.execute(
-              sql,
-              positional: baseWhereParams,
-              cancelToken: cancelToken,
-            );
-      _done = true;
-      yield Page(rows: maskRows(result.rows, _maskedIndexes));
-      return;
-    }
     while (!_done) {
       if (cancelToken?.isCancelled ?? false) return;
       final result = await _fetchOne(cancelToken: cancelToken);
@@ -125,7 +109,7 @@ class KeysetPager {
   Future<Page> _fetchOne({CancelToken? cancelToken}) async {
     _started = true;
     final qualified = quoteQualified(schema, table);
-    final colsSql = _selectList;
+    final colsSql = pkColumns.isEmpty && !(explicitColumns && columns.isNotEmpty) ? '*' : _selectList;
     final orderColumns = <String>[
       if (sortColumn != null) quoteIdent(sortColumn!),
       for (final primaryKey in pkColumns) quoteIdent(primaryKey),
@@ -146,17 +130,18 @@ class KeysetPager {
       whereParts.add(baseWhere!);
     }
 
-    // Keyset cursor needs PK columns to seek by. Without them every page
-    // would build the same `() > ()` tuple — skip the keyset and emit a
-    // single LIMIT page instead (the no-PK branch in pages() does the
-    // same thing for the streaming API).
+    // The keyset cursor needs PK columns to seek by; without them the
+    // OFFSET below does the paging.
     if (pkColumns.isNotEmpty && _lastPrimaryKeyValues != null && _started) {
       whereParts.add(_cursorPredicate(params));
     }
 
     final whereClause = whereParts.isEmpty ? '' : ' WHERE ${whereParts.join(' AND ')}';
 
-    final sql = 'SELECT $colsSql FROM $qualified$whereClause$orderClause LIMIT $pageSize';
+    // No primary key means no cursor to seek by, so a table without one
+    // pages by OFFSET: slower deep in the table, but every row is reachable.
+    final offsetClause = pkColumns.isEmpty && _fetchedRows > 0 ? ' OFFSET $_fetchedRows' : '';
+    final sql = 'SELECT $colsSql FROM $qualified$whereClause$orderClause LIMIT $pageSize$offsetClause';
     final result = params.isEmpty
         ? await conn.execute(sql, cancelToken: cancelToken)
         : await conn.execute(sql, positional: params, cancelToken: cancelToken);
@@ -170,10 +155,8 @@ class KeysetPager {
       return Page(rows: <List<Object?>>[]);
     }
     final rows = result.rows;
-    // No PK -> no keyset cursor possible. Return this single page and
-    // stop; callers like TableLoader/fetchNext won't try a second query.
     if (pkColumns.isEmpty) {
-      _done = true;
+      _fetchedRows += rows.length;
       return Page(rows: maskRows(rows, _maskedIndexes));
     }
     final last = rows.last;

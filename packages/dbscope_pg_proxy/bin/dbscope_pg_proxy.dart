@@ -306,7 +306,7 @@ class _Session {
           for (final c in result.schema.columns)
             {
               'name': c.columnName ?? '',
-              'typeName': c.type.toString().split('.').last,
+              'typeOid': c.type.oid,
             },
         ],
         'rows': [
@@ -346,7 +346,7 @@ class _Session {
     }
     if (v is Map) {
       return {
-        for (final entry in v.entries) entry.key.toString: _serialize(entry.value),
+        for (final entry in v.entries) entry.key.toString(): _serialize(entry.value),
       };
     }
     return v.toString();

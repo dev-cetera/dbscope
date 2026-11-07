@@ -317,9 +317,26 @@ void main() {
       );
     });
 
-    test('numeric/real/doublePrecision parse to num', () {
+    test('float8 parses to num', () {
       final policy = _policy(type: PgType.doublePrecision, typeName: 'float8');
       expect(CellEditor.parseValue(policy, '3.5'), 3.5);
+    });
+
+    test('numeric keeps every digit instead of rounding through a double', () {
+      final policy = _policy(type: PgType.numeric, typeName: 'numeric');
+      expect(
+        CellEditor.parseValue(policy, '12345678901234567890.1234567891'),
+        '12345678901234567890.1234567891',
+      );
+      expect(CellEditor.parseValue(policy, ' -1.5e3 '), '-1.5e3');
+      expect(CellEditor.parseValue(policy, 'NaN'), 'NaN');
+    });
+
+    test('numeric rejects text that is not a number', () {
+      final policy = _policy(type: PgType.numeric, typeName: 'numeric');
+      for (final bad in ['abc', '1.2.3', '1; DROP TABLE x', '--1']) {
+        expect(() => CellEditor.parseValue(policy, bad), throwsFormatException, reason: bad);
+      }
     });
 
     test('bool accepts true/false/t/f/1/0 case-insensitively', () {

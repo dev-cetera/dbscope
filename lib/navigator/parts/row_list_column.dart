@@ -27,6 +27,11 @@ class _RowListColumnState extends State<RowListColumn> {
   Timer? _filterDebounce;
   final _vScroll = ScrollController();
 
+  /// Orders row-list loads: only the newest `_load` may write its result to
+  /// the step (a filter change starts a new load while the old one is still
+  /// in flight).
+  final _loads = LatestRequest();
+
   @override
   void initState() {
     super.initState();
@@ -134,6 +139,7 @@ class _RowListColumnState extends State<RowListColumn> {
       AppState.instance.notifyChange();
       return;
     }
+    final ticket = _loads.begin();
     if (reset) step.data = null;
     step.isLoading = true;
     step.error = null;
@@ -198,7 +204,8 @@ class _RowListColumnState extends State<RowListColumn> {
       );
       final firstPage = await pager.fetchNext();
 
-      if (!mounted) return;
+      // Superseded by a newer load, which owns the step's state now.
+      if (!mounted || !_loads.isCurrent(ticket)) return;
       step.columns = allColumns;
       step.pkColumns = primaryKeyColumns;
       step.indexedColumns = indexed;
@@ -229,7 +236,7 @@ class _RowListColumnState extends State<RowListColumn> {
       // Default is [AI Infer] (filterColumn == null). The user can pick a
       // specific column from the dropdown to bypass the inferrer.
     } catch (e) {
-      if (!mounted) return;
+      if (!mounted || !_loads.isCurrent(ticket)) return;
       step.error = classify(e).message;
       step.isLoading = false;
     }
@@ -244,7 +251,13 @@ class _RowListColumnState extends State<RowListColumn> {
     AppState.instance.notifyChange();
     try {
       final page = await pager.fetchNext();
+      // A reload replaced the pager while this page was in flight: its rows
+      // belong to the old filter.
       if (!mounted) return;
+      if (!identical(step.pager, pager)) {
+        step.isLoadingMore = false;
+        return;
+      }
       final existing = step.data;
       if (existing != null) {
         step.data = GridData(

@@ -42,6 +42,22 @@ rg -n '\[SIMPLE\]' TODO.md
 
 <!-- New entries go here, newest first. -->
 
+### **[P2]** Compute table histograms server-side instead of sampling the first 10 000 rows
+
+- **Where.** `lib/meta/chart_sql.dart` (`kHistogramSampleRows`), `lib/meta/charts/chart_data.dart`, `lib/meta/charts/chart_view.dart`.
+- **Why.** A table histogram now says it is a sample, but it still bins the first 10 000 rows in heap order, so the shape can differ from the whole table. Bucket counts computed in SQL would be exact. Named-query and inline-SQL histograms are also never labelled as samples.
+- **Effort.** `<4h`
+- **Blocker.** none
+- **Noticed.** 2026-11-07, while fixing the histogram-sample bug.
+
+### **[P3]** Hide, or reword the tooltip of, a `roles:` action on a connection with no access control
+
+- **Where.** `actionUnavailableReason` in `lib/meta/ui/meta_menu.dart`.
+- **Why.** Such an action is now unavailable (correct), but the tooltip still reads "Only for roles: …", which does not say why it is closed there.
+- **Effort.** `<15min`
+- **Blocker.** none
+- **Noticed.** 2026-11-07, while fixing the `roles:` bug.
+
 ### **[P3]** Place new Linked view cards using their real size, not a guessed one
 
 - **Where.** `lib/linked/linked_view.dart:464` (`_placeNextTo`).

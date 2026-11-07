@@ -9,7 +9,9 @@
 // non-transactional path; out of scope for now.
 // - Target schema/table must already exist.
 // - Column list comes from source; target must have matching columns
-// (by name). Extra target columns get their default.
+// (by name). Extra target columns get their default. Generated columns
+// are skipped (Postgres computes them); GENERATED ALWAYS identity columns
+// are written with OVERRIDING SYSTEM VALUE.
 //
 // Progress events: {phase, processed, total?} on bus topic
 // job.progress:<jobId>
@@ -27,6 +29,7 @@
 
 import 'dart:math' as math;
 
+import 'package:flutter/foundation.dart' show visibleForTesting;
 import 'package:postgres/postgres.dart' as pg;
 
 import '../../db/executor.dart';
@@ -131,44 +134,22 @@ class CopyTableJob implements JobHandler {
 
     jobContext.reportProgress({'phase': 'planning', 'processed': 0});
 
-    // Discover source columns in ordinal order; this is the column set
-    // we'll select and insert.
-    final colResult = await source.execute(
-      pg.Sql.named('''
- SELECT column_name
- FROM information_schema.columns
- WHERE table_schema = @schema AND table_name = @table
- ORDER BY ordinal_position
- '''),
+    // Discover source columns in ordinal order, and the target's columns.
+    final sourceResult = await source.execute(
+      pg.Sql.named(_columnsSql),
       parameters: {'schema': sourceSchema, 'table': sourceTable},
     );
-    final columns = [for (final row in colResult) row[0]! as String];
-    if (columns.isEmpty) {
-      throw RpcError('empty_schema', 'no columns for $qSource');
-    }
-
-    // Confirm target has all those columns (by name).
-    final targetColumnResult = await target.execute(
-      pg.Sql.named('''
- SELECT column_name
- FROM information_schema.columns
- WHERE table_schema = @schema AND table_name = @table
- '''),
+    final targetResult = await target.execute(
+      pg.Sql.named(_columnsSql),
       parameters: {'schema': targetSchema, 'table': targetTable},
     );
-    final targetColumns = {
-      for (final row in targetColumnResult) row[0]! as String,
-    };
-    if (targetColumns.isEmpty) {
-      throw RpcError('missing_target', 'target $qTarget not found');
-    }
-    final missing = columns.where((column) => !targetColumns.contains(column)).toList();
-    if (missing.isNotEmpty) {
-      throw RpcError(
-        'schema_mismatch',
-        'target missing columns: ${missing.join(', ')}',
-      );
-    }
+    final plan = planColumns(
+      source: [for (final row in sourceResult) CopyColumnInfo.fromRow(row)],
+      target: [for (final row in targetResult) CopyColumnInfo.fromRow(row)],
+      qSource: qSource,
+      qTarget: qTarget,
+    );
+    final columns = plan.columns;
 
     var processed = 0;
     await target.runTx((transaction) async {
@@ -189,6 +170,7 @@ class CopyTableJob implements JobHandler {
           qSource: qSource,
           qTarget: qTarget,
           columns: columns,
+          overridingSystemValue: plan.overridingSystemValue,
           isCancelled: () => jobContext.cancelled,
           onProgress: (copied) => jobContext.reportProgress({
             'phase': 'copying',
@@ -223,6 +205,10 @@ class CopyTableJob implements JobHandler {
   /// [source] must already be inside a transaction — Postgres only allows
   /// DECLARE in a transaction block, and the cursor dies with it.
   ///
+  /// [overridingSystemValue] adds `OVERRIDING SYSTEM VALUE` to the INSERT,
+  /// which Postgres requires to write explicit values into a
+  /// `GENERATED ALWAYS AS IDENTITY` column.
+  ///
   /// [isCancelled] is polled before every FETCH; when it returns true this
   /// throws `RpcError('cancelled')`. The cursor is CLOSEd explicitly only on
   /// success: on any error the enclosing transaction rolls back, which
@@ -234,12 +220,14 @@ class CopyTableJob implements JobHandler {
     required String qSource,
     required String qTarget,
     required List<String> columns,
+    bool overridingSystemValue = false,
     required bool Function() isCancelled,
     required void Function(int processed) onProgress,
   }) async {
     final quotedColumns = columns.map(quoteIdent).join(', ');
     final cursor = quoteIdent(cursorName);
     final rowsPerFetch = rowsPerBatch(columns.length);
+    final overriding = overridingSystemValue ? ' OVERRIDING SYSTEM VALUE' : '';
 
     await source.execute(
       'DECLARE $cursor NO SCROLL CURSOR FOR '
@@ -265,7 +253,7 @@ class CopyTableJob implements JobHandler {
         tuples.add('(${placeholders.join(', ')})');
       }
       await target.execute(
-        'INSERT INTO $qTarget ($quotedColumns) VALUES ${tuples.join(', ')}',
+        'INSERT INTO $qTarget ($quotedColumns)$overriding VALUES ${tuples.join(', ')}',
         parameters: params,
       );
       processed += batch.length;
@@ -274,6 +262,50 @@ class CopyTableJob implements JobHandler {
     }
     await source.execute('CLOSE $cursor');
     return processed;
+  }
+
+  static const _columnsSql = '''
+ SELECT column_name, is_generated, identity_generation
+ FROM information_schema.columns
+ WHERE table_schema = @schema AND table_name = @table
+ ORDER BY ordinal_position
+ ''';
+
+  /// Decides which columns to copy. Generated columns (`GENERATED ALWAYS AS
+  /// (...) STORED`, on either side) are left out: Postgres computes them
+  /// and refuses an explicit value. Every other source column must exist in
+  /// the target. When a copied column is `GENERATED ALWAYS AS IDENTITY` in
+  /// the target the INSERT must say `OVERRIDING SYSTEM VALUE`.
+  @visibleForTesting
+  static CopyColumnPlan planColumns({
+    required List<CopyColumnInfo> source,
+    required List<CopyColumnInfo> target,
+    required String qSource,
+    required String qTarget,
+  }) {
+    if (source.isEmpty) {
+      throw RpcError('empty_schema', 'no columns for $qSource');
+    }
+    if (target.isEmpty) {
+      throw RpcError('missing_target', 'target $qTarget not found');
+    }
+    final targetByName = {for (final column in target) column.name: column};
+    final copied = source.where((column) => !column.isGenerated).toList();
+    final missing = copied.where((column) => !targetByName.containsKey(column.name)).toList();
+    if (missing.isNotEmpty) {
+      throw RpcError(
+        'schema_mismatch',
+        'target missing columns: ${missing.map((column) => column.name).join(', ')}',
+      );
+    }
+    final writable = copied.where((column) => !targetByName[column.name]!.isGenerated).toList();
+    if (writable.isEmpty) {
+      throw RpcError('empty_schema', 'no copyable columns for $qSource');
+    }
+    return CopyColumnPlan(
+      columns: [for (final column in writable) column.name],
+      overridingSystemValue: writable.any((column) => targetByName[column.name]!.isIdentityAlways),
+    );
   }
 
   pg.Connection _requirePostgres(DbExecutor executor) {
@@ -285,4 +317,32 @@ class CopyTableJob implements JobHandler {
     }
     return executor.raw;
   }
+}
+
+/// One row of `information_schema.columns` as the copy planner needs it.
+class CopyColumnInfo {
+  const CopyColumnInfo({
+    required this.name,
+    required this.isGenerated,
+    required this.isIdentityAlways,
+  });
+
+  /// From a row of [CopyTableJob._columnsSql].
+  factory CopyColumnInfo.fromRow(List<Object?> row) => CopyColumnInfo(
+    name: row[0]! as String,
+    isGenerated: row[1] == 'ALWAYS',
+    isIdentityAlways: row[2] == 'ALWAYS',
+  );
+
+  final String name;
+  final bool isGenerated;
+  final bool isIdentityAlways;
+}
+
+/// The columns to copy, in source order, and whether the INSERT needs
+/// `OVERRIDING SYSTEM VALUE`.
+class CopyColumnPlan {
+  const CopyColumnPlan({required this.columns, required this.overridingSystemValue});
+  final List<String> columns;
+  final bool overridingSystemValue;
 }

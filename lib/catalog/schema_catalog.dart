@@ -227,12 +227,12 @@ class SchemaCatalog {
     // skip internal sqlite_* tables. No row-count estimate exists, so we
     // surface -1 (callers treat -1 as "unknown" and skip the badge).
     final result = await conn.execute(
-      '''
+      r'''
  SELECT name,
  CASE type WHEN 'table' THEN 'BASE TABLE' ELSE 'VIEW' END AS kind
  FROM sqlite_master
  WHERE type IN ('table', 'view')
- AND name NOT LIKE 'sqlite_%'
+ AND name NOT LIKE 'sqlite\_%' ESCAPE '\'
  ORDER BY name
  ''',
     );
@@ -356,6 +356,18 @@ class SchemaCatalog {
       'FROM pragma_table_xinfo(?) ORDER BY cid',
       positional: [table],
     );
+    // A column is the rowid alias (SQLite's auto-generated key) when it is
+    // the table's only primary-key column, is declared exactly INTEGER, and
+    // the table has a rowid. WITHOUT ROWID tables have no alias.
+    final primaryKeyCount = result.rows.where((row) => (toInt(row[4]) ?? 0) > 0).length;
+    var withoutRowid = false;
+    if (primaryKeyCount == 1) {
+      final tableList = await conn.execute(
+        'SELECT wr FROM pragma_table_list(?) WHERE schema = ?',
+        positional: [table, schema],
+      );
+      withoutRowid = tableList.rows.isNotEmpty && toInt(tableList.rows.first[0]) == 1;
+    }
     return [
       for (final row in result.rows)
         ColumnInfo(
@@ -366,10 +378,13 @@ class SchemaCatalog {
           defaultExpr: row[3] as String?,
           // hidden == 2 means a STORED generated column, 3 means VIRTUAL.
           isGenerated: (toInt(row[5]) ?? 0) >= 2,
-          // SQLite's INTEGER PRIMARY KEY is the rowid alias (identity-ish);
-          // we surface that as identity for callers that gate INSERT-time
-          // value entry.
-          isIdentity: false,
+          // SQLite's INTEGER PRIMARY KEY is the rowid alias: the database
+          // generates it, so it counts as identity.
+          isIdentity:
+              primaryKeyCount == 1 &&
+              !withoutRowid &&
+              (toInt(row[4]) ?? 0) == 1 &&
+              ((row[1] as String?) ?? '').trim().toUpperCase() == 'INTEGER',
         ),
     ];
   }
@@ -436,11 +451,10 @@ class SchemaCatalog {
     if (_isSqlite) {
       // pragma_index_list lists every index on the table; we then expand
       // each one via pragma_index_info to collect the indexed column
-      // names. PK and UNIQUE indexes are included; partial-index
-      // predicates are ignored (no SQLite pragma surfaces them as a
-      // filter we can introspect).
+      // names. PK and UNIQUE indexes are included; partial indexes are
+      // skipped, since they cannot serve a query without their predicate.
       final indexes = await conn.execute(
-        'SELECT name FROM pragma_index_list(?)',
+        'SELECT name FROM pragma_index_list(?) WHERE "partial" = 0',
         positional: [table],
       );
       final columns = <String>{};
@@ -461,10 +475,13 @@ class SchemaCatalog {
       '''
  SELECT DISTINCT a.attname
  FROM pg_index i
+ CROSS JOIN LATERAL unnest(i.indkey::int2[]) WITH ORDINALITY AS k(attnum, ord)
  JOIN pg_attribute a
  ON a.attrelid = i.indrelid
- AND a.attnum = ANY(i.indkey)
+ AND a.attnum = k.attnum
  WHERE i.indrelid = (quote_ident(@schema) || '.' || quote_ident(@table))::regclass
+ AND k.ord <= i.indnkeyatts
+ AND i.indpred IS NULL
  ''',
       named: {'schema': schema, 'table': table},
     );
@@ -657,21 +674,28 @@ class SchemaCatalog {
     return out;
   }
 
-  /// Return the SQL definition of a CHECK constraint by name, e.g.
+  /// Return the SQL definition of the CHECK constraint [constraintName] on
+  /// [schema].[table] (constraint names are only unique per table), e.g.
   /// `"CHECK ((quantity > 0))"`. Returns null when the name isn't a
   /// CHECK or isn't found. Used to enrich the toast that follows a
   /// 23514 (check_violation) error so users see *what* rule fired,
   /// not just its opaque name.
-  Future<String?> lookupCheckDefinition(String constraintName) async {
+  Future<String?> lookupCheckDefinition({
+    required String schema,
+    required String table,
+    required String constraintName,
+  }) async {
     if (_isSqlite) return null;
     final result = await conn.execute(
       '''
  SELECT pg_get_constraintdef(con.oid, true) AS def
  FROM pg_constraint con
- WHERE con.contype = 'c' AND con.conname = @name
+ WHERE con.contype = 'c'
+ AND con.conname = @name
+ AND con.conrelid = (quote_ident(@schema) || '.' || quote_ident(@table))::regclass
  LIMIT 1
  ''',
-      named: {'name': constraintName},
+      named: {'name': constraintName, 'schema': schema, 'table': table},
     );
     if (result.isEmpty) return null;
     final raw = result.first[0];

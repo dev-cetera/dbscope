@@ -17,6 +17,7 @@
 //   @rows_<col>  a multi-row selection: expanded to @rows_<col>_0, …_n
 //   @me_principal   the identity dbscope resolved (pg:… or user:…)
 
+import 'access_policy.dart';
 import 'meta_models.dart';
 
 /// Upper bound on a selection expanded into `IN (...)`.
@@ -222,6 +223,12 @@ bool whenHolds(ActionSpec action, BindingContext context) {
   }
   return true;
 }
+
+/// Whether the viewer's roles satisfy [action]'s `roles:` restriction.
+/// Without access control nobody holds any role, so a role-scoped action is
+/// closed to everyone rather than open to all.
+bool actionRolesAllow(ActionSpec action, AccessPolicy policy) =>
+    action.roles.isEmpty || action.roles.any(policy.roleIds.contains);
 
 /// Placeholders an action needs from the row that the row doesn't have
 /// (shown as the reason an action is disabled). Inputs are excluded — the

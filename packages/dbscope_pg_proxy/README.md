@@ -77,7 +77,7 @@ One WebSocket owns one Postgres connection for its lifetime.
 | client → server  | `{type: execute, id, sql, positional?, named?}`            |
 | client → server  | `{type: close}`                                            |
 | server → client  | `{type: ready}` (after a successful open)                  |
-| server → client  | `{type: result, id, columns: [{name, typeName}], rows, affected}` |
+| server → client  | `{type: result, id, columns: [{name, typeOid}], rows, affected}` |
 | server → client  | `{type: error, id?, code?, message, constraintName?}`      |
 
 The wire encoder serializes `DateTime` as ISO-8601 UTC, byte arrays as

@@ -12,6 +12,7 @@
 // - identifiers are quoted, aggregates and buckets come from fixed lists;
 // - a chart naming an unreadable column is refused.
 
+import 'package:dbscope/meta/access_policy.dart';
 import 'package:dbscope/meta/action_binding.dart';
 import 'package:dbscope/meta/chart_sql.dart';
 import 'package:dbscope/meta/meta_index.dart';
@@ -108,6 +109,51 @@ meta:
         isFalse,
       );
       expect(whenHolds(action, const BindingContext()), isFalse);
+    });
+  });
+
+  group('action conditions and roles', () {
+    ActionSpec parse(String extra) => MetaIndex.build(
+      mergeMetaSources([
+        FileSource.parseText(
+          'meta:\n  - { id: a, target: public.t, kind: action, label: L, '
+          'scope: row, run: query, sql: "SELECT 1", $extra }',
+        ),
+      ]),
+    ).actions.single;
+
+    test('a null when value matches only a NULL cell', () {
+      final action = parse('when: { row.deleted_at: null }');
+      expect(
+        whenHolds(action, const BindingContext(row: {'deleted_at': null})),
+        isTrue,
+      );
+      expect(
+        whenHolds(action, const BindingContext(row: {'deleted_at': '2026-01-01'})),
+        isFalse,
+      );
+    });
+
+    test('a null inside a when list is kept', () {
+      final action = parse('when: { row.deleted_at: [null, never] }');
+      expect(
+        whenHolds(action, const BindingContext(row: {'deleted_at': null})),
+        isTrue,
+      );
+      expect(
+        whenHolds(action, const BindingContext(row: {'deleted_at': 'x'})),
+        isFalse,
+      );
+    });
+
+    test('a roles-restricted action is closed without access control', () {
+      final action = parse('roles: [owner]');
+      expect(action.roles, ['owner']);
+      expect(actionRolesAllow(action, AccessPolicy.unrestricted), isFalse);
+    });
+
+    test('an action without roles is open without access control', () {
+      expect(actionRolesAllow(parse('confirm: false'), AccessPolicy.unrestricted), isTrue);
     });
   });
 

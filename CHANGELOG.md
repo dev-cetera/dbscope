@@ -2,6 +2,30 @@
 
 ---
 
+## 2026-11-07
+
+- Fixed: a URL at the end of a sentence in a cell opens without the trailing full stop, comma or bracket (2026-11-07)
+- Fixed: Copy table now works on tables with generated or GENERATED ALWAYS identity columns (2026-11-07)
+- Fixed: interval, time, bytea, array, money, inet, cidr, macaddr, timetz and bit cells show Postgres text and can be edited (desktop Postgres) (2026-11-07)
+- Fixed: editing numeric cells no longer rounds through a double, so long exact decimals save as typed (2026-11-07)
+- Fixed: SQLite tables whose names start with sqlite plus one character (sqlite3_meta, sqlitex) now appear in the sidebar (2026-11-07)
+- Fixed: tables without a primary key now load beyond their first page (OFFSET paging) instead of stopping at 500 rows (2026-11-07)
+- Fixed: Navigator row list ignores a slow older load that finishes after a newer filter, and a stale Load more page (2026-11-07)
+- Fixed: Postgres and SQLite index hints no longer mark INCLUDE-payload columns or columns of partial indexes as indexed (2026-11-07)
+- Fixed: SQLite INTEGER PRIMARY KEY columns are recognised as identity (DBML export emits increment, insert dialog omits the generated key) (2026-11-07)
+- Fixed: the CHECK-violation toast now quotes the constraint of the table that failed, not a same-named one from another table (2026-11-07)
+- Fixed: a viewer who cannot see the tenant or soft-delete column of a table is still filtered by it, instead of seeing every tenant's and deleted rows (2026-11-07)
+- Table histograms that hit the 10 000-row read limit now say the chart is a sample of the first rows, not the whole table (2026-11-07)
+- Row charts whose SQL binds a masked value now say so instead of failing or drawing an empty chart (2026-11-07)
+- Role-restricted metadata actions are now unavailable on connections without access control instead of runnable by everyone (2026-11-07)
+- Metadata actions with a null 'when' value (for example row.deleted_at: null) now only show on rows where that cell is NULL instead of on every row (2026-11-07)
+- View as now rebuilds the schema context sent to the AI and the DBML export, so tables hidden from the previewed role no longer leak into them (2026-11-07)
+- On-device Android: database paths with spaces now pull and push correctly (2026-11-07)
+- SQLite: [bracket] and backtick identifiers no longer confuse the multi-statement check (2026-11-07)
+- Shell env file: source ~/file is now followed, and double-quoted values keep backslashes and escaped dollar signs like a shell (2026-11-07)
+- pg-proxy connections now fail immediately with a closed error when the proxy drops the socket before ready (2026-11-07)
+- Web proxy: JSON object columns no longer fail every query, and result column types show real Postgres names (int4, text) instead of Type(oid:N) (2026-11-07)
+
 ## 2026-11-03
 
 - Schema and Linked view cards no longer end up on top of each other after expanding, resizing, dragging or loading a card (2026-11-03)
