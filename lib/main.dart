@@ -238,7 +238,8 @@ void _registerPlugins() {
   registry.register(MetaPlugin());
 
   // Theme plugins. The first one registered is the default (and the fallback
-  // when a saved theme no longer exists), so VS Code Dark goes first.
+  // when a saved theme no longer exists), so VS Code Dark goes first: it
+  // registers its orange variant (the default) before the original blue one.
   registry.register(VsCodeDarkThemePlugin());
   // Doom theme wired out — re-enable by restoring the import + pubspec dep.
   // registry.register(DoomPlugin());

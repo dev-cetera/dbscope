@@ -83,11 +83,36 @@ const vsCodeDarkPalette = AppPalette(
   smallFontSize: 12,
 );
 
+/// The logo's orange (`site/assets/dbscope_icon.svg` background).
+const _dbscopeOrange = Color(0xFFE5452B);
+
+/// Deep rust that plays the role Dark Modern's `#04395E` navy plays:
+/// selected rows and soft accent fills, dark enough for `#CCCCCC` text.
+const _dbscopeOrangeSoft = Color(0xFF5C2216);
+
+/// VS Code Dark Modern with the blue accent swapped for the dbscope logo's
+/// orange. Every other role (surfaces, text, syntax tokens) is unchanged.
+final AppPalette vsCodeOrangePalette = vsCodeDarkPalette.copyWith(
+  accent: _dbscopeOrange,
+  accentSoft: _dbscopeOrangeSoft,
+  rowSelected: _dbscopeOrangeSoft,
+);
+
 /// Builds the VS Code Dark Modern [ThemeData]. The optional [fontFamily]
 /// overrides the default `.AppleSystemUIFont`.
-ThemeData buildVsCodeDarkTheme({String? fontFamily}) {
-  final palette =
-      fontFamily == null ? vsCodeDarkPalette : vsCodeDarkPalette.copyWith(uiFontFamily: fontFamily);
+ThemeData buildVsCodeDarkTheme({String? fontFamily}) =>
+    buildVsCodeThemeFromPalette(vsCodeDarkPalette, fontFamily: fontFamily);
+
+/// Builds the orange variant of VS Code Dark Modern (see
+/// [vsCodeOrangePalette]). The optional [fontFamily] overrides the default
+/// `.AppleSystemUIFont`.
+ThemeData buildVsCodeOrangeTheme({String? fontFamily}) =>
+    buildVsCodeThemeFromPalette(vsCodeOrangePalette, fontFamily: fontFamily);
+
+/// Builds a flat, dark VS Code-style [ThemeData] from [base]. Both the blue
+/// and orange variants go through here, so they differ only by palette.
+ThemeData buildVsCodeThemeFromPalette(AppPalette base, {String? fontFamily}) {
+  final palette = fontFamily == null ? base : base.copyWith(uiFontFamily: fontFamily);
   final radius = BorderRadius.circular(palette.cornerRadius);
 
   OutlineInputBorder outline(Color color) => OutlineInputBorder(
@@ -131,25 +156,25 @@ ThemeData buildVsCodeDarkTheme({String? fontFamily}) {
       titleMedium: boldText,
       titleSmall: boldText,
     ),
-    colorScheme: const ColorScheme.dark(
-      primary: _VsCodeDark.accent,
-      onPrimary: _VsCodeDark.accentText,
-      secondary: _VsCodeDark.accent,
-      onSecondary: _VsCodeDark.accentText,
-      surface: _VsCodeDark.editorBg,
-      onSurface: _VsCodeDark.foreground,
-      surfaceContainer: _VsCodeDark.sideBarBg,
-      surfaceContainerHigh: _VsCodeDark.tabActiveBg,
-      surfaceContainerHighest: _VsCodeDark.tabActiveBg,
-      error: Color(0xFFF48771),
-      onError: _VsCodeDark.accentText,
-      tertiaryContainer: _VsCodeDark.accentSoft,
-      onTertiaryContainer: _VsCodeDark.foreground,
-      errorContainer: Color(0xFF5A1D1D),
-      onErrorContainer: Color(0xFFFFB4AB),
-      primaryContainer: _VsCodeDark.accentSoft,
-      onPrimaryContainer: _VsCodeDark.foreground,
-      outline: _VsCodeDark.border,
+    colorScheme: ColorScheme.dark(
+      primary: palette.accent,
+      onPrimary: palette.onAccent,
+      secondary: palette.accent,
+      onSecondary: palette.onAccent,
+      surface: palette.surface,
+      onSurface: palette.text,
+      surfaceContainer: palette.surfaceRecessed,
+      surfaceContainerHigh: palette.surfaceRaised,
+      surfaceContainerHighest: palette.surfaceRaised,
+      error: const Color(0xFFF48771),
+      onError: palette.onAccent,
+      tertiaryContainer: palette.accentSoft,
+      onTertiaryContainer: palette.text,
+      errorContainer: const Color(0xFF5A1D1D),
+      onErrorContainer: const Color(0xFFFFB4AB),
+      primaryContainer: palette.accentSoft,
+      onPrimaryContainer: palette.text,
+      outline: palette.border,
     ),
     dialogTheme: DialogThemeData(
       backgroundColor: palette.surfaceRaised,
@@ -333,4 +358,18 @@ class VsCodeDarkTheme implements AppTheme {
 
   @override
   ThemeData get themeData => buildVsCodeDarkTheme(fontFamily: fontFamily);
+}
+
+/// [AppTheme] wrapper around [buildVsCodeOrangeTheme] for theme registries.
+class VsCodeOrangeTheme implements AppTheme {
+  const VsCodeOrangeTheme({this.fontFamily});
+
+  /// Overrides the default `.AppleSystemUIFont` — pass any platform font.
+  final String? fontFamily;
+
+  @override
+  String get name => 'dbscope Orange';
+
+  @override
+  ThemeData get themeData => buildVsCodeOrangeTheme(fontFamily: fontFamily);
 }

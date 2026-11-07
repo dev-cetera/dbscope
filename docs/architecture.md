@@ -109,7 +109,7 @@ Every theme ships as a standalone package; the host has no built-in themes. Curr
 
 - `packages/dbscope_doom_plugin/` — Doom theme + sprite assets + floating mugshot overlay. The theme's `overlays` list is what makes the mugshot appear; remove the plugin and the mugshot is gone.
 - `packages/dbscope_win95_plugin/`
-- `packages/dbscope_vscode_dark_plugin/`
+- `packages/dbscope_vscode_dark_plugin/` — registers two themes: "dbscope Orange" (`vsCodeOrange`, the default) and the original blue "VS Code Dark Modern" (`vsCodeDark`).
 - `packages/dbscope_warcraft_plugin/`
 - `packages/dbscope_portal_plugin/`
 
@@ -222,7 +222,7 @@ Two mixins under `lib/util/` cover the repetitive State plumbing:
 
 `AppState.notifyChange()` is called from view widgets that mutate fields directly on the tab model — there's no separate per-tab notifier. This is intentional; don't introduce one.
 
-Themes and reusable widgets live in `packages/widgets/` (Dart package name `widgets`, depended on via `path:`). Two palettes (`win95Palette`, `vsCodeDarkPalette`) implement the shared `AppPalette` `ThemeExtension`; widgets read role-based fields via `AppPalette.of(context)` and shape-adapt via `ChromeKind` (`bevel` vs `flat`). Anything outside the package imports from a single barrel: `import 'package:widgets/widgets.dart';`. The package ships the bundled MS Sans Serif TTF under `lib/assets/fonts/` so it works standalone in any consumer project. Typed-cell colors are driven by the `type*` roles on `AppPalette` (e.g. `typeString`, `typeNumber`, `typeJson`, `typeNull`); the PG-type → role mapping lives in `lib/grid/typed_value_text.dart`.
+Themes and reusable widgets live in `packages/widgets/` (Dart package name `widgets`, depended on via `path:`). Three palettes (`win95Palette`, `vsCodeDarkPalette`, and `vsCodeOrangePalette`, the default theme: Dark Modern with the logo's orange as accent) implement the shared `AppPalette` `ThemeExtension`; widgets read role-based fields via `AppPalette.of(context)` and shape-adapt via `ChromeKind` (`bevel` vs `flat`). Anything outside the package imports from a single barrel: `import 'package:widgets/widgets.dart';`. The package ships the bundled MS Sans Serif TTF under `lib/assets/fonts/` so it works standalone in any consumer project. Typed-cell colors are driven by the `type*` roles on `AppPalette` (e.g. `typeString`, `typeNumber`, `typeJson`, `typeNull`); the PG-type → role mapping lives in `lib/grid/typed_value_text.dart`.
 
 ## The grid and pagination
 
