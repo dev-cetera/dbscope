@@ -42,6 +42,14 @@ rg -n '\[SIMPLE\]' TODO.md
 
 <!-- New entries go here, newest first. -->
 
+### **[P2]** Support PGlite databases
+
+- **Where.** A new connection kind beside `lib/db/cloudsql/` (a plugin that launches `@electric-sql/pglite-socket` and connects through `PostgresKindPlugin.openConnection`, the way Cloud SQL launches its proxy), or a README how-to if a plain Postgres profile turns out to be enough.
+- **Why.** PGlite (Postgres in WASM) has no support today. Its socket server speaks the Postgres wire protocol, but it allows one client unless `--max-connections` is raised, and dbscope opens several connections per database: one for server-side jobs, one per window, one for each copy job (`ConnectionService.openDedicated`), and a short-lived one for every Stop (CancelRequest). Newer pglite-socket versions run all connections through one query queue, so Stop may not interrupt a running statement, and pooled multi-connection use was still getting protocol fixes in April 2026. Check open-table paging, cell edits, query tabs, Stop, copy jobs and the catalog SQL against the PG version PGlite ships (`docs/architecture.md` targets 14–17).
+- **Effort.** `investigation`, then `<1d`.
+- **Blocker.** none.
+- **Noticed.** 2026-11-14, when asked whether dbscope supports PGlite.
+
 ### **[P1]** Drive dbscope with apprentice end to end and fix what it can't name or reach
 
 - **Where.** `macos/Runner/MainFlutterWindow.swift`, the labelled controls across `lib/` and `packages/`, `test/agent_accessibility_test.dart`. See "Accessibility for screen readers and agents" in `docs/architecture.md`.
