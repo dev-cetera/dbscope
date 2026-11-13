@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:file_selector/file_selector.dart';
 import 'package:flutter/material.dart';
 import 'package:sqlite3/sqlite3.dart' as sq;
+import 'package:widgets/widgets.dart';
 
 import '../connection/profile.dart';
 import '../plugins/dbscope_plugin.dart';
@@ -155,28 +156,34 @@ class _SqliteConnectionDialogState extends State<SqliteConnectionDialog> {
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              TextFormField(
-                controller: _name,
-                decoration: const InputDecoration(labelText: 'Name'),
-                validator: _requiredValidator,
+              FieldName(
+                'Name',
+                child: TextFormField(
+                  controller: _name,
+                  decoration: const InputDecoration(labelText: 'Name'),
+                  validator: _requiredValidator,
+                ),
               ),
               const SizedBox(height: 12.0),
               Row(
                 children: [
                   Expanded(
-                    child: TextFormField(
-                      controller: _path,
-                      decoration: const InputDecoration(
-                        labelText: 'Database file',
-                        hintText: '/path/to/your.db',
+                    child: FieldName(
+                      'Database file',
+                      child: TextFormField(
+                        controller: _path,
+                        decoration: const InputDecoration(
+                          labelText: 'Database file',
+                          hintText: '/path/to/your.db',
+                        ),
+                        validator: _requiredValidator,
                       ),
-                      validator: _requiredValidator,
                     ),
                   ),
                   const SizedBox(width: 8.0),
                   IconButton(
                     tooltip: 'Browse',
-                    icon: const Icon(Icons.folder_open),
+                    icon: const Icon(Icons.folder_open, semanticLabel: 'Browse'),
                     onPressed: _pickFile,
                   ),
                 ],

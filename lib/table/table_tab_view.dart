@@ -1153,6 +1153,8 @@ class TableTabHeader extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final chartsTooltip = tab.chartsOpen ? 'Hide charts' : 'Show charts';
+    final inspectorTooltip = inspectorCollapsed ? 'Show row inspector' : 'Hide row inspector';
     return PanelHeader(
       padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 4.0),
       titleIcon: Icons.table_chart_outlined,
@@ -1190,16 +1192,20 @@ class TableTabHeader extends StatelessWidget {
             const SizedBox(width: 8.0),
           ],
           if (tab.defaultFilterPending) ...[
-            InkWell(
-              onTap: onTrustDefaultFilter,
-              child: _Badge(
-                icon: Icons.filter_list_off,
-                label: 'default filter off',
-                tooltip:
-                    'The metadata defines a default filter for this table. '
-                    "It applies once you trust this connection's metadata "
-                    'SQL — click to review it.',
-                color: theme.colorScheme.errorContainer,
+            Semantics(
+              container: true,
+              button: true,
+              child: InkWell(
+                onTap: onTrustDefaultFilter,
+                child: _Badge(
+                  icon: Icons.filter_list_off,
+                  label: 'default filter off',
+                  tooltip:
+                      'The metadata defines a default filter for this table. '
+                      "It applies once you trust this connection's metadata "
+                      'SQL — click to review it.',
+                  color: theme.colorScheme.errorContainer,
+                ),
               ),
             ),
             const SizedBox(width: 8.0),
@@ -1245,33 +1251,38 @@ class TableTabHeader extends StatelessWidget {
                   ? 'Showing soft-deleted rows. Click to hide them.'
                   : 'Hiding soft-deleted rows (${tab.effectiveSoftDeleteColumn} IS NULL). '
                         'Click to include them.',
-              child: InkWell(
-                onTap: onToggleShowDeleted,
-                borderRadius: BorderRadius.circular(3.0),
-                child: Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 6.0,
-                    vertical: 1.0,
-                  ),
-                  decoration: BoxDecoration(
-                    color: tab.showDeleted
-                        ? theme.colorScheme.errorContainer
-                        : theme.colorScheme.secondaryContainer,
-                    borderRadius: BorderRadius.circular(3.0),
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(
-                        tab.showDeleted ? Icons.visibility : Icons.visibility_off,
-                        size: 12.0,
-                      ),
-                      const SizedBox(width: 3.0),
-                      Text(
-                        tab.showDeleted ? 'deleted shown' : 'deleted hidden',
-                        style: theme.textTheme.labelSmall,
-                      ),
-                    ],
+              child: Semantics(
+                container: true,
+                button: true,
+                toggled: tab.showDeleted,
+                child: InkWell(
+                  onTap: onToggleShowDeleted,
+                  borderRadius: BorderRadius.circular(3.0),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 6.0,
+                      vertical: 1.0,
+                    ),
+                    decoration: BoxDecoration(
+                      color: tab.showDeleted
+                          ? theme.colorScheme.errorContainer
+                          : theme.colorScheme.secondaryContainer,
+                      borderRadius: BorderRadius.circular(3.0),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(
+                          tab.showDeleted ? Icons.visibility : Icons.visibility_off,
+                          size: 12.0,
+                        ),
+                        const SizedBox(width: 3.0),
+                        Text(
+                          tab.showDeleted ? 'deleted shown' : 'deleted hidden',
+                          style: theme.textTheme.labelSmall,
+                        ),
+                      ],
+                    ),
                   ),
                 ),
               ),
@@ -1302,54 +1313,45 @@ class TableTabHeader extends StatelessWidget {
               style: TextButton.styleFrom(visualDensity: VisualDensity.compact),
               onPressed: onExactCount,
             ),
-          DropdownButton<GridViewMode>(
-            value: tab.viewMode,
-            isDense: true,
-            underline: const SizedBox.shrink(),
+          InstantDropdown(
             items: [
               for (final mode in GridViewMode.values)
-                DropdownMenuItem(
-                  value: mode,
-                  child: Text('View: ${mode.label}'),
+                InstantDropdownItem(
+                  label: 'View: ${mode.label}',
+                  selected: mode == tab.viewMode,
+                  onSelected: () => onViewModeChanged(mode),
                 ),
             ],
-            onChanged: (mode) {
-              if (mode != null) onViewModeChanged(mode);
-            },
           ),
           const SizedBox(width: 8.0),
-          DropdownButton<AutoRefreshInterval>(
-            value: tab.autoRefresh,
-            isDense: true,
-            underline: const SizedBox.shrink(),
+          InstantDropdown(
             items: [
               for (final interval in AutoRefreshInterval.values)
-                DropdownMenuItem(
-                  value: interval,
-                  child: Text('Auto: ${interval.label}'),
+                InstantDropdownItem(
+                  label: 'Auto: ${interval.label}',
+                  selected: interval == tab.autoRefresh,
+                  onSelected: () => onAutoRefreshChanged(interval),
                 ),
             ],
-            onChanged: (interval) {
-              if (interval != null) onAutoRefreshChanged(interval);
-            },
           ),
           IconButton(
             tooltip: 'Columns…',
-            icon: const Icon(Icons.view_column_outlined, size: 18.0),
+            icon: const Icon(Icons.view_column_outlined, size: 18.0, semanticLabel: 'Columns…'),
             onPressed: onPickColumns,
           ),
           if (hasCharts)
             IconButton(
-              tooltip: tab.chartsOpen ? 'Hide charts' : 'Show charts',
+              tooltip: chartsTooltip,
               icon: Icon(
                 tab.chartsOpen ? Icons.insert_chart : Icons.insert_chart_outlined,
                 size: 18.0,
+                semanticLabel: chartsTooltip,
               ),
               onPressed: onToggleCharts,
             ),
           IconButton(
             tooltip: 'Insert row',
-            icon: const Icon(Icons.add_circle_outline, size: 18.0),
+            icon: const Icon(Icons.add_circle_outline, size: 18.0, semanticLabel: 'Insert row'),
             onPressed:
                 (readOnly || tab.isLoading || !tab.tableAccess.level.atLeast(AccessLevel.full))
                 ? null
@@ -1357,14 +1359,15 @@ class TableTabHeader extends StatelessWidget {
           ),
           IconButton(
             tooltip: 'Refresh',
-            icon: const Icon(Icons.refresh, size: 18.0),
+            icon: const Icon(Icons.refresh, size: 18.0, semanticLabel: 'Refresh'),
             onPressed: tab.isLoading ? null : onRefresh,
           ),
           IconButton(
-            tooltip: inspectorCollapsed ? 'Show row inspector' : 'Hide row inspector',
+            tooltip: inspectorTooltip,
             icon: Icon(
               inspectorCollapsed ? Icons.view_sidebar_outlined : Icons.view_sidebar,
               size: 18.0,
+              semanticLabel: inspectorTooltip,
             ),
             onPressed: onToggleInspector,
           ),

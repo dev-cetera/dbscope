@@ -507,50 +507,43 @@ class _RowListColumnState extends State<RowListColumn> {
             children: [
               SizedBox(
                 width: 130.0,
-                child: DropdownButtonFormField<String?>(
-                  // A column that stopped being readable (metadata reload,
-                  // View as…) is no longer an item; fall back to AI Infer.
-                  initialValue:
-                      step.columns.any(
-                        (column) =>
-                            column.name == step.filterColumn &&
-                            column.accessLevel.index >= AccessLevel.read.index,
-                      )
-                      ? step.filterColumn
-                      : null,
-                  isExpanded: true,
-                  decoration: const InputDecoration(
-                    isDense: true,
-                    border: OutlineInputBorder(),
-                    contentPadding: EdgeInsets.symmetric(
-                      horizontal: 6.0,
-                      vertical: 6.0,
-                    ),
-                  ),
-                  items: [
-                    const DropdownMenuItem<String?>(
-                      child: Text(
-                        '[AI Infer]',
-                        style: TextStyle(
-                          fontSize: 11.0,
-                          fontStyle: FontStyle.italic,
-                        ),
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ),
-                    for (final column in step.columns.where(
-                      (column) => column.accessLevel.index >= AccessLevel.read.index,
-                    ))
-                      DropdownMenuItem<String?>(
-                        value: column.name,
-                        child: Text(
-                          column.name,
-                          style: const TextStyle(fontSize: 11.0),
-                          overflow: TextOverflow.ellipsis,
+                child: Builder(
+                  builder: (context) {
+                    final readable = [
+                      for (final column in step.columns)
+                        if (column.accessLevel.index >= AccessLevel.read.index) column.name,
+                    ];
+                    // A column that stopped being readable (metadata reload,
+                    // View as…) is no longer an item; fall back to AI Infer.
+                    final selected = readable.contains(step.filterColumn)
+                        ? step.filterColumn
+                        : null;
+                    return InstantDropdown(
+                      isExpanded: true,
+                      style: const TextStyle(fontSize: 11.0),
+                      decoration: const InputDecoration(
+                        isDense: true,
+                        border: OutlineInputBorder(),
+                        contentPadding: EdgeInsets.symmetric(
+                          horizontal: 6.0,
+                          vertical: 6.0,
                         ),
                       ),
-                  ],
-                  onChanged: _onFilterColumnChanged,
+                      items: [
+                        InstantDropdownItem(
+                          label: '[AI Infer]',
+                          selected: selected == null,
+                          onSelected: () => _onFilterColumnChanged(null),
+                        ),
+                        for (final name in readable)
+                          InstantDropdownItem(
+                            label: name,
+                            selected: name == selected,
+                            onSelected: () => _onFilterColumnChanged(name),
+                          ),
+                      ],
+                    );
+                  },
                 ),
               ),
               const SizedBox(width: 6.0),
@@ -564,30 +557,33 @@ class _RowListColumnState extends State<RowListColumn> {
                   child: LayoutBuilder(
                     builder: (_, constraints) => SizedBox(
                       width: constraints.maxWidth.clamp(0.0, 240.0),
-                      child: TextField(
-                        controller: _filterController,
-                        decoration: const InputDecoration(
-                          hintText: 'regex…',
-                          isDense: true,
-                          prefixIcon: Icon(Icons.search, size: 14.0),
-                          border: OutlineInputBorder(),
-                          contentPadding: EdgeInsets.symmetric(
-                            horizontal: 6.0,
-                            vertical: 6.0,
+                      child: FieldName(
+                        'Regex filter',
+                        child: TextField(
+                          controller: _filterController,
+                          decoration: const InputDecoration(
+                            hintText: 'regex…',
+                            isDense: true,
+                            prefixIcon: Icon(Icons.search, size: 14.0),
+                            border: OutlineInputBorder(),
+                            contentPadding: EdgeInsets.symmetric(
+                              horizontal: 6.0,
+                              vertical: 6.0,
+                            ),
                           ),
+                          style: const TextStyle(
+                            fontFamily: 'Menlo',
+                            fontSize: 11.0,
+                          ),
+                          onChanged: _onFilterPatternChanged,
+                          onSubmitted: (_) {
+                            if (widget.step.filterColumn == null) {
+                              unawaited(_runAiInfer());
+                            } else {
+                              unawaited(_load());
+                            }
+                          },
                         ),
-                        style: const TextStyle(
-                          fontFamily: 'Menlo',
-                          fontSize: 11.0,
-                        ),
-                        onChanged: _onFilterPatternChanged,
-                        onSubmitted: (_) {
-                          if (widget.step.filterColumn == null) {
-                            unawaited(_runAiInfer());
-                          } else {
-                            unawaited(_load());
-                          }
-                        },
                       ),
                     ),
                   ),
@@ -642,34 +638,39 @@ class _RowListColumnState extends State<RowListColumn> {
                 }
                 final isSel =
                     selectedPrimaryKey != null && _listEq(selectedPrimaryKey, pkValuesForRow);
-                return InkWell(
-                  onTap: () => _openRow(i),
-                  child: Container(
-                    color: isSel ? theme.colorScheme.primaryContainer : Colors.transparent,
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 8.0,
-                      vertical: 5.0,
-                    ),
-                    child: Row(
-                      children: [
-                        Icon(
-                          Icons.vpn_key,
-                          size: 11.0,
-                          color: theme.colorScheme.primary,
-                        ),
-                        const SizedBox(width: 6.0),
-                        Expanded(
-                          child: Text(
-                            _rowLabel(row, data.columns),
-                            style: theme.textTheme.bodySmall?.copyWith(
-                              fontFamily: 'Menlo',
-                              fontWeight: isSel ? FontWeight.w600 : null,
-                            ),
-                            overflow: TextOverflow.ellipsis,
+                return Semantics(
+                  container: true,
+                  button: true,
+                  selected: isSel,
+                  child: InkWell(
+                    onTap: () => _openRow(i),
+                    child: Container(
+                      color: isSel ? theme.colorScheme.primaryContainer : Colors.transparent,
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 8.0,
+                        vertical: 5.0,
+                      ),
+                      child: Row(
+                        children: [
+                          Icon(
+                            Icons.vpn_key,
+                            size: 11.0,
+                            color: theme.colorScheme.primary,
                           ),
-                        ),
-                        const Icon(Icons.chevron_right, size: 14.0),
-                      ],
+                          const SizedBox(width: 6.0),
+                          Expanded(
+                            child: Text(
+                              _rowLabel(row, data.columns),
+                              style: theme.textTheme.bodySmall?.copyWith(
+                                fontFamily: 'Menlo',
+                                fontWeight: isSel ? FontWeight.w600 : null,
+                              ),
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                          const Icon(Icons.chevron_right, size: 14.0),
+                        ],
+                      ),
                     ),
                   ),
                 );
@@ -700,18 +701,18 @@ class _RowListColumnState extends State<RowListColumn> {
         children: [
           IconButton(
             tooltip: 'Insert row',
-            icon: const Icon(Icons.add, size: 16.0),
+            icon: const Icon(Icons.add, size: 16.0, semanticLabel: 'Insert row'),
             onPressed: !step.catalogLoaded || step.pkColumns.isEmpty ? null : _insertRow,
           ),
           IconButton(
             tooltip: 'Reload',
-            icon: const Icon(Icons.refresh, size: 16.0),
+            icon: const Icon(Icons.refresh, size: 16.0, semanticLabel: 'Reload'),
             onPressed: step.isLoading ? null : _load,
           ),
           if (widget.index > 0)
             IconButton(
               tooltip: 'Close column',
-              icon: const Icon(Icons.close, size: 16.0),
+              icon: const Icon(Icons.close, size: 16.0, semanticLabel: 'Close column'),
               onPressed: () {
                 widget.tab.truncateTo(widget.index - 1);
                 AppState.instance.notifyChange();

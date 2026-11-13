@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
+import 'field_name.dart';
+
 /// One row in a [showSearchableMenu]. [searchKey] is the text matched
 /// against the filter; [child] is what renders. [value] is what
 /// [showSearchableMenu] returns on selection. A null [value] makes the
@@ -188,25 +190,28 @@ class _SearchablePopupState<T> extends State<_SearchablePopup<T>> {
                     children: [
                       Padding(
                         padding: const EdgeInsets.fromLTRB(6.0, 6.0, 6.0, 4.0),
-                        child: TextField(
-                          controller: _filterController,
-                          focusNode: _filterFocus,
-                          decoration: InputDecoration(
-                            hintText: widget.hint,
-                            isDense: true,
-                            prefixIcon: const Icon(Icons.search, size: 16.0),
-                            border: const OutlineInputBorder(),
-                            contentPadding: const EdgeInsets.symmetric(
-                              horizontal: 8.0,
-                              vertical: 8.0,
+                        child: FieldName(
+                          widget.hint,
+                          child: TextField(
+                            controller: _filterController,
+                            focusNode: _filterFocus,
+                            decoration: InputDecoration(
+                              hintText: widget.hint,
+                              isDense: true,
+                              prefixIcon: const Icon(Icons.search, size: 16.0),
+                              border: const OutlineInputBorder(),
+                              contentPadding: const EdgeInsets.symmetric(
+                                horizontal: 8.0,
+                                vertical: 8.0,
+                              ),
                             ),
+                            onChanged: (text) {
+                              setState(() {
+                                _filter = text;
+                                _highlight = 0;
+                              });
+                            },
                           ),
-                          onChanged: (text) {
-                            setState(() {
-                              _filter = text;
-                              _highlight = 0;
-                            });
-                          },
                         ),
                       ),
                       const Divider(height: 1.0),
@@ -227,52 +232,62 @@ class _SearchablePopupState<T> extends State<_SearchablePopup<T>> {
                                     final item = matches[i];
                                     final selectable = item.value != null && item.enabled;
                                     final highlighted = i == _highlight;
-                                    return InkWell(
-                                      onTap:
-                                          selectable
-                                              ? () => Navigator.of(
-                                                context,
-                                              ).pop<T>(item.value)
-                                              : null,
-                                      child: Container(
-                                        color:
-                                            highlighted && selectable
-                                                ? theme.colorScheme.primaryContainer.withValues(
-                                                  alpha: 0.4,
-                                                )
+                                    return Semantics(
+                                      container: true,
+                                      button: true,
+                                      enabled: selectable,
+                                      child: InkWell(
+                                        onTap:
+                                            selectable
+                                                ? () => Navigator.of(
+                                                  context,
+                                                ).pop<T>(item.value)
                                                 : null,
-                                        padding: const EdgeInsets.symmetric(
-                                          horizontal: 8.0,
-                                          vertical: 6.0,
-                                        ),
-                                        child: Row(
-                                          children: [
-                                            Expanded(child: item.child),
-                                            if (item.onSecondary != null) ...[
-                                              const SizedBox(width: 4.0),
-                                              GestureDetector(
-                                                behavior: HitTestBehavior.opaque,
-                                                onTap: () {
-                                                  final onSecondary = item.onSecondary!;
-                                                  Navigator.of(context).pop();
-                                                  onSecondary();
-                                                },
-                                                child: Tooltip(
-                                                  message: item.secondaryTooltip ?? '',
-                                                  child: Padding(
-                                                    padding: const EdgeInsets.all(
-                                                      4.0,
-                                                    ),
-                                                    child: Icon(
-                                                      item.secondaryIcon ?? Icons.close,
-                                                      size: 14.0,
-                                                      color: theme.hintColor,
+                                        child: Container(
+                                          color:
+                                              highlighted && selectable
+                                                  ? theme.colorScheme.primaryContainer.withValues(
+                                                    alpha: 0.4,
+                                                  )
+                                                  : null,
+                                          padding: const EdgeInsets.symmetric(
+                                            horizontal: 8.0,
+                                            vertical: 6.0,
+                                          ),
+                                          child: Row(
+                                            children: [
+                                              Expanded(child: item.child),
+                                              if (item.onSecondary != null) ...[
+                                                const SizedBox(width: 4.0),
+                                                Semantics(
+                                                  container: true,
+                                                  button: true,
+                                                  label: item.secondaryTooltip ?? '',
+                                                  child: GestureDetector(
+                                                    behavior: HitTestBehavior.opaque,
+                                                    onTap: () {
+                                                      final onSecondary = item.onSecondary!;
+                                                      Navigator.of(context).pop();
+                                                      onSecondary();
+                                                    },
+                                                    child: Tooltip(
+                                                      message: item.secondaryTooltip ?? '',
+                                                      child: Padding(
+                                                        padding: const EdgeInsets.all(
+                                                          4.0,
+                                                        ),
+                                                        child: Icon(
+                                                          item.secondaryIcon ?? Icons.close,
+                                                          size: 14.0,
+                                                          color: theme.hintColor,
+                                                        ),
+                                                      ),
                                                     ),
                                                   ),
                                                 ),
-                                              ),
+                                              ],
                                             ],
-                                          ],
+                                          ),
                                         ),
                                       ),
                                     );

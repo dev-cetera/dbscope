@@ -111,7 +111,9 @@ ThemeData buildPortalTheme({String? fontFamily}) {
     cardColor: palette.surfaceRaised,
     dividerColor: palette.border,
     hintColor: palette.mutedText,
-    splashFactory: InkSparkle.splashFactory,
+    // No ink splash: InkSparkle spreads over 617 ms after every click,
+    // which reads as lag in a desktop app.
+    splashFactory: NoSplash.splashFactory,
     highlightColor: palette.accent.withValues(alpha: 0.10),
     hoverColor: palette.rowHover,
     focusColor: palette.accent.withValues(alpha: 0.18),

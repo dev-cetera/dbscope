@@ -52,22 +52,26 @@ class _QueryRow extends StatelessWidget {
     final theme = Theme.of(context);
     return DescriptionTooltip(
       markdown: '**${query.label}**\n\n${query.description ?? ''}',
-      child: InkWell(
-        onTap: _open,
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(20.0, 3.0, 4.0, 3.0),
-          child: Row(
-            children: [
-              Icon(Icons.manage_search, size: 13.0, color: theme.hintColor),
-              const SizedBox(width: 6.0),
-              Expanded(
-                child: Text(
-                  query.group == null ? query.label : '${query.group} ▸ ${query.label}',
-                  style: theme.textTheme.bodySmall,
-                  overflow: TextOverflow.ellipsis,
+      child: Semantics(
+        container: true,
+        button: true,
+        child: InkWell(
+          onTap: _open,
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(20.0, 3.0, 4.0, 3.0),
+            child: Row(
+              children: [
+                Icon(Icons.manage_search, size: 13.0, color: theme.hintColor),
+                const SizedBox(width: 6.0),
+                Expanded(
+                  child: Text(
+                    query.group == null ? query.label : '${query.group} ▸ ${query.label}',
+                    style: theme.textTheme.bodySmall,
+                    overflow: TextOverflow.ellipsis,
+                  ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
         ),
       ),
@@ -105,22 +109,26 @@ class _DashboardRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    return InkWell(
-      onTap: _open,
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(20.0, 3.0, 4.0, 3.0),
-        child: Row(
-          children: [
-            Icon(Icons.dashboard_outlined, size: 13.0, color: theme.hintColor),
-            const SizedBox(width: 6.0),
-            Expanded(
-              child: Text(
-                label,
-                style: theme.textTheme.bodySmall,
-                overflow: TextOverflow.ellipsis,
+    return Semantics(
+      container: true,
+      button: true,
+      child: InkWell(
+        onTap: _open,
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(20.0, 3.0, 4.0, 3.0),
+          child: Row(
+            children: [
+              Icon(Icons.dashboard_outlined, size: 13.0, color: theme.hintColor),
+              const SizedBox(width: 6.0),
+              Expanded(
+                child: Text(
+                  label,
+                  style: theme.textTheme.bodySmall,
+                  overflow: TextOverflow.ellipsis,
+                ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );

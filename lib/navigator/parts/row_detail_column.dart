@@ -267,7 +267,7 @@ class _RowDetailColumnState extends State<RowDetailColumn> {
         children: [
           IconButton(
             tooltip: 'Reload',
-            icon: const Icon(Icons.refresh, size: 16.0),
+            icon: const Icon(Icons.refresh, size: 16.0, semanticLabel: 'Reload'),
             onPressed: step.isLoading ? null : _load,
           ),
           IconButton(
@@ -276,12 +276,13 @@ class _RowDetailColumnState extends State<RowDetailColumn> {
               Icons.delete_outline,
               size: 16.0,
               color: theme.colorScheme.error,
+              semanticLabel: 'Delete row',
             ),
             onPressed: row == null ? null : _delete,
           ),
           IconButton(
             tooltip: 'Close column',
-            icon: const Icon(Icons.close, size: 16.0),
+            icon: const Icon(Icons.close, size: 16.0, semanticLabel: 'Close column'),
             onPressed: () {
               widget.tab.truncateTo(widget.index - 1);
               AppState.instance.notifyChange();

@@ -94,13 +94,18 @@ class _JsonInputState extends State<_JsonInput> {
           suffix: widget.enabled
               ? MouseRegion(
                   cursor: SystemMouseCursors.click,
-                  child: GestureDetector(
-                    onTap: _format,
-                    child: const Padding(
-                      padding: EdgeInsets.symmetric(horizontal: 6.0),
-                      child: Tooltip(
-                        message: 'Format JSON',
-                        child: Icon(Icons.auto_fix_high, size: 14.0),
+                  child: Semantics(
+                    container: true,
+                    button: true,
+                    label: 'Format JSON',
+                    child: GestureDetector(
+                      onTap: _format,
+                      child: const Padding(
+                        padding: EdgeInsets.symmetric(horizontal: 6.0),
+                        child: Tooltip(
+                          message: 'Format JSON',
+                          child: Icon(Icons.auto_fix_high, size: 14.0),
+                        ),
                       ),
                     ),
                   ),

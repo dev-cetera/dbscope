@@ -16,7 +16,6 @@ import '../meta/meta_models.dart';
 import '../meta/named_query/named_query_tab.dart';
 import '../meta/ui/description_tooltip.dart';
 import '../navigator/navigator_tab.dart';
-import '../util/listenable_state_mixin.dart';
 import 'app_state.dart';
 import 'relationship_gutter.dart';
 import 'sidebar_table_actions.dart';
@@ -62,9 +61,16 @@ class Sidebar extends StatefulWidget {
   State<Sidebar> createState() => _SidebarState();
 }
 
-class _SidebarState extends State<Sidebar> with ListenableStateMixin {
-  @override
-  List<Listenable> get listenables => [AppState.instance];
+class _SidebarState extends State<Sidebar> {
+  /// The selected-table key the list was last built with. The sidebar
+  /// reads nothing else from AppState, so it rebuilds only when this
+  /// changes: rebuilding the whole table list on every AppState notify
+  /// (a tab switch, a toggled panel, a cell click) was wasted work.
+  String? _shownSelectedKey;
+
+  void _onAppStateChange() {
+    if (mounted && _selectedKey() != _shownSelectedKey) setState(() {});
+  }
 
   /// The metadata snapshot the listing was built under; a new one (reload,
   /// "View as…") can change which tables exist for this user.
@@ -104,6 +110,7 @@ class _SidebarState extends State<Sidebar> with ListenableStateMixin {
   @override
   void initState() {
     super.initState();
+    AppState.instance.addListener(_onAppStateChange);
     _registry.addListener(_onRegistryChange);
     MetadataCache.instance.addListener(_onMetadataChange);
     _metaUsed = MetadataCache.instance.snapshotFor(_registry.activeId);
@@ -114,6 +121,7 @@ class _SidebarState extends State<Sidebar> with ListenableStateMixin {
   @override
   void dispose() {
     SidebarFocusController.instance.detach(_filterFocus);
+    AppState.instance.removeListener(_onAppStateChange);
     _registry.removeListener(_onRegistryChange);
     MetadataCache.instance.removeListener(_onMetadataChange);
     _scrollController.dispose();
@@ -255,25 +263,28 @@ class _SidebarState extends State<Sidebar> with ListenableStateMixin {
           _ConnectionPicker(registry: _registry, onReload: _reload),
           Padding(
             padding: const EdgeInsets.fromLTRB(8.0, 0.0, 8.0, 8.0),
-            child: TextField(
-              controller: _filterController,
-              focusNode: _filterFocus,
-              decoration: InputDecoration(
-                hintText: 'Filter tables… (Cmd+F)',
-                isDense: true,
-                prefixIcon: const Icon(Icons.search, size: 18.0),
-                border: const OutlineInputBorder(),
-                suffixIcon: _filter.isEmpty
-                    ? null
-                    : IconButton(
-                        icon: const Icon(Icons.clear, size: 18.0),
-                        onPressed: () {
-                          _filterController.clear();
-                          setState(() => _filter = '');
-                        },
-                      ),
+            child: FieldName(
+              'Filter tables',
+              child: TextField(
+                controller: _filterController,
+                focusNode: _filterFocus,
+                decoration: InputDecoration(
+                  hintText: 'Filter tables… (Cmd+F)',
+                  isDense: true,
+                  prefixIcon: const Icon(Icons.search, size: 18.0),
+                  border: const OutlineInputBorder(),
+                  suffixIcon: _filter.isEmpty
+                      ? null
+                      : IconButton(
+                          icon: const Icon(Icons.clear, size: 18.0, semanticLabel: 'Clear filter'),
+                          onPressed: () {
+                            _filterController.clear();
+                            setState(() => _filter = '');
+                          },
+                        ),
+                ),
+                onChanged: (value) => setState(() => _filter = value.trim()),
               ),
-              onChanged: (value) => setState(() => _filter = value.trim()),
             ),
           ),
           if (_loading) const LinearProgressIndicator(minHeight: 2.0),
@@ -368,6 +379,7 @@ class _SidebarState extends State<Sidebar> with ListenableStateMixin {
       for (final row in rows) GutterItem(tableKey: row.tableKey),
     ];
     final selectedKey = _selectedKey();
+    _shownSelectedKey = selectedKey;
     final related = relatedTables(_foreignKeys, selectedKey);
     // Walk the visible rows in display order so adjacent-row collision
     // avoidance happens against what the user actually sees next to each
@@ -515,37 +527,42 @@ class _SchemaRow extends StatelessWidget {
         ?.index
         .describeSchema(schema.name)
         .toMarkdown();
-    final row = GestureDetector(
-      onSecondaryTapDown: (details) => onSecondaryTapDown(details.globalPosition),
-      child: InkWell(
-        onTap: onToggle,
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 4.0),
-          child: Row(
-            children: [
-              Icon(
-                isExpanded ? Icons.keyboard_arrow_down : Icons.keyboard_arrow_right,
-                size: 16.0,
-                color: theme.hintColor,
-              ),
-              const SizedBox(width: 4.0),
-              Icon(
-                schema.isSystem ? Icons.folder_outlined : Icons.folder,
-                size: 14.0,
-                color: schema.isSystem ? theme.hintColor : theme.colorScheme.primary,
-              ),
-              const SizedBox(width: 6.0),
-              Expanded(
-                child: Text(
-                  schema.name,
-                  style: TextStyle(
-                    fontWeight: schema.isSystem ? FontWeight.normal : FontWeight.w600,
-                    color: schema.isSystem ? theme.hintColor : null,
-                  ),
-                  overflow: TextOverflow.ellipsis,
+    final row = Semantics(
+      container: true,
+      button: true,
+      expanded: isExpanded,
+      child: GestureDetector(
+        onSecondaryTapDown: (details) => onSecondaryTapDown(details.globalPosition),
+        child: InkWell(
+          onTap: onToggle,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 4.0),
+            child: Row(
+              children: [
+                Icon(
+                  isExpanded ? Icons.keyboard_arrow_down : Icons.keyboard_arrow_right,
+                  size: 16.0,
+                  color: theme.hintColor,
                 ),
-              ),
-            ],
+                const SizedBox(width: 4.0),
+                Icon(
+                  schema.isSystem ? Icons.folder_outlined : Icons.folder,
+                  size: 14.0,
+                  color: schema.isSystem ? theme.hintColor : theme.colorScheme.primary,
+                ),
+                const SizedBox(width: 6.0),
+                Expanded(
+                  child: Text(
+                    schema.name,
+                    style: TextStyle(
+                      fontWeight: schema.isSystem ? FontWeight.normal : FontWeight.w600,
+                      color: schema.isSystem ? theme.hintColor : null,
+                    ),
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+              ],
+            ),
           ),
         ),
       ),

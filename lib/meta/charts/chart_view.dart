@@ -221,7 +221,7 @@ class _MetaChartCardState extends State<MetaChartCard> {
                   tooltip: 'Refresh chart',
                   visualDensity: VisualDensity.compact,
                   iconSize: 16.0,
-                  icon: const Icon(Icons.refresh),
+                  icon: const Icon(Icons.refresh, semanticLabel: 'Refresh chart'),
                   onPressed: _loading ? null : _load,
                 ),
               ],

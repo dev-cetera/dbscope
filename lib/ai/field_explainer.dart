@@ -10,9 +10,7 @@
 import '../catalog/dbml_cache.dart';
 import '../meta/meta_cache.dart';
 import '../meta/meta_models.dart';
-import 'ai_key_resolver.dart';
-import 'provider.dart';
-import 'settings_store.dart';
+import 'ai_target.dart';
 import 'sql_assistant.dart' show AssistantException;
 
 class FieldExplainer {
@@ -33,26 +31,7 @@ class FieldExplainer {
         'Your role on this connection cannot use AI features.',
       );
     }
-    final settings = await AiSettingsStore.instance.load();
-    final providerId = settings.providerId;
-    if (providerId == null) {
-      throw const AssistantException(
-        'No AI provider configured. Open AI ▸ Settings…',
-      );
-    }
-    final provider = AiBrokerRegistry.instance.lookup(providerId);
-    if (provider == null) {
-      throw AssistantException('Provider "$providerId" no longer available.');
-    }
-    final apiKey = await AiKeyResolver.resolve(providerId);
-    if (apiKey.isEmpty) {
-      throw const AssistantException(
-        'API key missing. Open AI ▸ Settings…',
-      );
-    }
-    var model = settings.model;
-    model ??= await _autoPickModel(provider, apiKey);
-
+    final target = await AiTarget.resolve();
     final status = DbmlCache.instance.statusFor(connectionId);
     if (status == DbmlStatus.pending) {
       // Block until the warm finishes; otherwise we'd answer with no
@@ -81,9 +60,9 @@ class FieldExplainer {
             : '(Schema not available — answer from the column name alone.)',
       );
 
-    final raw = await provider.complete(
-      apiKey: apiKey,
-      model: model,
+    final raw = await target.broker.complete(
+      apiKey: target.apiKey,
+      model: target.model,
       system: system,
       user: user.toString(),
     );
@@ -99,18 +78,5 @@ class FieldExplainer {
       text = '${text.substring(0, _kMaxPreviewLength)}…';
     }
     return text;
-  }
-
-  static Future<String> _autoPickModel(
-    AiBroker provider,
-    String apiKey,
-  ) async {
-    final models = await provider.listModels(apiKey);
-    if (models.isEmpty) {
-      throw const AssistantException(
-        'Provider returned no models. Check the API key in AI ▸ Settings…',
-      );
-    }
-    return models.first;
   }
 }

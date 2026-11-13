@@ -124,31 +124,40 @@ class _CloudSqlDialogState extends State<CloudSqlDialog> {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            TextFormField(
-              controller: _name,
-              decoration: const InputDecoration(labelText: 'Name'),
-              validator: _requiredValidator,
-            ),
-            const SizedBox(height: 12.0),
-            TextFormField(
-              controller: _instance,
-              decoration: const InputDecoration(
-                labelText: 'Instance connection name',
-                hintText: 'project:region:instance',
+            FieldName(
+              'Name',
+              child: TextFormField(
+                controller: _name,
+                decoration: const InputDecoration(labelText: 'Name'),
+                validator: _requiredValidator,
               ),
-              validator: (value) {
-                if (value == null || value.trim().isEmpty) return 'required';
-                if (value.trim().split(':').length != 3) {
-                  return 'expected project:region:instance';
-                }
-                return null;
-              },
             ),
             const SizedBox(height: 12.0),
-            TextFormField(
-              controller: _project,
-              decoration: const InputDecoration(
-                labelText: 'GCP project (for public-IP toggle)',
+            FieldName(
+              'Instance connection name',
+              child: TextFormField(
+                controller: _instance,
+                decoration: const InputDecoration(
+                  labelText: 'Instance connection name',
+                  hintText: 'project:region:instance',
+                ),
+                validator: (value) {
+                  if (value == null || value.trim().isEmpty) return 'required';
+                  if (value.trim().split(':').length != 3) {
+                    return 'expected project:region:instance';
+                  }
+                  return null;
+                },
+              ),
+            ),
+            const SizedBox(height: 12.0),
+            FieldName(
+              'GCP project (for public-IP toggle)',
+              child: TextFormField(
+                controller: _project,
+                decoration: const InputDecoration(
+                  labelText: 'GCP project (for public-IP toggle)',
+                ),
               ),
             ),
             const SizedBox(height: 12.0),
@@ -156,49 +165,62 @@ class _CloudSqlDialogState extends State<CloudSqlDialog> {
               children: [
                 Expanded(
                   flex: 3,
-                  child: TextFormField(
-                    controller: _database,
-                    decoration: const InputDecoration(labelText: 'Database'),
-                    validator: _requiredValidator,
+                  child: FieldName(
+                    'Database',
+                    child: TextFormField(
+                      controller: _database,
+                      decoration: const InputDecoration(labelText: 'Database'),
+                      validator: _requiredValidator,
+                    ),
                   ),
                 ),
                 const SizedBox(width: 12.0),
                 Expanded(
-                  child: TextFormField(
-                    controller: _localPort,
-                    decoration: const InputDecoration(labelText: 'Local port'),
-                    keyboardType: TextInputType.number,
-                    validator: (value) {
-                      final portNumber = int.tryParse(value?.trim() ?? '');
-                      if (portNumber == null || portNumber <= 0 || portNumber > 65535) {
-                        return 'invalid';
-                      }
-                      return null;
-                    },
+                  child: FieldName(
+                    'Local port',
+                    child: TextFormField(
+                      controller: _localPort,
+                      decoration: const InputDecoration(labelText: 'Local port'),
+                      keyboardType: TextInputType.number,
+                      validator: (value) {
+                        final portNumber = int.tryParse(value?.trim() ?? '');
+                        if (portNumber == null || portNumber <= 0 || portNumber > 65535) {
+                          return 'invalid';
+                        }
+                        return null;
+                      },
+                    ),
                   ),
                 ),
               ],
             ),
             const SizedBox(height: 12.0),
-            TextFormField(
-              controller: _username,
-              decoration: const InputDecoration(labelText: 'Username'),
-              validator: _requiredValidator,
+            FieldName(
+              'Username',
+              child: TextFormField(
+                controller: _username,
+                decoration: const InputDecoration(labelText: 'Username'),
+                validator: _requiredValidator,
+              ),
             ),
             const SizedBox(height: 12.0),
-            TextFormField(
-              controller: _password,
-              enabled: !_forgetPassword,
-              obscureText: !_passwordVisible,
-              decoration: InputDecoration(
-                labelText: 'Password',
-                helperText: widget.initial == null || _forgetPassword
-                    ? null
-                    : 'Leave empty to keep the saved password.',
-                suffixIcon: IconButton(
-                  onPressed: () => setState(() => _passwordVisible = !_passwordVisible),
-                  icon: Icon(
-                    _passwordVisible ? Icons.visibility_off : Icons.visibility,
+            FieldName(
+              'Password',
+              child: TextFormField(
+                controller: _password,
+                enabled: !_forgetPassword,
+                obscureText: !_passwordVisible,
+                decoration: InputDecoration(
+                  labelText: 'Password',
+                  helperText: widget.initial == null || _forgetPassword
+                      ? null
+                      : 'Leave empty to keep the saved password.',
+                  suffixIcon: IconButton(
+                    onPressed: () => setState(() => _passwordVisible = !_passwordVisible),
+                    icon: Icon(
+                      _passwordVisible ? Icons.visibility_off : Icons.visibility,
+                      semanticLabel: _passwordVisible ? 'Hide password' : 'Show password',
+                    ),
                   ),
                 ),
               ),
@@ -236,36 +258,47 @@ class _CloudSqlDialogState extends State<CloudSqlDialog> {
               contentPadding: EdgeInsets.zero,
             ),
             const SizedBox(height: 4.0),
-            InkWell(
-              onTap: () => setState(() => _showAdvanced = !_showAdvanced),
-              child: Padding(
-                padding: const EdgeInsets.symmetric(vertical: 6.0),
-                child: Row(
-                  children: [
-                    Icon(
-                      _showAdvanced ? Icons.expand_less : Icons.expand_more,
-                      size: 18.0,
-                    ),
-                    const SizedBox(width: 4.0),
-                    const Text('Advanced (binary paths)'),
-                  ],
+            Semantics(
+              container: true,
+              button: true,
+              expanded: _showAdvanced,
+              child: InkWell(
+                onTap: () => setState(() => _showAdvanced = !_showAdvanced),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 6.0),
+                  child: Row(
+                    children: [
+                      Icon(
+                        _showAdvanced ? Icons.expand_less : Icons.expand_more,
+                        size: 18.0,
+                      ),
+                      const SizedBox(width: 4.0),
+                      const Text('Advanced (binary paths)'),
+                    ],
+                  ),
                 ),
               ),
             ),
             if (_showAdvanced) ...[
-              TextFormField(
-                controller: _proxyPath,
-                decoration: const InputDecoration(
-                  labelText: 'cloud-sql-proxy path (optional)',
-                  hintText: 'auto-detected from PATH if blank',
+              FieldName(
+                'cloud-sql-proxy path (optional)',
+                child: TextFormField(
+                  controller: _proxyPath,
+                  decoration: const InputDecoration(
+                    labelText: 'cloud-sql-proxy path (optional)',
+                    hintText: 'auto-detected from PATH if blank',
+                  ),
                 ),
               ),
               const SizedBox(height: 12.0),
-              TextFormField(
-                controller: _gcloudPath,
-                decoration: const InputDecoration(
-                  labelText: 'gcloud path (optional)',
-                  hintText: 'auto-detected from PATH if blank',
+              FieldName(
+                'gcloud path (optional)',
+                child: TextFormField(
+                  controller: _gcloudPath,
+                  decoration: const InputDecoration(
+                    labelText: 'gcloud path (optional)',
+                    hintText: 'auto-detected from PATH if blank',
+                  ),
                 ),
               ),
             ],

@@ -1,5 +1,11 @@
 import 'package:flutter/material.dart';
 
+/// Pass as `popUpAnimationStyle` to every `showMenu` / `PopupMenuButton`.
+/// Material's default grows the menu over 300 ms and fades the items in
+/// one after another, so a click looks slow to answer. Desktop menus
+/// appear at once.
+const AnimationStyle kInstantPopUp = AnimationStyle.noAnimation;
+
 /// Single entry for [showAppContextMenu]. Use [AppMenuEntry.divider] to
 /// insert a separator between groups. A null [value] also acts as
 /// non-selectable.
@@ -84,5 +90,6 @@ Future<T?> showAppContextMenu<T>({
       Offset.zero & overlay.size,
     ),
     items: entries,
+    popUpAnimationStyle: kInstantPopUp,
   );
 }

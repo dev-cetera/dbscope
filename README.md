@@ -39,6 +39,13 @@ After that, dbscope keeps itself up to date: when a new release is out, an **Ins
 
 Connections can be shared as encrypted `.dbscopeconn` links (*File ▸ Import / Export connection link…*). API keys and passphrases are read from your shell profile (`~/.zshenv` by default, *File ▸ Environment…*), since apps launched from the Finder don't see your shell's exports.
 
+## Keyboard and AI
+
+- **Every command has a name and works from the keyboard.** ⌘K opens a command palette that searches all of them, `?` (or ⌘/) lists every shortcut, ⌘J puts letters on every control so you can press one by typing them, and F6 moves between the sidebar and the open tab. Built on [key_flow](https://pub.dev/packages/key_flow).
+- **AI providers:** OpenAI, Anthropic (Claude), Google Gemini, DeepSeek, or any OpenAI-compatible endpoint, such as a local Ollama or LM Studio, so your schema never leaves your machine (*AI ▸ Settings…*). Built on [ai_broker](https://pub.dev/packages/ai_broker).
+- **Ask AI** in a query tab turns a question into one read-only query. Stop cancels the request at the provider.
+- **The agent** (*AI ▸ Ask the agent…*, ⌘⇧A) answers questions by reading the schema and running read-only queries, and can drive the app: it opens tables, query tabs and views for you. It cannot write: anything that could change data is refused before it runs, and queries run inside a read-only transaction where the backend supports one. It sees row values only if you turn on *Send sample rows to the AI* in AI settings; otherwise it gets column names and counts. It can't export connections, change settings or toggle read-only.
+
 ## Building from source
 
 Flutter is pinned to 3.47.7 (Dart 3.13.5) via FVM (see `.fvmrc`). Prefix commands with `fvm` to pick up the right SDK. The macOS build needs macOS 12 or later.

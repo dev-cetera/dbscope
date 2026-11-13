@@ -214,43 +214,50 @@ class _PassphraseDialogState extends State<_PassphraseDialog> {
               style: Theme.of(context).textTheme.bodySmall,
             ),
             const SizedBox(height: 12.0),
-            TextFormField(
-              controller: _pass,
-              autofocus: true,
-              obscureText: !_visible,
-              decoration: InputDecoration(
-                labelText: 'Passphrase',
-                suffixIcon: IconButton(
-                  onPressed: () => setState(() => _visible = !_visible),
-                  icon: Icon(
-                    _visible ? Icons.visibility_off : Icons.visibility,
+            FieldName(
+              'Passphrase',
+              child: TextFormField(
+                controller: _pass,
+                autofocus: true,
+                obscureText: !_visible,
+                decoration: InputDecoration(
+                  labelText: 'Passphrase',
+                  suffixIcon: IconButton(
+                    onPressed: () => setState(() => _visible = !_visible),
+                    icon: Icon(
+                      _visible ? Icons.visibility_off : Icons.visibility,
+                      semanticLabel: _visible ? 'Hide passphrase' : 'Show passphrase',
+                    ),
                   ),
                 ),
+                validator: (text) {
+                  if (text == null || text.isEmpty) return 'required';
+                  // Only when setting one: the file carries the database
+                  // password, and anyone holding it can guess offline as long
+                  // as they like. Importing must still accept whatever an
+                  // older build exported.
+                  if (widget.confirm && text.length < _kMinPassphraseLength) {
+                    return 'use at least $_kMinPassphraseLength characters';
+                  }
+                  return null;
+                },
+                onFieldSubmitted: (_) {
+                  if (!widget.confirm) _submit();
+                },
               ),
-              validator: (text) {
-                if (text == null || text.isEmpty) return 'required';
-                // Only when setting one: the file carries the database
-                // password, and anyone holding it can guess offline as long
-                // as they like. Importing must still accept whatever an
-                // older build exported.
-                if (widget.confirm && text.length < _kMinPassphraseLength) {
-                  return 'use at least $_kMinPassphraseLength characters';
-                }
-                return null;
-              },
-              onFieldSubmitted: (_) {
-                if (!widget.confirm) _submit();
-              },
             ),
             if (widget.confirm) ...[
               const SizedBox(height: 12.0),
-              TextFormField(
-                controller: _confirm,
-                obscureText: !_visible,
-                decoration: const InputDecoration(
-                  labelText: 'Confirm passphrase',
+              FieldName(
+                'Confirm passphrase',
+                child: TextFormField(
+                  controller: _confirm,
+                  obscureText: !_visible,
+                  decoration: const InputDecoration(
+                    labelText: 'Confirm passphrase',
+                  ),
+                  validator: (text) => text != _pass.text ? 'passphrases do not match' : null,
                 ),
-                validator: (text) => text != _pass.text ? 'passphrases do not match' : null,
               ),
             ],
           ],

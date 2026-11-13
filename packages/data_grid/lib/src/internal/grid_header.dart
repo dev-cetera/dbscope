@@ -218,9 +218,20 @@ class _HeaderCell<TypeTag> extends StatelessWidget {
         ),
       ),
       childWhenDragging: Opacity(opacity: 0.3, child: body),
-      child: GestureDetector(
+      // One node named for the column, with the sort as its value, so a
+      // screen reader or an agent reads `button "email" value="sorted
+      // ascending"` rather than the title, badges and type as loose text.
+      child: Semantics(
+        container: true,
+        button: onSortToggle != null,
+        label: spec.name,
+        value: isSorted ? (sortDescending ? 'sorted descending' : 'sorted ascending') : null,
         onTap: onSortToggle == null ? null : () => onSortToggle!(originalIndex),
-        child: _wrapped(context, body),
+        excludeSemantics: true,
+        child: GestureDetector(
+          onTap: onSortToggle == null ? null : () => onSortToggle!(originalIndex),
+          child: _wrapped(context, body),
+        ),
       ),
     );
 

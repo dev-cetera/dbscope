@@ -1,10 +1,14 @@
+// Contract: a resize handle follows every pointer delta live, and
+// reports the accumulated size to its parent once, when the drag ends.
+// Reporting each move made every caller notify the whole window, which
+// rebuilt the shell on every frame of a drag.
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:widgets/widgets.dart';
 
 void main() {
-  testWidgets('horizontal resize accumulates every pointer delta', (
+  testWidgets('horizontal resize follows the drag and reports once at the end', (
     tester,
   ) async {
     final widths = <double>[];
@@ -28,12 +32,18 @@ void main() {
     );
     await gesture.moveBy(const Offset(10.0, 0.0));
     await gesture.moveBy(const Offset(10.0, 0.0));
-    await gesture.up();
+    await tester.pump();
 
-    expect(widths, <double>[120.0, 130.0]);
+    expect(tester.getSize(find.byType(Resizable)).width, 130.0);
+    expect(widths, isEmpty);
+
+    await gesture.up();
+    await tester.pump();
+
+    expect(widths, <double>[130.0]);
   });
 
-  testWidgets('vertical resize accumulates every pointer delta', (
+  testWidgets('vertical resize follows the drag and reports once at the end', (
     tester,
   ) async {
     final heights = <double>[];
@@ -60,8 +70,15 @@ void main() {
     );
     await gesture.moveBy(const Offset(0.0, 10.0));
     await gesture.moveBy(const Offset(0.0, 10.0));
-    await gesture.up();
+    await tester.pump();
 
-    expect(heights.last, 120.0);
+    final liveHeight = tester.getSize(find.byType(VResizable)).height;
+    expect(liveHeight, greaterThan(100.0));
+    expect(heights, isEmpty);
+
+    await gesture.up();
+    await tester.pump();
+
+    expect(heights, <double>[liveHeight]);
   });
 }

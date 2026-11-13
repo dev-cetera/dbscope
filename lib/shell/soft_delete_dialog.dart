@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:widgets/widgets.dart';
 
 /// Result of the soft-delete configuration dialog. [clear] means the
 /// user wants the override removed entirely; otherwise [column] holds
@@ -83,15 +84,18 @@ class _SoftDeleteDialogState extends State<_SoftDeleteDialog> {
               'Leave blank and Save to clear the setting.',
             ),
             const SizedBox(height: 12.0),
-            TextField(
-              controller: _columnController,
-              autofocus: true,
-              decoration: const InputDecoration(
-                labelText: 'Column name',
-                hintText: 'e.g. deleted_at',
-                border: OutlineInputBorder(),
+            FieldName(
+              'Column name',
+              child: TextField(
+                controller: _columnController,
+                autofocus: true,
+                decoration: const InputDecoration(
+                  labelText: 'Column name',
+                  hintText: 'e.g. deleted_at',
+                  border: OutlineInputBorder(),
+                ),
+                onSubmitted: (_) => _save(),
               ),
-              onSubmitted: (_) => _save(),
             ),
           ],
         ),

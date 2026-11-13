@@ -1,12 +1,16 @@
 // Natural-language → SQL assistant. Builds a schema summary from the
-// active connection's catalog, asks the configured LLM for a query, and
-// runs the result through a lexical read-only gate before returning.
+// active connection's catalog, asks the configured LLM for a query as JSON
+// ({"sql": …, "clarify": …}, enforced through the provider's structured
+// output), and runs the result through a lexical read-only gate before
+// returning.
 //
 // The gate is the security boundary — the LLM *will* emit DML when
 // pushed; we reject anything whose first token isn't SELECT/WITH/EXPLAIN
 // /VALUES. Connection-level read-only (PRAGMA query_only / SET
 // default_transaction_read_only) isn't available on every backend (e.g.
 // the sqflite-remote plugin), so the gate is the only line of defence.
+
+import 'dart:convert';
 
 import '../catalog/dbml_cache.dart';
 import '../catalog/schema_catalog.dart';
@@ -16,9 +20,8 @@ import '../meta/meta_models.dart';
 import '../meta/meta_sources.dart';
 import '../meta/selector.dart';
 import '../util/sql_parse.dart';
-import 'ai_key_resolver.dart';
+import 'ai_target.dart';
 import 'provider.dart';
-import 'settings_store.dart';
 
 class SqlAssistant {
   SqlAssistant(this.conn, {this.profileId});
@@ -36,10 +39,15 @@ class SqlAssistant {
   /// user is currently looking at — passed through as a hint in the
   /// system prompt so the generated SQL targets it instead of an
   /// unrelated table the AI happens to like.
+  ///
+  /// When [abortTrigger] completes, the request to the provider is aborted
+  /// (so it stops generating and billing) and this throws
+  /// [AiAbortedException].
   Future<String> askSql(
     String prompt, {
     String? focusSchema,
     String? focusTable,
+    Future<void>? abortTrigger,
   }) async {
     // Access control: the assistant sends the schema to an AI provider and
     // writes free SQL, so it needs both capabilities.
@@ -54,30 +62,7 @@ class SqlAssistant {
     if (trimmed.isEmpty) {
       throw const AssistantException('Empty prompt.');
     }
-    final settings = await AiSettingsStore.instance.load();
-    final providerId = settings.providerId;
-    if (providerId == null) {
-      throw const AssistantException(
-        'No AI provider configured. Open AI ▸ Settings… first.',
-      );
-    }
-    final provider = AiBrokerRegistry.instance.lookup(providerId);
-    if (provider == null) {
-      throw AssistantException('Provider "$providerId" no longer available.');
-    }
-    final apiKey = await AiKeyResolver.resolve(providerId);
-    if (apiKey.isEmpty) {
-      throw const AssistantException(
-        'API key missing. Open AI ▸ Settings… and paste a key, or '
-        'export it in your shell env file (File ▸ Environment…).',
-      );
-    }
-    // "Auto" mode: when no specific model is saved, ask the provider
-    // for its model list and use the first one. One extra round-trip
-    // per call — acceptable for "Ask AI" which is user-initiated and
-    // already async. Falls back to the saved model when present.
-    final model = settings.model ?? await _autoPickModel(provider, apiKey);
-
+    final target = await AiTarget.resolve();
     final schema = await buildSchemaContext();
     final system = _systemPrompt(conn.kind) + _metadataNotes();
     final focus = (focusSchema != null && focusTable != null)
@@ -86,32 +71,25 @@ class SqlAssistant {
               'unless the request clearly involves a different table.\n'
         : '\n';
     final user = 'Schema:\n$schema$focus\nRequest: $trimmed';
-    final raw = await provider.complete(
-      apiKey: apiKey,
-      model: model,
-      system: system,
-      user: user,
+    final raw = await target.broker.chat(
+      apiKey: target.apiKey,
+      model: target.model,
+      request: ChatRequest(
+        system: system,
+        messages: [AiMessage.user(user)],
+        jsonSchema: sqlReplySchema,
+      ),
+      abortTrigger: abortTrigger,
     );
-    final cleaned = _extractSql(raw);
-    // The system prompt tells the model to ask this way when a name is
-    // ambiguous, so show the question rather than failing on "empty SQL".
-    final question = clarifyingQuestion(cleaned);
-    if (question != null) throw AssistantException(question);
-    enforceReadOnly(cleaned, dialect: sqlDialectOf(conn));
-    return cleaned;
-  }
-
-  static Future<String> _autoPickModel(
-    AiBroker provider,
-    String apiKey,
-  ) async {
-    final models = await provider.listModels(apiKey);
-    if (models.isEmpty) {
-      throw const AssistantException(
-        'Provider returned no models. Check the API key in AI ▸ Settings…',
-      );
+    switch (parseSqlReply(raw)) {
+      case SqlReplyClarify(:final question):
+        // The system prompt tells the model to ask when a name is
+        // ambiguous, so show the question rather than failing on "no SQL".
+        throw AssistantException(question);
+      case SqlReplyQuery(:final sql):
+        enforceReadOnly(sql, dialect: sqlDialectOf(conn));
+        return sql;
     }
-    return models.first;
   }
 
   /// Builds the schema summary the LLM gets as context. Strategy:
@@ -211,8 +189,10 @@ class SqlAssistant {
       _ => 'PostgreSQL',
     };
     return 'You translate plain-English questions into a single $dialect '
-        'query. Hard rules:\n'
-        ' 1. Reply with raw SQL only. No prose, no markdown fences, no '
+        'query. Reply with JSON: {"sql": <the query>, "clarify": null}, or '
+        '{"sql": null, "clarify": <one short question>} when you cannot '
+        'write it without asking. Hard rules:\n'
+        ' 1. The query is raw SQL. No prose, no markdown fences, no '
         'leading comments.\n'
         ' 2. The query MUST be read-only. SELECT / WITH / VALUES / '
         'EXPLAIN only. Never INSERT/UPDATE/DELETE/MERGE/DROP/ALTER/'
@@ -220,41 +200,74 @@ class SqlAssistant {
         ' 3. Exactly one statement; no trailing semicolons; no second '
         'statement after a semicolon.\n'
         ' 4. Prefer fully-qualified table names from the schema list. '
-        'If a name is ambiguous, ask for clarification by emitting `-- '
-        'CLARIFY: <question>` on a single line instead of a query.';
+        'If a name is ambiguous, ask in "clarify" instead of guessing.';
   }
 
-  /// Strip markdown fences, leading prose, trailing semicolons.
-  String _extractSql(String raw) {
-    var sql = raw.trim();
-    // Pull contents out of ```sql ... ``` fences if present.
-    final fence = RegExp(r'```(?:sql)?\s*(.*?)```', dotAll: true);
-    final match = fence.firstMatch(sql);
-    if (match != null) {
-      sql = match.group(1)!.trim();
-    }
-    // Drop any leading "Here's the query:" style preamble before the
-    // first SQL keyword. The regex looks for SELECT/WITH/etc. and
-    // discards anything before it.
-    final firstKeyword = RegExp(
-      r'\b(SELECT|WITH|EXPLAIN|VALUES)\b',
-      caseSensitive: false,
-    );
-    final keywordMatch = firstKeyword.firstMatch(sql);
-    if (keywordMatch != null && keywordMatch.start > 0) {
-      sql = sql.substring(keywordMatch.start);
-    }
-    if (sql.endsWith(';')) {
-      sql = sql.substring(0, sql.length - 1).trim();
-    }
-    return sql.trim();
-  }
 }
 
-/// The question in a reply that is only `-- CLARIFY: <question>`, or null. A
-/// reply with SQL after the marker is a query.
-String? clarifyingQuestion(String reply) =>
-    RegExp(r'^--\s*CLARIFY:\s*(.+)$', caseSensitive: false).firstMatch(reply.trim())?.group(1)?.trim();
+/// The JSON shape the SQL assistant asks for. Written in the portable subset
+/// ai_broker translates for every provider: both fields required, each a
+/// string or null.
+const sqlReplySchema = <String, Object?>{
+  'type': 'object',
+  'additionalProperties': false,
+  'required': ['sql', 'clarify'],
+  'properties': {
+    'sql': {
+      'type': ['string', 'null'],
+      'description': 'One read-only query, or null when asking instead.',
+    },
+    'clarify': {
+      'type': ['string', 'null'],
+      'description': 'A short question for the user, or null.',
+    },
+  },
+};
+
+/// What the model answered: a query, or a question back.
+sealed class SqlReply {
+  const SqlReply();
+}
+
+final class SqlReplyQuery extends SqlReply {
+  const SqlReplyQuery(this.sql);
+  final String sql;
+}
+
+final class SqlReplyClarify extends SqlReply {
+  const SqlReplyClarify(this.question);
+  final String question;
+}
+
+/// Reads the assistant's JSON reply ([sqlReplySchema]). A question wins
+/// over a query. Tolerates a code fence (DeepSeek and custom endpoints only
+/// get JSON mode, not an enforced schema) and drops trailing semicolons.
+/// Throws [AssistantException] when the reply isn't that shape or carries
+/// neither.
+SqlReply parseSqlReply(String raw) {
+  final Object? decoded;
+  try {
+    decoded = jsonDecode(stripCodeFence(raw.trim()));
+  } on FormatException {
+    throw const AssistantException('AI returned a reply that is not JSON.');
+  }
+  if (decoded is! Map<String, Object?>) {
+    throw const AssistantException('AI returned JSON of the wrong shape.');
+  }
+  final clarify = decoded['clarify'];
+  if (clarify is String && clarify.trim().isNotEmpty) {
+    return SqlReplyClarify(clarify.trim());
+  }
+  final sql = decoded['sql'];
+  if (sql is! String || sql.trim().isEmpty) {
+    throw const AssistantException('AI returned no SQL and no question.');
+  }
+  var trimmed = sql.trim();
+  while (trimmed.endsWith(';')) {
+    trimmed = trimmed.substring(0, trimmed.length - 1).trimRight();
+  }
+  return SqlReplyQuery(trimmed);
+}
 
 /// Lexical gate. Public so tests / callers can verify directly. Throws
 /// [AssistantException] when the SQL is not a single read-only statement.

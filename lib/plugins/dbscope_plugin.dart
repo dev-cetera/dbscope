@@ -1,7 +1,7 @@
 import 'package:ai_broker/ai_broker.dart' show AiBrokerRegistry;
 
 import '../db/plugin.dart';
-import '../shell/menu_spec.dart';
+import '../shell/command_registry.dart';
 import '../shell/sidebar_table_actions.dart';
 import '../shell/theme_registry.dart';
 import '../tabs/tab_kind.dart';
@@ -13,7 +13,7 @@ abstract class DbscopeHost {
   ThemeRegistry get themes;
   ConnectionKindRegistry get connections;
   TabKindRegistry get tabs;
-  MenuContributionRegistry get menus;
+  CommandRegistry get commands;
   SidebarTableActionRegistry get sidebarActions;
   AiBrokerRegistry get aiBrokers;
 }
@@ -50,7 +50,7 @@ class _DefaultHost implements DbscopeHost {
   @override
   TabKindRegistry get tabs => TabKindRegistry.instance;
   @override
-  MenuContributionRegistry get menus => MenuContributionRegistry.instance;
+  CommandRegistry get commands => CommandRegistry.instance;
   @override
   SidebarTableActionRegistry get sidebarActions => SidebarTableActionRegistry.instance;
   @override

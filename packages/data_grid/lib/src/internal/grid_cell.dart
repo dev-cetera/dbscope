@@ -1,3 +1,6 @@
+import 'dart:async';
+
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
@@ -85,9 +88,30 @@ class _GridCellState<TypeTag> extends State<GridCell<TypeTag>> {
 
   @override
   void dispose() {
+    _doubleClickWindow?.cancel();
     _editFocus.dispose();
     _inputFocus.dispose();
     super.dispose();
+  }
+
+  /// Open while a click on this cell may still become a double-click.
+  Timer? _doubleClickWindow;
+
+  /// Selects on every click and opens the editor on the second of two
+  /// quick ones. A `GestureDetector` with both `onTap` and `onDoubleTap`
+  /// holds every single click back for the whole double-tap window
+  /// (300 ms) to rule out a second one, so selecting a cell felt slow.
+  void _onTap() {
+    widget.onTap?.call();
+    final window = _doubleClickWindow;
+    if (window != null && window.isActive) {
+      // A third quick click starts a new pair rather than a second edit.
+      window.cancel();
+      _doubleClickWindow = null;
+      if (widget.isEditable) widget.onDoubleTap?.call();
+      return;
+    }
+    _doubleClickWindow = Timer(kDoubleTapTimeout, () {});
   }
 
   void _commit() => widget.onCommit?.call();
@@ -114,8 +138,7 @@ class _GridCellState<TypeTag> extends State<GridCell<TypeTag>> {
       height: widget.height,
       child: GestureDetector(
         behavior: HitTestBehavior.opaque,
-        onTap: widget.onTap,
-        onDoubleTap: widget.isEditable ? widget.onDoubleTap : null,
+        onTap: _onTap,
         child: Container(
           decoration: BoxDecoration(color: background, border: border),
           padding: const EdgeInsets.symmetric(horizontal: 6.0),

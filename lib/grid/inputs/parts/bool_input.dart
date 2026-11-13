@@ -23,25 +23,20 @@ class _BoolInput extends StatelessWidget {
     return _Field(
       enabled: enabled,
       padding: const EdgeInsets.symmetric(horizontal: 4.0, vertical: 2.0),
-      child: DropdownButtonHideUnderline(
-        child: DropdownButton<bool>(
-          value: value,
-          focusNode: focusNode,
-          isDense: true,
-          isExpanded: true,
-          icon: const Icon(Icons.arrow_drop_down, size: 16.0),
-          style: textStyle,
-          dropdownColor: palette.surface,
-          hint: Text(
-            '— pick —',
-            style: textStyle.copyWith(color: palette.mutedText),
-          ),
-          items: const [
-            DropdownMenuItem(value: true, child: Text('true')),
-            DropdownMenuItem(value: false, child: Text('false')),
-          ],
-          onChanged: enabled ? onChanged : null,
-        ),
+      child: InstantDropdown(
+        enabled: enabled,
+        focusNode: focusNode,
+        isExpanded: true,
+        style: textStyle,
+        hint: '— pick —',
+        items: [
+          for (final option in const [true, false])
+            InstantDropdownItem(
+              label: '$option',
+              selected: option == value,
+              onSelected: () => onChanged(option),
+            ),
+        ],
       ),
     );
   }

@@ -7,10 +7,16 @@ class _Canvas extends StatefulWidget {
   const _Canvas({
     required this.tab,
     required this.onRowNodeMounted,
+    required this.onViewChanged,
     this.onRowNodeActivate,
     this.onNodeContextMenu,
   });
   final LinkedTab tab;
+
+  /// Called after a wheel zoom changes `tab.scale` / `tab.pan`, so the
+  /// view can refresh what shows them (the header's zoom percentage)
+  /// without notifying the whole window on every wheel tick.
+  final VoidCallback onViewChanged;
 
   /// Called when a row node first mounts so the view can kick off the
   /// catalog + row load. The _NodeShell forwards this through.
@@ -45,6 +51,12 @@ class _CanvasState extends State<_Canvas> with SingleTickerProviderStateMixin {
   /// node forward without changing tab.nodes order.
   String? _topNodeId;
 
+  /// Node widgets built at the start of a node drag, by node id. A drag
+  /// only moves nodes, so handing Flutter the same widget instance each
+  /// pointer move lets it skip rebuilding every card. Cleared when a
+  /// drag starts and ends.
+  final _dragCards = <String, Widget>{};
+
   /// Node ids whose width has already been auto-fitted at least once.
   /// We only auto-grow on first paint; subsequent paints leave the
   /// width alone so a manual resize is sticky.
@@ -58,7 +70,7 @@ class _CanvasState extends State<_Canvas> with SingleTickerProviderStateMixin {
 
   /// Drives the chevron animation on edges. 0..1, wraps every cycle.
   late final Ticker _ticker;
-  double _tickerValue = 0;
+  final _chevronPhase = ValueNotifier<double>(0.0);
   Duration _lastTick = Duration.zero;
   static const _kChevronCycle = Duration(milliseconds: 3500);
 
@@ -76,18 +88,19 @@ class _CanvasState extends State<_Canvas> with SingleTickerProviderStateMixin {
   @override
   void dispose() {
     _ticker.dispose();
+    _chevronPhase.dispose();
     super.dispose();
   }
 
+  /// Advances the chevrons only. The edge painter repaints from
+  /// [_chevronPhase] by itself, so the animation never rebuilds the cards.
   void _onTick(Duration elapsed) {
     _anchorViewport();
     final dt = elapsed - _lastTick;
     _lastTick = elapsed;
     final ms = dt.inMicroseconds / Duration.microsecondsPerMillisecond;
     final delta = ms / _kChevronCycle.inMilliseconds;
-    setState(() {
-      _tickerValue = (_tickerValue + delta) % 1.0;
-    });
+    _chevronPhase.value = (_chevronPhase.value + delta) % 1.0;
   }
 
   /// Keep the nodes pinned to the screen when the viewport's own origin
@@ -107,8 +120,9 @@ class _CanvasState extends State<_Canvas> with SingleTickerProviderStateMixin {
     _lastViewportOrigin = origin;
     // First frame: record the baseline, never correct against it.
     if (previous == null || origin == previous) return;
-    widget.tab.pan -= origin - previous;
-    AppState.instance.notifyChange();
+    // Only this canvas draws from `pan`, so rebuild just the canvas: a
+    // window-wide notify here ran every frame of a panel drag.
+    setState(() => widget.tab.pan -= origin - previous);
   }
 
   Offset get _effectivePan => widget.tab.pan + _panDelta;
@@ -127,6 +141,7 @@ class _CanvasState extends State<_Canvas> with SingleTickerProviderStateMixin {
 
   void _onNodeDragStart(LinkedNode node) {
     setState(() {
+      _dragCards.clear();
       _dragNodeId = node.id;
       _dragDelta = Offset.zero;
       _topNodeId = node.id;
@@ -162,6 +177,7 @@ class _CanvasState extends State<_Canvas> with SingleTickerProviderStateMixin {
       _separateFrom({node.id});
     }
     setState(() {
+      _dragCards.clear();
       _dragNodeId = null;
       _dragDelta = Offset.zero;
     });
@@ -193,7 +209,7 @@ class _CanvasState extends State<_Canvas> with SingleTickerProviderStateMixin {
       widget.tab.pan = local - canvasPoint * newScale - _panDelta;
     }
     widget.tab.scale = newScale;
-    AppState.instance.notifyChange();
+    widget.onViewChanged();
   }
 
   /// Push neighbours away from every card that is new or changed size
@@ -271,16 +287,7 @@ class _CanvasState extends State<_Canvas> with SingleTickerProviderStateMixin {
         () {
           final height = _nodeHeightFor(node, foreignKeys);
           final width = node.width;
-          return Positioned(
-            key: ValueKey(node.id),
-            left:
-                pan.dx +
-                (node.position.dx + (node.id == _dragNodeId ? _dragDelta.dx : 0.0)) * _scale,
-            top:
-                pan.dy +
-                (node.position.dy + (node.id == _dragNodeId ? _dragDelta.dy : 0.0)) * _scale,
-            width: width * _scale,
-            height: height * _scale,
+          Widget buildScaledNode() => RepaintBoundary(
             child: _ScaledNode(
               scale: _scale,
               width: width,
@@ -315,6 +322,20 @@ class _CanvasState extends State<_Canvas> with SingleTickerProviderStateMixin {
                 onResizeEnd: AppState.instance.notifyChange,
               ),
             ),
+          );
+          return Positioned(
+            key: ValueKey(node.id),
+            left:
+                pan.dx +
+                (node.position.dx + (node.id == _dragNodeId ? _dragDelta.dx : 0.0)) * _scale,
+            top:
+                pan.dy +
+                (node.position.dy + (node.id == _dragNodeId ? _dragDelta.dy : 0.0)) * _scale,
+            width: width * _scale,
+            height: height * _scale,
+            child: _dragNodeId == null
+                ? buildScaledNode()
+                : _dragCards.putIfAbsent(node.id, buildScaledNode),
           );
         }(),
     ];
@@ -358,15 +379,19 @@ class _CanvasState extends State<_Canvas> with SingleTickerProviderStateMixin {
                 onPanEnd: (_) => _onBackgroundPanEnd(),
               ),
             ),
+            // Its own layer: the chevrons repaint every frame, and without
+            // the boundary each repaint would repaint every card too.
             IgnorePointer(
-              child: CustomPaint(
-                painter: _EdgePainter(
-                  tab: tab,
-                  pan: pan,
-                  scale: _scale,
-                  dragNodeId: _dragNodeId,
-                  dragDelta: _dragDelta,
-                  tickerValue: _tickerValue,
+              child: RepaintBoundary(
+                child: CustomPaint(
+                  painter: _EdgePainter(
+                    tab: tab,
+                    pan: pan,
+                    scale: _scale,
+                    dragNodeId: _dragNodeId,
+                    dragDelta: _dragDelta,
+                    chevronPhase: _chevronPhase,
+                  ),
                 ),
               ),
             ),

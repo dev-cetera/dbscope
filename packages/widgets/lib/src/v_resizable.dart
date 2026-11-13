@@ -4,6 +4,8 @@ enum VResizeSide { top, bottom }
 
 /// Vertically resizable container. Wraps [child] in a `SizedBox` of
 /// [height] with a thin horizontal drag handle on the [side] edge.
+/// Dragging resizes it live and [onResized] reports the final height
+/// once, when the drag ends. See `Resizable` for why.
 class VResizable extends StatefulWidget {
   const VResizable({
     super.key,
@@ -26,7 +28,15 @@ class VResizable extends StatefulWidget {
 }
 
 class _VResizableState extends State<VResizable> {
+  /// Height of the drag in progress; null when no drag is running.
   double? _dragHeight;
+
+  void _endDrag() {
+    final height = _dragHeight;
+    if (height == null) return;
+    setState(() => _dragHeight = null);
+    if (height != widget.height) widget.onResized(height);
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -35,18 +45,17 @@ class _VResizableState extends State<VResizable> {
       cursor: SystemMouseCursors.resizeRow,
       child: GestureDetector(
         behavior: HitTestBehavior.translucent,
-        onVerticalDragStart: (_) => _dragHeight = widget.height,
+        onVerticalDragStart: (_) => setState(() => _dragHeight = widget.height),
         onVerticalDragUpdate: (details) {
           final delta = widget.side == VResizeSide.bottom ? details.delta.dy : -details.delta.dy;
           final next = ((_dragHeight ?? widget.height) + delta).clamp(
             widget.minHeight,
             widget.maxHeight,
           );
-          _dragHeight = next;
-          if (next != widget.height) widget.onResized(next);
+          if (next != _dragHeight) setState(() => _dragHeight = next);
         },
-        onVerticalDragEnd: (_) => _dragHeight = null,
-        onVerticalDragCancel: () => _dragHeight = null,
+        onVerticalDragEnd: (_) => _endDrag(),
+        onVerticalDragCancel: _endDrag,
         child: Container(
           height: 5.0,
           color: Colors.transparent,
@@ -56,7 +65,7 @@ class _VResizableState extends State<VResizable> {
       ),
     );
     return SizedBox(
-      height: widget.height,
+      height: _dragHeight ?? widget.height,
       child: Column(
         children: [
           if (widget.side == VResizeSide.top) handle,

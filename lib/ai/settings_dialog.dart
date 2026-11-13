@@ -1,19 +1,22 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:widgets/widgets.dart';
 
 import '../connection/secure_store.dart';
 import 'ai_key_resolver.dart';
+import 'custom_endpoint.dart';
 import 'provider.dart';
 import 'settings_store.dart';
 
 /// AI configuration dialog. Lets the user paste API keys for each
-/// registered provider, picks the active provider + model, and toggles
-/// the sample-rows opt-in used by the regex inferrer.
+/// registered provider, point at their own OpenAI-compatible endpoint
+/// (a local Ollama or LM Studio), pick the active provider + model, and
+/// toggle the sample-rows opt-in used by the regex inferrer and the agent.
 ///
-/// Availability is decided at save time: we call `listModels` per
-/// provider with the supplied key. A non-empty list = the key works and
-/// that provider can be selected as active. Re-saving re-checks.
+/// Verify asks the provider whether the key works (where it can say), then
+/// lists its models. A non-empty list = that provider can be selected as
+/// active.
 class AiSettingsDialog extends StatefulWidget {
   const AiSettingsDialog({super.key});
 
@@ -23,6 +26,7 @@ class AiSettingsDialog extends StatefulWidget {
 
 class _AiSettingsDialogState extends State<AiSettingsDialog> {
   final Map<String, TextEditingController> _keyControllers = {};
+  final _customUrlController = TextEditingController();
   final Map<String, List<String>> _availableModels = {};
   final Map<String, String?> _providerError = {};
   var _initialised = false;
@@ -34,17 +38,21 @@ class _AiSettingsDialogState extends State<AiSettingsDialog> {
   @override
   void initState() {
     super.initState();
-    for (final provider in AiBrokerRegistry.instance.all) {
-      _keyControllers[provider.id] = TextEditingController();
-    }
     unawaited(_hydrate());
   }
 
+  /// One key field per provider, made the first time a provider shows up
+  /// (the custom endpoint appears while the dialog is open).
+  TextEditingController _keyControllerFor(String providerId) =>
+      _keyControllers.putIfAbsent(providerId, TextEditingController.new);
+
   Future<void> _hydrate() async {
+    // Loading also registers the saved custom endpoint, so it is listed.
     final settings = await AiSettingsStore.instance.load();
+    _customUrlController.text = settings.customBaseUrl ?? '';
     for (final provider in AiBrokerRegistry.instance.all) {
       final stored = await SecureStore.instance.readAiKey(provider.id);
-      _keyControllers[provider.id]!.text = stored ?? '';
+      _keyControllerFor(provider.id).text = stored ?? '';
       if (stored != null && stored.isNotEmpty) {
         // Pre-populate the model dropdown for whatever we know works —
         // skip the network call until the user clicks Verify so opening
@@ -66,6 +74,7 @@ class _AiSettingsDialogState extends State<AiSettingsDialog> {
     for (final controller in _keyControllers.values) {
       controller.dispose();
     }
+    _customUrlController.dispose();
     super.dispose();
   }
 
@@ -75,7 +84,7 @@ class _AiSettingsDialogState extends State<AiSettingsDialog> {
     // to test the same key the assistant would use.
     final key = AiKeyResolver.effectiveKey(
       provider.id,
-      _keyControllers[provider.id]!.text,
+      _keyControllerFor(provider.id).text,
     );
     if (key.isEmpty) {
       final envVarName = AiKeyResolver.envVarNameFor(provider.id);
@@ -92,6 +101,17 @@ class _AiSettingsDialogState extends State<AiSettingsDialog> {
       _providerError[provider.id] = null;
     });
     try {
+      if (provider is KeyCheckBroker) {
+        final check = await provider.checkKey(key);
+        if (!check.isValid) {
+          if (!mounted) return;
+          setState(() {
+            _availableModels[provider.id] = const [];
+            _providerError[provider.id] = _describeKeyCheck(check);
+          });
+          return;
+        }
+      }
       final models = await provider.listModels(key);
       if (!mounted) return;
       setState(() {
@@ -114,6 +134,31 @@ class _AiSettingsDialogState extends State<AiSettingsDialog> {
     }
   }
 
+  static String _describeKeyCheck(AiKeyCheck check) => switch (check.status) {
+    AiKeyStatus.invalid => 'The provider rejected this API key.',
+    AiKeyStatus.unreachable => 'Could not reach the provider: ${check.message ?? 'network error'}.',
+    AiKeyStatus.error =>
+      'The provider answered with an error: ${check.message ?? 'HTTP ${check.statusCode}'}.',
+    AiKeyStatus.valid => 'The key works.',
+  };
+
+  /// The custom endpoint URL as typed, or null when the field is empty.
+  String? get _customBaseUrl {
+    final url = _customUrlController.text.trim();
+    return url.isEmpty ? null : url;
+  }
+
+  /// Registers (or drops) the custom endpoint as typed, so its key field
+  /// and Verify appear before Save.
+  void _applyCustomEndpoint() {
+    syncCustomEndpoint(AiSettings(customBaseUrl: _customBaseUrl));
+    if (_customBaseUrl == null && _activeProviderId == kCustomEndpointId) {
+      _activeProviderId = null;
+      _activeModel = null;
+    }
+    setState(() {});
+  }
+
   Future<void> _save() async {
     if (_saving) return;
     setState(() => _saving = true);
@@ -131,12 +176,36 @@ class _AiSettingsDialogState extends State<AiSettingsDialog> {
         providerId: _activeProviderId,
         model: _activeModel,
         allowSampleRows: _allowSampleRows,
+        customBaseUrl: _customBaseUrl,
       );
       await AiSettingsStore.instance.save(settings);
       if (!mounted) return;
       Navigator.of(context).pop(settings);
     } finally {
       if (mounted) setState(() => _saving = false);
+    }
+  }
+
+  /// Picks the active provider and clears the model.
+  void _onProviderPicked(String? providerId) {
+    setState(() {
+      _activeProviderId = providerId;
+      _activeModel = null;
+    });
+    // Auto-verify so the model dropdown populates
+    // without the user knowing to click Verify.
+    if (providerId != null) {
+      final provider = AiBrokerRegistry.instance.lookup(
+        providerId,
+      );
+      final key = AiKeyResolver.effectiveKey(
+        providerId,
+        _keyControllerFor(providerId).text,
+      );
+      final alreadyFetched = (_availableModels[providerId] ?? const []).isNotEmpty;
+      if (provider != null && key.isNotEmpty && !alreadyFetched) {
+        unawaited(_verify(provider));
+      }
     }
   }
 
@@ -158,50 +227,35 @@ class _AiSettingsDialogState extends State<AiSettingsDialog> {
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
                     for (final provider in providers) _providerSection(provider),
+                    _CustomEndpointField(
+                      controller: _customUrlController,
+                      onApply: _applyCustomEndpoint,
+                    ),
                     const Divider(height: 24.0),
                     const Text(
                       'Active',
                       style: TextStyle(fontWeight: FontWeight.w600),
                     ),
                     const SizedBox(height: 8.0),
-                    DropdownButtonFormField<String?>(
-                      initialValue: _activeProviderId,
+                    InstantDropdown(
                       decoration: const InputDecoration(
                         labelText: 'Provider',
                         isDense: true,
                       ),
+                      isExpanded: true,
                       items: [
-                        const DropdownMenuItem(
-                          child: Text('(none)'),
+                        InstantDropdownItem(
+                          label: '(none)',
+                          selected: _activeProviderId == null,
+                          onSelected: () => _onProviderPicked(null),
                         ),
                         for (final provider in providers)
-                          DropdownMenuItem(
-                            value: provider.id,
-                            child: Text(provider.label),
+                          InstantDropdownItem(
+                            label: provider.label,
+                            selected: provider.id == _activeProviderId,
+                            onSelected: () => _onProviderPicked(provider.id),
                           ),
                       ],
-                      onChanged: (providerId) {
-                        setState(() {
-                          _activeProviderId = providerId;
-                          _activeModel = null;
-                        });
-                        // Auto-verify so the model dropdown populates
-                        // without the user knowing to click Verify.
-                        if (providerId != null) {
-                          final provider = AiBrokerRegistry.instance.lookup(
-                            providerId,
-                          );
-                          final key = AiKeyResolver.effectiveKey(
-                            providerId,
-                            _keyControllers[providerId]?.text ?? '',
-                          );
-                          final alreadyFetched =
-                              (_availableModels[providerId] ?? const []).isNotEmpty;
-                          if (provider != null && key.isNotEmpty && !alreadyFetched) {
-                            unawaited(_verify(provider));
-                          }
-                        }
-                      },
                     ),
                     const SizedBox(height: 8.0),
                     Builder(
@@ -210,33 +264,32 @@ class _AiSettingsDialogState extends State<AiSettingsDialog> {
                         // If the user saved a model previously but hasn't
                         // clicked Verify this session, the fetched list is
                         // empty — surface the saved model as a single
-                        // entry so the dropdown can show it. Otherwise
-                        // DropdownButton throws on `initialValue` not being
-                        // in `items`.
+                        // entry so the dropdown can show it as selected.
                         final ids = <String>{...fetched};
                         if (_activeModel != null && _activeModel!.isNotEmpty) {
                           ids.add(_activeModel!);
                         }
                         final all = ids.toList();
-                        return DropdownButtonFormField<String?>(
-                          initialValue: _activeModel,
+                        return InstantDropdown(
                           decoration: const InputDecoration(
                             labelText: 'Model',
                             isDense: true,
                           ),
+                          isExpanded: true,
+                          enabled: _activeProviderId != null,
                           items: [
-                            const DropdownMenuItem(
-                              child: Text('(auto)'),
+                            InstantDropdownItem(
+                              label: '(auto)',
+                              selected: _activeModel == null,
+                              onSelected: () => setState(() => _activeModel = null),
                             ),
                             for (final model in all)
-                              DropdownMenuItem(
-                                value: model,
-                                child: Text(model),
+                              InstantDropdownItem(
+                                label: model,
+                                selected: model == _activeModel,
+                                onSelected: () => setState(() => _activeModel = model),
                               ),
                           ],
-                          onChanged: _activeProviderId == null
-                              ? null
-                              : (model) => setState(() => _activeModel = model),
                         );
                       },
                     ),
@@ -245,10 +298,11 @@ class _AiSettingsDialogState extends State<AiSettingsDialog> {
                       contentPadding: EdgeInsets.zero,
                       value: _allowSampleRows,
                       onChanged: (allow) => setState(() => _allowSampleRows = allow),
-                      title: const Text('Send sample rows for inference'),
+                      title: const Text('Send sample rows to the AI'),
                       subtitle: const Text(
-                        'Needed for AI regex column-guess. Sends a few '
-                        'real row values to the active provider.',
+                        'Needed for AI regex column-guess, and for the agent '
+                        'to read query results. Sends real row values to the '
+                        'active provider.',
                       ),
                     ),
                   ],
@@ -277,7 +331,7 @@ class _AiSettingsDialogState extends State<AiSettingsDialog> {
   Widget _providerSection(AiBroker provider) {
     return _ProviderSection(
       provider: provider,
-      keyController: _keyControllers[provider.id]!,
+      keyController: _keyControllerFor(provider.id),
       availableModels: _availableModels[provider.id],
       error: _providerError[provider.id],
       onVerify: () => _verify(provider),
@@ -344,13 +398,16 @@ class _ProviderSectionState extends State<_ProviderSection> {
           Row(
             children: [
               Expanded(
-                child: TextField(
-                  controller: widget.keyController,
-                  obscureText: true,
-                  decoration: const InputDecoration(
-                    labelText: 'API key',
-                    isDense: true,
-                    hintText: 'sk-... / AIza... / sk-ant-...',
+                child: FieldName(
+                  '${provider.label} API key',
+                  child: TextField(
+                    controller: widget.keyController,
+                    obscureText: true,
+                    decoration: const InputDecoration(
+                      labelText: 'API key',
+                      isDense: true,
+                      hintText: 'sk-... / AIza... / sk-ant-...',
+                    ),
                   ),
                 ),
               ),
@@ -391,6 +448,59 @@ class _ProviderSectionState extends State<_ProviderSection> {
                 style: const TextStyle(fontSize: 11.0, color: Colors.red),
               ),
             ),
+        ],
+      ),
+    );
+  }
+}
+
+/// The custom OpenAI-compatible endpoint's URL. Applying it (Enter or the
+/// button) adds it to the provider list above, for its key and Verify.
+class _CustomEndpointField extends StatelessWidget {
+  const _CustomEndpointField({required this.controller, required this.onApply});
+  final TextEditingController controller;
+  final VoidCallback onApply;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12.0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          const Text(
+            'OpenAI-compatible endpoint',
+            style: TextStyle(fontWeight: FontWeight.w600),
+          ),
+          const SizedBox(height: 4.0),
+          Row(
+            children: [
+              Expanded(
+                child: FieldName(
+                  'Base URL',
+                  child: TextField(
+                    controller: controller,
+                    onSubmitted: (_) => onApply(),
+                    decoration: const InputDecoration(
+                      labelText: 'Base URL',
+                      isDense: true,
+                      hintText: 'http://localhost:11434/v1',
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 8.0),
+              TextButton(onPressed: onApply, child: const Text('Apply')),
+            ],
+          ),
+          const Padding(
+            padding: EdgeInsets.only(top: 4.0),
+            child: Text(
+              'A local model (Ollama, LM Studio) keeps your schema on this '
+              'machine. Leave its key empty if the server needs none.',
+              style: TextStyle(fontSize: 11.0, color: Colors.grey),
+            ),
+          ),
         ],
       ),
     );

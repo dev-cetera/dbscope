@@ -1,5 +1,8 @@
+import 'package:ai_broker/ai_broker.dart' show EnvKeyResolver;
+
 import '../connection/secure_store.dart';
 import '../util/shell_env.dart';
+import 'custom_endpoint.dart';
 
 /// Where an AI provider's API key comes from, in priority order:
 ///
@@ -11,29 +14,38 @@ import '../util/shell_env.dart';
 /// The keychain wins because it's the explicit choice: a user who typed
 /// a key into this app meant to use *that* key, even on a machine whose
 /// shell exports a different one.
+///
+/// The user's own endpoint ([kCustomEndpointId]) is usually a local server
+/// that takes no key, so it gets [kNoKeyPlaceholder] when none is set.
 class AiKeyResolver {
   AiKeyResolver._();
 
-  /// Conventional env var per provider id, following what each vendor's
-  /// own SDK documents. Ids match `AiBroker.id`.
-  static const envVarNames = <String, String>{
-    'openai': 'OPENAI_API_KEY',
-    'anthropic': 'ANTHROPIC_API_KEY',
-    'gemini': 'GEMINI_API_KEY',
-  };
+  /// Sent to a keyless custom endpoint: brokers treat an empty key as "not
+  /// configured" and skip the request, and local servers ignore the header.
+  static const kNoKeyPlaceholder = 'no-key';
+
+  /// ai_broker's resolver, reading through [ShellEnv] instead of the
+  /// process environment, which a Finder-launched app barely has. Its
+  /// [EnvKeyResolver.envVarNames] are the vendors' documented names.
+  static final _env = EnvKeyResolver(lookup: ShellEnv.instance.value);
 
   /// The key to use for [providerId], or empty when there is none.
   static Future<String> resolve(String providerId) async {
     final stored = await SecureStore.instance.readAiKey(providerId);
     if (stored != null && stored.isNotEmpty) return stored;
-    return fromEnv(providerId) ?? '';
+    final fromEnvironment = await _env.resolve(providerId);
+    if (fromEnvironment != null) return fromEnvironment;
+    return keyOptional(providerId) ? kNoKeyPlaceholder : '';
   }
+
+  /// Whether [providerId] works without a key.
+  static bool keyOptional(String providerId) => providerId == kCustomEndpointId;
 
   /// The env-var key alone, ignoring the keychain. Lets the settings
   /// dialog tell the user "nothing pasted, but $GEMINI_API_KEY is
   /// covering you" instead of showing an empty field that looks broken.
   static String? fromEnv(String providerId) {
-    final name = envVarNames[providerId];
+    final name = envVarNameFor(providerId);
     if (name == null) return null;
     final value = ShellEnv.instance.value(name);
     return (value == null || value.isEmpty) ? null : value;
@@ -41,7 +53,7 @@ class AiKeyResolver {
 
   /// The env var [providerId] would read, for UI copy. Null for a
   /// provider with no convention (a third-party broker plugin).
-  static String? envVarNameFor(String providerId) => envVarNames[providerId];
+  static String? envVarNameFor(String providerId) => _env.envVarNames[providerId];
 
   /// The key the app will actually use for [providerId] given what is
   /// currently TYPED into the settings field — the live-editing twin of
@@ -54,6 +66,7 @@ class AiKeyResolver {
   /// app then uses.
   static String effectiveKey(String providerId, String typed) {
     final trimmed = typed.trim();
-    return trimmed.isEmpty ? (fromEnv(providerId) ?? '') : trimmed;
+    if (trimmed.isNotEmpty) return trimmed;
+    return fromEnv(providerId) ?? (keyOptional(providerId) ? kNoKeyPlaceholder : '');
   }
 }

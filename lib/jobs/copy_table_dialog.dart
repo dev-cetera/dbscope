@@ -103,75 +103,70 @@ class _CopyTableDialogState extends State<CopyTableDialog> {
             ),
           ),
           const SizedBox(height: 12.0),
-          DropdownButtonFormField<String>(
-            initialValue: _targetId,
+          InstantDropdown(
             decoration: const InputDecoration(
               labelText: 'Target connection',
               border: OutlineInputBorder(),
             ),
+            isExpanded: true,
             items: [
               for (final profile in widget.profiles)
-                DropdownMenuItem(
-                  value: profile.id,
+                InstantDropdownItem(
+                  label: profile.readOnly ? '${profile.name}  (read-only)' : profile.name,
                   enabled: profile.id != widget.sourceConnectionId,
-                  child: Row(
-                    children: [
-                      Expanded(child: Text(profile.name)),
-                      if (profile.readOnly)
-                        const Padding(
-                          padding: EdgeInsets.only(left: 4.0),
-                          child: Text(
-                            'RO',
-                            style: TextStyle(fontSize: 10.0),
-                          ),
-                        ),
-                    ],
-                  ),
+                  selected: profile.id == _targetId,
+                  onSelected: () => setState(() => _targetId = profile.id),
                 ),
             ],
-            onChanged: (targetId) => setState(() => _targetId = targetId),
           ),
           const SizedBox(height: 12.0),
           Row(
             children: [
               Expanded(
-                child: TextField(
-                  controller: _schemaController,
-                  decoration: const InputDecoration(
-                    labelText: 'Target schema',
-                    border: OutlineInputBorder(),
+                child: FieldName(
+                  'Target schema',
+                  child: TextField(
+                    controller: _schemaController,
+                    decoration: const InputDecoration(
+                      labelText: 'Target schema',
+                      border: OutlineInputBorder(),
+                    ),
                   ),
                 ),
               ),
               const SizedBox(width: 8.0),
               Expanded(
-                child: TextField(
-                  controller: _tableController,
-                  decoration: const InputDecoration(
-                    labelText: 'Target table',
-                    border: OutlineInputBorder(),
+                child: FieldName(
+                  'Target table',
+                  child: TextField(
+                    controller: _tableController,
+                    decoration: const InputDecoration(
+                      labelText: 'Target table',
+                      border: OutlineInputBorder(),
+                    ),
                   ),
                 ),
               ),
             ],
           ),
           const SizedBox(height: 12.0),
-          DropdownButtonFormField<String>(
-            initialValue: _mode,
+          InstantDropdown(
             decoration: const InputDecoration(
               labelText: 'Mode',
               border: OutlineInputBorder(),
             ),
-            items: const [
-              DropdownMenuItem(value: 'append', child: Text('Append (INSERT)')),
-              DropdownMenuItem(
-                value: 'truncate',
-                child: Text('Replace (TRUNCATE then INSERT)'),
-              ),
+            isExpanded: true,
+            items: [
+              for (final (mode, label) in const [
+                ('append', 'Append (INSERT)'),
+                ('truncate', 'Replace (TRUNCATE then INSERT)'),
+              ])
+                InstantDropdownItem(
+                  label: label,
+                  selected: mode == _mode,
+                  onSelected: () => setState(() => _mode = mode),
+                ),
             ],
-            onChanged: (mode) {
-              if (mode != null) setState(() => _mode = mode);
-            },
           ),
           if (targetReadOnly)
             Padding(

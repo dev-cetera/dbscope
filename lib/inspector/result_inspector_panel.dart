@@ -92,7 +92,7 @@ class ResultInspectorPanel extends StatelessWidget {
         titleIcon: Icons.article_outlined,
         trailing: IconButton(
           tooltip: 'Hide inspector',
-          icon: const Icon(Icons.close, size: 14.0),
+          icon: const Icon(Icons.close, size: 14.0, semanticLabel: 'Hide inspector'),
           visualDensity: VisualDensity.compact,
           padding: const EdgeInsets.all(2.0),
           constraints: const BoxConstraints(),

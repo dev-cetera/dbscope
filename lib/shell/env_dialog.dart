@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:file_selector/file_selector.dart';
 import 'package:flutter/material.dart';
+import 'package:widgets/widgets.dart';
 
 import '../util/shell_env.dart';
 import 'ui_prefs.dart';
@@ -129,15 +130,18 @@ class _EnvDialogState extends State<EnvDialog> {
                 style: TextStyle(fontSize: 12.0),
               ),
               const SizedBox(height: 16.0),
-              TextField(
-                controller: _pathController,
-                decoration: InputDecoration(
-                  labelText: 'Env file',
-                  isDense: true,
-                  hintText: defaultPath,
-                  helperText: 'Empty means $defaultPath.',
+              FieldName(
+                'Env file',
+                child: TextField(
+                  controller: _pathController,
+                  decoration: InputDecoration(
+                    labelText: 'Env file',
+                    isDense: true,
+                    hintText: defaultPath,
+                    helperText: 'Empty means $defaultPath.',
+                  ),
+                  onSubmitted: (_) => _check(),
                 ),
-                onSubmitted: (_) => _check(),
               ),
               const SizedBox(height: 8.0),
               Row(

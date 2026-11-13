@@ -80,42 +80,47 @@ class _TableRow extends StatelessWidget {
     final bg = isSelected
         ? theme.colorScheme.primaryContainer
         : (isRelated ? tableColor.withValues(alpha: 0.28) : Colors.transparent);
-    return GestureDetector(
-      onSecondaryTapDown: (details) => _showContextMenu(context, details.globalPosition),
-      onLongPressStart: (details) => _showContextMenu(context, details.globalPosition),
-      child: DecoratedBox(
-        decoration: BoxDecoration(
-          color: bg,
-          border: isSelected ? Border.all(color: theme.colorScheme.primary, width: 1.5) : null,
-        ),
-        child: InkWell(
-          onTap: _openTable,
-          child: _withDescription(
-            Padding(
-              padding: const EdgeInsets.fromLTRB(32.0, 3.0, 4.0, 3.0),
-              child: Row(
-                children: [
-                  Expanded(
-                    child: Text(
-                      table.name,
-                      style: theme.textTheme.bodySmall?.copyWith(
-                        fontWeight: isSelected || isRelated ? FontWeight.w600 : null,
-                      ),
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ),
-                  if (table.estimatedRows >= 0)
-                    Padding(
-                      padding: const EdgeInsets.only(left: 4.0, right: 2.0),
+    return Semantics(
+      container: true,
+      button: true,
+      selected: isSelected,
+      child: GestureDetector(
+        onSecondaryTapDown: (details) => _showContextMenu(context, details.globalPosition),
+        onLongPressStart: (details) => _showContextMenu(context, details.globalPosition),
+        child: DecoratedBox(
+          decoration: BoxDecoration(
+            color: bg,
+            border: isSelected ? Border.all(color: theme.colorScheme.primary, width: 1.5) : null,
+          ),
+          child: InkWell(
+            onTap: _openTable,
+            child: _withDescription(
+              Padding(
+                padding: const EdgeInsets.fromLTRB(32.0, 3.0, 4.0, 3.0),
+                child: Row(
+                  children: [
+                    Expanded(
                       child: Text(
-                        _fmt(table.estimatedRows),
+                        table.name,
                         style: theme.textTheme.bodySmall?.copyWith(
-                          color: theme.hintColor,
-                          fontSize: 11.0,
+                          fontWeight: isSelected || isRelated ? FontWeight.w600 : null,
+                        ),
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                    if (table.estimatedRows >= 0)
+                      Padding(
+                        padding: const EdgeInsets.only(left: 4.0, right: 2.0),
+                        child: Text(
+                          _fmt(table.estimatedRows),
+                          style: theme.textTheme.bodySmall?.copyWith(
+                            color: theme.hintColor,
+                            fontSize: 11.0,
+                          ),
                         ),
                       ),
-                    ),
-                ],
+                  ],
+                ),
               ),
             ),
           ),

@@ -61,13 +61,18 @@ class AppTabBar extends StatelessWidget {
         ),
       ],
     );
-    return GestureDetector(
-      behavior: HitTestBehavior.opaque,
-      onTap: () => onChanged(i),
-      child:
-          palette.isBevel
-              ? _bevelTab(palette, selected: selected, child: label)
-              : _flatTab(palette, selected: selected, child: label),
+    return Semantics(
+      container: true,
+      button: true,
+      selected: selected,
+      child: GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onTap: () => onChanged(i),
+        child:
+            palette.isBevel
+                ? _bevelTab(palette, selected: selected, child: label)
+                : _flatTab(palette, selected: selected, child: label),
+      ),
     );
   }
 

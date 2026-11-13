@@ -2,6 +2,7 @@
 library;
 
 import 'dart:math' as math;
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
 import 'schema_layout.dart';
@@ -60,21 +61,21 @@ class SchemaEdgePainter extends CustomPainter {
     required this.edges,
     required this.pan,
     required this.scale,
-    required this.tickerValue,
+    required this.chevronPhase,
     required this.selectedId,
     required this.highlightedNodeIds,
     this.dragNodeId,
     this.dragDelta = Offset.zero,
-  });
+  }) : super(repaint: chevronPhase);
   final List<SchemaNodeData> nodes;
   final List<SchemaEdgeData> edges;
   final Offset pan;
   final double scale;
 
-  /// 0..1, drives chevron position along each path. Hosts feed this
-  /// from a [Ticker] so chevrons animate continuously without per-edge
-  /// rebuild cost.
-  final double tickerValue;
+  /// 0..1, drives chevron position along each path. Hosts advance it
+  /// from a [Ticker]; the painter listens to it and repaints on its own,
+  /// so the animation never rebuilds the canvas or the cards on it.
+  final ValueListenable<double> chevronPhase;
 
   /// Selected node id; controls which edges are highlighted / dimmed.
   final String? selectedId;
@@ -305,7 +306,7 @@ class SchemaEdgePainter extends CustomPainter {
     if (total < 1) return;
     final alpha = geometry.dimmed ? 0.19 : 0.95;
     for (var i = 0; i < _kChevronCount; i++) {
-      final phase = (tickerValue + i / _kChevronCount) % 1.0;
+      final phase = (chevronPhase.value + i / _kChevronCount) % 1.0;
       final at = phase * total;
       var remaining = at;
       Offset? position;

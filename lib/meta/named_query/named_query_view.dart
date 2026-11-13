@@ -271,6 +271,8 @@ class _NamedQueryViewState extends State<NamedQueryView> with ListenableStateMix
       tab.connectionId,
     );
     final theme = Theme.of(context);
+    final chartsTooltip = tab.chartsOpen ? 'Hide charts' : 'Show charts';
+    final sqlTooltip = tab.showSql ? 'Hide SQL' : 'Show SQL';
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -284,13 +286,13 @@ class _NamedQueryViewState extends State<NamedQueryView> with ListenableStateMix
             children: [
               if (charts.isNotEmpty)
                 IconButton(
-                  tooltip: tab.chartsOpen ? 'Hide charts' : 'Show charts',
-                  icon: const Icon(Icons.insert_chart_outlined, size: 18.0),
+                  tooltip: chartsTooltip,
+                  icon: Icon(Icons.insert_chart_outlined, size: 18.0, semanticLabel: chartsTooltip),
                   onPressed: () => setState(() => tab.chartsOpen = !tab.chartsOpen),
                 ),
               IconButton(
-                tooltip: tab.showSql ? 'Hide SQL' : 'Show SQL',
-                icon: const Icon(Icons.code, size: 18.0),
+                tooltip: sqlTooltip,
+                icon: Icon(Icons.code, size: 18.0, semanticLabel: sqlTooltip),
                 onPressed: () => setState(() => tab.showSql = !tab.showSql),
               ),
               FilledButton.icon(
@@ -316,14 +318,17 @@ class _NamedQueryViewState extends State<NamedQueryView> with ListenableStateMix
                 for (final input in spec!.inputs)
                   SizedBox(
                     width: 220.0,
-                    child: TextField(
-                      controller: _controllerFor(input),
-                      decoration: InputDecoration(
-                        labelText: input.prompt,
-                        isDense: true,
-                        border: const OutlineInputBorder(),
+                    child: FieldName(
+                      input.prompt,
+                      child: TextField(
+                        controller: _controllerFor(input),
+                        decoration: InputDecoration(
+                          labelText: input.prompt,
+                          isDense: true,
+                          border: const OutlineInputBorder(),
+                        ),
+                        onSubmitted: (_) => _run(),
                       ),
-                      onSubmitted: (_) => _run(),
                     ),
                   ),
               ],

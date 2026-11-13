@@ -2,6 +2,26 @@
 
 ---
 
+## 2026-11-14
+
+- Agents and screen readers driving dbscope on macOS (such as apprentice) can now read every window, and its buttons, tabs, dropdowns and text fields carry names (2026-11-14)
+
+## 2026-11-13
+
+- Pinch-zooming or panning the Schema view and wheel-zooming the Linked view no longer rebuild the whole window, and the sidebar rebuilds only when the selected table changes (2026-11-13)
+- Every dropdown in the connection, copy-table, AI settings and Navigator filter UI opens instantly instead of after a 300 ms animation (2026-11-13)
+- The table toolbar's View and Auto-refresh pickers and the enum/bool cell editors open instantly instead of after a 300 ms animation (2026-11-13)
+- Dragging a card in the Schema or Linked view no longer rebuilds every other card on each mouse move (2026-11-13)
+- Context menus and popup menus open instantly instead of growing in over 300 ms, and the VS Code and Portal themes drop the slow ink-sparkle click effect (2026-11-13)
+- Clicking a grid cell selects it at once instead of after a 300 ms double-click wait; double-click still opens the editor (2026-11-13)
+- Resizing the sidebar, inspector, navigator columns, Linked panel or SQL editor no longer rebuilds the whole window and writes preferences on every mouse move; the size is saved once when the drag ends (2026-11-13)
+- Schema and Linked views: the edge animation no longer rebuilds every card on every frame, so dragging, panning and clicking stay smooth on large diagrams (2026-11-13)
+- Ask AI and the AI column guess now get JSON replies through the provider's structured output instead of parsing free text (2026-11-13)
+- Fix: Stop during an AI question now aborts the request at the provider, so it stops spending API tokens (2026-11-13)
+- AI ▸ Ask the agent… (⌘⇧A): a read-only agent that answers from the schema and read-only queries, and opens tables, query tabs and views for you; row values reach it only with the sample-rows opt-in (2026-11-13)
+- AI: DeepSeek and any OpenAI-compatible endpoint (e.g. local Ollama or LM Studio) can be used as providers; Verify in AI settings says whether a key was rejected or the provider was unreachable (2026-11-13)
+- Menus, shortcuts and a new command palette (⌘K), shortcut sheet (?), jump mode (⌘J) and F6 area switching now come from one key_flow command tree; shortcuts can be remapped and are remembered (2026-11-13)
+
 ## 2026-11-07
 
 - A table that fails to load its next page now says so instead of looking finished (2026-11-07)

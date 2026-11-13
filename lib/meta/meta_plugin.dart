@@ -3,10 +3,11 @@
 // the Metadata menu, and the metadata entries of the sidebar's table menu.
 
 import 'package:flutter/material.dart';
+import 'package:key_flow/key_flow.dart';
 
 import '../connection/registry.dart';
 import '../plugins/dbscope_plugin.dart';
-import '../shell/menu_spec.dart';
+import '../shell/command_registry.dart';
 import '../shell/sidebar_table_actions.dart';
 import 'dashboard/dashboard_tab.dart';
 import 'meta_cache.dart';
@@ -30,35 +31,55 @@ class MetaPlugin extends DbscopePlugin {
       ..register(namedQueryTabKind)
       ..register(dashboardTabKind);
 
-    MenuContribution item(
+    // Menus are built from fixed labels; each action decides at click time
+    // what applies to the active connection. Trust and the write paths stay
+    // out of the AI agent's reach: they change what runs, or the database.
+    KeyCommand item(
+      String id,
       String label,
       void Function(BuildContext context) run, {
-      bool startsGroup = false,
-    }) => MenuContribution(
-      menu: 'Metadata',
-      startsGroup: startsGroup,
-      build: (context) => MenuItemSpec(label: label, onSelected: () => run(context)),
+      bool forPeopleOnly = false,
+    }) => KeyCommand(
+      id: id,
+      label: label,
+      hiddenFrom: forPeopleOnly ? const {KeySurface.agents} : const {},
+      onRun: (_) => run(appContext()),
     );
 
-    [
-      item('Reload metadata', reloadActiveMetadata),
-      item('Problems…', showMetadataProblems),
-      item('Settings…', showMetadataSettings),
-      item('Your access…', showEffectiveAccess, startsGroup: true),
-      item('View as… / stop viewing as', showViewAs),
-      item('Run checks…', showChecks, startsGroup: true),
-      item('Actions…', showGlobalActions),
-      item('Trust metadata SQL…', trustMetadataSql, startsGroup: true),
-      item('Revoke trust', revokeMetadataTrust),
-      item(
-        'Initialize metadata tables…',
-        showInitializeTables,
-        startsGroup: true,
+    host.commands.register(
+      CommandContribution(
+        menu: 'Metadata',
+        build: () => [
+          item('reload', 'Reload metadata', reloadActiveMetadata),
+          item('problems', 'Problems…', showMetadataProblems),
+          item('settings', 'Settings…', showMetadataSettings),
+          const KeyDivider(),
+          item('your_access', 'Your access…', showEffectiveAccess),
+          item('view_as', 'View as… / stop viewing as', showViewAs, forPeopleOnly: true),
+          const KeyDivider(),
+          item('run_checks', 'Run checks…', showChecks),
+          item('actions', 'Actions…', showGlobalActions, forPeopleOnly: true),
+          const KeyDivider(),
+          item('trust', 'Trust metadata SQL…', trustMetadataSql, forPeopleOnly: true),
+          item('revoke_trust', 'Revoke trust', revokeMetadataTrust, forPeopleOnly: true),
+          const KeyDivider(),
+          item(
+            'initialize_tables',
+            'Initialize metadata tables…',
+            showInitializeTables,
+            forPeopleOnly: true,
+          ),
+          item(
+            'import_file',
+            'Import metadata file into tables…',
+            importMetadataFile,
+            forPeopleOnly: true,
+          ),
+          item('export_file', 'Export metadata to file…', exportMetadataFile, forPeopleOnly: true),
+          item('enforcement_sql', 'Generate enforcement SQL…', showEnforcementSql),
+        ],
       ),
-      item('Import metadata file into tables…', importMetadataFile),
-      item('Export metadata to file…', exportMetadataFile),
-      item('Generate enforcement SQL…', showEnforcementSql),
-    ].forEach(host.menus.register);
+    );
 
     host.sidebarActions.registerProvider(_sidebarActions);
   }

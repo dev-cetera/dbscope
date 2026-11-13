@@ -25,7 +25,7 @@ class JsonTabView extends StatelessWidget {
           subtitle: 'JSON',
           trailing: IconButton(
             tooltip: 'Copy JSON',
-            icon: const Icon(Icons.copy_all_outlined, size: 18.0),
+            icon: const Icon(Icons.copy_all_outlined, size: 18.0, semanticLabel: 'Copy JSON'),
             onPressed: () async {
               await Clipboard.setData(ClipboardData(text: tab.content));
               if (context.mounted) showToast(context, 'Copied to clipboard');

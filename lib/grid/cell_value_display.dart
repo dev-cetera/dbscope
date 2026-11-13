@@ -223,6 +223,7 @@ class _LinkButton extends StatelessWidget {
     if (items.isEmpty) return;
     final choice = await showMenu<_LinkChoice>(
       context: context,
+      popUpAnimationStyle: kInstantPopUp,
       position: RelativeRect.fromLTRB(
         position.dx,
         position.dy + size.height,
@@ -310,12 +311,17 @@ class _IconButton extends StatelessWidget {
   Widget build(BuildContext context) {
     return Tooltip(
       message: tooltip,
-      child: InkResponse(
-        onTap: onPressed,
-        radius: 12.0,
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 2.0),
-          child: Icon(icon, size: 12.0, color: color),
+      child: Semantics(
+        container: true,
+        button: true,
+        label: tooltip,
+        child: InkResponse(
+          onTap: onPressed,
+          radius: 12.0,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 2.0),
+            child: Icon(icon, size: 12.0, color: color),
+          ),
         ),
       ),
     );

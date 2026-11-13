@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_code_editor/flutter_code_editor.dart';
 import 'package:highlight/languages/sql.dart';
+import 'package:widgets/widgets.dart';
 
 class SqlEditor extends StatefulWidget {
   const SqlEditor({
@@ -86,18 +87,21 @@ class _SqlEditorState extends State<SqlEditor> {
             color: theme.colorScheme.surfaceContainerLow,
             border: Border.all(color: theme.dividerColor),
           ),
-          child: CodeField(
-            controller: _controller,
-            readOnly: widget.readOnly,
-            textStyle: const TextStyle(fontFamily: 'Menlo', fontSize: 13),
-            background: theme.colorScheme.surfaceContainerLow,
-            gutterStyle: GutterStyle(
-              textStyle: TextStyle(
-                fontFamily: 'Menlo',
-                fontSize: 12.0,
-                color: theme.hintColor,
+          child: FieldName(
+            'SQL',
+            child: CodeField(
+              controller: _controller,
+              readOnly: widget.readOnly,
+              textStyle: const TextStyle(fontFamily: 'Menlo', fontSize: 13),
+              background: theme.colorScheme.surfaceContainerLow,
+              gutterStyle: GutterStyle(
+                textStyle: TextStyle(
+                  fontFamily: 'Menlo',
+                  fontSize: 12.0,
+                  color: theme.hintColor,
+                ),
+                background: theme.colorScheme.surfaceContainer,
               ),
-              background: theme.colorScheme.surfaceContainer,
             ),
           ),
         ),

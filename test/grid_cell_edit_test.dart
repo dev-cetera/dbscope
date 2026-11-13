@@ -1,7 +1,10 @@
 // Inline cell editing in DataGrid. An editor reports every keystroke
 // through CellEditContext.onChanged; only the grid ends the edit.
+// * A single click selects at once, even on an editable cell: it never
+//   waits out the double-click window first.
 // * Double-tapping an editable cell opens its editor with keyboard focus
-//   on the input, so the user can type straight away.
+//   on the input, so the user can type straight away. Two clicks further
+//   apart than the double-click window don't.
 // * Typing keeps the editor open and reports nothing to onCellEdit.
 // * Enter commits the typed value once; clicking another cell commits
 //   it too; Esc discards it.
@@ -38,7 +41,10 @@ GridData<String> _data() => const GridData<String>(
   ],
 );
 
-Future<List<GridEditEvent>> _pumpGrid(WidgetTester tester) async {
+Future<List<GridEditEvent>> _pumpGrid(
+  WidgetTester tester, {
+  void Function(int? rowIdx)? onRowSelected,
+}) async {
   final edits = <GridEditEvent>[];
   await tester.pumpWidget(
     MaterialApp(
@@ -47,6 +53,7 @@ Future<List<GridEditEvent>> _pumpGrid(WidgetTester tester) async {
           data: _data(),
           cellEditor: const _TextEditor(),
           onCellEdit: edits.add,
+          onRowSelected: onRowSelected,
         ),
       ),
     ),
@@ -64,6 +71,30 @@ Future<void> _doubleTap(WidgetTester tester, Finder finder) async {
 EditableText _editable(WidgetTester tester) => tester.widget<EditableText>(find.byType(EditableText));
 
 void main() {
+  testWidgets('a single click on an editable cell selects without waiting', (tester) async {
+    final selectedRows = <int?>[];
+    await _pumpGrid(tester, onRowSelected: selectedRows.add);
+
+    await tester.tap(find.text('bob'));
+    await tester.pump();
+
+    expect(selectedRows, [1]);
+    expect(find.byType(TextField), findsNothing);
+  });
+
+  testWidgets('two clicks further apart than the double-click window do not edit', (
+    tester,
+  ) async {
+    await _pumpGrid(tester);
+
+    await tester.tap(find.text('alice'));
+    await tester.pump(kDoubleTapTimeout + const Duration(milliseconds: 1));
+    await tester.tap(find.text('alice'));
+    await tester.pumpAndSettle();
+
+    expect(find.byType(TextField), findsNothing);
+  });
+
   testWidgets('double-tap focuses the input and typing keeps the editor open', (tester) async {
     final edits = await _pumpGrid(tester);
     await _doubleTap(tester, find.text('alice'));

@@ -77,7 +77,7 @@ class _DashboardViewState extends State<DashboardView> with ListenableStateMixin
           title: spec?.label ?? tab.label,
           trailing: IconButton(
             tooltip: 'Refresh all charts',
-            icon: const Icon(Icons.refresh, size: 18.0),
+            icon: const Icon(Icons.refresh, size: 18.0, semanticLabel: 'Refresh all charts'),
             onPressed: () => setState(() => _generation++),
           ),
         ),

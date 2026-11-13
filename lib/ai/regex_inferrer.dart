@@ -7,13 +7,42 @@
 // sentinel. Never called on every keystroke — only on an explicit
 // trigger from the UI.
 
+import 'dart:convert';
+
 import '../catalog/schema_catalog.dart';
-import 'ai_key_resolver.dart';
+import 'ai_target.dart';
 import 'provider.dart';
 import 'settings_store.dart';
 import 'sql_assistant.dart' show AssistantException;
 
 class RegexInferrer {
+  static const _replySchema = <String, Object?>{
+    'type': 'object',
+    'additionalProperties': false,
+    'required': ['column'],
+    'properties': {
+      'column': {
+        'type': ['string', 'null'],
+      },
+    },
+  };
+
+  /// The column name in the model's JSON reply, or null when it named none.
+  static String? _pickedColumn(String raw) {
+    final Object? decoded;
+    try {
+      decoded = jsonDecode(stripCodeFence(raw.trim()));
+    } on FormatException {
+      throw const AssistantException('AI returned a reply that is not JSON.');
+    }
+    if (decoded is! Map<String, Object?>) {
+      throw const AssistantException('AI returned JSON of the wrong shape.');
+    }
+    final column = decoded['column'];
+    if (column is! String || column.trim().isEmpty) return null;
+    return column.trim();
+  }
+
   /// Longest sample cell value (in characters) sent to the model.
   static const _kMaxSampleValueLength = 60;
 
@@ -32,47 +61,24 @@ class RegexInferrer {
         'AI Infer needs sample-rows opt-in. Enable it in AI ▸ Settings…',
       );
     }
-    final providerId = settings.providerId;
-    if (providerId == null) {
-      throw const AssistantException(
-        'No AI provider configured. Open AI ▸ Settings…',
-      );
-    }
-    final provider = AiBrokerRegistry.instance.lookup(providerId);
-    if (provider == null) {
-      throw AssistantException('Provider "$providerId" no longer available.');
-    }
-    final apiKey = await AiKeyResolver.resolve(providerId);
-    if (apiKey.isEmpty) {
-      throw const AssistantException('No API key set for the active provider.');
-    }
-    // "Auto" mode mirrors SqlAssistant — pick the first available model
-    // if the user didn't save a specific one.
-    var model = settings.model;
-    if (model == null) {
-      final models = await provider.listModels(apiKey);
-      if (models.isEmpty) {
-        throw const AssistantException(
-          'Provider returned no models. Check the API key in AI ▸ Settings…',
-        );
-      }
-      model = models.first;
-    }
-
+    final target = await AiTarget.resolve(settings);
     const system =
         'You decide which column of a database table a regex '
-        'pattern is most likely meant to match. Reply with ONLY the '
-        'column name — no prose, no quotes, no backticks. If no column '
-        'is a plausible match, reply with the single word NONE.';
+        'pattern is most likely meant to match. Reply with JSON: '
+        '{"column": <the column name>}, or {"column": null} if no column '
+        'is a plausible match.';
     final user = _buildUserMessage(trimmed, columns, sampleRows);
-    final raw = await provider.complete(
-      apiKey: apiKey,
-      model: model,
-      system: system,
-      user: user,
+    final raw = await target.broker.chat(
+      apiKey: target.apiKey,
+      model: target.model,
+      request: ChatRequest(
+        system: system,
+        messages: [AiMessage.user(user)],
+        jsonSchema: _replySchema,
+      ),
     );
-    final picked = raw.trim().replaceAll(RegExp(r'^[`"\s]+|[`"\s]+$'), '');
-    if (picked.isEmpty || picked.toUpperCase() == 'NONE') return null;
+    final picked = _pickedColumn(raw);
+    if (picked == null) return null;
     // Defence in depth: only trust names that exist.
     for (final column in columns) {
       if (column.name == picked) return column.name;

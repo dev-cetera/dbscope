@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:convert';
 
 import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -6,7 +7,8 @@ import 'package:shared_preferences/shared_preferences.dart';
 /// Persists per-machine preferences across launches: sidebar width and
 /// side, inspector width and collapsed state, theme, SQL editor height,
 /// row height, the last connection, the open tabs, the shell env file
-/// path, and whether the welcome dialog was seen.
+/// path, whether the welcome dialog was seen, and the user's own shortcut
+/// keys.
 ///
 /// Each setter is fire-and-forget — callers don't await. SharedPreferences
 /// is process-global, so a subwindow's read still sees the host's write
@@ -28,6 +30,7 @@ class UiPrefs {
   static const _kOpenTabs = 'ui.openTabs';
   static const _kEnvFilePath = 'env.filePath';
   static const _kWelcomeSeen = 'ui.welcomeSeen';
+  static const _kKeyOverrides = 'ui.keyOverrides';
   static const _kMetaTrustPrefix = 'meta.trust.';
 
   SharedPreferences? _prefs;
@@ -89,6 +92,29 @@ class UiPrefs {
   bool? get welcomeSeen => _prefs?.getBool(_kWelcomeSeen);
 
   void setWelcomeSeen() => unawaited(_prefs?.setBool(_kWelcomeSeen, true));
+
+  /// Shortcut keys the user chose instead of commands' own, by key_flow
+  /// command id (`{"file.new_query": ["meta+n"]}`; an empty list takes a
+  /// command's keys away). Empty when nothing is saved. A saved value that
+  /// isn't that shape is logged and ignored rather than failing startup
+  /// over a preference.
+  Map<String, List<String>> get keyOverrides {
+    final raw = _prefs?.getString(_kKeyOverrides);
+    if (raw == null) return const {};
+    try {
+      final decoded = jsonDecode(raw) as Map<String, Object?>;
+      return {
+        for (final MapEntry(:key, :value) in decoded.entries)
+          key: [for (final spec in value! as List<Object?>) spec! as String],
+      };
+    } catch (e) {
+      debugPrint('UiPrefs.keyOverrides: ignoring unreadable value ($e).');
+      return const {};
+    }
+  }
+
+  void setKeyOverrides(Map<String, List<String>> overrides) =>
+      _setOrRemove(_kKeyOverrides, overrides.isEmpty ? null : jsonEncode(overrides));
 
   /// Pinned action-set hashes for a profile's metadata actions (JSON
   /// `{"read": "<sha256>", "exec": "<sha256>"}`). Machine-local on purpose:

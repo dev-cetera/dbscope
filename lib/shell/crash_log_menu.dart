@@ -1,18 +1,22 @@
 import 'package:flutter/material.dart';
+import 'package:key_flow/key_flow.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../util/error_reporting.dart';
-import 'menu_spec.dart';
+import 'command_registry.dart';
 
 /// File ▸ Show crash log: opens the folder `installErrorHandlers` writes to,
 /// so a user can attach `dbscope.log` to a bug report. Desktop only; the web
 /// build logs to the browser console instead.
-final crashLogMenuContribution = MenuContribution(
-  menu: 'File',
-  build: (context) => MenuItemSpec(
-    label: 'Show crash log',
-    onSelected: () => _showCrashLog(context),
-  ),
+final crashLogCommandContribution = CommandContribution(
+  menu: AppMenu.file.label,
+  build: () => [
+    KeyCommand(
+      id: 'show_crash_log',
+      label: 'Show crash log',
+      onRun: (_) => _showCrashLog(appContext()),
+    ),
+  ],
 );
 
 Future<void> _showCrashLog(BuildContext context) async {

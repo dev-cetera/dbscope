@@ -328,26 +328,35 @@ class _HeaderButton extends StatelessWidget {
   Widget build(BuildContext context) {
     return Tooltip(
       message: tooltip,
-      child: MouseRegion(
-        cursor: SystemMouseCursors.click,
-        child: GestureDetector(
-          // Stop pan so the canvas doesn't start a drag when the user
-          // clicks the open/expand affordance.
-          onPanStart: (_) {},
-          onTap: onPressed,
-          child: Container(
-            width: 20.0,
-            height: 20.0,
-            decoration: BoxDecoration(
-              // admin_site: bg = white-0.28, border = white-0.45, radius 3.
-              color: Colors.white.withValues(alpha: 0.28),
-              borderRadius: BorderRadius.circular(3.0),
-              border: Border.all(
-                color: Colors.white.withValues(alpha: 0.45),
+      // Named by the tooltip (the glyph alone means nothing to a screen
+      // reader or an agent) and not by the "+" / "-" text it draws.
+      child: Semantics(
+        container: true,
+        button: true,
+        label: tooltip,
+        onTap: onPressed,
+        excludeSemantics: true,
+        child: MouseRegion(
+          cursor: SystemMouseCursors.click,
+          child: GestureDetector(
+            // Stop pan so the canvas doesn't start a drag when the user
+            // clicks the open/expand affordance.
+            onPanStart: (_) {},
+            onTap: onPressed,
+            child: Container(
+              width: 20.0,
+              height: 20.0,
+              decoration: BoxDecoration(
+                // admin_site: bg = white-0.28, border = white-0.45, radius 3.
+                color: Colors.white.withValues(alpha: 0.28),
+                borderRadius: BorderRadius.circular(3.0),
+                border: Border.all(
+                  color: Colors.white.withValues(alpha: 0.45),
+                ),
               ),
+              alignment: Alignment.center,
+              child: child,
             ),
-            alignment: Alignment.center,
-            child: child,
           ),
         ),
       ),

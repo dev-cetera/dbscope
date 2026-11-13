@@ -428,15 +428,18 @@ Future<void> showMetadataSettings(BuildContext context) async {
               ),
             if (settings.tablesMode == MetaTablesMode.custom) ...[
               const SizedBox(height: 8.0),
-              TextField(
-                controller: customController,
-                enabled: !tablesLocked,
-                decoration: const InputDecoration(
-                  labelText:
-                      'Postgres schema (default dbscope) / SQLite prefix '
-                      '(default _dbscope_)',
-                  isDense: true,
-                  border: OutlineInputBorder(),
+              FieldName(
+                'Postgres schema / SQLite prefix',
+                child: TextField(
+                  controller: customController,
+                  enabled: !tablesLocked,
+                  decoration: const InputDecoration(
+                    labelText:
+                        'Postgres schema (default dbscope) / SQLite prefix '
+                        '(default _dbscope_)',
+                    isDense: true,
+                    border: OutlineInputBorder(),
+                  ),
                 ),
               ),
             ],
@@ -444,12 +447,15 @@ Future<void> showMetadataSettings(BuildContext context) async {
             Row(
               children: [
                 Expanded(
-                  child: TextField(
-                    controller: pathController,
-                    decoration: const InputDecoration(
-                      labelText: 'Metadata file (YAML or JSON), optional',
-                      isDense: true,
-                      border: OutlineInputBorder(),
+                  child: FieldName(
+                    'Metadata file',
+                    child: TextField(
+                      controller: pathController,
+                      decoration: const InputDecoration(
+                        labelText: 'Metadata file (YAML or JSON), optional',
+                        isDense: true,
+                        border: OutlineInputBorder(),
+                      ),
                     ),
                   ),
                 ),
@@ -473,15 +479,18 @@ Future<void> showMetadataSettings(BuildContext context) async {
               ],
             ),
             const SizedBox(height: 16.0),
-            TextField(
-              controller: identityController,
-              decoration: const InputDecoration(
-                labelText: 'Your identity on this connection (email)',
-                helperText:
-                    'Matched against user:<email> role members. Claimed '
-                    'identity is guardrails only.',
-                isDense: true,
-                border: OutlineInputBorder(),
+            FieldName(
+              'Your identity on this connection (email)',
+              child: TextField(
+                controller: identityController,
+                decoration: const InputDecoration(
+                  labelText: 'Your identity on this connection (email)',
+                  helperText:
+                      'Matched against user:<email> role members. Claimed '
+                      'identity is guardrails only.',
+                  isDense: true,
+                  border: OutlineInputBorder(),
+                ),
               ),
             ),
           ],

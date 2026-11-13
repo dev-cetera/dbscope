@@ -33,8 +33,8 @@ class _EdgePainter extends CustomPainter {
     required this.scale,
     required this.dragNodeId,
     required this.dragDelta,
-    required this.tickerValue,
-  });
+    required this.chevronPhase,
+  }) : super(repaint: chevronPhase);
   final LinkedTab tab;
   final Offset pan;
   final double scale;
@@ -42,8 +42,8 @@ class _EdgePainter extends CustomPainter {
   final Offset dragDelta;
 
   /// 0..1, repeats every chevron cycle. Drives chevron position along
-  /// each path.
-  final double tickerValue;
+  /// each path; the painter repaints from it without a rebuild.
+  final ValueListenable<double> chevronPhase;
 
   Rect _rectOf(LinkedNode node) {
     final dx = node.position.dx + (node.id == dragNodeId ? dragDelta.dx : 0.0);
@@ -230,7 +230,7 @@ class _EdgePainter extends CustomPainter {
     if (total < 1) return;
     final alpha = g.dimmed ? 0.19 : 0.95;
     for (var i = 0; i < _kChevronCount; i++) {
-      final phase = (tickerValue + i / _kChevronCount) % 1.0;
+      final phase = (chevronPhase.value + i / _kChevronCount) % 1.0;
       final at = phase * total;
       var remaining = at;
       Offset? position;

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import 'context_menu.dart';
 import 'palette.dart';
 
 class AppMenuItem {
@@ -92,6 +93,7 @@ class _AppMenuBarState extends State<AppMenuBar> {
     final radius = BorderRadius.circular(palette.cornerRadius);
     final selected = await showMenu<int>(
       context: context,
+      popUpAnimationStyle: kInstantPopUp,
       color: palette.surface,
       elevation: palette.isBevel ? 0 : 4,
       shape: RoundedRectangleBorder(

@@ -42,13 +42,69 @@ rg -n '\[SIMPLE\]' TODO.md
 
 <!-- New entries go here, newest first. -->
 
-### **[P3]** Abort the AI request when Stop is pressed, instead of ignoring its answer
+### **[P1]** Drive dbscope with apprentice end to end and fix what it can't name or reach
 
-- **Where.** `untilCancelled` in `lib/query/cancel_token.dart`, `_askAi` in `lib/query/query_tab_view.dart`, `SqlAssistant.askSql`.
-- **Why.** Stop stops waiting, but the HTTP request runs on and still spends the user's API tokens.
+- **Where.** `macos/Runner/MainFlutterWindow.swift`, the labelled controls across `lib/` and `packages/`, `test/agent_accessibility_test.dart`. See "Accessibility for screen readers and agents" in `docs/architecture.md`.
+- **Why.** The accessibility tree is now switched on in every window and controls carry names, but none of it has been read on a real Mac yet (held back on request). Run `apprentice session --app dbscope`, then `read`: connect, open a table, edit a cell, run a query, open the code editor window, use `menu "File > …"`. Anything listed as an unnamed `textbox`, missing, or only reachable by coordinates needs a label. Also confirm the subwindow repost of the accessibility notice turns the tree on there.
+- **Effort.** `<4h`.
+- **Blocker.** none (the owner asked to wait before testing with apprentice).
+- **Noticed.** 2026-11-14, while making dbscope readable to apprentice.
+
+### **[P2]** Name the pg-proxy and on-device SQLite dialog fields, and move their dropdowns to `InstantDropdown`
+
+- **Where.** `packages/dbscope_pg_proxy_plugin/lib/src/profile_dialog.dart` (all fields, the SSL mode dropdown), `packages/dbscope_sqflite_plugin/lib/src/profile_dialog.dart` (Name field, the device/app/file dropdowns).
+- **Why.** Neither package depends on `widgets`, so their text fields can't use `FieldName` and read as unnamed boxes to macOS accessibility clients (apprentice, VoiceOver). They also still use `DropdownButtonFormField`, whose menu takes 300 ms to open, against the `InstantDropdown` rule in `docs/architecture.md`. Add a `widgets` path dependency to both pubspecs, then wrap the fields and swap the dropdowns.
+- **Effort.** `<1h`.
+- **Blocker.** none.
+- **Noticed.** 2026-11-14, while making dbscope readable to apprentice.
+
+### **[P3]** Name the grid's inline cell editors for accessibility clients
+
+- **Where.** `lib/grid/inputs/parts/raw_text_input.dart` and the other `ColumnInput` editors under `lib/grid/inputs/parts/`.
+- **Why.** The editor doesn't know its column's name, so on macOS an agent editing a cell sees an unnamed text box. Pass the column name down through `ColumnInput` and wrap the field in `FieldName`.
+- **Effort.** `<1h`.
+- **Blocker.** none.
+- **Noticed.** 2026-11-14, while making dbscope readable to apprentice.
+
+### **[P3]** Name the navigator's filter-column dropdown for accessibility clients
+
+- **Where.** `lib/navigator/parts/row_list_column.dart` (the `InstantDropdown` that picks which column the regex filter applies to).
+- **Why.** It has no `labelText`, so macOS accessibility clients read it only by its current choice (`button "[AI Infer]"`). An agent can't tell what it chooses. Give it a name without changing how it looks, for example an optional semantic label on `InstantDropdown`.
+- **Effort.** `<1h`.
+- **Blocker.** none.
+- **Noticed.** 2026-11-14, while making dbscope readable to apprentice.
+
+### **[P2]** Give the query tab, grid and inspector their own key_flow commands
+
+- **Where.** `lib/query/query_tab_view.dart` (Run, Stop, Ask AI, Save), `lib/query/sql_editor.dart` (its own `Shortcuts` for ⌘↩), `lib/inspector/property_inspector.dart` (Esc / ⌘↩), `packages/data_grid` (keys stay in the package; dbscope would wrap the grid in a `KeyFlowScope` that calls its actions).
+- **Why.** Only the app-wide commands are in the key_flow tree so far. Per-area commands would show up in the ⌘K palette, the `?` sheet and the agent's tools while that area has focus, and replace the scattered `Shortcuts` widgets.
+- **Effort.** `<1d`
+- **Blocker.** none
+- **Noticed.** 2026-11-13, while moving the menus onto key_flow.
+
+### **[P2]** Let users change shortcut keys
+
+- **Where.** `lib/shell/app_key_flow.dart` (already saves key_flow's `onKeyOverridesChanged` to `UiPrefs.keyOverrides` and passes them back), a new Help ▸ Keyboard shortcuts… editor, or key_flow's shortcut sheet.
+- **Why.** The saving and restoring of custom keys is wired, but nothing in the UI calls `KeyFlowController.setKeys`, so users can't remap anything yet. The 2026-11-13 changelog line about key_flow says "shortcuts can be remapped and are remembered", which isn't true until this lands.
 - **Effort.** `<4h`
-- **Blocker.** needs cancellation in `package:ai_broker`.
-- **Noticed.** 2026-11-07, while fixing Stop during an AI question.
+- **Blocker.** none
+- **Noticed.** 2026-11-13, while moving the menus onto key_flow.
+
+### **[P3]** Let Stop abort the model-list lookup too
+
+- **Where.** `AiTarget._firstModel` (`lib/ai/ai_target.dart`), `listModels` and `checkKey` in `package:ai_broker`.
+- **Why.** With no model saved ("auto"), each AI call first asks the provider for its model list. ai_broker 0.9.0 can abort chat requests but not `listModels`, so a Stop during that lookup stops the wait (`untilCancelled`) while the request runs on. It costs no tokens, but a slow local endpoint keeps a socket busy.
+- **Effort.** `<4h` (an `abortTrigger` on `listModels`/`checkKey` in ai_broker, then pass it through)
+- **Blocker.** none
+- **Noticed.** 2026-11-13, from the ai_broker abort work.
+
+### **[P3]** Stream AI answers and show their token cost
+
+- **Where.** `SqlAssistant.askSql`, `AgentSession.send` (`lib/agent/agent_session.dart`), `lib/shell/footer.dart`.
+- **Why.** Both wait for the whole reply. ai_broker's `streamWithMeta` gives the text as it arrives plus input/output token counts, which the footer could show per tab.
+- **Effort.** `<4h`
+- **Blocker.** none
+- **Noticed.** 2026-11-13, while moving AI calls to ai_broker 0.9.0.
 
 ### **[P3]** Add widget tests for the Stop button's wiring and the next-page failure toast
 

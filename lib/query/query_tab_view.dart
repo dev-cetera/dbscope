@@ -182,11 +182,15 @@ class _QueryTabViewState extends State<QueryTabView> {
         executor,
         profileId: widget.tab.connectionId,
       );
+      // The abort trigger stops the provider request itself (so it stops
+      // billing); untilCancelled also stops the wait on the schema and
+      // model-list lookups before it, which can't be aborted.
       final sql = await untilCancelled(
         assistant.askSql(
           prompt,
           focusSchema: widget.tab.focusSchema,
           focusTable: widget.tab.focusTable,
+          abortTrigger: token.whenCancelled,
         ),
         token,
       );
@@ -225,12 +229,15 @@ class _QueryTabViewState extends State<QueryTabView> {
       context: context,
       builder: (_) => AlertDialog(
         title: const Text('Save query'),
-        content: TextField(
-          controller: controller,
-          autofocus: true,
-          decoration: const InputDecoration(
-            labelText: 'Name',
-            border: OutlineInputBorder(),
+        content: FieldName(
+          'Name',
+          child: TextField(
+            controller: controller,
+            autofocus: true,
+            decoration: const InputDecoration(
+              labelText: 'Name',
+              border: OutlineInputBorder(),
+            ),
           ),
         ),
         actions: [
@@ -319,6 +326,10 @@ class _QueryTabViewState extends State<QueryTabView> {
   Widget build(BuildContext context) {
     final tab = widget.tab;
     final hasResultData = tab.data != null;
+    final historyTooltip = tab.historyRailOpen ? 'Hide history' : 'Show history';
+    final inspectorTooltip = AppState.instance.propertyInspectorCollapsed
+        ? 'Show row inspector'
+        : 'Hide row inspector';
     return Column(
       children: [
         PanelHeader(
@@ -330,21 +341,30 @@ class _QueryTabViewState extends State<QueryTabView> {
             mainAxisSize: MainAxisSize.min,
             children: [
               IconButton(
-                tooltip: tab.historyRailOpen ? 'Hide history' : 'Show history',
+                tooltip: historyTooltip,
                 icon: Icon(
                   tab.historyRailOpen ? Icons.history : Icons.history_outlined,
                   size: 18.0,
+                  semanticLabel: historyTooltip,
                 ),
                 onPressed: _toggleHistoryRail,
               ),
               IconButton(
                 tooltip: 'Save query',
-                icon: const Icon(Icons.bookmark_add_outlined, size: 18.0),
+                icon: const Icon(
+                  Icons.bookmark_add_outlined,
+                  size: 18.0,
+                  semanticLabel: 'Save query',
+                ),
                 onPressed: tab.sql.trim().isEmpty ? null : _save,
               ),
               IconButton(
                 tooltip: 'Download .sql',
-                icon: const Icon(Icons.file_download_outlined, size: 18.0),
+                icon: const Icon(
+                  Icons.file_download_outlined,
+                  size: 18.0,
+                  semanticLabel: 'Download .sql',
+                ),
                 onPressed: tab.sql.trim().isEmpty ? null : () => _export(_ExportFormat.sql),
               ),
               if (hasResultData) ...[
@@ -383,14 +403,13 @@ class _QueryTabViewState extends State<QueryTabView> {
                 ),
               ),
               IconButton(
-                tooltip: AppState.instance.propertyInspectorCollapsed
-                    ? 'Show row inspector'
-                    : 'Hide row inspector',
+                tooltip: inspectorTooltip,
                 icon: Icon(
                   AppState.instance.propertyInspectorCollapsed
                       ? Icons.view_sidebar_outlined
                       : Icons.view_sidebar,
                   size: 18.0,
+                  semanticLabel: inspectorTooltip,
                 ),
                 onPressed: AppState.instance.togglePropertyInspector,
               ),
@@ -535,6 +554,11 @@ class _AiPromptStrip extends StatelessWidget {
     final status = DbmlCache.instance.statusFor(tab.connectionId);
     final ready = status == DbmlStatus.ready;
     final pending = status == DbmlStatus.pending;
+    final askHint = ready
+        ? 'Ask in plain English · Enter to generate'
+        : pending
+        ? 'Indexing schema… please wait'
+        : 'Connect to a database to start';
     return Container(
       padding: const EdgeInsets.fromLTRB(12.0, 8.0, 12.0, 8.0),
       color: palette.surfaceRaised,
@@ -559,34 +583,33 @@ class _AiPromptStrip extends StatelessWidget {
                     unawaited(onAsk());
                     return KeyEventResult.handled;
                   },
-                  child: TextField(
-                    controller: controller,
-                    enabled: !tab.isAsking,
-                    minLines: 1,
-                    maxLines: 3,
-                    textInputAction: TextInputAction.newline,
-                    style: TextStyle(
-                      fontFamily: palette.uiFontFamily,
-                      fontSize: palette.bodyFontSize,
-                    ),
-                    decoration: InputDecoration(
-                      border: const OutlineInputBorder(),
-                      isDense: true,
-                      prefixIcon: const Icon(Icons.auto_awesome, size: 16.0),
-                      contentPadding: const EdgeInsets.symmetric(
-                        horizontal: 8.0,
-                        vertical: 10.0,
+                  child: FieldName(
+                    askHint,
+                    child: TextField(
+                      controller: controller,
+                      enabled: !tab.isAsking,
+                      minLines: 1,
+                      maxLines: 3,
+                      textInputAction: TextInputAction.newline,
+                      style: TextStyle(
+                        fontFamily: palette.uiFontFamily,
+                        fontSize: palette.bodyFontSize,
                       ),
-                      hintText: ready
-                          ? 'Ask in plain English · Enter to generate'
-                          : pending
-                          ? 'Indexing schema… please wait'
-                          : 'Connect to a database to start',
-                      hintStyle: TextStyle(color: palette.mutedText),
+                      decoration: InputDecoration(
+                        border: const OutlineInputBorder(),
+                        isDense: true,
+                        prefixIcon: const Icon(Icons.auto_awesome, size: 16.0),
+                        contentPadding: const EdgeInsets.symmetric(
+                          horizontal: 8.0,
+                          vertical: 10.0,
+                        ),
+                        hintText: askHint,
+                        hintStyle: TextStyle(color: palette.mutedText),
+                      ),
+                      onChanged: (prompt) {
+                        tab.prompt = prompt;
+                      },
                     ),
-                    onChanged: (prompt) {
-                      tab.prompt = prompt;
-                    },
                   ),
                 ),
               ),
@@ -627,12 +650,17 @@ class _AiPromptStrip extends StatelessWidget {
                     ),
                   ),
                   const SizedBox(width: 4.0),
-                  InkWell(
-                    onTap: onClearFocus,
-                    child: Icon(
-                      Icons.close,
-                      size: 12.0,
-                      color: palette.mutedText,
+                  Semantics(
+                    container: true,
+                    button: true,
+                    label: 'Clear focus table',
+                    child: InkWell(
+                      onTap: onClearFocus,
+                      child: Icon(
+                        Icons.close,
+                        size: 12.0,
+                        color: palette.mutedText,
+                      ),
                     ),
                   ),
                 ],
@@ -710,26 +738,29 @@ class _HistoryRailState extends State<_HistoryRail> {
         children: [
           Padding(
             padding: const EdgeInsets.fromLTRB(8.0, 6.0, 8.0, 6.0),
-            child: TextField(
-              decoration: InputDecoration(
-                isDense: true,
-                prefixIcon: const Icon(Icons.search, size: 14.0),
-                hintText: 'Filter…',
-                hintStyle: TextStyle(
+            child: FieldName(
+              'Filter…',
+              child: TextField(
+                decoration: InputDecoration(
+                  isDense: true,
+                  prefixIcon: const Icon(Icons.search, size: 14.0),
+                  hintText: 'Filter…',
+                  hintStyle: TextStyle(
+                    fontSize: palette.smallFontSize,
+                    color: palette.mutedText,
+                  ),
+                  border: const OutlineInputBorder(),
+                  contentPadding: const EdgeInsets.symmetric(
+                    horizontal: 6.0,
+                    vertical: 8.0,
+                  ),
+                ),
+                style: TextStyle(
                   fontSize: palette.smallFontSize,
-                  color: palette.mutedText,
+                  fontFamily: palette.uiFontFamily,
                 ),
-                border: const OutlineInputBorder(),
-                contentPadding: const EdgeInsets.symmetric(
-                  horizontal: 6.0,
-                  vertical: 8.0,
-                ),
+                onChanged: (text) => setState(() => _filter = text),
               ),
-              style: TextStyle(
-                fontSize: palette.smallFontSize,
-                fontFamily: palette.uiFontFamily,
-              ),
-              onChanged: (text) => setState(() => _filter = text),
             ),
           ),
           const Divider(height: 1.0),
@@ -823,31 +854,41 @@ class _SavedRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final palette = AppPalette.of(context);
-    return InkWell(
-      onTap: onTap,
-      child: Container(
-        color: active ? palette.surfaceRaised : null,
-        padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 6.0),
-        child: Row(
-          children: [
-            Icon(Icons.bookmark, size: 12.0, color: palette.accent),
-            const SizedBox(width: 6.0),
-            Expanded(
-              child: Text(
-                q.name,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: TextStyle(
-                  fontSize: palette.bodyFontSize,
-                  fontFamily: palette.uiFontFamily,
+    return Semantics(
+      container: true,
+      button: true,
+      selected: active,
+      child: InkWell(
+        onTap: onTap,
+        child: Container(
+          color: active ? palette.surfaceRaised : null,
+          padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 6.0),
+          child: Row(
+            children: [
+              Icon(Icons.bookmark, size: 12.0, color: palette.accent),
+              const SizedBox(width: 6.0),
+              Expanded(
+                child: Text(
+                  q.name,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    fontSize: palette.bodyFontSize,
+                    fontFamily: palette.uiFontFamily,
+                  ),
                 ),
               ),
-            ),
-            InkWell(
-              onTap: onDelete,
-              child: Icon(Icons.close, size: 12.0, color: palette.mutedText),
-            ),
-          ],
+              Semantics(
+                container: true,
+                button: true,
+                label: 'Delete saved query',
+                child: InkWell(
+                  onTap: onDelete,
+                  child: Icon(Icons.close, size: 12.0, color: palette.mutedText),
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -863,18 +904,22 @@ class _HistoryRow extends StatelessWidget {
   Widget build(BuildContext context) {
     final palette = AppPalette.of(context);
     final summary = sql.replaceAll(RegExp(r'\s+'), ' ').trim();
-    return InkWell(
-      onTap: onTap,
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 4.0),
-        child: Text(
-          summary,
-          maxLines: 1,
-          overflow: TextOverflow.ellipsis,
-          style: TextStyle(
-            fontFamily: palette.monoFontFamily,
-            fontSize: palette.smallFontSize,
-            color: palette.text,
+    return Semantics(
+      container: true,
+      button: true,
+      child: InkWell(
+        onTap: onTap,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 4.0),
+          child: Text(
+            summary,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: TextStyle(
+              fontFamily: palette.monoFontFamily,
+              fontSize: palette.smallFontSize,
+              color: palette.text,
+            ),
           ),
         ),
       ),

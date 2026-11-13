@@ -167,8 +167,17 @@ class _SchemaCanvasState extends State<SchemaCanvas> with SingleTickerProviderSt
   /// sit on top.
   String? _topNodeId;
 
+  /// Card widgets built at the start of a node drag, by node id. A drag
+  /// only moves cards, so handing Flutter the same widget instance each
+  /// pointer move lets it skip rebuilding every card. Cleared when a
+  /// drag starts and ends.
+  final _dragCards = <String, Widget>{};
+
   late final Ticker _ticker;
-  double _tickerValue = 0;
+
+  /// Chevron position, 0..1. The edge painter repaints from it directly,
+  /// so the per-frame animation never rebuilds the cards.
+  final _chevronPhase = ValueNotifier<double>(0.0);
   Duration _lastTick = Duration.zero;
   // Slower than admin_site's React Flow 3.5s cycle — the user found
   // the faster speed distracting on a packed schema.
@@ -210,6 +219,7 @@ class _SchemaCanvasState extends State<SchemaCanvas> with SingleTickerProviderSt
   void dispose() {
     widget.controller?._detach(this);
     _ticker.dispose();
+    _chevronPhase.dispose();
     super.dispose();
   }
 
@@ -226,9 +236,7 @@ class _SchemaCanvasState extends State<SchemaCanvas> with SingleTickerProviderSt
     _lastTick = elapsed;
     final ms = dt.inMicroseconds / Duration.microsecondsPerMillisecond;
     final delta = ms / _kChevronCycle.inMilliseconds;
-    setState(() {
-      _tickerValue = (_tickerValue + delta) % 1.0;
-    });
+    _chevronPhase.value = (_chevronPhase.value + delta) % 1.0;
   }
 
   /// Keep the diagram pinned to the screen when the viewport's own
@@ -279,6 +287,7 @@ class _SchemaCanvasState extends State<SchemaCanvas> with SingleTickerProviderSt
 
   void _onNodeDragStart(SchemaNodeData node) {
     setState(() {
+      _dragCards.clear();
       _dragNodeId = node.id;
       _dragDelta = Offset.zero;
       _topNodeId = node.id;
@@ -296,17 +305,7 @@ class _SchemaCanvasState extends State<SchemaCanvas> with SingleTickerProviderSt
     cascadeSeparate(
       movedIds: {pivotId},
       positions: positions,
-      dimsFor: (otherId) {
-        for (final node in widget.nodes) {
-          if (node.id == otherId) {
-            return (
-              w: effectiveNodeWidth(node),
-              h: renderedNodeHeight(node),
-            );
-          }
-        }
-        return null;
-      },
+      dimsFor: _dimsById(),
       allIds: positions.keys,
     );
     for (final node in widget.nodes) {
@@ -314,6 +313,18 @@ class _SchemaCanvasState extends State<SchemaCanvas> with SingleTickerProviderSt
       final position = positions[node.id];
       if (position != null) node.position = position;
     }
+  }
+
+  /// Size lookup for [cascadeSeparate], indexed once per pass: a drag
+  /// runs a pass on every pointer move, and scanning the node list for
+  /// each lookup made that quadratic in the number of tables.
+  ({double w, double h})? Function(String) _dimsById() {
+    final byId = {for (final node in widget.nodes) node.id: node};
+    return (id) {
+      final node = byId[id];
+      if (node == null) return null;
+      return (w: effectiveNodeWidth(node), h: renderedNodeHeight(node));
+    };
   }
 
   /// Cascade-separate neighbours against the dragged node's virtual
@@ -338,17 +349,7 @@ class _SchemaCanvasState extends State<SchemaCanvas> with SingleTickerProviderSt
     cascadeSeparate(
       movedIds: {id},
       positions: positions,
-      dimsFor: (otherId) {
-        for (final node in widget.nodes) {
-          if (node.id == otherId) {
-            return (
-              w: effectiveNodeWidth(node),
-              h: renderedNodeHeight(node),
-            );
-          }
-        }
-        return null;
-      },
+      dimsFor: _dimsById(),
       allIds: positions.keys,
     );
     for (final node in widget.nodes) {
@@ -385,6 +386,7 @@ class _SchemaCanvasState extends State<SchemaCanvas> with SingleTickerProviderSt
       _cascadeNeighbours();
     }
     setState(() {
+      _dragCards.clear();
       _dragNodeId = null;
       _dragDelta = Offset.zero;
     });
@@ -600,20 +602,24 @@ class _SchemaCanvasState extends State<SchemaCanvas> with SingleTickerProviderSt
                 onTap: _onBackgroundTap,
               ),
             ),
+            // Its own layer: the chevrons repaint every frame, and without
+            // the boundary each repaint would repaint every card too.
             IgnorePointer(
-              child: CustomPaint(
-                painter: SchemaEdgePainter(
-                  nodes: widget.nodes,
-                  edges: widget.edges,
-                  pan: pan,
-                  scale: scale,
-                  tickerValue: _tickerValue,
-                  selectedId: widget.selectedId,
-                  highlightedNodeIds: highlighted,
-                  // Pass live drag info so edges follow the moving
-                  // card without waiting for drag-end.
-                  dragNodeId: _dragNodeId,
-                  dragDelta: _dragDelta,
+              child: RepaintBoundary(
+                child: CustomPaint(
+                  painter: SchemaEdgePainter(
+                    nodes: widget.nodes,
+                    edges: widget.edges,
+                    pan: pan,
+                    scale: scale,
+                    chevronPhase: _chevronPhase,
+                    selectedId: widget.selectedId,
+                    highlightedNodeIds: highlighted,
+                    // Pass live drag info so edges follow the moving
+                    // card without waiting for drag-end.
+                    dragNodeId: _dragNodeId,
+                    dragDelta: _dragDelta,
+                  ),
                 ),
               ),
             ),
@@ -660,25 +666,30 @@ class _SchemaCanvasState extends State<SchemaCanvas> with SingleTickerProviderSt
                       ? null
                       : () => widget.onCardActivated!(node.id),
                 );
+                Widget buildScaledCard() => RepaintBoundary(
+                      child: _ScaledCard(
+                        scale: scale,
+                        width: nodeWidth,
+                        height: nodeHeight,
+                        child: _buildCard(
+                          context,
+                          node,
+                          isSelected,
+                          isHighlighted,
+                          hasSel,
+                          callbacks,
+                        ),
+                      ),
+                    );
                 return Positioned(
                   key: ValueKey('node-${node.id}'),
                   left: left,
                   top: top,
                   width: nodeWidth * scale,
                   height: nodeHeight * scale,
-                  child: _ScaledCard(
-                    scale: scale,
-                    width: nodeWidth,
-                    height: nodeHeight,
-                    child: _buildCard(
-                      context,
-                      node,
-                      isSelected,
-                      isHighlighted,
-                      hasSel,
-                      callbacks,
-                    ),
-                  ),
+                  child: _dragNodeId == null
+                      ? buildScaledCard()
+                      : _dragCards.putIfAbsent(node.id, buildScaledCard),
                 );
               }(),
             ],

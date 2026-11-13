@@ -926,6 +926,9 @@ class _DataGridState<TypeTag> extends State<DataGrid<TypeTag>> {
         position.dy,
       ),
       items: items,
+      // Open at once, like a desktop context menu, instead of Material's
+      // 300 ms grow-and-fade.
+      popUpAnimationStyle: AnimationStyle.noAnimation,
     );
     if (selected == 'copy_tsv') await _copyAs(_CopyFormat.tsv);
     if (selected == 'copy_csv') await _copyAs(_CopyFormat.csv);
@@ -1092,25 +1095,32 @@ class _GutterCell extends StatelessWidget {
     final foreground = isSelected ? style.textColor : style.mutedTextColor;
     return Stack(
       children: [
-        GestureDetector(
-          behavior: HitTestBehavior.opaque,
-          onTap: () {
-            final shift = HardwareKeyboard.instance.isShiftPressed;
-            onTap(extend: shift);
-          },
-          child: Container(
-            height: height,
-            decoration: BoxDecoration(
-              color: background,
-              border: Border(
-                right: BorderSide(color: style.cellBorder),
-                bottom: BorderSide(color: style.cellBorder, width: 0.5),
+        // Read as `button "Row 12"`, apart from the data cells beside it.
+        Semantics(
+          container: true,
+          button: true,
+          selected: isSelected,
+          label: 'Row',
+          child: GestureDetector(
+            behavior: HitTestBehavior.opaque,
+            onTap: () {
+              final shift = HardwareKeyboard.instance.isShiftPressed;
+              onTap(extend: shift);
+            },
+            child: Container(
+              height: height,
+              decoration: BoxDecoration(
+                color: background,
+                border: Border(
+                  right: BorderSide(color: style.cellBorder),
+                  bottom: BorderSide(color: style.cellBorder, width: 0.5),
+                ),
               ),
-            ),
-            alignment: Alignment.center,
-            child: Text(
-              '${rowIndex + 1}',
-              style: style.headerSubtitleStyle.copyWith(color: foreground),
+              alignment: Alignment.center,
+              child: Text(
+                '${rowIndex + 1}',
+                style: style.headerSubtitleStyle.copyWith(color: foreground),
+              ),
             ),
           ),
         ),

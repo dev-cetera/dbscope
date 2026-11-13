@@ -128,68 +128,88 @@ class _ConnectionDialogState extends State<ConnectionDialog> {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            TextFormField(
-              controller: _name,
-              decoration: const InputDecoration(labelText: 'Name'),
-              validator: _validateRequired,
+            FieldName(
+              'Name',
+              child: TextFormField(
+                controller: _name,
+                decoration: const InputDecoration(labelText: 'Name'),
+                validator: _validateRequired,
+              ),
             ),
             const SizedBox(height: 12.0),
             Row(
               children: [
                 Expanded(
                   flex: 3,
-                  child: TextFormField(
-                    controller: _host,
-                    decoration: const InputDecoration(labelText: 'Host'),
-                    validator: _validateRequired,
+                  child: FieldName(
+                    'Host',
+                    child: TextFormField(
+                      controller: _host,
+                      decoration: const InputDecoration(labelText: 'Host'),
+                      validator: _validateRequired,
+                    ),
                   ),
                 ),
                 const SizedBox(width: 12.0),
                 Expanded(
-                  child: TextFormField(
-                    controller: _port,
-                    decoration: const InputDecoration(labelText: 'Port'),
-                    keyboardType: TextInputType.number,
-                    validator: (text) {
-                      if (text == null || text.isEmpty) return 'required';
-                      final port = int.tryParse(text);
-                      if (port == null || port <= 0 || port > _kMaxPort) {
-                        return 'invalid';
-                      }
-                      return null;
-                    },
+                  child: FieldName(
+                    'Port',
+                    child: TextFormField(
+                      controller: _port,
+                      decoration: const InputDecoration(labelText: 'Port'),
+                      keyboardType: TextInputType.number,
+                      validator: (text) {
+                        if (text == null || text.isEmpty) return 'required';
+                        final port = int.tryParse(text);
+                        if (port == null || port <= 0 || port > _kMaxPort) {
+                          return 'invalid';
+                        }
+                        return null;
+                      },
+                    ),
                   ),
                 ),
               ],
             ),
             const SizedBox(height: 12.0),
-            TextFormField(
-              controller: _database,
-              decoration: const InputDecoration(labelText: 'Database'),
-              validator: _validateRequired,
+            FieldName(
+              'Database',
+              child: TextFormField(
+                controller: _database,
+                decoration: const InputDecoration(labelText: 'Database'),
+                validator: _validateRequired,
+              ),
             ),
             const SizedBox(height: 12.0),
-            TextFormField(
-              controller: _username,
-              decoration: const InputDecoration(labelText: 'Username'),
-              validator: _validateRequired,
+            FieldName(
+              'Username',
+              child: TextFormField(
+                controller: _username,
+                decoration: const InputDecoration(labelText: 'Username'),
+                validator: _validateRequired,
+              ),
             ),
             const SizedBox(height: 12.0),
-            TextFormField(
-              controller: _password,
-              enabled: !_forgetPassword,
-              obscureText: !_passwordVisible,
-              decoration: InputDecoration(
-                labelText: 'Password',
-                helperText: widget.initial == null || _forgetPassword
-                    ? null
-                    : 'Leave empty to keep the saved password.',
-                suffixIcon: IconButton(
-                  onPressed: () => setState(
-                    () => _passwordVisible = !_passwordVisible,
-                  ),
-                  icon: Icon(
-                    _passwordVisible ? Icons.visibility_off : Icons.visibility,
+            FieldName(
+              'Password',
+              child: TextFormField(
+                controller: _password,
+                enabled: !_forgetPassword,
+                obscureText: !_passwordVisible,
+                decoration: InputDecoration(
+                  labelText: 'Password',
+                  helperText: widget.initial == null || _forgetPassword
+                      ? null
+                      : 'Leave empty to keep the saved password.',
+                  suffixIcon: IconButton(
+                    onPressed: () => setState(
+                      () => _passwordVisible = !_passwordVisible,
+                    ),
+                    icon: Icon(
+                      _passwordVisible ? Icons.visibility_off : Icons.visibility,
+                      semanticLabel:
+                          _passwordVisible ? 'Hide password' : 'Show password',
+                    ),
                   ),
                 ),
               ),
@@ -207,30 +227,24 @@ class _ConnectionDialogState extends State<ConnectionDialog> {
                 dense: true,
               ),
             const SizedBox(height: 12.0),
-            DropdownButtonFormField<SslMode>(
-              // Keyed on the value so a suggestion change re-seeds the field
-              // (`initialValue` is read only once per field state).
-              key: ValueKey(_sslMode),
-              initialValue: _sslMode,
+            InstantDropdown(
               decoration: const InputDecoration(labelText: 'SSL mode'),
-              items: const [
-                DropdownMenuItem(
-                  value: SslMode.disable,
-                  child: Text('disable'),
-                ),
-                DropdownMenuItem(
-                  value: SslMode.require,
-                  child: Text('require'),
-                ),
-                DropdownMenuItem(
-                  value: SslMode.verifyFull,
-                  child: Text('verify-full'),
-                ),
+              isExpanded: true,
+              items: [
+                for (final (mode, label) in const [
+                  (SslMode.disable, 'disable'),
+                  (SslMode.require, 'require'),
+                  (SslMode.verifyFull, 'verify-full'),
+                ])
+                  InstantDropdownItem(
+                    label: label,
+                    selected: mode == _sslMode,
+                    onSelected: () => setState(() {
+                      _sslMode = mode;
+                      _sslChosen = true;
+                    }),
+                  ),
               ],
-              onChanged: (mode) => setState(() {
-                _sslMode = mode ?? _sslMode;
-                _sslChosen = true;
-              }),
             ),
             const SizedBox(height: 12.0),
             SwitchListTile(
@@ -265,22 +279,28 @@ class _ConnectionDialogState extends State<ConnectionDialog> {
               children: [
                 Expanded(
                   flex: 2,
-                  child: TextFormField(
-                    controller: _tenantColumn,
-                    decoration: const InputDecoration(
-                      labelText: 'Column',
-                      hintText: 'e.g. account_id',
+                  child: FieldName(
+                    'Column',
+                    child: TextFormField(
+                      controller: _tenantColumn,
+                      decoration: const InputDecoration(
+                        labelText: 'Column',
+                        hintText: 'e.g. account_id',
+                      ),
                     ),
                   ),
                 ),
                 const SizedBox(width: 12.0),
                 Expanded(
                   flex: 3,
-                  child: TextFormField(
-                    controller: _tenantValue,
-                    decoration: const InputDecoration(
-                      labelText: 'Value',
-                      hintText: 'pasted as text; ints auto-detected',
+                  child: FieldName(
+                    'Value',
+                    child: TextFormField(
+                      controller: _tenantValue,
+                      decoration: const InputDecoration(
+                        labelText: 'Value',
+                        hintText: 'pasted as text; ints auto-detected',
+                      ),
                     ),
                   ),
                 ),

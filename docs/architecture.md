@@ -19,7 +19,7 @@ fvm flutter test test/server_test.dart         # single file
 fvm flutter test test/server_test.dart --plain-name 'routes req'   # single test by name
 ```
 
-Tests are per-unit and live under `test/`: `sql_quote`, `envelope`, `cancel_token`, `dml`, `pager`, `server`, `bus_service`, `postgres_executor_decode`, `shell_env`, `sql_parse`, `pg_type`, `copy_table_job`, `grid_row_ownership`, `resizable`, and the `meta_*` suite. They share `test/support/fake_executor.dart` — a `DbExecutor` stub used wherever a test needs to exercise something that would otherwise want a live DB. Each test file opens with a comment block stating the contract it pins down; read that before editing the production code it covers. `test/widget_test.dart` is an intentional placeholder — do not add coverage there.
+Tests are per-unit and live under `test/`: `sql_quote`, `envelope`, `cancel_token`, `dml`, `pager`, `server`, `bus_service`, `postgres_executor_decode`, `shell_env`, `sql_parse`, `pg_type`, `copy_table_job`, `grid_row_ownership`, `resizable`, `agent`, and the `meta_*` suite. They share `test/support/fake_executor.dart` — a `DbExecutor` stub used wherever a test needs to exercise something that would otherwise want a live DB. Each test file opens with a comment block stating the contract it pins down; read that before editing the production code it covers. `test/widget_test.dart` is an intentional placeholder — do not add coverage there.
 
 ## CI, releases, web and landing page
 
@@ -76,16 +76,16 @@ DbscopePluginRegistry.instance.register(MyPlugin());
 `DbscopeHost` exposes these contribution surfaces:
 - **`host.themes`** → `ThemePlugin(id, label, build, overlays)` (`lib/shell/theme_registry.dart`). The active theme's `overlays` are mounted in the root `Stack`, so the Doom mugshot only ships when the Doom theme is registered.
 - **`host.connections`** → `ConnectionKindPlugin` (`lib/db/plugin.dart`). Postgres / SQLite / pg-proxy / on-device sqflite.
-- **`host.tabs`** → `TabKind` (`lib/tabs/tab_kind.dart`). The eight core tab kinds ship through `BuiltinPlugin`; a plugin can add more.
-- **`host.menus`** → `MenuContribution(menu, build)` (`lib/shell/menu_spec.dart`).
+- **`host.tabs`** → `TabKind` (`lib/tabs/tab_kind.dart`). The core tab kinds (agent included) ship through `BuiltinPlugin`; a plugin can add more.
+- **`host.commands`** → `CommandContribution(menu, build)` (`lib/shell/command_registry.dart`): key_flow commands added to a menu, which also become shortcuts, palette entries and agent tools. See "Commands, menus and shortcuts" below.
 - **`host.sidebarActions`** → `SidebarTableAction(...)` (`lib/shell/sidebar_table_actions.dart`).
-- **`host.aiBrokers`** → `AiBroker` from `package:ai_broker`. The bundled OpenAI / Anthropic / Gemini brokers register through `BuiltinPlugin`.
+- **`host.aiBrokers`** → `AiBroker` from `package:ai_broker`. The bundled OpenAI / Anthropic / Gemini / DeepSeek brokers register through `BuiltinPlugin`; the user's own OpenAI-compatible endpoint is registered from settings (see "AI features" below).
 
 ### Built-in plugins
 
 | Plugin | Location | What it registers |
 |--------|----------|-------------------|
-| `BuiltinPlugin` | `lib/plugins/builtin_plugin.dart` | All eight core tab kinds, the default sidebar table-row actions, and the three packaged AI brokers. |
+| `BuiltinPlugin` | `lib/plugins/builtin_plugin.dart` | The core tab kinds (agent included), the default sidebar table-row actions, the packaged AI brokers, and File ▸ Show crash log. |
 | `PostgresPlugin` | `lib/db/postgres_plugin.dart` | The built-in Postgres connection kind. |
 | `SqlitePlugin` | `lib/db/sqlite_plugin.dart` | The built-in local SQLite connection kind. |
 
@@ -115,7 +115,7 @@ Every theme ships as a standalone package; the host has no built-in themes. Curr
 
 Each theme plugin owns its palette, its `ThemeData` builder, and any asset it ships. Assets shipped from a plugin must use the `packages/<plugin-name>/assets/...` path in `Image.asset(...)` — that's how Flutter finds package-bundled assets at runtime.
 
-`ThemePlugin.build` runs once per theme switch. The builders return a fresh `ThemeData` that never compares equal to the last one, and handing `MaterialApp` a new one restarts its 200 ms theme animation, which rebuilds every `Theme.of` dependant on each frame. So the app root (`_DBScopeAppState`) rebuilds only when the theme plugin changes, not on every `AppState` notify. One consequence: a widget inserted as `const` under the shell isn't rebuilt by its parent, so it must subscribe itself. `TabStrip` and `Footer` use `shellListenable` (`lib/shell/shell_listenable.dart`, AppState + ConnectionRegistry). `AppMenuBar` rebuilds only when its rendered labels change, because each rebuild re-sends the native macOS menu.
+`ThemePlugin.build` runs once per theme switch. The builders return a fresh `ThemeData` that never compares equal to the last one, and handing `MaterialApp` a new one restarts its 200 ms theme animation, which rebuilds every `Theme.of` dependant on each frame. So the app root (`_DBScopeAppState`) rebuilds only when the theme plugin changes, not on every `AppState` notify. One consequence: a widget inserted as `const` under the shell isn't rebuilt by its parent, so it must subscribe itself. `TabStrip` and `Footer` use `shellListenable` (`lib/shell/shell_listenable.dart`, AppState + ConnectionRegistry). The menu bar (key_flow's `KeyFlowMenuBar`) re-sends the native macOS menu only when what it shows changes, so `AppKeyFlow` can rebuild the command tree on every shell notify.
 
 The first-registered theme is the fallback when no preference is stored or when the user's saved theme id no longer resolves (e.g. the plugin was removed between sessions). `AppState.setThemeId(id)` is a no-op for unknown ids, so a typo can't silently fall back.
 
@@ -195,10 +195,30 @@ Same layout for `lib/query/`, `lib/ai/`, `lib/navigator/`, `lib/linked/`, `lib/i
 
 `AppState` is still a singleton `ChangeNotifier` that owns the tab list, active tab, sidebar layout, and theme. Tab persistence is opt-in: only the host window calls `enableTabPersistence`; sub-windows would otherwise clobber the host's saved list (SharedPreferences is process-wide).
 
-## Pluggable menus + sidebar actions
+## Commands, menus and shortcuts (key_flow)
 
-- **Menu bar** (`lib/shell/menu_bar.dart`): one `_MenuActions` builder returns a `List<MenuSpec>` (`lib/shell/menu_spec.dart`). The native macOS `PlatformMenuBar` and the in-app fallback bar both consume that same data — adding a built-in menu item is a single edit, not a duplicate change in two renderers.
-- **Plugin-contributed menu items** go through `MenuContributionRegistry`. Plugins register `MenuContribution(menu: 'File' | 'View' | <new-label>, build: (ctx) => MenuItemSpec(...))` once at startup. The menu builder appends them after the built-ins for that label, or makes a new top-level menu if the label is novel. No edit to `menu_bar.dart` required.
+Every app-level action is a `KeyCommand` in one [key_flow](https://pub.dev/packages/key_flow) tree, and that tree is at once the menu bar (native on macOS, drawn in the window elsewhere), the keyboard shortcuts, the ⌘K palette, the `?` shortcut sheet, ⌘J jump mode, and the tools the AI agent can call. Adding a command is one edit and it shows up everywhere.
+
+- **Where:** `buildAppCommands` (`lib/shell/app_commands.dart`) returns the top-level menus (`AppMenu`: File, View, Connection, AI, Help) as `KeyGroup(inMenuBar: true)`. `AppKeyFlow` (`lib/shell/app_key_flow.dart`) mounts `KeyFlow` + `KeyFlowMenuBar` in `MaterialApp.builder`, so the commands cover every route and dialog, and rebuilds them on `shellListenable` so labels, `enabled` and `checked` follow live state.
+- **Dialogs:** `KeyFlow` sits above the Navigator, so a command's `onRun` context can't open a dialog. Use `appContext()` (`lib/shell/command_registry.dart`), which reads `appNavigatorKey` (passed to `MaterialApp.navigatorKey`).
+- **Plugins** register a `CommandContribution(menu: AppMenu.file.label | <new label>, build: () => [...])` through `host.commands`. Contributed commands follow the menu's built-ins after a divider; a new label becomes a new top-level menu.
+- **Areas:** the sidebar and the open tab are `KeyFlowScope(region: ...)`s in `app.dart`; F6 moves between them, and a scope can add commands that apply only while the focus is inside it.
+- **User keys:** key_flow's `keyOverrides` are saved in `UiPrefs.keyOverrides`.
+- **Agent gate:** a command the agent must not run (exports a secret, changes settings or the connection, opens a file picker) carries `hiddenFrom: {KeySurface.agents}` (`_peopleOnly` in `app_commands.dart`). Check new commands against that list. A command with only `onInput` (like `view.open_table`) is for the agent alone and is hidden from people.
+- `lib/code/code_editor_subwindow.dart` is its own `MaterialApp` with no key_flow root.
+
+## Accessibility for screen readers and agents
+
+Agents such as apprentice drive dbscope from outside through the macOS accessibility tree: they list named buttons and fields, click them with the real cursor and use `menu "File > …"` on the native menu bar. Flutter on macOS gets in the way three times, and each has one fix:
+
+- **The tree is off.** Flutter builds it only once the app is told a screen reader started, and agents don't send that to a native app. `macos/Runner/MainFlutterWindow.swift` posts it at launch and again for each window `desktop_multi_window` opens (each runs its own engine).
+- **Tooltips are dropped.** A control's tooltip never reaches macOS, so an icon-only `IconButton` is a button with no name. Give its `Icon` a `semanticLabel` with the tooltip's text.
+- **Text-field labels are dropped.** Wrap a field in `FieldName('Host', child: ...)` (`packages/widgets/lib/src/field_name.dart`), which adds the name as a text node over the field on macOS only.
+
+A `GestureDetector` or `InkWell` alone is not a button to these tools. Wrap a custom click target in `Semantics(container: true, button: true, ...)`, with `enabled`, `selected` or `toggled` where it has that state; the shared `AppButton`, `AppToggleButton`, `AppTabBar` and `InstantDropdown` already do. Contract: `test/agent_accessibility_test.dart`.
+
+## Sidebar actions
+
 - **Sidebar table-row context menu**: built-in actions are registered from `lib/shell/sidebar_table_actions_default.dart` via `SidebarTableActionRegistry` (`lib/shell/sidebar_table_actions.dart`). Plugins / new features add their own `SidebarTableAction` with no edit to the sidebar widget itself. Each action has an optional `visibleWhen(ctx)` predicate so backend capability gating (e.g. hide soft-delete on read-only backends) doesn't have to live in the sidebar widget.
 
 ## Big-feature view files use `part` libraries
@@ -216,13 +236,13 @@ Adding a widget to one of these: edit the relevant part file. The host file hold
 Two mixins under `lib/util/` cover the repetitive State plumbing:
 
 - `HoverStateMixin` (`hover_state_mixin.dart`) replaces every `bool _hovered` + `onEnter`/`onExit` triple. Use `isHovered` to read and `setHovered(bool)` to write. Used by `_TabState`, `_CloseDotState`, `_NewTabButtonState`.
-- `ListenableStateMixin` (`listenable_state_mixin.dart`) replaces the `singleton.addListener(_onChange)` / `removeListener` / `setState(() {})` triple. Override `listenables` to return the set you want to subscribe to. Used by `_SidebarState`, `_DoomMugshotOverlayState`. Don't use it when the callback needs custom logic (e.g. sidebar's registry listener); use a manual `addListener` there.
+- `ListenableStateMixin` (`listenable_state_mixin.dart`) replaces the `singleton.addListener(_onChange)` / `removeListener` / `setState(() {})` triple. Override `listenables` to return the set you want to subscribe to. Used by `_NamedQueryViewState` and `_DashboardViewState`. Don't use it when the callback needs custom logic; use a manual `addListener` there. The sidebar is the example: it listens to `AppState` by hand and rebuilds only when the selected table changes, since rebuilding the whole table list on every notify was wasted work.
 
 ## Tabs & UI shell legacy
 
 `AppState.notifyChange()` is called from view widgets that mutate fields directly on the tab model — there's no separate per-tab notifier. This is intentional; don't introduce one.
 
-Themes and reusable widgets live in `packages/widgets/` (Dart package name `widgets`, depended on via `path:`). Three palettes (`win95Palette`, `vsCodeDarkPalette`, and `vsCodeOrangePalette`, the default theme: Dark Modern with the logo's orange as accent) implement the shared `AppPalette` `ThemeExtension`; widgets read role-based fields via `AppPalette.of(context)` and shape-adapt via `ChromeKind` (`bevel` vs `flat`). Anything outside the package imports from a single barrel: `import 'package:widgets/widgets.dart';`. The package ships the bundled MS Sans Serif TTF under `lib/assets/fonts/` so it works standalone in any consumer project. Typed-cell colors are driven by the `type*` roles on `AppPalette` (e.g. `typeString`, `typeNumber`, `typeJson`, `typeNull`); the PG-type → role mapping lives in `lib/grid/typed_value_text.dart`.
+Themes and reusable widgets live in `packages/widgets/` (Dart package name `widgets`, depended on via `path:`). Three palettes (`win95Palette`, `vsCodeDarkPalette`, and `vsCodeOrangePalette`, the default theme: Dark Modern with the logo's orange as accent) implement the shared `AppPalette` `ThemeExtension`; widgets read role-based fields via `AppPalette.of(context)` and shape-adapt via `ChromeKind` (`bevel` vs `flat`). Anything outside the package imports from a single barrel: `import 'package:widgets/widgets.dart';`. Menus must answer at once: pass `kInstantPopUp` (`packages/widgets/lib/src/context_menu.dart`) as `popUpAnimationStyle` to every `showMenu` and `PopupMenuButton`, and use `InstantDropdown` rather than `DropdownButton`, whose menu always takes 300 ms to open. The themes use `NoSplash` for the same reason. The package ships the bundled MS Sans Serif TTF under `lib/assets/fonts/` so it works standalone in any consumer project. Typed-cell colors are driven by the `type*` roles on `AppPalette` (e.g. `typeString`, `typeNumber`, `typeJson`, `typeNull`); the PG-type → role mapping lives in `lib/grid/typed_value_text.dart`.
 
 ## The grid and pagination
 
@@ -264,9 +284,9 @@ The diagram primitives live in **`packages/schema_viewer/`** as a backend-agnost
 
 `SchemaTab` (`lib/schema/`) is the host-side glue: it loads the catalog (schemas → tables → columns + the global FK list) via `SchemaCatalog`, maps the result onto the package's data types, runs the layout, and renders `SchemaCanvas`. Layout modes: LR (default) and TB. The Sugiyama-style ranked layout is in `packages/schema_viewer/lib/src/schema_layout.dart` — not full dagre, but close enough for typical schemas (60+ tables) and zero external deps.
 
-Card states: idle, `isSelected` (2-px primary outline, deeper shadow), `isHighlighted` (neighbour in the same FK component as the selection), dimmed (anything else, 35% opacity, when something is selected). Selecting any card isolates its 1-hop FK neighbourhood; clicking the background clears the selection. Header affordances: `onActivate` (drill-in action — the Schema tab wires it to open a `TableTab`; the Linked view wires it to open the row's table in a fresh tab), `onToggleCompact` (PK/FK-only filter — both hosts wire this). Edges are gradient bezier strokes with two chevrons animating along the path (3.5s cycle); a single `Ticker` per canvas drives every chevron, not per-edge animations.
+Card states: idle, `isSelected` (2-px primary outline, deeper shadow), `isHighlighted` (neighbour in the same FK component as the selection), dimmed (anything else, 35% opacity, when something is selected). Selecting any card isolates its 1-hop FK neighbourhood; clicking the background clears the selection. Header affordances: `onActivate` (drill-in action — the Schema tab wires it to open a `TableTab`; the Linked view wires it to open the row's table in a fresh tab), `onToggleCompact` (PK/FK-only filter — both hosts wire this). Edges are gradient bezier strokes with two chevrons animating along the path (a 6 s cycle here, 3.5 s in the Linked view). A single `Ticker` per canvas advances a `ValueNotifier` that the edge painter repaints from, inside its own `RepaintBoundary`. The animation runs every frame for the life of the canvas, so it must never call `setState`: that rebuilt every card on every frame and starved drags and clicks across the whole window.
 
-Entry point: `View → Schema` (Cmd-D) in `menu_bar.dart`; that method focuses the existing `SchemaTab` for the active connection if one is open, otherwise creates a fresh one. The tab kind is registered through `BuiltinPlugin` alongside the other built-ins.
+Entry point: `View → Schema` (Cmd-D) in `app_commands.dart`; that method focuses the existing `SchemaTab` for the active connection if one is open, otherwise creates a fresh one. The tab kind is registered through `BuiltinPlugin` alongside the other built-ins.
 
 The palette previously living at `lib/shell/relationship_gutter.dart` (`colorForTable`, `colorIndexForTable`, `buildTableColorMap`, `kRelationshipPalette`) was moved into `package:schema_viewer/schema_viewer.dart`; `relationship_gutter.dart` re-exports them so existing import sites (sidebar, etc.) keep working unchanged.
 
@@ -283,6 +303,16 @@ User-facing reference: README "Schema metadata". The shape of the code:
 - `tool/meta_to_sql.dart` reuses `MetaWriter` through a recording executor, so the CLI and the app write identical SQL. `test/meta_live_pg_test.dart` runs every query/check/chart/action of a real database's metadata (skipped unless `DBSCOPE_LIVE_PG` is set).
 - Gotcha that cost a hang: `future.whenComplete(() => map.remove(key))` returns the removed future, and `whenComplete` waits on it — a load that waits on itself. Use a block body.
 
+## AI features (ai_broker)
+
+Providers come from [ai_broker](https://pub.dev/packages/ai_broker). Every AI feature resolves the configured provider, key and model through `AiTarget.resolve` (`lib/ai/ai_target.dart`), so they all fail with the same messages.
+
+- **Keys:** `AiKeyResolver` reads the keychain first, then the vendor's env var through ai_broker's `EnvKeyResolver` with `ShellEnv` as its lookup (see "Shell environment").
+- **Custom endpoint:** `AiSettings.customBaseUrl` registers an `OpenAiCompatibleBroker` under id `openai_compatible` (`lib/ai/custom_endpoint.dart`). `AiSettingsStore.load`/`save` keep the registry in step. It needs no key; a keyless call sends the placeholder `no-key`, because brokers skip a request with an empty key.
+- **Structured output:** the SQL assistant asks for `{"sql", "clarify"}` (`sqlReplySchema`, parsed by `parseSqlReply`) and the regex inferrer for `{"column"}`, through `ChatRequest.jsonSchema`. DeepSeek and custom endpoints only get JSON mode, so the parsers still tolerate a code fence.
+- **Cancellation:** Stop completes the tab's `CancelToken`, whose `whenCancelled` is the request's `abortTrigger`; ai_broker closes the connection and throws `AiAbortedException` (an `AiBrokerException`, so catch it first).
+- **The agent** (`lib/agent/`): an `AgentTab` holds an `AgentSession`, a tool-calling loop capped at `kAgentMaxTurns` turns. `sendToAgent` (`agent_runner.dart`) gives it the database tools (`database_tools.dart`) and the app's key_flow commands (`app_command_tools.dart`). It needs the `ai` capability, and `query` for the query tools. Database tools go through the policy-filtered `SchemaCatalog`, `enforceReadOnly` and `runSql(readOnly: true)`; row values go to the provider only with the sample-rows opt-in. Pinned by `test/agent_test.dart`.
+
 ## SQL safety invariants
 
 These are non-negotiable; the plan covers them and the codebase enforces them:
@@ -290,7 +320,7 @@ These are non-negotiable; the plan covers them and the codebase enforces them:
 - **Identifier vs value quoting.** Schema/table/column names go through `quoteIdent` / `quoteQualified` (`lib/util/sql_quote.dart`). Values are positional params (`$1`, `$2`). Never concatenate user values into SQL.
 - **Optimistic concurrency on UPDATE.** All cell edits issue `... AND <col> IS NOT DISTINCT FROM $oldValue`. 0 rows affected = conflict toast + refresh that row. See `lib/db/dml.dart`.
 - **Statement splitting** (`containsMultipleStatements` / `stripCommentsAndLeading` in `lib/util/sql_parse.dart`) takes a required `SqlDialect`. Derive it with `sqlDialectOf(executor)` (`lib/meta/meta_sources.dart`). Postgres syntax (`E''`, `$$`, nested comments) on SQLite would hide a real second statement.
-- **AI-generated SQL** auto-runs through `runSql(readOnly: true)`, which fences it into a read-only transaction (`executeReadOnly`). `enforceReadOnly` checks the first keyword and refuses `INSERT`/`UPDATE`/`DELETE`/`MERGE`/`CREATE`/`EXECUTE`, `REPLACE INTO` and `SELECT … INTO` anywhere outside literals and comments (so a data-modifying CTE or `EXPLAIN ANALYZE DELETE` is caught). Backends without transactions (pg-proxy, on-device sqflite) can't be fenced, so that scan is their only guard.
+- **AI-generated SQL** (the query tab's Ask AI and the agent's `db_run_query`) auto-runs through `runSql(readOnly: true)`, which fences it into a read-only transaction (`executeReadOnly`). `enforceReadOnly` checks the first keyword and refuses `INSERT`/`UPDATE`/`DELETE`/`MERGE`/`CREATE`/`EXECUTE`, `REPLACE INTO` and `SELECT … INTO` anywhere outside literals and comments (so a data-modifying CTE or `EXPLAIN ANALYZE DELETE` is caught). Backends without transactions (pg-proxy, on-device sqflite) can't be fenced, so that scan is their only guard.
 - **Read-only mode** is enforced by `SET default_transaction_read_only = ON` on the connection itself, not by parsing SQL. Toggled per-profile; `ConnectionService` and `ConnectionRegistry` both apply it on open and on `setReadOnly`.
 
 ## Postgres version floor

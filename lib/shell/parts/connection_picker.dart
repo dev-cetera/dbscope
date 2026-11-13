@@ -192,28 +192,33 @@ class _ConnectionPicker extends StatelessWidget {
           const SizedBox(width: 6.0),
           Expanded(
             child: Builder(
-              builder: (buttonContext) => InkWell(
-                onTap: () {
-                  final box = buttonContext.findRenderObject() as RenderBox?;
-                  if (box == null) return;
-                  final origin = box.localToGlobal(
-                    Offset(0.0, box.size.height),
-                  );
-                  unawaited(_openMenu(buttonContext, origin));
-                },
-                child: Tooltip(
-                  message: 'Connections',
-                  child: Row(
-                    children: [
-                      Flexible(
-                        child: Text(
-                          profile == null ? 'no connection' : profile.name,
-                          style: theme.textTheme.titleSmall,
-                          overflow: TextOverflow.ellipsis,
+              builder: (buttonContext) => Semantics(
+                container: true,
+                button: true,
+                label: 'Connections',
+                child: InkWell(
+                  onTap: () {
+                    final box = buttonContext.findRenderObject() as RenderBox?;
+                    if (box == null) return;
+                    final origin = box.localToGlobal(
+                      Offset(0.0, box.size.height),
+                    );
+                    unawaited(_openMenu(buttonContext, origin));
+                  },
+                  child: Tooltip(
+                    message: 'Connections',
+                    child: Row(
+                      children: [
+                        Flexible(
+                          child: Text(
+                            profile == null ? 'no connection' : profile.name,
+                            style: theme.textTheme.titleSmall,
+                            overflow: TextOverflow.ellipsis,
+                          ),
                         ),
-                      ),
-                      const Icon(Icons.arrow_drop_down, size: 16.0),
-                    ],
+                        const Icon(Icons.arrow_drop_down, size: 16.0),
+                      ],
+                    ),
                   ),
                 ),
               ),
@@ -228,7 +233,7 @@ class _ConnectionPicker extends StatelessWidget {
           else if (profile != null)
             IconButton(
               tooltip: 'Refresh',
-              icon: const Icon(Icons.refresh, size: 18.0),
+              icon: const Icon(Icons.refresh, size: 18.0, semanticLabel: 'Refresh'),
               onPressed: () async => onReload(),
             ),
         ],

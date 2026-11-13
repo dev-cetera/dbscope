@@ -166,13 +166,19 @@ class _DateInputState extends State<_DateInput> {
       focusNode: widget.focusNode,
       suffix: MouseRegion(
         cursor: widget.enabled ? SystemMouseCursors.click : SystemMouseCursors.basic,
-        child: GestureDetector(
-          onTap: _pick,
-          child: const Padding(
-            padding: EdgeInsets.symmetric(horizontal: 6.0),
-            child: Tooltip(
-              message: 'Pick date',
-              child: Icon(Icons.event, size: 14.0),
+        child: Semantics(
+          container: true,
+          button: true,
+          enabled: widget.enabled,
+          label: 'Pick date',
+          child: GestureDetector(
+            onTap: _pick,
+            child: const Padding(
+              padding: EdgeInsets.symmetric(horizontal: 6.0),
+              child: Tooltip(
+                message: 'Pick date',
+                child: Icon(Icons.event, size: 14.0),
+              ),
             ),
           ),
         ),

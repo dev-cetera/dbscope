@@ -17,7 +17,6 @@ class _EnumInput extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final palette = AppPalette.of(context);
-    final present = value != null && values.contains(value);
     final textStyle = TextStyle(
       color: enabled ? palette.text : palette.mutedText,
       fontSize: palette.bodyFontSize,
@@ -26,24 +25,20 @@ class _EnumInput extends StatelessWidget {
     return _Field(
       enabled: enabled,
       padding: const EdgeInsets.symmetric(horizontal: 4.0, vertical: 2.0),
-      child: DropdownButtonHideUnderline(
-        child: DropdownButton<String>(
-          value: present ? value : null,
-          focusNode: focusNode,
-          isDense: true,
-          isExpanded: true,
-          icon: const Icon(Icons.arrow_drop_down, size: 16.0),
-          style: textStyle,
-          dropdownColor: palette.surface,
-          hint: Text(
-            '— pick —',
-            style: textStyle.copyWith(color: palette.mutedText),
-          ),
-          items: [
-            for (final option in values) DropdownMenuItem(value: option, child: Text(option)),
-          ],
-          onChanged: enabled ? onChanged : null,
-        ),
+      child: InstantDropdown(
+        enabled: enabled,
+        focusNode: focusNode,
+        isExpanded: true,
+        style: textStyle,
+        hint: '— pick —',
+        items: [
+          for (final option in values)
+            InstantDropdownItem(
+              label: option,
+              selected: option == value,
+              onSelected: () => onChanged(option),
+            ),
+        ],
       ),
     );
   }

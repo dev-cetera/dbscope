@@ -1,6 +1,7 @@
 import 'package:ai_broker/ai_broker.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 
+import '../agent/agent_tab_kind.dart';
 import '../jobs/job_tab_kind.dart';
 import '../json_viewer/json_tab_kind.dart' show jsonTabKind;
 import '../linked/linked_tab_kind.dart';
@@ -23,8 +24,8 @@ import 'dbscope_plugin.dart';
 /// - the built-in sidebar table-row actions (Open as Table /
 /// Navigator / Linked, Copy name, Configure soft-delete, Copy to
 /// another DB)
-/// - the three packaged AI brokers (OpenAI, Anthropic, Gemini) from
-/// `package:ai_broker`
+/// - the packaged AI brokers (OpenAI, Anthropic, Gemini, DeepSeek) from
+/// `package:ai_broker`, and the agent tab
 /// - File ▸ Show crash log, on desktop
 class BuiltinPlugin extends DbscopePlugin {
   @override
@@ -43,18 +44,20 @@ class BuiltinPlugin extends DbscopePlugin {
       ..register(linkedTabKind)
       ..register(schemaTabKind)
       ..register(jobTabKind)
-      ..register(jsonTabKind);
+      ..register(jsonTabKind)
+      ..register(agentTabKind);
 
     // Sidebar table-row actions.
     registerDefaultSidebarTableActions();
 
     // File ▸ Show crash log (desktop: the web build has no log file).
-    if (!kIsWeb) host.menus.register(crashLogMenuContribution);
+    if (!kIsWeb) host.commands.register(crashLogCommandContribution);
 
     // AI brokers.
     host.aiBrokers
       ..register(OpenAiBroker())
       ..register(AnthropicBroker())
-      ..register(GeminiBroker());
+      ..register(GeminiBroker())
+      ..register(DeepSeekBroker());
   }
 }

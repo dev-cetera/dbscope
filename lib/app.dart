@@ -2,15 +2,17 @@ import 'dart:async';
 import 'dart:convert';
 
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
-import 'package:widgets/widgets.dart' hide AppMenuBar;
+import 'package:key_flow/key_flow.dart';
+import 'package:widgets/widgets.dart';
 
 import 'connection/registry.dart';
 import 'rpc/backend_client.dart';
 import 'rpc/scope.dart';
+import 'shell/app_commands.dart';
+import 'shell/app_key_flow.dart';
 import 'shell/app_state.dart';
+import 'shell/command_registry.dart';
 import 'shell/footer.dart';
-import 'shell/menu_bar.dart';
 import 'shell/shell_listenable.dart';
 import 'shell/sidebar.dart';
 import 'shell/tab_strip.dart';
@@ -115,16 +117,19 @@ class _DBScopeAppState extends State<DBScopeApp> {
         theme: _theme,
         darkTheme: _theme,
         themeMode: _theme.brightness == Brightness.dark ? ThemeMode.dark : ThemeMode.light,
+        navigatorKey: appNavigatorKey,
         home: widget.showWelcome ? const _WelcomeOnStartup(child: _Shell()) : const _Shell(),
         builder: (context, child) {
-          return Stack(
-            children: [
-              ?child,
-              for (final builder in _themePlugin?.overlays ?? const <WidgetBuilder>[])
-                builder(context),
-              // Only the host window checks for updates (main.dart starts it).
-              if (widget.windowId == 0) const UpdatePrompt(),
-            ],
+          return AppKeyFlow(
+            child: Stack(
+              children: [
+                ?child,
+                for (final builder in _themePlugin?.overlays ?? const <WidgetBuilder>[])
+                  builder(context),
+                // Only the host window checks for updates (main.dart starts it).
+                if (widget.windowId == 0) const UpdatePrompt(),
+              ],
+            ),
           );
         },
       ),
@@ -160,51 +165,23 @@ class _Shell extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return AppMenuBar(
-      child: AnimatedBuilder(
-        animation: shellListenable,
-        builder: (context, _) {
-          return CallbackShortcuts(
-            bindings: <ShortcutActivator, VoidCallback>{
-              // Toggle the sidebar's visibility entirely (Cmd/Ctrl+B).
-              const SingleActivator(LogicalKeyboardKey.keyB, meta: true):
-                  AppState.instance.toggleSidebarVisible,
-              const SingleActivator(LogicalKeyboardKey.keyB, control: true):
-                  AppState.instance.toggleSidebarVisible,
-              // Focus the sidebar's table filter (Cmd/Ctrl+F). If the
-              // sidebar is hidden we show it first so the field becomes
-              // reachable.
-              const SingleActivator(LogicalKeyboardKey.keyF, meta: true): () {
-                if (!AppState.instance.sidebarVisible) {
-                  AppState.instance.toggleSidebarVisible();
-                }
-                SidebarFocusController.instance.requestFilterFocus();
-              },
-              const SingleActivator(
-                LogicalKeyboardKey.keyF,
-                control: true,
-              ): () {
-                if (!AppState.instance.sidebarVisible) {
-                  AppState.instance.toggleSidebarVisible();
-                }
-                SidebarFocusController.instance.requestFilterFocus();
-              },
-            },
-            child: Focus(
-              autofocus: true,
-              child: Scaffold(
-                body: Column(
-                  children: [
-                    const TabStrip(),
-                    Expanded(child: _Body()),
-                    const Footer(),
-                  ],
-                ),
-              ),
+    // Shortcuts and menus come from AppKeyFlow (shell/app_commands.dart).
+    return AnimatedBuilder(
+      animation: shellListenable,
+      builder: (context, _) {
+        return Focus(
+          autofocus: true,
+          child: Scaffold(
+            body: Column(
+              children: [
+                const TabStrip(),
+                Expanded(child: _Body()),
+                const Footer(),
+              ],
             ),
-          );
-        },
-      ),
+          ),
+        );
+      },
     );
   }
 }
@@ -235,7 +212,8 @@ class _Body extends StatelessWidget {
       maxWidth: 520.0,
       side: state.sidebarOnRight ? ResizeSide.left : ResizeSide.right,
       onResized: state.setSidebarWidth,
-      child: const Sidebar(),
+      // A named area: F6 moves between it and the open tab.
+      child: const KeyFlowScope(region: 'Sidebar', child: Sidebar()),
     );
     return Row(
       children: [
@@ -243,7 +221,10 @@ class _Body extends StatelessWidget {
         Expanded(
           child: KeyedSubtree(
             key: _mainAreaKey,
-            child: _MainArea(active: state.active),
+            child: KeyFlowScope(
+              region: 'Tab',
+              child: _MainArea(active: state.active),
+            ),
           ),
         ),
         if (state.sidebarVisible && state.sidebarOnRight) sidebar,

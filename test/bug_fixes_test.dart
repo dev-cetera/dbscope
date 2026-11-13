@@ -1,6 +1,8 @@
 // Regression tests for the bugs fixed together from BUGS.md (2026-11-03).
 // Each group names the contract it pins:
-// * A reply that is only `-- CLARIFY: <question>` yields the question.
+// * The SQL assistant's JSON reply yields its question when it asks one,
+//   else its SQL (trailing semicolons dropped, a code fence tolerated), and
+//   anything else is refused with an AssistantException.
 // * enforceReadOnly refuses write keywords anywhere outside literals and
 //   comments (data-modifying CTEs, EXPLAIN ANALYZE DELETE, SELECT INTO),
 //   but not inside a string or a quoted identifier.
@@ -262,16 +264,26 @@ void main() {
     expect(uniqueColumnNames(['id', 'id', 'name', 'ID', 'id_2']), ['id', 'id_3', 'name', 'ID_4', 'id_2']);
   });
 
-  group('clarifyingQuestion', () {
-    test('finds the question in a clarifying reply', () {
-      expect(clarifyingQuestion('-- CLARIFY: Which table do you mean?'), 'Which table do you mean?');
-      expect(clarifyingQuestion('  -- clarify:   Which one?  '), 'Which one?');
+  group('parseSqlReply', () {
+    test('a question in clarify is the answer, even next to SQL', () {
+      final reply = parseSqlReply('{"sql": "SELECT 1", "clarify": "  Which table do you mean? "}');
+      expect(reply, isA<SqlReplyClarify>().having((r) => r.question, 'question', 'Which table do you mean?'));
     });
 
-    test('a query is not a question', () {
-      expect(clarifyingQuestion('SELECT 1'), isNull);
-      expect(clarifyingQuestion('-- CLARIFY: Which?\nSELECT 1'), isNull);
-      expect(clarifyingQuestion('-- an ordinary comment'), isNull);
+    test('a query comes back without trailing semicolons', () {
+      final reply = parseSqlReply('{"sql": " SELECT 1 ; ;", "clarify": null}');
+      expect(reply, isA<SqlReplyQuery>().having((r) => r.sql, 'sql', 'SELECT 1'));
+    });
+
+    test('a reply in a code fence is still read', () {
+      final reply = parseSqlReply('```json\n{"sql": "SELECT 2", "clarify": ""}\n```');
+      expect(reply, isA<SqlReplyQuery>().having((r) => r.sql, 'sql', 'SELECT 2'));
+    });
+
+    test('refuses prose, the wrong shape, and a reply with neither', () {
+      for (final raw in ['SELECT 1', '["SELECT 1"]', '{"sql": null, "clarify": null}', '{"sql": "  "}']) {
+        expect(() => parseSqlReply(raw), throwsA(isA<AssistantException>()), reason: raw);
+      }
     });
   });
 }

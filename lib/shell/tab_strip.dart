@@ -191,102 +191,109 @@ class _TabState extends State<_Tab> with HoverStateMixin {
             widget.state.closeTab(widget.tab.id);
           }
         },
-        child: GestureDetector(
-          onTap: () => widget.state.selectTab(widget.tab.id),
-          onSecondaryTapDown: (details) => _showContextMenu(context, details.globalPosition),
-          // Material owns background + textStyle so the per-item Material
-          // that ReorderableListView wraps around us can't fall back to the
-          // theme's default text colour and wash out the title/X.
-          child: Container(
-            margin: const EdgeInsets.only(left: 2.0, top: 4.0),
-            child: Material(
-              color: background,
-              textStyle: TextStyle(
-                color: foreground,
-                fontFamily: palette.uiFontFamily,
-                fontSize: palette.bodyFontSize,
-              ),
-              borderRadius: const BorderRadius.only(
-                topLeft: Radius.circular(8.0),
-                topRight: Radius.circular(8.0),
-              ),
-              // BoxDecoration's borderRadius rejects non-uniform border
-              // colors, so we round via ClipRRect and let the Border draw
-              // square sides inside the clip.
-              child: ClipRRect(
+        child: Semantics(
+          container: true,
+          button: true,
+          selected: isActive,
+          // A pinned tab shows only its icon.
+          label: isPinned ? widget.tab.title : null,
+          child: GestureDetector(
+            onTap: () => widget.state.selectTab(widget.tab.id),
+            onSecondaryTapDown: (details) => _showContextMenu(context, details.globalPosition),
+            // Material owns background + textStyle so the per-item Material
+            // that ReorderableListView wraps around us can't fall back to the
+            // theme's default text colour and wash out the title/X.
+            child: Container(
+              margin: const EdgeInsets.only(left: 2.0, top: 4.0),
+              child: Material(
+                color: background,
+                textStyle: TextStyle(
+                  color: foreground,
+                  fontFamily: palette.uiFontFamily,
+                  fontSize: palette.bodyFontSize,
+                ),
                 borderRadius: const BorderRadius.only(
                   topLeft: Radius.circular(8.0),
                   topRight: Radius.circular(8.0),
                 ),
-                child: DecoratedBox(
-                  decoration: BoxDecoration(
-                    border: Border(
-                      top: BorderSide(
-                        color: isActive ? accent : Colors.transparent,
-                        width: isActive ? 3 : 1,
-                      ),
-                      left: BorderSide(
-                        color: isActive ? palette.borderStrong : Colors.transparent,
-                      ),
-                      right: BorderSide(
-                        color: isActive ? palette.borderStrong : Colors.transparent,
-                      ),
-                      // Active tab's bottom edge merges with the body surface
-                      // so it looks like one continuous panel.
-                      bottom: BorderSide(
-                        color: isActive ? background : Colors.transparent,
+                // BoxDecoration's borderRadius rejects non-uniform border
+                // colors, so we round via ClipRRect and let the Border draw
+                // square sides inside the clip.
+                child: ClipRRect(
+                  borderRadius: const BorderRadius.only(
+                    topLeft: Radius.circular(8.0),
+                    topRight: Radius.circular(8.0),
+                  ),
+                  child: DecoratedBox(
+                    decoration: BoxDecoration(
+                      border: Border(
+                        top: BorderSide(
+                          color: isActive ? accent : Colors.transparent,
+                          width: isActive ? 3 : 1,
+                        ),
+                        left: BorderSide(
+                          color: isActive ? palette.borderStrong : Colors.transparent,
+                        ),
+                        right: BorderSide(
+                          color: isActive ? palette.borderStrong : Colors.transparent,
+                        ),
+                        // Active tab's bottom edge merges with the body surface
+                        // so it looks like one continuous panel.
+                        bottom: BorderSide(
+                          color: isActive ? background : Colors.transparent,
+                        ),
                       ),
                     ),
-                  ),
-                  child: IconTheme.merge(
-                    data: IconThemeData(color: foreground, size: 13.0),
-                    child: Padding(
-                      padding: const EdgeInsets.only(left: 10.0, right: 10.0),
-                      child: ConstrainedBox(
-                        constraints: isPinned
-                            ? const BoxConstraints(
-                                maxWidth: 48.0,
-                                minWidth: 40.0,
-                              )
-                            : const BoxConstraints(
-                                maxWidth: 240.0,
-                                minWidth: 100.0,
-                              ),
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Icon(
-                              isPinned ? Icons.push_pin : _iconFor(widget.tab),
-                              color: isPinned ? accent : foreground,
-                            ),
-                            if (!isPinned) ...[
-                              const SizedBox(width: 6.0),
-                              Flexible(
-                                child: Text(
-                                  widget.tab.title,
-                                  style: TextStyle(
-                                    color: foreground,
-                                    fontWeight: isActive ? FontWeight.w600 : FontWeight.normal,
-                                  ),
-                                  overflow: TextOverflow.ellipsis,
-                                  maxLines: 1,
+                    child: IconTheme.merge(
+                      data: IconThemeData(color: foreground, size: 13.0),
+                      child: Padding(
+                        padding: const EdgeInsets.only(left: 10.0, right: 10.0),
+                        child: ConstrainedBox(
+                          constraints: isPinned
+                              ? const BoxConstraints(
+                                  maxWidth: 48.0,
+                                  minWidth: 40.0,
+                                )
+                              : const BoxConstraints(
+                                  maxWidth: 240.0,
+                                  minWidth: 100.0,
                                 ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(
+                                isPinned ? Icons.push_pin : _iconFor(widget.tab),
+                                color: isPinned ? accent : foreground,
                               ),
-                              const SizedBox(width: 6.0),
-                              SizedBox(
-                                width: 16.0,
-                                height: 16.0,
-                                child: showClose
-                                    ? _CloseDot(
-                                        color: foreground,
-                                        onTap: () => widget.state.closeTab(
-                                          widget.tab.id,
-                                        ),
-                                      )
-                                    : null,
-                              ),
+                              if (!isPinned) ...[
+                                const SizedBox(width: 6.0),
+                                Flexible(
+                                  child: Text(
+                                    widget.tab.title,
+                                    style: TextStyle(
+                                      color: foreground,
+                                      fontWeight: isActive ? FontWeight.w600 : FontWeight.normal,
+                                    ),
+                                    overflow: TextOverflow.ellipsis,
+                                    maxLines: 1,
+                                  ),
+                                ),
+                                const SizedBox(width: 6.0),
+                                SizedBox(
+                                  width: 16.0,
+                                  height: 16.0,
+                                  child: showClose
+                                      ? _CloseDot(
+                                          color: foreground,
+                                          onTap: () => widget.state.closeTab(
+                                            widget.tab.id,
+                                          ),
+                                        )
+                                      : null,
+                                ),
+                              ],
                             ],
-                          ],
+                          ),
                         ),
                       ),
                     ),
@@ -317,14 +324,19 @@ class _CloseDotState extends State<_CloseDot> with HoverStateMixin {
       cursor: SystemMouseCursors.click,
       onEnter: (_) => setHovered(hovered: true),
       onExit: (_) => setHovered(hovered: false),
-      child: GestureDetector(
-        onTap: widget.onTap,
-        child: Container(
-          decoration: BoxDecoration(
-            color: isHovered ? widget.color.withValues(alpha: 0.18) : Colors.transparent,
-            borderRadius: BorderRadius.circular(4.0),
+      child: Semantics(
+        container: true,
+        button: true,
+        label: 'Close tab',
+        child: GestureDetector(
+          onTap: widget.onTap,
+          child: Container(
+            decoration: BoxDecoration(
+              color: isHovered ? widget.color.withValues(alpha: 0.18) : Colors.transparent,
+              borderRadius: BorderRadius.circular(4.0),
+            ),
+            child: Icon(Icons.close, size: 12.0, color: widget.color),
           ),
-          child: Icon(Icons.close, size: 12.0, color: widget.color),
         ),
       ),
     );
@@ -350,21 +362,27 @@ class _NewTabButtonState extends State<_NewTabButton> with HoverStateMixin {
         cursor: widget.enabled ? SystemMouseCursors.click : SystemMouseCursors.basic,
         onEnter: (_) => setHovered(hovered: true),
         onExit: (_) => setHovered(hovered: false),
-        child: GestureDetector(
-          onTap: widget.enabled ? widget.onTap : null,
-          child: Container(
-            margin: const EdgeInsets.symmetric(horizontal: 6.0, vertical: 8.0),
-            padding: const EdgeInsets.all(2.0),
-            decoration: BoxDecoration(
-              color: isHovered && widget.enabled
-                  ? palette.text.withValues(alpha: 0.12)
-                  : Colors.transparent,
-              borderRadius: BorderRadius.circular(4.0),
-            ),
-            child: Icon(
-              Icons.add,
-              size: 16.0,
-              color: widget.enabled ? palette.text : palette.mutedText,
+        child: Semantics(
+          container: true,
+          button: true,
+          enabled: widget.enabled,
+          label: 'New query',
+          child: GestureDetector(
+            onTap: widget.enabled ? widget.onTap : null,
+            child: Container(
+              margin: const EdgeInsets.symmetric(horizontal: 6.0, vertical: 8.0),
+              padding: const EdgeInsets.all(2.0),
+              decoration: BoxDecoration(
+                color: isHovered && widget.enabled
+                    ? palette.text.withValues(alpha: 0.12)
+                    : Colors.transparent,
+                borderRadius: BorderRadius.circular(4.0),
+              ),
+              child: Icon(
+                Icons.add,
+                size: 16.0,
+                color: widget.enabled ? palette.text : palette.mutedText,
+              ),
             ),
           ),
         ),

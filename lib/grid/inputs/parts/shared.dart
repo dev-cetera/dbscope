@@ -44,19 +44,25 @@ class _NullButton extends StatelessWidget {
     final palette = AppPalette.of(context);
     return MouseRegion(
       cursor: enabled ? SystemMouseCursors.click : SystemMouseCursors.basic,
-      child: GestureDetector(
-        onTap: enabled ? onToggle : null,
-        child: AppBevel(
-          raised: !isNull,
-          color: isNull ? palette.accent : palette.surface,
-          padding: const EdgeInsets.symmetric(horizontal: 7.0, vertical: 2.0),
-          child: Text(
-            'NULL',
-            style: TextStyle(
-              color: isNull ? palette.onAccent : palette.text,
-              fontSize: palette.smallFontSize,
-              fontWeight: FontWeight.bold,
-              fontFamily: palette.uiFontFamily,
+      child: Semantics(
+        container: true,
+        button: true,
+        enabled: enabled,
+        toggled: isNull,
+        child: GestureDetector(
+          onTap: enabled ? onToggle : null,
+          child: AppBevel(
+            raised: !isNull,
+            color: isNull ? palette.accent : palette.surface,
+            padding: const EdgeInsets.symmetric(horizontal: 7.0, vertical: 2.0),
+            child: Text(
+              'NULL',
+              style: TextStyle(
+                color: isNull ? palette.onAccent : palette.text,
+                fontSize: palette.smallFontSize,
+                fontWeight: FontWeight.bold,
+                fontFamily: palette.uiFontFamily,
+              ),
             ),
           ),
         ),

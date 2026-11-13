@@ -160,16 +160,19 @@ Future<Map<String, Object?>?> showInputsDialog(
               for (final i in inputs)
                 Padding(
                   padding: const EdgeInsets.only(bottom: 8.0),
-                  child: TextField(
-                    controller: controllers[i.name],
-                    autofocus: i == inputs.first,
-                    keyboardType: i.type == 'number' ? TextInputType.number : TextInputType.text,
-                    decoration: InputDecoration(
-                      labelText: i.prompt,
-                      isDense: true,
-                      border: const OutlineInputBorder(),
+                  child: FieldName(
+                    i.prompt,
+                    child: TextField(
+                      controller: controllers[i.name],
+                      autofocus: i == inputs.first,
+                      keyboardType: i.type == 'number' ? TextInputType.number : TextInputType.text,
+                      decoration: InputDecoration(
+                        labelText: i.prompt,
+                        isDense: true,
+                        border: const OutlineInputBorder(),
+                      ),
+                      onSubmitted: (_) => submit(),
                     ),
-                    onSubmitted: (_) => submit(),
                   ),
                 ),
               if (error != null)
@@ -431,12 +434,15 @@ Future<void> showEditDescriptionDialog(
         content: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            TextField(
-              controller: controller,
-              autofocus: true,
-              minLines: 3,
-              maxLines: 8,
-              decoration: const InputDecoration(border: OutlineInputBorder()),
+            FieldName(
+              'Description',
+              child: TextField(
+                controller: controller,
+                autofocus: true,
+                minLines: 3,
+                maxLines: 8,
+                decoration: const InputDecoration(border: OutlineInputBorder()),
+              ),
             ),
             const SizedBox(height: 8.0),
             if (!tablesExist)

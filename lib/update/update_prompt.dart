@@ -102,7 +102,10 @@ class _PromptRow extends StatelessWidget {
         ],
         if (dismiss != null) ...[
           const SizedBox(width: 4.0),
-          AppButton(onPressed: dismiss, child: const Text('✕')),
+          AppButton(
+            onPressed: dismiss,
+            child: const Text('✕', semanticsLabel: 'Dismiss'),
+          ),
         ],
       ],
     );

@@ -95,14 +95,19 @@ class AiInfoBlock extends StatelessWidget {
                       ),
               ),
               if (!controller.isLoading)
-                InkWell(
-                  onTap: controller.dismiss,
-                  child: Padding(
-                    padding: const EdgeInsets.only(left: 4.0, top: 1.0),
-                    child: Icon(
-                      Icons.close,
-                      size: 12.0,
-                      color: theme.hintColor,
+                Semantics(
+                  container: true,
+                  button: true,
+                  label: 'Dismiss',
+                  child: InkWell(
+                    onTap: controller.dismiss,
+                    child: Padding(
+                      padding: const EdgeInsets.only(left: 4.0, top: 1.0),
+                      child: Icon(
+                        Icons.close,
+                        size: 12.0,
+                        color: theme.hintColor,
+                      ),
                     ),
                   ),
                 ),

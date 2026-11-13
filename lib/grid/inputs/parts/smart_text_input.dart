@@ -120,8 +120,9 @@ class _SmartKindMenu extends StatelessWidget {
   Widget build(BuildContext context) {
     final palette = AppPalette.of(context);
     return PopupMenuButton<_SmartKind>(
+      popUpAnimationStyle: kInstantPopUp,
       tooltip: 'Field kind',
-      icon: Icon(Icons.tune, size: 14.0, color: palette.text),
+      icon: Icon(Icons.tune, size: 14.0, color: palette.text, semanticLabel: 'Field kind'),
       padding: EdgeInsets.zero,
       iconSize: 14.0,
       onSelected: onSelected,

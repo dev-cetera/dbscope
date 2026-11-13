@@ -3,6 +3,7 @@ library;
 import 'dart:async';
 import 'dart:math' as math;
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/scheduler.dart';
@@ -280,6 +281,7 @@ class _LinkedTabViewState extends State<LinkedTabView> {
   ) async {
     final selected = await showMenu<String>(
       context: context,
+      popUpAnimationStyle: kInstantPopUp,
       position: RelativeRect.fromLTRB(
         globalPosition.dx,
         globalPosition.dy,
@@ -829,6 +831,7 @@ class _LinkedTabViewState extends State<LinkedTabView> {
                       tab: tab,
                       canvas: _Canvas(
                         tab: tab,
+                        onViewChanged: () => setState(() {}),
                         onRowNodeMounted: (node) {
                           if (node.row == null && !node.isLoading && node.error == null) {
                             unawaited(_loadRowNode(node));
@@ -955,7 +958,7 @@ class _Header extends StatelessWidget {
           ),
           IconButton(
             tooltip: 'Zoom out',
-            icon: const Icon(Icons.remove, size: 18.0),
+            icon: const Icon(Icons.remove, size: 18.0, semanticLabel: 'Zoom out'),
             onPressed: onZoomOut,
           ),
           SizedBox(
@@ -968,12 +971,12 @@ class _Header extends StatelessWidget {
           ),
           IconButton(
             tooltip: 'Zoom in',
-            icon: const Icon(Icons.add, size: 18.0),
+            icon: const Icon(Icons.add, size: 18.0, semanticLabel: 'Zoom in'),
             onPressed: onZoomIn,
           ),
           IconButton(
             tooltip: 'Reset view',
-            icon: const Icon(Icons.center_focus_strong, size: 18.0),
+            icon: const Icon(Icons.center_focus_strong, size: 18.0, semanticLabel: 'Reset view'),
             onPressed: onResetView,
           ),
         ],
@@ -1068,7 +1071,7 @@ class _RightInspector extends StatelessWidget {
         titleIcon: hasPreview ? Icons.visibility_outlined : Icons.article_outlined,
         trailing: IconButton(
           tooltip: 'Hide inspector',
-          icon: const Icon(Icons.close, size: 14.0),
+          icon: const Icon(Icons.close, size: 14.0, semanticLabel: 'Hide inspector'),
           visualDensity: VisualDensity.compact,
           padding: const EdgeInsets.all(2.0),
           constraints: const BoxConstraints(),
@@ -1224,9 +1227,14 @@ class _PanelExpander extends StatelessWidget {
       ),
       child: Tooltip(
         message: tooltip,
-        child: InkWell(
-          onTap: onTap,
-          child: Center(child: Icon(icon, size: 16.0, color: theme.hintColor)),
+        child: Semantics(
+          container: true,
+          button: true,
+          label: tooltip,
+          child: InkWell(
+            onTap: onTap,
+            child: Center(child: Icon(icon, size: 16.0, color: theme.hintColor)),
+          ),
         ),
       ),
     );

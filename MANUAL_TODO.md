@@ -61,6 +61,13 @@ Only clicks in a dashboard you're already signed in to, with you watching (Claud
 - **Related.** none
 - **Added.** 2026-10-30
 
+#### Try the agent and the key_flow menus in the running macOS app
+
+- **Why.** The agent loop, database tools and command tree are covered by `test/agent_test.dart` with a scripted model, but nobody has yet run them against a real provider, seen the native menu bar built by key_flow, or checked that ⌘W / ⌘T fire once (native menu and key_flow both know those keys).
+- **Steps.** `fvm flutter run -d macos` on branch `feat/key-flow-and-ai-agent` → check every menu and its shortcut → ⌘K, `?`, ⌘J, F6 → AI ▸ Settings…, set a provider (or a local Ollama URL under "OpenAI-compatible endpoint") → AI ▸ Ask the agent… → ask "which tables are there?", "how many rows in <table>?", "open <table>" → try "delete everything from <table>" and confirm it is refused → press Stop mid-answer.
+- **Related.** none
+- **Added.** 2026-11-13
+
 ### P1
 
 #### Try Stop and a 10,000+ row query on Cloud SQL and through PgBouncer

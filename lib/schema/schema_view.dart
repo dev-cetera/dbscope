@@ -246,7 +246,7 @@ class _SchemaTabViewState extends State<SchemaTabView> {
               const Spacer(),
               IconButton(
                 tooltip: 'Zoom out',
-                icon: const Icon(Icons.remove, size: 18.0),
+                icon: const Icon(Icons.remove, size: 18.0, semanticLabel: 'Zoom out'),
                 onPressed: tab.isLoaded ? () => _canvasController.zoomBy(1 / 1.5) : null,
               ),
               IconButton(
@@ -254,12 +254,13 @@ class _SchemaTabViewState extends State<SchemaTabView> {
                 icon: const Icon(
                   Icons.center_focus_strong_outlined,
                   size: 18.0,
+                  semanticLabel: 'Fit to view',
                 ),
                 onPressed: tab.isLoaded ? () => _canvasController.fitView() : null,
               ),
               IconButton(
                 tooltip: 'Zoom in',
-                icon: const Icon(Icons.add, size: 18.0),
+                icon: const Icon(Icons.add, size: 18.0, semanticLabel: 'Zoom in'),
                 onPressed: tab.isLoaded ? () => _canvasController.zoomBy(1.5) : null,
               ),
               const SizedBox(width: 8.0),
@@ -271,7 +272,7 @@ class _SchemaTabViewState extends State<SchemaTabView> {
                         height: 14.0,
                         child: CircularProgressIndicator(strokeWidth: 2.0),
                       )
-                    : const Icon(Icons.refresh, size: 18.0),
+                    : const Icon(Icons.refresh, size: 18.0, semanticLabel: 'Refresh schema'),
                 onPressed: tab.isLoading ? null : () => _loadSchema(force: true),
               ),
             ],
@@ -307,16 +308,11 @@ class _SchemaTabViewState extends State<SchemaTabView> {
                   edges: tab.edges,
                   pan: tab.pan,
                   scale: tab.scale,
-                  onPanChanged: (pan) {
-                    tab.pan = pan;
-                    AppState.instance.notifyChange();
-                    setState(() {});
-                  },
-                  onScaleChanged: (scale) {
-                    tab.scale = scale;
-                    AppState.instance.notifyChange();
-                    setState(() {});
-                  },
+                  // Only this view draws from pan and scale, and these fire
+                  // per pinch event and per frame while a side panel is
+                  // dragged, so they rebuild this view, not the window.
+                  onPanChanged: (pan) => setState(() => tab.pan = pan),
+                  onScaleChanged: (scale) => setState(() => tab.scale = scale),
                   selectedId: tab.selectedId,
                   onSelectedChanged: (id) {
                     tab.selectedId = id;
@@ -353,21 +349,29 @@ class _LayoutModeButton extends StatelessWidget {
     final palette = AppPalette.of(context);
     return Tooltip(
       message: tooltip,
-      child: InkWell(
+      child: Semantics(
+        container: true,
+        button: true,
+        selected: isSelected,
+        label: tooltip,
         onTap: onPressed,
-        child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 3.0),
-          decoration: BoxDecoration(
-            color: isSelected ? theme.colorScheme.primary : palette.field,
-            borderRadius: BorderRadius.circular(3.0),
-            border: Border.all(color: palette.border),
-          ),
-          child: Text(
-            label,
-            style: TextStyle(
-              color: isSelected ? theme.colorScheme.onPrimary : palette.text,
-              fontSize: 11.0,
-              fontWeight: FontWeight.w600,
+        excludeSemantics: true,
+        child: InkWell(
+          onTap: onPressed,
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 3.0),
+            decoration: BoxDecoration(
+              color: isSelected ? theme.colorScheme.primary : palette.field,
+              borderRadius: BorderRadius.circular(3.0),
+              border: Border.all(color: palette.border),
+            ),
+            child: Text(
+              label,
+              style: TextStyle(
+                color: isSelected ? theme.colorScheme.onPrimary : palette.text,
+                fontSize: 11.0,
+                fontWeight: FontWeight.w600,
+              ),
             ),
           ),
         ),

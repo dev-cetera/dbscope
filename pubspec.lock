@@ -5,10 +5,10 @@ packages:
     dependency: "direct main"
     description:
       name: ai_broker
-      sha256: d0954b05d95b714b10eea16c19d36f614ccde0000b1f88fa2e89dceceb374705
+      sha256: d89116db5299b2250e3d8f67456d429fb81a4931477c35c5ed3a7ae02e6d66b9
       url: "https://pub.dev"
     source: hosted
-    version: "0.2.2"
+    version: "0.9.0"
   app_data_explorer:
     dependency: "direct dev"
     description:
@@ -489,6 +489,14 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "1.0.1"
+  key_flow:
+    dependency: "direct main"
+    description:
+      name: key_flow
+      sha256: "14e24fb2947fbd993f990768ee923c74f6e63c6532391e724bd2129d2fa6d4d2"
+      url: "https://pub.dev"
+    source: hosted
+    version: "0.4.0"
   leak_tracker:
     dependency: transitive
     description:

@@ -336,7 +336,7 @@ class _DeviceSqliteDialogState extends State<_DeviceSqliteDialog> {
                   height: 16.0,
                   child: CircularProgressIndicator(strokeWidth: 2.0),
                 )
-              : const Icon(Icons.refresh),
+              : const Icon(Icons.refresh, semanticLabel: 'Rescan devices'),
           onPressed: _devicesLoading ? null : _refreshDevices,
         ),
       ],
@@ -395,7 +395,7 @@ class _DeviceSqliteDialogState extends State<_DeviceSqliteDialog> {
                   height: 16.0,
                   child: CircularProgressIndicator(strokeWidth: 2.0),
                 )
-              : const Icon(Icons.refresh),
+              : const Icon(Icons.refresh, semanticLabel: 'Rescan apps'),
           onPressed: (_appsLoading || disabled) ? null : () => _loadApps(_device!),
         ),
       ],
@@ -453,7 +453,7 @@ class _DeviceSqliteDialogState extends State<_DeviceSqliteDialog> {
                   height: 16.0,
                   child: CircularProgressIndicator(strokeWidth: 2.0),
                 )
-              : const Icon(Icons.refresh),
+              : const Icon(Icons.refresh, semanticLabel: 'Rescan files'),
           onPressed: (_dbsLoading || disabled) ? null : () => _loadDbs(_device!, _appId!),
         ),
       ],

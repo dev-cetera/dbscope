@@ -45,45 +45,50 @@ class _AppButtonState extends State<AppButton> {
       ),
     );
 
-    return GestureDetector(
-      behavior: HitTestBehavior.opaque,
-      onTapDown: enabled ? (_) => setState(() => _down = true) : null,
-      onTapCancel: enabled ? () => setState(() => _down = false) : null,
-      onTapUp:
-          enabled
-              ? (_) {
-                setState(() => _down = false);
-                widget.onPressed?.call();
-              }
-              : null,
-      child: MouseRegion(
-        onEnter: enabled ? (_) => setState(() => _hover = true) : null,
-        onExit: enabled ? (_) => setState(() => _hover = false) : null,
-        cursor: enabled ? SystemMouseCursors.click : SystemMouseCursors.basic,
-        child: Opacity(
-          opacity: enabled ? 1.0 : 0.5,
-          child: ConstrainedBox(
-            constraints: BoxConstraints(minHeight: widget.minHeight),
-            child:
-                palette.isBevel
-                    ? bevelBox(
-                      palette: palette,
-                      sunken: pressed,
-                      background: palette.surface,
-                      padding: widget.padding,
-                      child: centered,
-                    )
-                    : flatBox(
-                      palette: palette,
-                      background:
-                          pressed
-                              ? palette.accentSoft
-                              : _hover && enabled
-                              ? palette.rowHover
-                              : palette.surfaceRaised,
-                      padding: widget.padding,
-                      child: centered,
-                    ),
+    return Semantics(
+      container: true,
+      button: true,
+      enabled: enabled,
+      child: GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onTapDown: enabled ? (_) => setState(() => _down = true) : null,
+        onTapCancel: enabled ? () => setState(() => _down = false) : null,
+        onTapUp:
+            enabled
+                ? (_) {
+                  setState(() => _down = false);
+                  widget.onPressed?.call();
+                }
+                : null,
+        child: MouseRegion(
+          onEnter: enabled ? (_) => setState(() => _hover = true) : null,
+          onExit: enabled ? (_) => setState(() => _hover = false) : null,
+          cursor: enabled ? SystemMouseCursors.click : SystemMouseCursors.basic,
+          child: Opacity(
+            opacity: enabled ? 1.0 : 0.5,
+            child: ConstrainedBox(
+              constraints: BoxConstraints(minHeight: widget.minHeight),
+              child:
+                  palette.isBevel
+                      ? bevelBox(
+                        palette: palette,
+                        sunken: pressed,
+                        background: palette.surface,
+                        padding: widget.padding,
+                        child: centered,
+                      )
+                      : flatBox(
+                        palette: palette,
+                        background:
+                            pressed
+                                ? palette.accentSoft
+                                : _hover && enabled
+                                ? palette.rowHover
+                                : palette.surfaceRaised,
+                        padding: widget.padding,
+                        child: centered,
+                      ),
+            ),
           ),
         ),
       ),
@@ -119,36 +124,42 @@ class _AppToggleButtonState extends State<AppToggleButton> {
     final enabled = widget.onPressed != null;
     final centered = Center(widthFactor: 1, child: widget.child);
 
-    return GestureDetector(
-      behavior: HitTestBehavior.opaque,
-      onTap: widget.onPressed,
-      child: MouseRegion(
-        onEnter: enabled ? (_) => setState(() => _hover = true) : null,
-        onExit: enabled ? (_) => setState(() => _hover = false) : null,
-        cursor: enabled ? SystemMouseCursors.click : SystemMouseCursors.basic,
-        child: Opacity(
-          opacity: enabled ? 1.0 : 0.5,
-          child:
-              palette.isBevel
-                  ? bevelBox(
-                    palette: palette,
-                    sunken: widget.selected,
-                    background: palette.surface,
-                    padding: widget.padding,
-                    child: centered,
-                  )
-                  : flatBox(
-                    palette: palette,
-                    background:
-                        widget.selected
-                            ? palette.accentSoft
-                            : _hover && enabled
-                            ? palette.rowHover
-                            : palette.surfaceRaised,
-                    borderColor: widget.selected ? palette.accent : palette.border,
-                    padding: widget.padding,
-                    child: centered,
-                  ),
+    return Semantics(
+      container: true,
+      button: true,
+      enabled: enabled,
+      toggled: widget.selected,
+      child: GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onTap: widget.onPressed,
+        child: MouseRegion(
+          onEnter: enabled ? (_) => setState(() => _hover = true) : null,
+          onExit: enabled ? (_) => setState(() => _hover = false) : null,
+          cursor: enabled ? SystemMouseCursors.click : SystemMouseCursors.basic,
+          child: Opacity(
+            opacity: enabled ? 1.0 : 0.5,
+            child:
+                palette.isBevel
+                    ? bevelBox(
+                      palette: palette,
+                      sunken: widget.selected,
+                      background: palette.surface,
+                      padding: widget.padding,
+                      child: centered,
+                    )
+                    : flatBox(
+                      palette: palette,
+                      background:
+                          widget.selected
+                              ? palette.accentSoft
+                              : _hover && enabled
+                              ? palette.rowHover
+                              : palette.surfaceRaised,
+                      borderColor: widget.selected ? palette.accent : palette.border,
+                      padding: widget.padding,
+                      child: centered,
+                    ),
+          ),
         ),
       ),
     );

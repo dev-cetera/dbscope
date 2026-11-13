@@ -386,6 +386,7 @@ class _PropertyFieldRowState extends State<PropertyFieldRow> {
                     Icons.visibility_off_outlined,
                     size: 11.0,
                     color: theme.hintColor,
+                    semanticLabel: 'Masked for you. Right-click for why.',
                   ),
                 )
               else if (widget.policy.readOnlyReason != null)
@@ -395,6 +396,7 @@ class _PropertyFieldRowState extends State<PropertyFieldRow> {
                     Icons.lock_outline,
                     size: 11.0,
                     color: theme.hintColor,
+                    semanticLabel: widget.policy.readOnlyReason,
                   ),
                 ),
               const SizedBox(width: 4.0),
@@ -437,7 +439,7 @@ class _PropertyFieldRowState extends State<PropertyFieldRow> {
               children: [
                 IconButton(
                   tooltip: 'Save (Cmd+Enter)',
-                  icon: const Icon(Icons.check, size: 16.0),
+                  icon: const Icon(Icons.check, size: 16.0, semanticLabel: 'Save (Cmd+Enter)'),
                   visualDensity: VisualDensity.compact,
                   padding: const EdgeInsets.all(2.0),
                   constraints: const BoxConstraints(),
@@ -445,7 +447,7 @@ class _PropertyFieldRowState extends State<PropertyFieldRow> {
                 ),
                 IconButton(
                   tooltip: 'Cancel (Esc)',
-                  icon: const Icon(Icons.close, size: 16.0),
+                  icon: const Icon(Icons.close, size: 16.0, semanticLabel: 'Cancel (Esc)'),
                   visualDensity: VisualDensity.compact,
                   padding: const EdgeInsets.all(2.0),
                   constraints: const BoxConstraints(),
@@ -593,31 +595,36 @@ class InboundRelationRow extends StatelessWidget {
     final label = group.length == 1
         ? '${foreignKey.fromTable}.${foreignKey.fromColumn}'
         : '${foreignKey.fromTable}.(${group.map((g) => g.fromColumn).join(', ')})';
-    return InkWell(
-      onTap: onTap,
-      child: Container(
-        color: isSelected ? theme.colorScheme.primaryContainer : null,
-        padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 4.0),
-        child: Row(
-          children: [
-            Icon(
-              Icons.subdirectory_arrow_right,
-              size: 12.0,
-              color: theme.colorScheme.secondary,
-            ),
-            const SizedBox(width: 6.0),
-            Expanded(
-              child: Text(
-                label,
-                style: theme.textTheme.bodySmall?.copyWith(
-                  fontFamily: 'Menlo',
-                  fontWeight: isSelected ? FontWeight.w600 : null,
-                ),
-                overflow: TextOverflow.ellipsis,
+    return Semantics(
+      container: true,
+      button: true,
+      selected: isSelected,
+      child: InkWell(
+        onTap: onTap,
+        child: Container(
+          color: isSelected ? theme.colorScheme.primaryContainer : null,
+          padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 4.0),
+          child: Row(
+            children: [
+              Icon(
+                Icons.subdirectory_arrow_right,
+                size: 12.0,
+                color: theme.colorScheme.secondary,
               ),
-            ),
-            const Icon(Icons.chevron_right, size: 14.0),
-          ],
+              const SizedBox(width: 6.0),
+              Expanded(
+                child: Text(
+                  label,
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    fontFamily: 'Menlo',
+                    fontWeight: isSelected ? FontWeight.w600 : null,
+                  ),
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+              const Icon(Icons.chevron_right, size: 14.0),
+            ],
+          ),
         ),
       ),
     );
