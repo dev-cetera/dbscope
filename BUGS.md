@@ -26,6 +26,22 @@ rg -n --max-count 5 '<file or symbol>' BUGS.md
 
 <!-- New entries go here, newest first. -->
 
+### A restored query tab's SQL editor still throws "RenderBox was not laid out" on launch
+
+- **Where.** `lib/query/sql_editor.dart:27` (`_SqlEditorState`, the post-frame `addListener` that was meant to avoid this) and the layout note at `lib/query/query_tab_view.dart:432`. The throw is `_CodeFieldState._onTextChanged` in `flutter_code_editor`, reached from `CodeController.analyzeCode`'s notification.
+- **Failure.** Launch with a query tab holding SQL (`SELECT u.id, u.name FROM public.users u JOIN public.items i ON u.id = i.creator_user_id WHERE i.deleted_at IS NULL GROUP BY u.id HAVING count(i.id) >= 10`). The window opens, then the log prints `EXCEPTION CAUGHT BY FOUNDATION LIBRARY … RenderBox was not laid out: RenderFractionalTranslation … Failed assertion: line 2251 pos 12: 'hasSize'`, from `ChangeNotifier.notifyListeners` → `CodeController.analyzeCode`. The deferred `addListener` covers only our callback; the `CodeField`'s own listener is still notified before its RenderBox has a size, so the existing workaround misses the path that throws.
+- **Noticed.** 2026-11-15, while launching the app (`fvm flutter run -d macos`) to connect it to a new local Postgres.
+- **Confidence.** confirmed (in the run log, macOS debug build on Flutter 3.47.7).
+- **Why not fixed on the spot.** Outside the task, and the fix is either gating the CodeField's first layout or mounting the controller only once sized — worth its own pass over `sql_editor.dart` and `query_tab_view.dart`.
+
+### `ScrollController not attached to any scroll views` follows the SQL editor assertion on launch
+
+- **Where.** Not pinned. It is the log line right after the `CodeController` assertion of the entry above, in the same launch. Candidates: `lib/agent/agent_tab_view.dart:24`, `lib/shell/sidebar.dart:92`, `lib/navigator/parts/row_list_column.dart:28`, `lib/navigator/navigator_view.dart:51`, or `CodeField`'s own controller inside `flutter_code_editor`.
+- **Failure.** On that launch, once the restored query tab is laid out, the log prints `Another exception was thrown: ScrollController not attached to any scroll views.` Nothing catches it, so a controller or its `ScrollPosition` is used before its `Scrollable` mounted or after it unmounted.
+- **Noticed.** 2026-11-15, while launching the app to connect it to a new local Postgres.
+- **Confidence.** suspected (the message is confirmed, the owning controller is not).
+- **Why not fixed on the spot.** The log carries no stack for it, so naming the controller needs a rerun under the debugger or a temporary `FlutterError.onError` trace; outside the task.
+
 ### `money` values are wrong on a database whose currency doesn't use two decimals
 
 - **Where.** `_moneyText` in `packages/dbscope_pg_core/lib/src/pg_value_text.dart`.
